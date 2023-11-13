@@ -2325,7 +2325,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1352,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 35,
+              "ecdsa_builtin_applications": 1
+            },
+            "memory_holes": 42
+          }
         }
       },
       {
@@ -2334,7 +2345,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3ef70268ff9447cfbef81b96d3446be94afcb38bcb018efaa1e22f94894a97b",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2342,7 +2364,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2351,7 +2384,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x4a7c3c8dc3aa1b928c13c57c12382d775ceb844e13a85775fd9f0269740caf5",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2359,7 +2403,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2379,7 +2434,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -2407,7 +2473,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1042,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 15,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 5,
+              "ecdsa_builtin_applications": 1
+            },
+            "memory_holes": 12
+          }
         }
       },
       {
@@ -2416,7 +2493,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1e45719466671df50a764e0ac8844aca009011e0b734bab64e91fcf5c11edbf",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2424,7 +2512,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2466,7 +2565,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1352,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 35,
+              "ecdsa_builtin_applications": 1,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 42
+          }
         }
       },
       {
@@ -2486,7 +2596,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 960,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 4,
+              "ecdsa_builtin_applications": 1,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 25
+            },
+            "memory_holes": 61
+          }
         }
       },
       {
@@ -2528,7 +2649,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1348,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 1,
+              "range_check_builtin_applications": 35,
+              "pedersen_builtin_applications": 2
+            },
+            "memory_holes": 44
+          }
         }
       },
       {
@@ -2536,7 +2668,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 25,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2545,7 +2688,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x14d3b1054aaf959d5a88c09c93570744968ed05936ad6c614506b8c6ea66ebc",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2553,7 +2707,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2562,7 +2727,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x95334f9e7c4a3b5e0545b276120127c6b243719b4e6ab9d8d62d2141f05dbb",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2570,7 +2746,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2579,7 +2766,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x466b32659e9971e401e01395315f20f52d718f885a214b5d17d3d8fba4cfff0",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2587,7 +2785,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2607,7 +2816,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 12
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -2626,7 +2846,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 702,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 16,
+              "ecdsa_builtin_applications": 1
+            },
+            "memory_holes": 38
+          }
         }
       },
       {
@@ -2635,7 +2866,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5efef871d4235ff241de741f257027c0bade52c55dea7b40c40a3e88847177f",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2643,7 +2885,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2652,7 +2905,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0xe52e514a61d43a2b1bbffc65ab85ee406c00b60752199d377f4aedae3586f9",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2660,7 +2924,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2669,7 +2944,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x6f207d5654f37869a61bfd8568fd21a5a6fb364697ee8d26ba7fc39aeb39402",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2677,7 +2963,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2697,7 +2994,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 901,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 25,
+              "pedersen_builtin_applications": 4,
+              "ecdsa_builtin_applications": 1,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 58
+          }
         }
       },
       {
@@ -2706,7 +3014,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x764f9f76bdfcfee213ac2a044f40277ab9f6648a1961a89a77e34430098bac2",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2714,7 +3033,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2723,7 +3053,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3191d9225c42a574879abe55223fe980ae6a48be768651a1f7e0c7d37b39f43",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2731,7 +3072,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2740,7 +3092,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3923cf5ebb05f9e2731c098f8b32f70494cda856d27430852e87e37f9105ef4",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2748,7 +3111,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2765,7 +3139,18 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 31,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2774,7 +3159,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5e151b8be8e454be726840486f5e00ccdb30064c91f3623f36ba38a1598efd",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2782,7 +3178,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2791,7 +3198,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x13941c2fb1aeda4511c6dc65d7ebf69e86648184b487c975c889474796ae8bd",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2799,7 +3217,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2818,7 +3247,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 702,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 16,
+              "ecdsa_builtin_applications": 1,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 38
+          }
         }
       },
       {
@@ -2827,7 +3267,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x7a733b77d20a401542755d644d8c98ef3db9d15f93fdf3c086fcb1a9d0842e1",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2835,7 +3286,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2844,7 +3306,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x43e0db82095e09231cc48e6fcc59dbc9b884797c787d08a7e631a6fab6d8521",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2852,7 +3325,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2861,7 +3345,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x4b319a2b2ced69b61d2049627d16567801292ae9653ee8127b525c0b50d2e61",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2869,7 +3364,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2889,7 +3395,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 901,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 4,
+              "range_check_builtin_applications": 25,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 1
+            },
+            "memory_holes": 58
+          }
         }
       },
       {
@@ -2909,7 +3426,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 12,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -2917,7 +3445,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 238,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2926,7 +3465,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x55c539a33dbc73dd1f0ec78341c45e48782bb4c1a5007b56a4243bd40192bf7",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2934,7 +3484,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2954,7 +3515,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 2,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -2963,7 +3535,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x214adff2853bb38e41f61b3e3038f995e77f27a416425f4c4ea698f6322a43c",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2971,7 +3554,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -2980,7 +3574,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x50e90305e7ebd55490f5e57a6f8e0850dbd578bf0d67805961f45dee84f40a0",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -2988,7 +3593,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3008,7 +3624,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 964,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 1,
+              "pedersen_builtin_applications": 4,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 25,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 59
+          }
         }
       },
       {
@@ -3017,7 +3644,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0xfa050b047785ea7285f468f6abcff63816c04ae7a8b403446d9e40aa1a3490",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3025,7 +3663,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3034,7 +3683,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x54825ac526fe9f305fece68c1167018de73ced2fd168ef34754a9d391aad204",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3043,7 +3703,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x71708006eec5194d50444fdee7dac0e2b9da018dbc775377bf57d3262a6868a",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3052,7 +3723,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x27c5ebc3b15c36591331020bc9a1b5efa6e52266328ab3765e03f1b733c4aca",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3060,7 +3742,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3069,7 +3762,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x2b8315b98fcdf4e2adfa21ffff30e55ebbb1dcb8191f69b16e392b2262719e2",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3078,7 +3782,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1d9d03bc3e894db259cf2edbe4a3872d73e29d4b358455436c79a344aa90d87",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3087,7 +3802,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5b3fe66b093eb4fa3544564bd0e267b1587e06a3eaf06f6c3c3c2b821dd7adf",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3096,7 +3822,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1bf21f8ee6a3ba7d1b11c612d054993df2349f321d12e79d7b96ba04258cd67",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3104,7 +3841,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3113,7 +3861,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5a3a0804c22dc3d3ae9be054ad1ad9206231fdac101da5307d3369d4c25f657",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3121,7 +3880,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3130,7 +3900,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1cdd95e8f6fe8f3486bf0c98191504479e00424d5b8307da2dc8485d99017e8",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3139,7 +3920,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x943f8759952d9396d2cfc20c5a6f68d203470aa5cf2aeb7f16c8eafc495733",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3148,7 +3940,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x56cb84824ce4dfc735e302b7f9599c70b2c9e2204806ec76353532916c6ac68",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3157,7 +3960,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3240e9465808ed9d39e5bcba4e4a4ff37fbfef3b3609d19788dc0924385759d",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3166,7 +3980,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x45b834dcac92e34ff21d95bd3b652adce1971a54b56d068da2673a98eaabce3",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3174,7 +3999,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3183,7 +4019,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x17f5869a14fa3659e2a36882bd279863cdad5a5459ead67cbb90297bf903eaf",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3192,7 +4039,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x487f031212a3c560bf3f8787b872040a70192fa7f8fd2e23dbd9b24acea0bc2",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3201,7 +4059,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3c4e67767a553bb6bb7d97bf148f356c047d84d2b86bfab2708835d91f7c788",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3209,7 +4078,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3218,7 +4098,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5d61bb8c958cf93b3a1425a5f9b01703e8d431eab19d1ff55d36875692b6f1f",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3226,7 +4117,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3234,7 +4136,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3242,7 +4155,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3250,7 +4174,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3258,7 +4193,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3266,7 +4212,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3274,7 +4231,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3283,7 +4251,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x9f22e539261cb3e48da2a49b16c18f3b2bb9d7d21e959b8668b5c70bfd6493",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3291,7 +4270,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3299,7 +4289,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3307,7 +4308,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3315,7 +4327,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3323,7 +4346,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3332,7 +4366,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x74e5c365640bbc30a9c0ca105bc35c2e38674ebe3166c40144d50fc9c06f240",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3340,7 +4385,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3348,7 +4404,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3357,7 +4424,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x31461a87f8292c50e372ef290bdb3fd2f1974343a5b3d70c363af0de9488202",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3365,7 +4443,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3374,7 +4463,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x656570945ce70a0984ed88b448f370242f0d39443627f1816180ddffbfd2303",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3382,7 +4482,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3391,7 +4502,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5f514801588940a279a37514da53879e1ce38dbfeb39a69a8ba56e0fb5ba4f6",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3399,7 +4521,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3427,7 +4560,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1042,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 5,
+              "ecdsa_builtin_applications": 1,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 15
+            },
+            "memory_holes": 12
+          }
         }
       },
       {
@@ -3436,7 +4580,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x493de11aa57feef9988f7e987438a91743529bda8d46c6baaf3dce0a723773c",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3444,7 +4599,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3453,7 +4619,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1a1784a0cadb9c5ff16924ff780194450039315dade195157e6bc72d564fb02",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3461,7 +4638,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3478,7 +4666,18 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 31,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3498,7 +4697,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3507,7 +4717,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x2222593150a7dbf64b513ef8ef84b7a861c7f6b1a68914a1201625bd2e9fea5",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3515,7 +4736,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3535,7 +4767,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3555,7 +4798,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3564,7 +4818,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x43ef92c4ef87f22e465fb6a1671e7db838f4618da40c686df0ec0df7d59c366",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3572,7 +4837,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3581,7 +4857,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1da9d2446ab0439399c2ae4694dd72c49b72cf528e909b6a7420c9779e7bb8a",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3589,7 +4876,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3609,7 +4907,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -3637,7 +4946,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 1042,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 15,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 1,
+              "range_check_builtin_applications": 5
+            },
+            "memory_holes": 12
+          }
         }
       },
       {
@@ -3646,7 +4966,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0xe6005c33ccda5da777de207bf043f85e6d4615377d2b96255452ce6f116c4d",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3654,7 +4985,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3674,7 +5016,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3683,7 +5036,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x7581238060c7738cf01250432d7c6874d1777320d5f9ba2629ce980e0e24f5d",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3691,7 +5055,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3700,7 +5075,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x7cf47a98c5d96ea6db67df8719fcc8025a39c74c88cc6f61bd7682bff15122f",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3708,7 +5094,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3717,7 +5114,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x6f5bc4338594774ac0ae80c5dd95b12ffec77df045878aaddb891d80678b769",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3725,7 +5133,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3734,7 +5153,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x6571abf611d953bdc83153d4bc0e09b75ffebb4b924131ad5bb00824a6b446d",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3742,7 +5172,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3762,7 +5203,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -3771,7 +5223,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x6245131adbf53cc0020a67b5528f4d7ec4be8715b9e3d7410a9a1538dce6e02",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3779,7 +5242,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3799,7 +5273,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3819,7 +5304,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 12,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 2
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3828,7 +5324,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x590b98d76eab15779c419e04ccc249c2db48120e6b720483214cee296f4b1d",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3836,7 +5343,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3845,7 +5363,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1efe63733a1441efb3bc058c6357ac0cb020af72ce28867c96916fea8c72be3",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3853,7 +5382,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3862,7 +5402,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1b1b01fa2623ce4f0f4d9dcfecbf0e281445c92f90a52026bdec42ce6674a78",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3870,7 +5421,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3879,7 +5441,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x33a067b2d9c0d3f93570fe962028804adc27d2b42f2b307d53c217a91cc607f",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3887,7 +5460,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3907,7 +5491,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 12,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -3927,7 +5522,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 12,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -3947,7 +5553,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 635,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 27
+          }
         }
       },
       {
@@ -3956,7 +5573,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x18559827578e1d10f1a5f0cfd327499e85812b4191c18ba94e3f65dbfc68883",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3964,7 +5592,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3973,7 +5612,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x6f17d6322ba10ed941363dad876be92554d6af2ceae2109712d0a1ce1a0a0e1",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3981,7 +5631,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -3990,7 +5651,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x5dfaebae1974b009fdbba7d61eb8270aebdaed3f59d03cf77f469c65b818445",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -3998,7 +5670,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4007,7 +5690,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1bfddda4780f53984bd9c81678ccf0211b5c2be55af130cf5de4cbb180fd17c",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -4015,7 +5709,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4035,7 +5740,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 12,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -4055,7 +5771,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -4075,7 +5802,18 @@
               ]
             }
           ],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 631,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 12,
+              "pedersen_builtin_applications": 2,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
+            },
+            "memory_holes": 29
+          }
         }
       },
       {
@@ -4084,7 +5822,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0xb33dbed2a0fd463f0e2c5311c76c6e9a64062224a38ef69deaa9ac19cdf24",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -4092,7 +5841,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4100,7 +5860,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 169,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "range_check_builtin_applications": 7
+            },
+            "memory_holes": 20
+          }
         }
       },
       {
@@ -4108,7 +5879,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 537,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 1,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 13,
+              "range_check_builtin_applications": 18,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 52
+          }
         }
       },
       {
@@ -4116,7 +5898,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 537,
+            "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 1,
+              "range_check_builtin_applications": 18,
+              "pedersen_builtin_applications": 13,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 52
+          }
         }
       },
       {
@@ -4124,7 +5917,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 537,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 13,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 18,
+              "ecdsa_builtin_applications": 1,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 52
+          }
         }
       },
       {
@@ -4133,7 +5937,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x4921d3f8e3b7decc2fa18f1e1c3c2cb8881755699da0184a0bd1e829039bcd",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -4141,7 +5956,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4150,7 +5976,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x1c77c621ea712f3a322cbc5e9ebc2e22a7232408d02cdd4e90dda866ceb8e0c",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -4158,7 +5995,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4167,7 +6015,18 @@
           "messages_sent": [],
           "events": [],
           "contract_address": "0x3abc831776314adadd2bf533a6a5099ee361efd099ad925bbfe093dc81e50e7",
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 50,
+            "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       },
       {
@@ -4175,7 +6034,18 @@
           "actual_fee": "0x0",
           "messages_sent": [],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 154,
+            "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 2
+          }
         }
       },
       {
@@ -4200,7 +6070,18 @@
             }
           ],
           "events": [],
-          "execution_status": "SUCCEEDED"
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 426,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
+            },
+            "memory_holes": 0
+          }
         }
       }
     ],
