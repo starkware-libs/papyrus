@@ -53,6 +53,7 @@ use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
     EventContent,
     EventIndexInTransactionOutput,
+    ExecutionResources,
     Fee,
     MessageToL1,
     TransactionExecutionStatus,
@@ -267,7 +268,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
 /// [`BodyStorageReader`](crate::body::BodyStorageReader)). These events contract addresses are
 /// taken from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
 /// In particular, they are not sorted and with duplicates.
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub enum ThinTransactionOutput {
     Declare(ThinDeclareTransactionOutput),
     Deploy(ThinDeployTransactionOutput),
@@ -311,7 +312,7 @@ impl ThinTransactionOutput {
 /// A thin version of
 /// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the
 /// events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinInvokeTransactionOutput {
     /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
@@ -321,12 +322,14 @@ pub struct ThinInvokeTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The execution resources of the transaction.
+    pub execution_resources: ExecutionResources,
 }
 
 /// A thin version of
 /// [`L1HandlerTransactionOutput`](starknet_api::transaction::L1HandlerTransactionOutput), not
 /// holding the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinL1HandlerTransactionOutput {
     /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
@@ -336,12 +339,14 @@ pub struct ThinL1HandlerTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The execution resources of the transaction.
+    pub execution_resources: ExecutionResources,
 }
 
 /// A thin version of
 /// [`DeclareTransactionOutput`](starknet_api::transaction::DeclareTransactionOutput), not holding
 /// the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinDeclareTransactionOutput {
     /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
@@ -351,12 +356,14 @@ pub struct ThinDeclareTransactionOutput {
     pub events_contract_addresses: Vec<ContractAddress>,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The execution resources of the transaction.
+    pub execution_resources: ExecutionResources,
 }
 
 /// A thin version of
 /// [`DeployTransactionOutput`](starknet_api::transaction::DeployTransactionOutput), not holding the
 /// events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinDeployTransactionOutput {
     /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
@@ -368,12 +375,14 @@ pub struct ThinDeployTransactionOutput {
     pub contract_address: ContractAddress,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The execution resources of the transaction.
+    pub execution_resources: ExecutionResources,
 }
 
 /// A thin version of
 /// [`DeployAccountTransactionOutput`](starknet_api::transaction::DeployAccountTransactionOutput),
 /// not holding the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ThinDeployAccountTransactionOutput {
     /// The actual fee paid for the transaction.
     pub actual_fee: Fee,
@@ -385,6 +394,8 @@ pub struct ThinDeployAccountTransactionOutput {
     pub contract_address: ContractAddress,
     /// The execution status of the transaction.
     pub execution_status: TransactionExecutionStatus,
+    /// The execution resources of the transaction.
+    pub execution_resources: ExecutionResources,
 }
 
 impl From<TransactionOutput> for ThinTransactionOutput {
@@ -398,6 +409,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     execution_status: tx_output.execution_status,
+                    execution_resources: tx_output.execution_resources,
                 })
             }
             TransactionOutput::Deploy(tx_output) => {
@@ -407,6 +419,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     events_contract_addresses,
                     contract_address: tx_output.contract_address,
                     execution_status: tx_output.execution_status,
+                    execution_resources: tx_output.execution_resources,
                 })
             }
             TransactionOutput::DeployAccount(tx_output) => {
@@ -416,6 +429,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     events_contract_addresses,
                     contract_address: tx_output.contract_address,
                     execution_status: tx_output.execution_status,
+                    execution_resources: tx_output.execution_resources,
                 })
             }
             TransactionOutput::Invoke(tx_output) => {
@@ -424,6 +438,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     execution_status: tx_output.execution_status,
+                    execution_resources: tx_output.execution_resources,
                 })
             }
             TransactionOutput::L1Handler(tx_output) => {
@@ -432,6 +447,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
                     messages_sent: tx_output.messages_sent,
                     events_contract_addresses,
                     execution_status: tx_output.execution_status,
+                    execution_resources: tx_output.execution_resources,
                 })
             }
         }
