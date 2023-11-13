@@ -152,27 +152,37 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
 
     let new_pending_data = pending_source.get_pending_data().await?;
 
-    if new_pending_data.block.parent_block_hash != latest_block_hash {
+    // In Starknet, if there's no pending block then the latest block is returned. We prefer to
+    // treat this case as if the pending block is an empty block on top of the latest block.
+    // We distinguish this case by looking if the block_hash field is present.
+    let new_pending_parent_hash =
+        new_pending_data.block.block_hash.unwrap_or(new_pending_data.block.parent_block_hash);
+    if new_pending_parent_hash != latest_block_hash {
+        // TODO(shahak): If block_hash is present, consider writing the pending data here so that
+        // the pending data will be available until the node syncs on the new block.
         debug!("A new block was found. Stopping pending sync.");
         return Ok(PendingSyncTaskResult::PendingSyncFinished);
     };
 
     let (current_pending_num_transactions, current_pending_parent_hash) = {
         let pending_block = &pending_data.read().await.block;
-        (pending_block.transactions.len(), pending_block.parent_block_hash)
+        (
+            pending_block.transactions.len(),
+            pending_block.block_hash.unwrap_or(pending_block.parent_block_hash),
+        )
     };
-    let is_new_pending_data_more_advanced = current_pending_parent_hash
-        != new_pending_data.block.parent_block_hash
+    let is_new_pending_data_more_advanced = current_pending_parent_hash != new_pending_parent_hash
         || new_pending_data.block.transactions.len() > current_pending_num_transactions;
     if is_new_pending_data_more_advanced {
         debug!("Received new pending data.");
         trace!("Pending data: {new_pending_data:#?}.");
-        if current_pending_parent_hash != new_pending_data.block.parent_block_hash {
+        if current_pending_parent_hash != new_pending_parent_hash {
             pending_classes.write().await.clear();
         }
         *pending_data.write().await = new_pending_data;
         Ok(PendingSyncTaskResult::DownloadedNewPendingData)
     } else {
+        debug!("Pending block wasn't updated. Waiting for pending block to be updated.");
         Ok(PendingSyncTaskResult::DownloadedOldPendingData)
     }
 }

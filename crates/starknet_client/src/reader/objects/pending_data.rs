@@ -14,6 +14,8 @@ pub struct PendingData {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct PendingBlock {
+    #[serde(default)]
+    pub block_hash: Option<BlockHash>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     pub gas_price: GasPrice,
