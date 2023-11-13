@@ -57,7 +57,7 @@ use super::transaction::{
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::{internal_server_error, ContinuationTokenAsStruct};
+use crate::{internal_server_error, internal_storage_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
 #[cfg(test)]
@@ -345,7 +345,7 @@ pub(crate) fn stored_txn_to_executable_txn(
         ) => {
             let casm = storage_txn
                 .get_casm(&value.class_hash)
-                .map_err(internal_server_error)?
+                .map_err(internal_storage_error)?
                 .ok_or_else(|| {
                     internal_server_error(format!(
                         "Missing casm of class hash {}.",
@@ -399,9 +399,9 @@ fn get_deprecated_class_for_re_execution(
     let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
     storage_txn
         .get_state_reader()
-        .map_err(internal_server_error)?
+        .map_err(internal_storage_error)?
         .get_deprecated_class_definition_at(state_number_after_block, &class_hash)
-        .map_err(internal_server_error)?
+        .map_err(internal_storage_error)?
         .ok_or_else(|| {
             internal_server_error(format!("Missing deprecated class definition of {class_hash}."))
         })

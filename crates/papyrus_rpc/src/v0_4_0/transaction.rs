@@ -37,7 +37,7 @@ use starknet_api::transaction::{
 use starknet_client::writer::objects::transaction as client_transaction;
 
 use super::error::BLOCK_NOT_FOUND;
-use crate::internal_server_error;
+use crate::{internal_server_error, internal_storage_error};
 
 lazy_static! {
     static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
@@ -576,7 +576,7 @@ pub fn get_block_txs_by_number<
 ) -> Result<Vec<Transaction>, ErrorObjectOwned> {
     let transactions = txn
         .get_block_transactions(block_number)
-        .map_err(internal_server_error)?
+        .map_err(internal_storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     transactions.into_iter().map(Transaction::try_from).collect()
@@ -588,7 +588,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 ) -> Result<Vec<TransactionHash>, ErrorObjectOwned> {
     let transaction_hashes = txn
         .get_block_transaction_hashes(block_number)
-        .map_err(internal_server_error)?
+        .map_err(internal_storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)

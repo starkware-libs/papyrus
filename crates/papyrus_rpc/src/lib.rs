@@ -34,7 +34,7 @@ use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::{StorageReader, StorageTxn};
+use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
@@ -158,17 +158,26 @@ fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
 }
 
+pub const STATE_ONLY_MODE_ERROR_MSG: &str =
+    "Block is unavailable when operating in state-only mode";
+fn internal_storage_error(err: StorageError) -> ErrorObjectOwned {
+    match err {
+        StorageError::ScopeError { .. } => internal_server_error(STATE_ONLY_MODE_ERROR_MSG),
+        _ => internal_server_error(err),
+    }
+}
+
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
-    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
+    Ok(txn.get_header_marker().map_err(internal_storage_error)?.prev())
 }
 
 fn get_block_status<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
 ) -> Result<BlockStatus, ErrorObjectOwned> {
-    let base_layer_tip = txn.get_base_layer_block_marker().map_err(internal_server_error)?;
+    let base_layer_tip = txn.get_base_layer_block_marker().map_err(internal_storage_error)?;
     let status = if block_number < base_layer_tip {
         BlockStatus::AcceptedOnL1
     } else {

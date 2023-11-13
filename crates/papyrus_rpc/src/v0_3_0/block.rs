@@ -9,7 +9,7 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::v0_3_0::error::JsonRpcError;
-use crate::{get_latest_block_number, internal_server_error};
+use crate::{get_latest_block_number, internal_storage_error};
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -51,7 +51,7 @@ pub fn get_block_header_by_number<
 ) -> Result<BlockHeader, ErrorObjectOwned> {
     let header = txn
         .get_block_header(block_number)
-        .map_err(internal_server_error)?
+        .map_err(internal_storage_error)?
         .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
 
     Ok(BlockHeader::from(header))
@@ -64,7 +64,7 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
     Ok(match block_id {
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
             .get_block_number_by_hash(&block_hash)
-            .map_err(internal_server_error)?
+            .map_err(internal_storage_error)?
             .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.

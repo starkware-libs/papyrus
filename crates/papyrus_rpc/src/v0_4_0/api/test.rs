@@ -163,7 +163,12 @@ use crate::test_utils::{
     SpecFile,
 };
 use crate::version_config::VERSION_0_4;
-use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
+use crate::{
+    internal_server_error,
+    run_server,
+    ContinuationTokenAsStruct,
+    STATE_ONLY_MODE_ERROR_MSG,
+};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -1322,7 +1327,6 @@ async fn get_nonce() {
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
-
     // Ask for an invalid contract.
     call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(
         &module,
@@ -1692,7 +1696,7 @@ async fn get_transaction_by_hash_state_only() {
 
     let (_, err) =
         raw_call::<_, TransactionHash, TransactionWithHash>(&module, method_name, &params).await;
-    assert_eq!(err.unwrap_err(), internal_server_error(""));
+    assert_eq!(err.unwrap_err(), internal_server_error(STATE_ONLY_MODE_ERROR_MSG));
 }
 
 #[tokio::test]
