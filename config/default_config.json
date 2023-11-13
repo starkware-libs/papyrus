@@ -56,8 +56,8 @@
   },
   "central.url": {
     "description": "Starknet feeder-gateway URL. It should match chain_id.",
-    "privacy": "Public",
-    "value": "https://alpha-mainnet.starknet.io/"
+    "pointer_target": "starknet_url",
+    "privacy": "Public"
   },
   "chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
@@ -68,6 +68,11 @@
     "description": "If true, collect metrics for the node.",
     "privacy": "TemporaryValue",
     "value": false
+  },
+  "starknet_url": {
+    "description": "URL for the Starknet feeder-gateway and for communicating with Starknet in write_api methods.",
+    "privacy": "TemporaryValue",
+    "value": "https://alpha-mainnet.starknet.io/"
   },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
@@ -131,8 +136,8 @@
   },
   "rpc.starknet_url": {
     "description": "URL for communicating with Starknet in write_api methods.",
-    "privacy": "Public",
-    "value": "https://alpha-mainnet.starknet.io/"
+    "pointer_target": "starknet_url",
+    "privacy": "Public"
   },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",

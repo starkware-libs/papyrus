@@ -18,7 +18,7 @@ async fn main() {
     fs::create_dir_all(path.clone()).expect("Should make a temporary `data` directory");
     let config = NodeConfig::load_and_process(vec![
         "--chain_id=SN_GOERLI".to_owned(),
-        "--central.url=https://alpha4.starknet.io/".to_owned(),
+        "--starknet_url=https://alpha4.starknet.io/".to_owned(),
         "--base_layer.node_url=https://mainnet.infura.io/v3/1234".to_owned(),
         format!("--storage.db_config.path_prefix={}", path.display()),
     ])
