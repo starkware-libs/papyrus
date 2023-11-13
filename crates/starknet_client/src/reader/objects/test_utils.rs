@@ -85,7 +85,7 @@ auto_impl_get_test_instance! {
         pub nonce_data_availability_mode: Option<ReservedDataAvailabilityMode>,
         pub fee_data_availability_mode: Option<ReservedDataAvailabilityMode>,
         pub paymaster_data: Option<PaymasterData>,
-        pub contract_address: ContractAddress,
+        pub sender_address: ContractAddress,
         pub max_fee: Option<Fee>,
         pub transaction_hash: TransactionHash,
         pub version: TransactionVersion,
