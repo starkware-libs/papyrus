@@ -145,7 +145,7 @@ use super::super::write_api_result::{
     AddDeployAccountOkResult,
     AddInvokeOkResult,
 };
-use super::api_impl::{JsonRpcServerV0_4Impl, BLOCK_HASH_TABLE_ADDRESS};
+use super::api_impl::{JsonRpcServerV0_5Impl as JsonRpcServerImpl, BLOCK_HASH_TABLE_ADDRESS};
 use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
@@ -166,14 +166,14 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::version_config::VERSION_0_4;
+use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
 async fn chain_id() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
@@ -181,9 +181,9 @@ async fn chain_id() {
     // https://docs.starknet.io/documentation/develop/Blocks/transactions/#chain-id.
     call_api_then_assert_and_validate_schema_for_result::<_, _, String>(
         &module,
-        "starknet_V0_4_chainId",
+        "starknet_V0_5_chainId",
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &String::from("0x534e5f474f45524c49"),
     )
     .await;
@@ -191,16 +191,16 @@ async fn chain_id() {
 
 #[tokio::test]
 async fn block_hash_and_number() {
-    let method_name = "starknet_V0_4_blockHashAndNumber";
+    let method_name = "starknet_V0_5_blockHashAndNumber";
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // No blocks yet.
     call_api_then_assert_and_validate_schema_for_err::<_, _, BlockHashAndNumber>(
         &module,
         method_name,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &NO_BLOCKS.into(),
     )
     .await;
@@ -218,7 +218,7 @@ async fn block_hash_and_number() {
         &module,
         method_name,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &BlockHashAndNumber {
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
@@ -229,9 +229,9 @@ async fn block_hash_and_number() {
 
 #[tokio::test]
 async fn block_number() {
-    let method_name = "starknet_V0_4_blockNumber";
+    let method_name = "starknet_V0_5_blockNumber";
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // No blocks yet.
     let expected_err = NO_BLOCKS.into();
@@ -239,7 +239,7 @@ async fn block_number() {
         &module,
         method_name,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &expected_err,
     )
     .await;
@@ -256,7 +256,7 @@ async fn block_number() {
         &module,
         method_name,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &BlockNumber(0),
     )
     .await;
@@ -264,10 +264,10 @@ async fn block_number() {
 
 #[tokio::test]
 async fn syncing() {
-    const API_METHOD_NAME: &str = "starknet_V0_4_syncing";
+    const API_METHOD_NAME: &str = "starknet_V0_5_syncing";
 
     let shared_highest_block = get_test_highest_block();
-    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         Some(shared_highest_block.clone()),
         None,
@@ -279,7 +279,7 @@ async fn syncing() {
         &module,
         API_METHOD_NAME,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &false,
     )
     .await;
@@ -290,7 +290,7 @@ async fn syncing() {
         &module,
         API_METHOD_NAME,
         &None::<()>,
-        &VERSION_0_4,
+        &VERSION,
         &SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() },
     )
     .await;
@@ -298,10 +298,10 @@ async fn syncing() {
 
 #[tokio::test]
 async fn get_block_transaction_count() {
-    let method_name = "starknet_V0_4_getBlockTransactionCount";
+    let method_name = "starknet_V0_5_getBlockTransactionCount";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let transaction_count = 5;
     let block = get_test_block(transaction_count, None, None, None);
@@ -320,7 +320,7 @@ async fn get_block_transaction_count() {
         &module,
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
-        &VERSION_0_4,
+        &VERSION,
         &transaction_count,
     )
     .await;
@@ -361,7 +361,7 @@ async fn get_block_transaction_count() {
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -380,10 +380,10 @@ async fn get_block_transaction_count() {
 #[tokio::test]
 async fn get_block_w_full_transactions() {
     // TODO(omri): Add test for pending block.
-    let method_name = "starknet_V0_4_getBlockWithTxs";
+    let method_name = "starknet_V0_5_getBlockWithTxs";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
 
     let mut block = get_test_block(1, None, None, None);
@@ -422,7 +422,7 @@ async fn get_block_w_full_transactions() {
         &module,
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
-        &VERSION_0_4,
+        &VERSION,
         &expected_block,
     )
     .await;
@@ -511,7 +511,7 @@ async fn get_block_w_full_transactions() {
         &module,
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
-        &VERSION_0_4,
+        &VERSION,
         &expected_pending_block,
     )
     .await;
@@ -534,10 +534,10 @@ async fn get_block_w_full_transactions() {
 
 #[tokio::test]
 async fn get_block_w_transaction_hashes() {
-    let method_name = "starknet_V0_4_getBlockWithTxHashes";
+    let method_name = "starknet_V0_5_getBlockWithTxHashes";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
 
     let mut block = get_test_block(1, None, None, None);
@@ -572,7 +572,7 @@ async fn get_block_w_transaction_hashes() {
         &module,
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
-        &VERSION_0_4,
+        &VERSION,
         &expected_block,
     )
     .await;
@@ -615,7 +615,7 @@ async fn get_block_w_transaction_hashes() {
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -666,7 +666,7 @@ async fn get_block_w_transaction_hashes() {
         &module,
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
-        &VERSION_0_4,
+        &VERSION,
         &expected_pending_block,
     )
     .await;
@@ -689,10 +689,10 @@ async fn get_block_w_transaction_hashes() {
 
 #[tokio::test]
 async fn get_class() {
-    let method_name = "starknet_V0_4_getClass";
+    let method_name = "starknet_V0_5_getClass";
     let pending_classes = get_test_pending_classes();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, None, Some(pending_classes.clone()), None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
@@ -733,7 +733,7 @@ async fn get_class() {
         &module,
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash)),
-        &VERSION_0_4,
+        &VERSION,
         &expected_contract_class,
     )
     .await;
@@ -775,7 +775,7 @@ async fn get_class() {
             BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
             ClassHash(stark_felt!("0x7")),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &CLASS_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -833,7 +833,7 @@ async fn get_class() {
             )))),
             ClassHash(stark_felt!("0x7")),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -851,10 +851,10 @@ async fn get_class() {
 
 #[tokio::test]
 async fn get_transaction_receipt() {
-    let method_name = "starknet_V0_4_getTransactionReceipt";
+    let method_name = "starknet_V0_5_getTransactionReceipt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -895,7 +895,7 @@ async fn get_transaction_receipt() {
                 SpecFile::StarknetApiOpenrpc,
                 &[method_name_to_spec_method_name(method_name).as_str()]
             )],
-            &VERSION_0_4,
+            &VERSION,
         ),
         &json_response["result"],
     ));
@@ -942,7 +942,7 @@ async fn get_transaction_receipt() {
                 SpecFile::StarknetApiOpenrpc,
                 &[method_name_to_spec_method_name(method_name).as_str()]
             )],
-            &VERSION_0_4,
+            &VERSION,
         ),
         &json_response["result"],
     ));
@@ -962,7 +962,7 @@ async fn get_transaction_receipt() {
         &module,
         method_name,
         &Some(TransactionHash(StarkHash::from(1_u8))),
-        &VERSION_0_4,
+        &VERSION,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -970,9 +970,9 @@ async fn get_transaction_receipt() {
 
 #[tokio::test]
 async fn get_class_at() {
-    let method_name = "starknet_V0_4_getClassAt";
+    let method_name = "starknet_V0_5_getClassAt";
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -1017,7 +1017,7 @@ async fn get_class_at() {
         &module,
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
-        &VERSION_0_4,
+        &VERSION,
         &expected_contract_class,
     )
     .await;
@@ -1072,7 +1072,7 @@ async fn get_class_at() {
             BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
             ContractAddress(patricia_key!("0x12")),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1104,7 +1104,7 @@ async fn get_class_at() {
             )))),
             *address,
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1122,10 +1122,10 @@ async fn get_class_at() {
 
 #[tokio::test]
 async fn get_class_hash_at() {
-    let method_name = "starknet_V0_4_getClassHashAt";
+    let method_name = "starknet_V0_5_getClassHashAt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1157,7 +1157,7 @@ async fn get_class_hash_at() {
         &module,
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
-        &VERSION_0_4,
+        &VERSION,
         expected_class_hash,
     )
     .await;
@@ -1198,7 +1198,7 @@ async fn get_class_hash_at() {
         &module,
         method_name,
         &Some((BlockId::Tag(Tag::Pending), pending_address)),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1217,7 +1217,7 @@ async fn get_class_hash_at() {
             BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
             ContractAddress(patricia_key!("0x12")),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1232,7 +1232,7 @@ async fn get_class_hash_at() {
             )))),
             *address,
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1250,10 +1250,10 @@ async fn get_class_hash_at() {
 
 #[tokio::test]
 async fn get_nonce() {
-    let method_name = "starknet_V0_4_getNonce";
+    let method_name = "starknet_V0_5_getNonce";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1274,7 +1274,7 @@ async fn get_nonce() {
         &module,
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
-        &VERSION_0_4,
+        &VERSION,
         expected_nonce,
     )
     .await;
@@ -1314,7 +1314,7 @@ async fn get_nonce() {
         &module,
         method_name,
         &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
-        &VERSION_0_4,
+        &VERSION,
         &new_nonce,
     )
     .await;
@@ -1332,7 +1332,7 @@ async fn get_nonce() {
         &module,
         method_name,
         &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1345,7 +1345,7 @@ async fn get_nonce() {
             BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
             ContractAddress(patricia_key!("0x31")),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1360,7 +1360,7 @@ async fn get_nonce() {
             )))),
             *address,
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1378,10 +1378,10 @@ async fn get_nonce() {
 
 #[tokio::test]
 async fn get_storage_at() {
-    let method_name = "starknet_V0_4_getStorageAt";
+    let method_name = "starknet_V0_5_getStorageAt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1407,7 +1407,7 @@ async fn get_storage_at() {
         &module,
         method_name,
         &Some((*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)))),
-        &VERSION_0_4,
+        &VERSION,
         expected_value,
     )
     .await;
@@ -1502,7 +1502,7 @@ async fn get_storage_at() {
         &module,
         method_name,
         &Some((contract_address, key, BlockId::Tag(Tag::Pending))),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1510,7 +1510,7 @@ async fn get_storage_at() {
     // Ask for storage at address 0x1 - the block hash table contract address
     let res = module
         .call::<_, StarkFelt>(
-            "starknet_V0_4_getStorageAt",
+            "starknet_V0_5_getStorageAt",
             (
                 *BLOCK_HASH_TABLE_ADDRESS,
                 key,
@@ -1534,7 +1534,7 @@ async fn get_storage_at() {
             key,
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1554,7 +1554,7 @@ async fn get_storage_at() {
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
             )))),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1627,10 +1627,10 @@ fn generate_client_transaction_and_rpc_transaction(
 
 #[tokio::test]
 async fn get_transaction_by_hash() {
-    let method_name = "starknet_V0_4_getTransactionByHash";
+    let method_name = "starknet_V0_5_getTransactionByHash";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let mut block = get_test_block(1, None, None, None);
     // Change the transaction hash from 0 to a random value, so that later on we can add a
@@ -1652,7 +1652,7 @@ async fn get_transaction_by_hash() {
         &module,
         method_name,
         &Some(block.body.transaction_hashes[0]),
-        &VERSION_0_4,
+        &VERSION,
         &expected_transaction,
     )
     .await;
@@ -1665,7 +1665,7 @@ async fn get_transaction_by_hash() {
         &module,
         method_name,
         &Some(client_transaction.transaction_hash()),
-        &VERSION_0_4,
+        &VERSION,
         &expected_transaction_with_hash,
     )
     .await;
@@ -1676,7 +1676,7 @@ async fn get_transaction_by_hash() {
         &module,
         method_name,
         &Some(client_transaction.transaction_hash()),
-        &VERSION_0_4,
+        &VERSION,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -1686,7 +1686,7 @@ async fn get_transaction_by_hash() {
         &module,
         method_name,
         &Some(TransactionHash(StarkHash::from(1_u8))),
-        &VERSION_0_4,
+        &VERSION,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -1694,9 +1694,9 @@ async fn get_transaction_by_hash() {
 
 #[tokio::test]
 async fn get_transaction_by_hash_state_only() {
-    let method_name = "starknet_V0_4_getTransactionByHash";
+    let method_name = "starknet_V0_5_getTransactionByHash";
     let params = Some(TransactionHash(StarkHash::from(1_u8)));
-    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         None,
         None,
@@ -1711,10 +1711,10 @@ async fn get_transaction_by_hash_state_only() {
 
 #[tokio::test]
 async fn get_transaction_by_block_id_and_index() {
-    let method_name = "starknet_V0_4_getTransactionByBlockIdAndIndex";
+    let method_name = "starknet_V0_5_getTransactionByBlockIdAndIndex";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -1744,7 +1744,7 @@ async fn get_transaction_by_block_id_and_index() {
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
             TransactionOffsetInBlock(0),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &expected_transaction,
     )
     .await;
@@ -1778,7 +1778,7 @@ async fn get_transaction_by_block_id_and_index() {
         &module,
         method_name,
         &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(1))),
-        &VERSION_0_4,
+        &VERSION,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -1794,7 +1794,7 @@ async fn get_transaction_by_block_id_and_index() {
         &module,
         method_name,
         &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(0))),
-        &VERSION_0_4,
+        &VERSION,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -1813,7 +1813,7 @@ async fn get_transaction_by_block_id_and_index() {
             )))),
             TransactionOffsetInBlock(0),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1840,7 +1840,7 @@ async fn get_transaction_by_block_id_and_index() {
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
             TransactionOffsetInBlock(1),
         )),
-        &VERSION_0_4,
+        &VERSION,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -1848,10 +1848,10 @@ async fn get_transaction_by_block_id_and_index() {
 
 #[tokio::test]
 async fn get_state_update() {
-    let method_name = "starknet_V0_4_getStateUpdate";
+    let method_name = "starknet_V0_5_getStateUpdate";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let parent_header = BlockHeader::default();
     let expected_pending_old_root = GlobalRoot(stark_felt!("0x1234"));
@@ -1895,7 +1895,7 @@ async fn get_state_update() {
         &module,
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
-        &VERSION_0_4,
+        &VERSION,
         &expected_update,
     )
     .await;
@@ -1964,7 +1964,7 @@ async fn get_state_update() {
         &module,
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
-        &VERSION_0_4,
+        &VERSION,
         &expected_pending_update,
     )
     .await;
@@ -1986,7 +1986,7 @@ async fn get_state_update() {
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
-        &VERSION_0_4,
+        &VERSION,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -2103,10 +2103,10 @@ async fn test_get_events(
     mut filter: EventFilter,
     expected_result_by_index: Vec<(Vec<EventIndex>, Option<ContinuationTokenAsStruct>)>,
 ) {
-    let method_name = "starknet_V0_4_getEvents";
+    let method_name = "starknet_V0_5_getEvents";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let mut rng = get_rng();
 
@@ -2193,7 +2193,7 @@ async fn test_get_events(
             &module,
             method_name,
             &Some(filter.clone()),
-            &VERSION_0_4,
+            &VERSION,
             &expected_result,
         )
         .await;
@@ -2606,7 +2606,7 @@ async fn get_events_pending_not_up_to_date() {
 
 #[tokio::test]
 async fn get_events_page_size_too_big() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -2620,9 +2620,9 @@ async fn get_events_page_size_too_big() {
 
     call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
         &module,
-        "starknet_V0_4_getEvents",
+        "starknet_V0_5_getEvents",
         &Some(filter),
-        &VERSION_0_4,
+        &VERSION,
         &PAGE_SIZE_TOO_BIG.into(),
     )
     .await;
@@ -2630,7 +2630,7 @@ async fn get_events_page_size_too_big() {
 
 #[tokio::test]
 async fn get_events_too_many_keys() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let keys = (0..get_test_rpc_config().max_events_keys + 1)
         .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
@@ -2647,9 +2647,9 @@ async fn get_events_too_many_keys() {
 
     call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
         &module,
-        "starknet_V0_4_getEvents",
+        "starknet_V0_5_getEvents",
         &Some(filter),
-        &VERSION_0_4,
+        &VERSION,
         &TOO_MANY_KEYS_IN_FILTER.into(),
     )
     .await;
@@ -2658,7 +2658,7 @@ async fn get_events_too_many_keys() {
 #[tokio::test]
 async fn get_events_invalid_ct() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let block = starknet_api::block::Block::default();
     storage_writer
         .begin_rw_txn()
@@ -2682,9 +2682,9 @@ async fn get_events_invalid_ct() {
 
     call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
         &module,
-        "starknet_V0_4_getEvents",
+        "starknet_V0_5_getEvents",
         &Some(filter),
-        &VERSION_0_4,
+        &VERSION,
         &INVALID_CONTINUATION_TOKEN.into(),
     )
     .await;
@@ -2761,7 +2761,7 @@ async fn serialize_returns_valid_json() {
                 "EVENTS_CHUNK",
             ],
         )],
-        &VERSION_0_4,
+        &VERSION,
     );
     validate_state(&state_diff, server_address, &schema).await;
     validate_block(&block.header, server_address, &schema).await;
@@ -2773,7 +2773,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getStateUpdate",
         r#"{"block_number": 1}"#,
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "State update is not valid.");
@@ -2783,7 +2783,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Class is not valid.");
@@ -2795,7 +2795,7 @@ async fn validate_state(state_diff: &StateDiff, server_address: SocketAddr, sche
         server_address,
         "starknet_getClassAt",
         format!(r#"{{"block_number": 1}}, "0x{}""#, hex::encode(address.0.key().bytes())).as_str(),
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Class is not valid.");
@@ -2806,7 +2806,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         server_address,
         "starknet_getBlockWithTxs",
         r#"{"block_number": 1}"#,
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Block with transactions is not valid.");
@@ -2815,7 +2815,7 @@ async fn validate_block(header: &BlockHeader, server_address: SocketAddr, schema
         server_address,
         "starknet_getBlockWithTxHashes",
         format!(r#"{{"block_hash": "0x{}"}}"#, hex::encode(header.block_hash.0.bytes())).as_str(),
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Block with transaction hashes is not valid.");
@@ -2830,7 +2830,7 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionByBlockIdAndIndex",
         r#"{"block_number": 1}, 0"#,
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Transaction is not valid.");
@@ -2839,7 +2839,7 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionByHash",
         format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Transaction is not valid.");
@@ -2848,18 +2848,14 @@ async fn validate_transaction(
         server_address,
         "starknet_getTransactionReceipt",
         format!(r#""0x{}""#, hex::encode(tx_hash.0.bytes())).as_str(),
-        VERSION_0_4.name,
+        VERSION.name,
     )
     .await;
     assert!(validate_schema(schema, &res["result"]), "Transaction receipt is not valid.");
 
-    let res = send_request(
-        server_address,
-        "starknet_getEvents",
-        r#"{"chunk_size": 2}"#,
-        VERSION_0_4.name,
-    )
-    .await;
+    let res =
+        send_request(server_address, "starknet_getEvents", r#"{"chunk_size": 2}"#, VERSION.name)
+            .await;
     assert!(validate_schema(schema, &res["result"]), "Events are not valid.");
 }
 
@@ -2899,7 +2895,7 @@ async fn get_deprecated_class_state_mutability() {
     };
 
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let header = BlockHeader::default();
 
     storage_writer
@@ -2915,7 +2911,7 @@ async fn get_deprecated_class_state_mutability() {
     // Get class without state mutability.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
+            "starknet_V0_5_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
                 ClassHash(stark_felt!("0x0")),
@@ -2930,7 +2926,7 @@ async fn get_deprecated_class_state_mutability() {
     // Get class with state mutability.
     let res = module
         .call::<_, DeprecatedContractClass>(
-            "starknet_V0_4_getClass",
+            "starknet_V0_5_getClass",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
                 ClassHash(stark_felt!("0x1")),
@@ -2983,7 +2979,7 @@ where
             Ok(client_resp),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3010,7 +3006,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3044,7 +3040,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3075,7 +3071,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3097,7 +3093,7 @@ impl AddTransactionTest for AddInvokeTest {
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
 
-    const METHOD_NAME: &'static str = "starknet_V0_4_addInvokeTransaction";
+    const METHOD_NAME: &'static str = "starknet_V0_5_addInvokeTransaction";
 
     fn expect_add_transaction(
         client_mock: &mut MockStarknetWriter,
@@ -3119,7 +3115,7 @@ impl AddTransactionTest for AddDeployAccountTest {
     type Response = AddDeployAccountOkResult;
     type ClientResponse = DeployAccountResponse;
 
-    const METHOD_NAME: &'static str = "starknet_V0_4_addDeployAccountTransaction";
+    const METHOD_NAME: &'static str = "starknet_V0_5_addDeployAccountTransaction";
 
     fn expect_add_transaction(
         client_mock: &mut MockStarknetWriter,
@@ -3141,7 +3137,7 @@ impl AddTransactionTest for AddDeclareTest {
     type Response = AddDeclareOkResult;
     type ClientResponse = DeclareResponse;
 
-    const METHOD_NAME: &'static str = "starknet_V0_4_addDeclareTransaction";
+    const METHOD_NAME: &'static str = "starknet_V0_5_addDeclareTransaction";
 
     fn expect_add_transaction(
         client_mock: &mut MockStarknetWriter,
@@ -3243,7 +3239,7 @@ async fn add_declare_unexpected_error() {
 
 #[test]
 fn spec_api_methods_coverage() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let implemented_methods: Methods = module.into();
     let implemented_method_names = implemented_methods
         .method_names()
@@ -3252,7 +3248,7 @@ fn spec_api_methods_coverage() {
         .collect::<Vec<_>>();
     let non_implemented_apis =
         ["starknet_estimateMessageFee".to_string(), "starknet_pendingTransactions".to_string()];
-    let method_names_in_spec = get_method_names_from_spec(&VERSION_0_4)
+    let method_names_in_spec = get_method_names_from_spec(&VERSION)
         .iter()
         .filter_map(|method| {
             let stripped_method_name = method.clone().replace('\"', "");

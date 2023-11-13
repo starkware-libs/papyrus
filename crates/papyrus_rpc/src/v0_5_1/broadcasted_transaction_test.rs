@@ -25,13 +25,13 @@ use super::{
     DeclareType,
 };
 use crate::test_utils::{get_starknet_spec_api_schema_for_components, SpecFile};
-use crate::version_config::VERSION_0_4;
+use crate::version_config::VERSION_0_5 as Version;
 
 fn validate_tx_fits_rpc(tx: BroadcastedDeclareTransaction) {
     lazy_static! {
         static ref SCHEMA: JSONSchema = get_starknet_spec_api_schema_for_components(
             &[(SpecFile::StarknetApiOpenrpc, &["DECLARE_TXN"])],
-            &VERSION_0_4
+            &Version
         );
     }
     assert!(SCHEMA.is_valid(&serde_json::to_value(tx).unwrap()));

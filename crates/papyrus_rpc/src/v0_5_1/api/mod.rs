@@ -63,7 +63,7 @@ pub mod api_impl;
 #[cfg(test)]
 mod test;
 
-#[versioned_rpc("V0_4")]
+#[versioned_rpc("V0_5")]
 #[async_trait]
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
@@ -358,7 +358,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             starknet_api::transaction::DeclareTransaction::V3(_),
         ) => Err(internal_server_error(
             "The requested transaction is a declare of version 3, which is not supported on \
-             v0.4.0.",
+             v0.5.1.",
         )),
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
@@ -371,7 +371,7 @@ pub(crate) fn stored_txn_to_executable_txn(
                 starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                     Err(internal_server_error(
                         "The requested transaction is a deploy account of version 3, which is not \
-                         supported on v0.4.0.",
+                         supported on v0.5.1.",
                     ))
                 }
             }

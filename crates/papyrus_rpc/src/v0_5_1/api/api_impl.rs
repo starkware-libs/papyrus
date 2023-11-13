@@ -109,7 +109,7 @@ use super::{
     EventsChunk,
     FeeEstimate,
     GatewayContractClass,
-    JsonRpcV0_4Server,
+    JsonRpcV0_5Server as JsonRpcServer,
     SimulatedTransaction,
     SimulationFlag,
     TransactionTraceWithHash,
@@ -129,7 +129,7 @@ lazy_static! {
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_4Impl {
+pub struct JsonRpcServerV0_5Impl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -143,7 +143,7 @@ pub struct JsonRpcServerV0_4Impl {
 }
 
 #[async_trait]
-impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
+impl JsonRpcServer for JsonRpcServerV0_5Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -1250,7 +1250,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_5Impl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,
