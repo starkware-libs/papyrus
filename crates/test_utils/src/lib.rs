@@ -81,6 +81,7 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     AccountDeploymentData,
+    Builtin,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
@@ -99,6 +100,7 @@ use starknet_api::transaction::{
     EventData,
     EventIndexInTransactionOutput,
     EventKey,
+    ExecutionResources,
     Fee,
     InvokeTransaction,
     InvokeTransactionOutput,
@@ -397,6 +399,16 @@ auto_impl_get_test_instance! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        SegmentArena = 7,
+    }
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);
@@ -523,6 +535,11 @@ auto_impl_get_test_instance! {
     pub struct EventData(pub Vec<StarkFelt>);
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
+    pub struct ExecutionResources {
+        pub steps: u64,
+        pub builtin_instance_counter: HashMap<Builtin, u64>,
+        pub memory_holes: u64,
+    }
     pub struct Fee(pub u128);
     pub struct FunctionAbiEntry {
         pub name: String,
