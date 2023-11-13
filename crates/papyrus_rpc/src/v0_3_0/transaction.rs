@@ -19,14 +19,11 @@ use starknet_api::core::{
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
-    DeclareTransactionOutput,
-    DeployAccountTransactionOutput,
     DeployTransaction,
-    DeployTransactionOutput,
     Fee,
-    InvokeTransactionOutput,
     L1HandlerTransaction,
-    L1HandlerTransactionOutput,
+    MessageToL1,
+    TransactionExecutionStatus,
     TransactionHash,
     TransactionSignature,
     TransactionVersion,
@@ -344,14 +341,14 @@ impl From<BlockStatus> for TransactionStatus {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionReceiptWithStatus {
     pub status: TransactionStatus,
     #[serde(flatten)]
     pub receipt: TransactionReceipt,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionReceipt {
     pub transaction_hash: TransactionHash,
     pub block_hash: BlockHash,
@@ -360,7 +357,7 @@ pub struct TransactionReceipt {
     pub output: TransactionOutput,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "type")]
 pub enum TransactionOutput {
     #[serde(rename = "DECLARE")]
@@ -373,6 +370,53 @@ pub enum TransactionOutput {
     Invoke(InvokeTransactionOutput),
     #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransactionOutput),
+}
+
+/// A declare transaction output.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct DeclareTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<starknet_api::transaction::Event>,
+    pub execution_status: TransactionExecutionStatus,
+}
+
+/// A deploy-account transaction output.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct DeployAccountTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<starknet_api::transaction::Event>,
+    pub contract_address: ContractAddress,
+    pub execution_status: TransactionExecutionStatus,
+}
+
+/// A deploy transaction output.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct DeployTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<starknet_api::transaction::Event>,
+    pub contract_address: ContractAddress,
+    pub execution_status: TransactionExecutionStatus,
+}
+
+/// An invoke transaction output.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct InvokeTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<starknet_api::transaction::Event>,
+    pub execution_status: TransactionExecutionStatus,
+}
+
+/// An L1 handler transaction output.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct L1HandlerTransactionOutput {
+    pub actual_fee: Fee,
+    pub messages_sent: Vec<MessageToL1>,
+    pub events: Vec<starknet_api::transaction::Event>,
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl TransactionOutput {
@@ -432,19 +476,46 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
     fn from(tx_output: starknet_api::transaction::TransactionOutput) -> Self {
         match tx_output {
             starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {
-                TransactionOutput::Declare(declare_tx_output)
+                TransactionOutput::Declare(DeclareTransactionOutput {
+                    actual_fee: declare_tx_output.actual_fee,
+                    messages_sent: declare_tx_output.messages_sent,
+                    events: declare_tx_output.events,
+                    execution_status: declare_tx_output.execution_status,
+                })
             }
             starknet_api::transaction::TransactionOutput::Deploy(deploy_tx_output) => {
-                TransactionOutput::Deploy(deploy_tx_output)
+                TransactionOutput::Deploy(DeployTransactionOutput {
+                    actual_fee: deploy_tx_output.actual_fee,
+                    messages_sent: deploy_tx_output.messages_sent,
+                    events: deploy_tx_output.events,
+                    contract_address: deploy_tx_output.contract_address,
+                    execution_status: deploy_tx_output.execution_status,
+                })
             }
             starknet_api::transaction::TransactionOutput::DeployAccount(deploy_tx_output) => {
-                TransactionOutput::DeployAccount(deploy_tx_output)
+                TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
+                    actual_fee: deploy_tx_output.actual_fee,
+                    messages_sent: deploy_tx_output.messages_sent,
+                    events: deploy_tx_output.events,
+                    contract_address: deploy_tx_output.contract_address,
+                    execution_status: deploy_tx_output.execution_status,
+                })
             }
             starknet_api::transaction::TransactionOutput::Invoke(invoke_tx_output) => {
-                TransactionOutput::Invoke(invoke_tx_output)
+                TransactionOutput::Invoke(InvokeTransactionOutput {
+                    actual_fee: invoke_tx_output.actual_fee,
+                    messages_sent: invoke_tx_output.messages_sent,
+                    events: invoke_tx_output.events,
+                    execution_status: invoke_tx_output.execution_status,
+                })
             }
             starknet_api::transaction::TransactionOutput::L1Handler(l1_handler_tx_output) => {
-                TransactionOutput::L1Handler(l1_handler_tx_output)
+                TransactionOutput::L1Handler(L1HandlerTransactionOutput {
+                    actual_fee: l1_handler_tx_output.actual_fee,
+                    messages_sent: l1_handler_tx_output.messages_sent,
+                    events: l1_handler_tx_output.events,
+                    execution_status: l1_handler_tx_output.execution_status,
+                })
             }
         }
     }
