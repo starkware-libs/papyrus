@@ -235,6 +235,7 @@ async fn test_pending_sync(
     reader: StorageReader,
     old_pending_data: PendingData,
     new_pending_datas: Vec<PendingData>,
+    new_pending_data_from_next_block: Option<PendingData>,
     expected_pending_data: PendingData,
     old_pending_classes_data: Option<PendingClasses>,
     // Verifies that the classes will be requested in the given order.
@@ -271,10 +272,10 @@ async fn test_pending_sync(
     // The syncing will stop once we see a new parent_block_hash in the pending data. It won't
     // store the pending data with the new hash in that case.
     mock_pending_source.expect_get_pending_data().times(1).return_once(move || {
-        Ok(PendingData {
+        Ok(new_pending_data_from_next_block.unwrap_or(PendingData {
             block: PendingBlock { parent_block_hash: non_existing_hash, ..Default::default() },
             ..Default::default()
-        })
+        }))
     });
 
     sync_pending_data(
@@ -334,6 +335,7 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
     };
 
     let new_pending_datas = vec![advanced_pending_data.clone(), less_advanced_pending_data];
+    let new_pending_data_from_next_block = None;
     let expected_pending_data = advanced_pending_data;
     let old_pending_classes_data = None;
     let new_pending_classes = vec![];
@@ -344,6 +346,7 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
         reader,
         old_pending_data,
         new_pending_datas,
+        new_pending_data_from_next_block,
         expected_pending_data,
         old_pending_classes_data,
         new_pending_classes,
@@ -398,6 +401,7 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
     };
 
     let new_pending_datas = vec![new_pending_data.clone()];
+    let new_pending_data_from_next_block = None;
     let expected_pending_data = new_pending_data;
     let old_pending_classes_data = None;
     let new_pending_classes = vec![];
@@ -408,6 +412,120 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
         reader,
         old_pending_data,
         new_pending_datas,
+        new_pending_data_from_next_block,
+        expected_pending_data,
+        old_pending_classes_data,
+        new_pending_classes,
+        new_pending_compiled_classes,
+        expected_pending_classes,
+        non_existing_hash,
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash() {
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with no block headers.
+    let (reader, _) = get_test_storage().0;
+    let mut rng = get_rng();
+
+    let old_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: genesis_hash,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let new_pending_datas = vec![];
+    let new_pending_data_from_next_block = Some(PendingData {
+        block: PendingBlock {
+            block_hash: Some(BlockHash(StarkHash::ONE)),
+            parent_block_hash: genesis_hash,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    let expected_pending_data = old_pending_data.clone();
+    let old_pending_classes_data = None;
+    let new_pending_classes = vec![];
+    let new_pending_compiled_classes = vec![];
+    let expected_pending_classes = None;
+    let non_existing_hash = BlockHash(StarkHash::TWO);
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        new_pending_datas,
+        new_pending_data_from_next_block,
+        expected_pending_data,
+        old_pending_classes_data,
+        new_pending_classes,
+        new_pending_compiled_classes,
+        expected_pending_classes,
+        non_existing_hash,
+    )
+    .await
+}
+
+#[tokio::test]
+async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_hash() {
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
+    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    // Storage with one block header.
+    let (reader, mut writer) = get_test_storage().0;
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(0),
+            &BlockHeader {
+                block_hash: FIRST_BLOCK_HASH,
+                parent_hash: genesis_hash,
+                block_number: BlockNumber(0),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
+    let mut rng = get_rng();
+
+    let old_pending_data = PendingData {
+        block: PendingBlock {
+            parent_block_hash: FIRST_BLOCK_HASH,
+            transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let new_pending_data = PendingData {
+        block: PendingBlock {
+            block_hash: Some(FIRST_BLOCK_HASH),
+            parent_block_hash: genesis_hash,
+            transactions: vec![
+                ClientTransaction::get_test_instance(&mut rng),
+                ClientTransaction::get_test_instance(&mut rng),
+            ],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+
+    let new_pending_datas = vec![new_pending_data];
+    let new_pending_data_from_next_block = None;
+    let expected_pending_data = old_pending_data.clone();
+    let old_pending_classes_data = None;
+    let new_pending_classes = vec![];
+    let new_pending_compiled_classes = vec![];
+    let expected_pending_classes = None;
+    let non_existing_hash = BlockHash(StarkHash::TWO);
+    test_pending_sync(
+        reader,
+        old_pending_data,
+        new_pending_datas,
+        new_pending_data_from_next_block,
         expected_pending_data,
         old_pending_classes_data,
         new_pending_classes,
@@ -465,6 +583,7 @@ async fn pending_sync_classes_request_only_new_classes() {
         ..Default::default()
     };
     let new_pending_datas = vec![first_new_pending_data, second_new_pending_data.clone()];
+    let new_pending_data_from_next_block = None;
     let expected_pending_data = second_new_pending_data;
     let old_pending_classes_data = PendingClasses::default();
     let new_pending_classes =
@@ -475,6 +594,7 @@ async fn pending_sync_classes_request_only_new_classes() {
         reader,
         old_pending_data,
         new_pending_datas,
+        new_pending_data_from_next_block,
         expected_pending_data,
         Some(old_pending_classes_data),
         new_pending_classes,
@@ -530,6 +650,7 @@ async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_bloc
     );
 
     let new_pending_datas = vec![new_pending_data.clone()];
+    let new_pending_data_from_next_block = None;
     let expected_pending_data = new_pending_data;
     let new_pending_classes = vec![];
     let new_pending_compiled_classes = vec![];
@@ -539,6 +660,7 @@ async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_bloc
         reader,
         old_pending_data,
         new_pending_datas,
+        new_pending_data_from_next_block,
         expected_pending_data,
         Some(old_pending_classes_data),
         new_pending_classes,

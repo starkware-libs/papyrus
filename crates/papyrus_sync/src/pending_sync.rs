@@ -152,7 +152,14 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
 
     let new_pending_data = pending_source.get_pending_data().await?;
 
-    if new_pending_data.block.parent_block_hash != latest_block_hash {
+    // In Starknet, if there's no pending block then the latest block is returned. In that case,
+    // the block_hash field is present and its value is the block that the pending block will be
+    // built on top of.
+    if new_pending_data.block.block_hash.unwrap_or(new_pending_data.block.parent_block_hash)
+        != latest_block_hash
+    {
+        // TODO(shahak): If block_hash is present, consider writing the pending data here so that
+        // the pending data will be available until the node syncs on the new block.
         debug!("A new block was found. Stopping pending sync.");
         return Ok(PendingSyncTaskResult::PendingSyncFinished);
     };
@@ -161,9 +168,9 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
         let pending_block = &pending_data.read().await.block;
         (pending_block.transactions.len(), pending_block.parent_block_hash)
     };
-    let is_new_pending_data_more_advanced = current_pending_parent_hash
-        != new_pending_data.block.parent_block_hash
-        || new_pending_data.block.transactions.len() > current_pending_num_transactions;
+    let is_new_pending_data_more_advanced = new_pending_data.block.block_hash.is_none()
+        && (current_pending_parent_hash != new_pending_data.block.parent_block_hash
+            || new_pending_data.block.transactions.len() > current_pending_num_transactions);
     if is_new_pending_data_more_advanced {
         debug!("Received new pending data.");
         trace!("Pending data: {new_pending_data:#?}.");
@@ -173,6 +180,7 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
         *pending_data.write().await = new_pending_data;
         Ok(PendingSyncTaskResult::DownloadedNewPendingData)
     } else {
+        debug!("Pending block wasn't updated. Waiting for pending block to be updated.");
         Ok(PendingSyncTaskResult::DownloadedOldPendingData)
     }
 }
