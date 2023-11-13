@@ -593,6 +593,73 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     }
 }
 
+/// The execution resources used by a transaction.
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub struct ExecutionResources {
+    // Note: in starknet_api this field is named `steps`
+    pub n_steps: u64,
+    pub builtin_instance_counter: HashMap<Builtin, u64>,
+    // Note: in starknet_api this field is named `memory_holes`
+    pub n_memory_holes: u64,
+}
+
+// Note: the serialization is different from the one in starknet_api.
+#[derive(Hash, Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub enum Builtin {
+    #[serde(rename = "range_check_builtin")]
+    RangeCheck,
+    #[serde(rename = "pedersen_builtin")]
+    Pedersen,
+    #[serde(rename = "poseidon_builtin")]
+    Poseidon,
+    #[serde(rename = "ec_op_builtin")]
+    EcOp,
+    #[serde(rename = "ecdsa_builtin")]
+    Ecdsa,
+    #[serde(rename = "bitwise_builtin")]
+    Bitwise,
+    #[serde(rename = "keccak_builtin")]
+    Keccak,
+    // Note: in starknet_api this variant doesn't exist.
+    #[serde(rename = "output_builtin")]
+    Output,
+    #[serde(rename = "segment_arena_builtin")]
+    SegmentArena,
+}
+
+impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources {
+    fn from(execution_resources: ExecutionResources) -> Self {
+        Self {
+            steps: execution_resources.n_steps,
+            builtin_instance_counter: execution_resources
+                .builtin_instance_counter
+                .into_iter()
+                .filter_map(|(builtin, count)| match builtin {
+                    Builtin::RangeCheck => {
+                        Some((starknet_api::transaction::Builtin::RangeCheck, count))
+                    }
+                    Builtin::Pedersen => {
+                        Some((starknet_api::transaction::Builtin::Pedersen, count))
+                    }
+                    Builtin::Poseidon => {
+                        Some((starknet_api::transaction::Builtin::Poseidon, count))
+                    }
+                    Builtin::EcOp => Some((starknet_api::transaction::Builtin::EcOp, count)),
+                    Builtin::Ecdsa => Some((starknet_api::transaction::Builtin::Ecdsa, count)),
+                    Builtin::Bitwise => Some((starknet_api::transaction::Builtin::Bitwise, count)),
+                    Builtin::Keccak => Some((starknet_api::transaction::Builtin::Keccak, count)),
+                    // output builtin should be ignored.
+                    Builtin::Output => None,
+                    Builtin::SegmentArena => {
+                        Some((starknet_api::transaction::Builtin::SegmentArena, count))
+                    }
+                })
+                .collect(),
+            memory_holes: execution_resources.n_memory_holes,
+        }
+    }
+}
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct TransactionReceipt {
     pub transaction_index: TransactionOffsetInBlock,
@@ -621,6 +688,7 @@ impl TransactionReceipt {
                 messages_sent,
                 events: self.events,
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources.into(),
             }),
             TransactionType::Deploy => TransactionOutput::Deploy(DeployTransactionOutput {
                 actual_fee: self.actual_fee,
@@ -629,6 +697,7 @@ impl TransactionReceipt {
                 contract_address: contract_address
                     .expect("Deploy transaction must have a contract address."),
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources.into(),
             }),
             TransactionType::DeployAccount => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
@@ -638,6 +707,7 @@ impl TransactionReceipt {
                     contract_address: contract_address
                         .expect("Deploy account transaction must have a contract address."),
                     execution_status: self.execution_status,
+                    execution_resources: self.execution_resources.into(),
                 })
             }
             TransactionType::InvokeFunction => TransactionOutput::Invoke(InvokeTransactionOutput {
@@ -645,6 +715,7 @@ impl TransactionReceipt {
                 messages_sent,
                 events: self.events,
                 execution_status: self.execution_status,
+                execution_resources: self.execution_resources.into(),
             }),
             TransactionType::L1Handler => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
@@ -652,34 +723,12 @@ impl TransactionReceipt {
                     messages_sent,
                     events: self.events,
                     execution_status: self.execution_status,
+                    execution_resources: self.execution_resources.into(),
                 })
             }
         }
     }
 }
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct ExecutionResources {
-    pub n_steps: u64,
-    pub builtin_instance_counter: BuiltinInstanceCounter,
-    pub n_memory_holes: u64,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum BuiltinInstanceCounter {
-    NonEmpty(HashMap<String, u64>),
-    Empty(EmptyBuiltinInstanceCounter),
-}
-
-impl Default for BuiltinInstanceCounter {
-    fn default() -> Self {
-        BuiltinInstanceCounter::Empty(EmptyBuiltinInstanceCounter {})
-    }
-}
-
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct EmptyBuiltinInstanceCounter {}
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1ToL2Nonce(pub StarkHash);

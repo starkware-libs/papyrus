@@ -65,6 +65,7 @@ use starknet_api::state::{
 };
 use starknet_api::transaction::{
     AccountDeploymentData,
+    Builtin,
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
@@ -79,6 +80,7 @@ use starknet_api::transaction::{
     EventData,
     EventIndexInTransactionOutput,
     EventKey,
+    ExecutionResources,
     Fee,
     InvokeTransaction,
     InvokeTransactionV0,
@@ -329,6 +331,7 @@ auto_storage_serde! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployTransactionOutput {
         pub actual_fee: Fee,
@@ -336,6 +339,7 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinDeployAccountTransactionOutput {
         pub actual_fee: Fee,
@@ -343,6 +347,7 @@ auto_storage_serde! {
         pub events_contract_addresses: Vec<ContractAddress>,
         pub contract_address: ContractAddress,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct TypedParameter {
         pub name: String,
@@ -353,12 +358,14 @@ auto_storage_serde! {
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct ThinL1HandlerTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
         pub events_contract_addresses: Vec<ContractAddress>,
         pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub enum ThinTransactionOutput {
         Declare(ThinDeclareTransactionOutput) = 0,
@@ -399,6 +406,22 @@ auto_storage_serde! {
 
     pub struct BigUintAsHex {
         pub value: BigUint,
+    }
+
+    pub struct ExecutionResources {
+        pub steps: u64,
+        pub builtin_instance_counter: HashMap<Builtin, u64>,
+        pub memory_holes: u64,
+    }
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        SegmentArena = 7,
     }
 
     binary(u32, read_u32, write_u32);
