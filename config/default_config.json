@@ -213,5 +213,10 @@
     "description": "Max amount of state updates to download in a stream.",
     "privacy": "Public",
     "value": 1000
+  },
+  "structured_logging": {
+    "description": "Whether or not to use structured loggin.",
+    "privacy": "Public",
+    "value": false
   }
 }

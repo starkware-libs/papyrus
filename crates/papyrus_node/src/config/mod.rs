@@ -13,9 +13,14 @@ use std::{env, fs, io};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::{chain, Itertools};
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, SerializeConfig};
+use papyrus_config::dumping::{
+    append_sub_config_name,
+    ser_optional_sub_config,
+    ser_param,
+    SerializeConfig,
+};
 use papyrus_config::loading::load_and_process_config;
-use papyrus_config::{ConfigError, ParamPath, SerializedParam};
+use papyrus_config::{ConfigError, ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_rpc::RpcConfig;
 use papyrus_storage::db::DbConfig;
@@ -45,6 +50,7 @@ pub struct NodeConfig {
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,
+    pub structured_logging: bool,
 }
 
 // Default configuration values.
@@ -57,12 +63,19 @@ impl Default for NodeConfig {
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
+            structured_logging: false,
         }
     }
 }
 
 impl SerializeConfig for NodeConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        let self_params_dump = BTreeMap::from_iter([ser_param(
+            "structured_logging",
+            &self.structured_logging,
+            "Whether or not to emit structured logs.",
+            ParamPrivacyInput::Public,
+        )]);
         chain!(
             append_sub_config_name(self.central.dump(), "central"),
             append_sub_config_name(self.base_layer.dump(), "base_layer"),
@@ -70,6 +83,7 @@ impl SerializeConfig for NodeConfig {
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
             ser_optional_sub_config(&self.sync, "sync"),
+            self_params_dump
         )
         .collect()
     }
