@@ -24,7 +24,7 @@ use crate::test_utils::read_resource::read_resource_file;
 
 #[test]
 fn load_block_succeeds() {
-    assert!(serde_json::from_str::<Block>(&read_resource_file("reader/block.json")).is_ok());
+    serde_json::from_str::<Block>(&read_resource_file("reader/block.json")).unwrap();
 }
 
 #[test]

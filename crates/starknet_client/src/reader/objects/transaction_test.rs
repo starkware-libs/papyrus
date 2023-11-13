@@ -106,10 +106,8 @@ fn load_transaction_receipt_succeeds() {
         "reader/transaction_receipt_without_l1_to_l2.json",
         "reader/transaction_receipt_without_l1_to_l2_nonce.json",
     ] {
-        assert!(
-            serde_json::from_str::<TransactionReceipt>(&read_resource_file(file_name)).is_ok(),
-            "filename: {}",
-            file_name
+        serde_json::from_str::<TransactionReceipt>(&read_resource_file(file_name)).unwrap_or_else(
+            |_| panic!("Failed to deserialize transaction receipt. filename: {}", file_name),
         );
     }
 }
