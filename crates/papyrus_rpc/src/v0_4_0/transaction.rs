@@ -427,6 +427,7 @@ pub enum TransactionOutput {
 }
 
 /// A declare transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
@@ -436,6 +437,7 @@ pub struct DeclareTransactionOutput {
 }
 
 /// A deploy-account transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployAccountTransactionOutput {
     pub actual_fee: Fee,
@@ -446,6 +448,7 @@ pub struct DeployAccountTransactionOutput {
 }
 
 /// A deploy transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
@@ -456,6 +459,7 @@ pub struct DeployTransactionOutput {
 }
 
 /// An invoke transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
@@ -465,6 +469,7 @@ pub struct InvokeTransactionOutput {
 }
 
 /// An L1 handler transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
