@@ -47,17 +47,30 @@ async fn version() {
 #[tokio::test]
 async fn test_verify_storage_version() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
-    let higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
+    let blocks_higher_version = Version(STORAGE_VERSION_BLOCKS.0 + 1);
+    let state_higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
 
     verify_storage_version(reader.clone(), StorageScope::FullArchive).unwrap();
     verify_storage_version(reader.clone(), StorageScope::StateOnly).unwrap();
 
-    writer.begin_rw_txn().unwrap().set_blocks_version(&higher_version).unwrap().commit().unwrap();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .set_blocks_version(&blocks_higher_version)
+        .unwrap()
+        .commit()
+        .unwrap();
     verify_storage_version(reader.clone(), StorageScope::FullArchive)
         .expect_err("Should fail, because storage blocks version does not match.");
     verify_storage_version(reader.clone(), StorageScope::StateOnly).unwrap();
 
-    writer.begin_rw_txn().unwrap().set_state_version(&higher_version).unwrap().commit().unwrap();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .set_state_version(&state_higher_version)
+        .unwrap()
+        .commit()
+        .unwrap();
     verify_storage_version(reader.clone(), StorageScope::FullArchive)
         .expect_err("Should fail, because both versions do not match.");
     verify_storage_version(reader, StorageScope::StateOnly)
