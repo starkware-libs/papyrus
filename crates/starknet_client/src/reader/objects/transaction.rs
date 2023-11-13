@@ -596,11 +596,14 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 /// The execution resources used by a transaction.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct ExecutionResources {
+    // Note: in starknet_api this field is named `steps`
     pub n_steps: u64,
     pub builtin_instance_counter: HashMap<Builtin, u64>,
+    // Note: in starknet_api this field is named `memory_holes`
     pub n_memory_holes: u64,
 }
 
+// Note: the serialization is different from the one in starknet_api.
 #[derive(Hash, Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub enum Builtin {
     #[serde(rename = "range_check_builtin")]
@@ -617,6 +620,7 @@ pub enum Builtin {
     Bitwise,
     #[serde(rename = "keccak_builtin")]
     Keccak,
+    // Note: in starknet_api this variant doesn't exist.
     #[serde(rename = "output_builtin")]
     Output,
     #[serde(rename = "segment_arena_builtin")]
