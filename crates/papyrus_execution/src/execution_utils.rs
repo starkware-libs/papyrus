@@ -14,12 +14,14 @@ use blockifier::state::state_api::{State, StateReader};
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
+use papyrus_common::state::StorageEntry;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageTxn};
-use starknet_api::core::ClassHash;
-use starknet_api::state::{StateNumber, ThinStateDiff};
+use papyrus_storage::{StorageError, StorageReader, StorageResult, StorageTxn};
+use starknet_api::core::{ClassHash, ContractAddress};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
 use thiserror::Error;
 
 use crate::objects::TransactionTrace;
@@ -136,4 +138,32 @@ pub fn induced_state_diff(
         nonces: blockifier_state_diff.address_to_nonce,
         replaced_classes,
     })
+}
+
+/// Get the storage at the given contract and key in the given state. If there's a given pending
+/// storage diffs, apply them on top of the given state.
+// TODO(shahak) If the structure of storage diffs changes, remove this function and move its code
+// into papyrus_rpc.
+pub fn get_storage_at(
+    storage_reader: &StorageReader,
+    state_number: StateNumber,
+    pending_storage_diffs: Option<&IndexMap<ContractAddress, Vec<StorageEntry>>>,
+    contract_address: ContractAddress,
+    key: StorageKey,
+) -> StorageResult<StarkFelt> {
+    if let Some(pending_storage_diffs) = pending_storage_diffs {
+        if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
+            // iterating in reverse to get the latest value.
+            for StorageEntry { key: other_key, value } in storage_entries.iter().rev() {
+                if key == *other_key {
+                    return Ok(*value);
+                }
+            }
+        }
+    }
+    storage_reader.begin_ro_txn()?.get_state_reader()?.get_storage_at(
+        state_number,
+        &contract_address,
+        &key,
+    )
 }

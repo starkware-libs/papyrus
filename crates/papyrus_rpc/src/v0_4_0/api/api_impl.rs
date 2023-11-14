@@ -9,6 +9,7 @@ use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
+    execution_utils,
     simulate_transactions as exec_simulate_transactions,
     ExecutionConfigByBlock,
     ExecutionError,
@@ -40,7 +41,7 @@ use starknet_client::reader::objects::pending_data::{
     PendingBlock,
     PendingStateUpdate as ClientPendingStateUpdate,
 };
-use starknet_client::reader::{DeployedContract, PendingData, StorageEntry};
+use starknet_client::reader::{DeployedContract, PendingData};
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
@@ -258,41 +259,44 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         key: StorageKey,
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
-        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
-            let pending_storage_diffs = read_pending_data(&self.pending_data, &self.storage_reader)
-                .await?
-                .state_update
-                .state_diff
-                .storage_diffs;
-            if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
-                // iterating in reverse to get the latest value.
-                for StorageEntry { key: other_key, value } in storage_entries.iter().rev() {
-                    if key == *other_key {
-                        return Ok(*value);
-                    }
-                }
-            }
-            BlockId::Tag(Tag::Latest)
+        let (pending_storage_diffs, block_id) = if let BlockId::Tag(Tag::Pending) = block_id {
+            (
+                Some(
+                    read_pending_data(&self.pending_data, &self.storage_reader)
+                        .await?
+                        .state_update
+                        .state_diff
+                        .storage_diffs,
+                ),
+                BlockId::Tag(Tag::Latest),
+            )
         } else {
-            block_id
+            (None, block_id)
         };
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
         let block_number = get_block_number(&txn, block_id)?;
-        let state = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
+        let state_number = StateNumber::right_after_block(block_number);
+        let res = execution_utils::get_storage_at(
+            &self.storage_reader,
+            state_number,
+            pending_storage_diffs.as_ref(),
+            contract_address,
+            key,
+        )
+        .map_err(internal_server_error)?;
 
-        let res = state_reader
-            .get_storage_at(state, &contract_address, &key)
-            .map_err(internal_server_error)?;
+        // If the contract is not deployed, res will be 0. Checking if that's the case so that
+        // we'll return an error instead.
         // Contract address 0x1 is a special address, it stores the block
         // hashes. Contracts are not deployed to this address.
         if res == StarkFelt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
             // check if the contract exists
-            state_reader
-                .get_class_hash_at(state, &contract_address)
+            txn.get_state_reader()
+                .map_err(internal_server_error)?
+                .get_class_hash_at(state_number, &contract_address)
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
         }
