@@ -971,8 +971,16 @@ async fn get_transaction_receipt() {
 #[tokio::test]
 async fn get_class_at() {
     let method_name = "starknet_V0_4_getClassAt";
+    let pending_data = get_test_pending_data();
+    let pending_classes = get_test_pending_classes();
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+            None,
+            None,
+            Some(pending_data.clone()),
+            Some(pending_classes.clone()),
+            None,
+        );
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
         block_hash: BlockHash(stark_felt!("0x1")),
@@ -1001,6 +1009,21 @@ async fn get_class_at() {
         .unwrap()
         .commit()
         .unwrap();
+
+    let pending_address: ContractAddress = random::<u64>().into();
+    let pending_class_hash = ClassHash(random::<u64>().into());
+    let pending_class = ApiContractClass::ContractClass(
+        StarknetApiContractClass::get_test_instance(&mut get_rng()),
+    );
+    pending_data
+        .write()
+        .await
+        .state_update
+        .state_diff
+        .deployed_contracts
+        .push(ClientDeployedContract { address: pending_address, class_hash: pending_class_hash });
+    pending_data.write().await.block.parent_block_hash = header.block_hash;
+    pending_classes.write().await.add_class(pending_class_hash, pending_class.clone());
 
     // Deprecated Class
     let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
@@ -1058,6 +1081,24 @@ async fn get_class_at() {
         .await
         .unwrap();
     assert_eq!(res, expected_contract_class);
+
+    // Get class hash of pending block.
+    let res = module
+        .call::<_, GatewayContractClass>(method_name, (BlockId::Tag(Tag::Pending), pending_address))
+        .await
+        .unwrap();
+    assert_eq!(res, pending_class.try_into().unwrap());
+
+    // Get class hash of pending block when it's not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ContractClass>(
+        &module,
+        method_name,
+        &Some((BlockId::Tag(Tag::Pending), pending_address)),
+        &VERSION_0_4,
+        &CONTRACT_NOT_FOUND.into(),
+    )
+    .await;
 
     // Invalid Call
     // Ask for an invalid contract.
