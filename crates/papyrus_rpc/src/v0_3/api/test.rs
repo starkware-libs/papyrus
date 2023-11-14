@@ -76,7 +76,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::v0_3_0::error::JsonRpcError;
+use crate::v0_3::error::JsonRpcError;
 use crate::version_config::VERSION_0_3;
 use crate::{run_server, ContinuationTokenAsStruct};
 

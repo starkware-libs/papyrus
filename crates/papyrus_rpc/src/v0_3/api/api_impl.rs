@@ -48,9 +48,9 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
-use crate::v0_3_0::block::{get_block_header_by_number, get_block_number};
-use crate::v0_3_0::error::JsonRpcError;
-use crate::v0_3_0::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
+use crate::v0_3::block::{get_block_header_by_number, get_block_number};
+use crate::v0_3::error::JsonRpcError;
+use crate::v0_3::transaction::{get_block_tx_hashes_by_number, get_block_txs_by_number};
 use crate::{
     get_block_status,
     get_latest_block_number,

@@ -163,7 +163,8 @@ pub fn get_starknet_spec_api_schema_for_method_results(
 ) -> JSONSchema {
     get_starknet_spec_api_schema(
         file_to_methods.iter().flat_map(|(file, methods)| {
-            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+            let spec: serde_json::Value =
+                read_spec(format!("./resources/{}/{file}", version_id.name));
 
             methods.iter().map(move |method| {
                 let index = get_method_index(&spec, method);
@@ -180,7 +181,8 @@ pub fn get_starknet_spec_api_schema_for_method_errors(
 ) -> JSONSchema {
     get_starknet_spec_api_schema(
         file_to_methods.iter().flat_map(|(file, methods)| {
-            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+            let spec: serde_json::Value =
+                read_spec(format!("./resources/{}/{file}", version_id.name));
 
             methods.iter().flat_map(move |method| {
                 let index = get_method_index(&spec, method);
@@ -204,7 +206,7 @@ fn get_starknet_spec_api_schema<Refs: IntoIterator<Item = String>>(
     version_id: &VersionId,
 ) -> JSONSchema {
     let mut options = JSONSchema::options();
-    for entry in std::fs::read_dir(format!("./resources/{version_id}")).unwrap() {
+    for entry in std::fs::read_dir(format!("./resources/{}", version_id.name)).unwrap() {
         let path = entry.unwrap().path();
         let spec_str = std::fs::read_to_string(path.clone()).unwrap();
         let mut spec: serde_json::Value = serde_json::from_str(&spec_str).unwrap();
@@ -375,7 +377,8 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
 pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
     SpecFile::iter()
         .flat_map(|file| {
-            let spec: serde_json::Value = read_spec(format!("./resources/{version_id}/{file}"));
+            let spec: serde_json::Value =
+                read_spec(format!("./resources/{}/{file}", version_id.name));
             let methods_json_arr =
                 spec.as_object().unwrap().get("methods").unwrap().as_array().unwrap();
             methods_json_arr

@@ -30,7 +30,7 @@ use starknet_api::transaction::{
 };
 
 use crate::internal_server_error;
-use crate::v0_3_0::error::JsonRpcError;
+use crate::v0_3::error::JsonRpcError;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]

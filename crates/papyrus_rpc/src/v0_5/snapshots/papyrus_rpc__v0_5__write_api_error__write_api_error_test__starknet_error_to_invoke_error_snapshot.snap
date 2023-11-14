@@ -1,20 +1,8 @@
 ---
-source: crates/papyrus_rpc/src/v0_4_0/write_api_error_test.rs
-expression: get_conversion_snapshot(starknet_error_to_deploy_account_error)
+source: crates/papyrus_rpc/src/v0_5/write_api_error_test.rs
+expression: get_conversion_snapshot(starknet_error_to_invoke_error)
 ---
 {
-  "28": [
-    {
-      "code": {
-        "$serde_json::private::Number": "28"
-      },
-      "message": "Class hash not found"
-    },
-    {
-      "code": "StarknetErrorCode.UNDECLARED_CLASS",
-      "message": "message"
-    }
-  ],
   "52": [
     {
       "code": {
