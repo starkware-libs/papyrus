@@ -1,8 +1,20 @@
 ---
-source: crates/papyrus_rpc/src/v0_4_0/write_api_error_test.rs
-expression: get_conversion_snapshot(starknet_error_to_invoke_error)
+source: crates/papyrus_rpc/src/v0_5/write_api_error_test.rs
+expression: get_conversion_snapshot(starknet_error_to_declare_error)
 ---
 {
+  "51": [
+    {
+      "code": {
+        "$serde_json::private::Number": "51"
+      },
+      "message": "Class already declared"
+    },
+    {
+      "code": "StarknetErrorCode.CLASS_ALREADY_DECLARED",
+      "message": "message"
+    }
+  ],
   "52": [
     {
       "code": {
@@ -51,6 +63,30 @@ expression: get_conversion_snapshot(starknet_error_to_invoke_error)
       "message": "message"
     }
   ],
+  "56": [
+    {
+      "code": {
+        "$serde_json::private::Number": "56"
+      },
+      "message": "Compilation failed"
+    },
+    {
+      "code": "StarknetErrorCode.COMPILATION_FAILED",
+      "message": "message"
+    }
+  ],
+  "57": [
+    {
+      "code": {
+        "$serde_json::private::Number": "57"
+      },
+      "message": "Contract class size it too large"
+    },
+    {
+      "code": "StarknetErrorCode.CONTRACT_CLASS_OBJECT_SIZE_TOO_LARGE",
+      "message": "message"
+    }
+  ],
   "58": [
     {
       "code": {
@@ -75,6 +111,18 @@ expression: get_conversion_snapshot(starknet_error_to_invoke_error)
       "message": "message"
     }
   ],
+  "60": [
+    {
+      "code": {
+        "$serde_json::private::Number": "60"
+      },
+      "message": "the compiled class hash did not match the one supplied in the transaction"
+    },
+    {
+      "code": "StarknetErrorCode.INVALID_COMPILED_CLASS_HASH",
+      "message": "message"
+    }
+  ],
   "61": [
     {
       "code": {
@@ -84,6 +132,18 @@ expression: get_conversion_snapshot(starknet_error_to_invoke_error)
     },
     {
       "code": "StarknetErrorCode.INVALID_TRANSACTION_VERSION",
+      "message": "message"
+    }
+  ],
+  "62": [
+    {
+      "code": {
+        "$serde_json::private::Number": "62"
+      },
+      "message": "the contract class version is not supported"
+    },
+    {
+      "code": "StarknetErrorCode.INVALID_CONTRACT_CLASS_VERSION",
       "message": "message"
     }
   ],

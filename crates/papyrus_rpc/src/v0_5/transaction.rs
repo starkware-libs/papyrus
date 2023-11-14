@@ -3,6 +3,7 @@
 mod transaction_test;
 
 use jsonrpsee::types::ErrorObjectOwned;
+use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -28,9 +29,16 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_client::writer::objects::transaction as client_transaction;
 
+use super::error::BLOCK_NOT_FOUND;
 use crate::internal_server_error;
-use crate::v0_3_0::error::JsonRpcError;
+
+lazy_static! {
+    static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
+    static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
+    static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
+}
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
@@ -68,7 +76,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: TransactionVersion::TWO,
+            version: *TX_V2,
             signature: tx.signature,
         }
     }
@@ -88,7 +96,7 @@ where
     D: Deserializer<'de>,
 {
     let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == TransactionVersion::ZERO {
+    if v0v1.version == *TX_V0 {
         Ok(v0v1)
     } else {
         Err(serde::de::Error::custom("Invalid version value"))
@@ -104,6 +112,12 @@ pub struct DeployAccountTransactionV1 {
     pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: Calldata,
     pub version: TransactionVersion,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum DeployAccountTransaction {
+    Version1(DeployAccountTransactionV1),
 }
 
 // TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
@@ -130,22 +144,35 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: TransactionVersion::ONE,
+                version: *TX_V1,
             })),
             starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                 Err(internal_server_error(
                     "The requested transaction is a deploy account of version 3, which is not \
-                     supported on v0.3.0.",
+                     supported on v0.5.1.",
                 ))
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-#[serde(untagged)]
-pub enum DeployAccountTransaction {
-    Version1(DeployAccountTransactionV1),
+impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransaction {
+    fn from(tx: DeployAccountTransaction) -> Self {
+        match tx {
+            DeployAccountTransaction::Version1(deploy_account_tx) => {
+                Self::DeployAccountV1(client_transaction::DeployAccountV1Transaction {
+                    contract_address_salt: deploy_account_tx.contract_address_salt,
+                    class_hash: deploy_account_tx.class_hash,
+                    constructor_calldata: deploy_account_tx.constructor_calldata,
+                    nonce: deploy_account_tx.nonce,
+                    max_fee: deploy_account_tx.max_fee,
+                    signature: deploy_account_tx.signature,
+                    version: deploy_account_tx.version,
+                    r#type: client_transaction::DeployAccountType::default(),
+                })
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -166,6 +193,20 @@ pub struct InvokeTransactionV1 {
     pub nonce: Nonce,
     pub sender_address: ContractAddress,
     pub calldata: Calldata,
+}
+
+impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
+    fn from(tx: InvokeTransactionV1) -> Self {
+        Self::InvokeV1(client_transaction::InvokeV1Transaction {
+            max_fee: tx.max_fee,
+            version: tx.version,
+            signature: tx.signature,
+            nonce: tx.nonce,
+            sender_address: tx.sender_address,
+            calldata: tx.calldata,
+            r#type: client_transaction::InvokeType::default(),
+        })
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -191,7 +232,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version0(InvokeTransactionV0 {
                 max_fee,
-                version: TransactionVersion::ZERO,
+                version: *TX_V0,
                 signature,
                 contract_address,
                 entry_point_selector,
@@ -207,7 +248,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version1(InvokeTransactionV1 {
                 max_fee,
-                version: TransactionVersion::ONE,
+                version: *TX_V1,
                 signature,
                 nonce,
                 sender_address,
@@ -215,7 +256,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
             })),
             starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
                 "The requested transaction is an invoke of version 3, which is not supported on \
-                 v0.3.0.",
+                 v0.5.1.",
             )),
         }
     }
@@ -257,7 +298,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: TransactionVersion::ZERO,
+                        version: *TX_V0,
                         signature: tx.signature,
                     })))
                 }
@@ -267,7 +308,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: TransactionVersion::ONE,
+                        version: *TX_V1,
                         signature: tx.signature,
                     })))
                 }
@@ -276,7 +317,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 }
                 starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
                     "The requested transaction is a declare of version 3, which is not supported \
-                     on v0.3.0.",
+                     on v0.5.1.",
                 )),
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
@@ -287,7 +328,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                     starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                         Err(internal_server_error(
                             "The requested transaction is a deploy account of version 3, which is \
-                             not supported on v0.3.0.",
+                             not supported on v0.5.1.",
                         ))
                     }
                     _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
@@ -296,7 +337,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
                     "The requested transaction is a invoke of version 3, which is not supported \
-                     on v0.3.0.",
+                     on v0.5.1.",
                 )),
                 _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
             },
@@ -307,14 +348,11 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
     }
 }
 
-/// A transaction status in StarkNet.
+/// Transaction Finality status on starknet.
 #[derive(
     Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
 )]
-pub enum TransactionStatus {
-    /// The transaction passed the validation and entered the pending block.
-    #[serde(rename = "PENDING")]
-    Pending,
+pub enum TransactionFinalityStatus {
     /// The transaction passed the validation and entered an actual created block.
     #[serde(rename = "ACCEPTED_ON_L2")]
     #[default]
@@ -322,17 +360,24 @@ pub enum TransactionStatus {
     /// The transaction was accepted on-chain.
     #[serde(rename = "ACCEPTED_ON_L1")]
     AcceptedOnL1,
-    /// The transaction failed validation.
-    #[serde(rename = "REJECTED")]
-    Rejected,
 }
 
-impl From<BlockStatus> for TransactionStatus {
+/// Transaction Finality status on starknet for transactions in the pending block.
+#[derive(
+    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+)]
+pub enum PendingTransactionFinalityStatus {
+    #[serde(rename = "ACCEPTED_ON_L2")]
+    #[default]
+    AcceptedOnL2,
+}
+
+impl From<BlockStatus> for TransactionFinalityStatus {
     fn from(status: BlockStatus) -> Self {
         match status {
-            BlockStatus::AcceptedOnL1 => TransactionStatus::AcceptedOnL1,
-            BlockStatus::AcceptedOnL2 => TransactionStatus::AcceptedOnL2,
-            BlockStatus::Pending => TransactionStatus::Pending,
+            BlockStatus::AcceptedOnL1 => TransactionFinalityStatus::AcceptedOnL1,
+            BlockStatus::AcceptedOnL2 => TransactionFinalityStatus::AcceptedOnL2,
+            BlockStatus::Pending => TransactionFinalityStatus::AcceptedOnL2, /* for backward compatibility pending transactions are considered accepted on L2 */
             // we convert the block status to transaction status only in the creation of
             // TransactionReceiptWithStatus before that we verify that the block is not
             // rejected so this conversion should never happen
@@ -342,19 +387,28 @@ impl From<BlockStatus> for TransactionStatus {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub struct TransactionReceiptWithStatus {
-    pub status: TransactionStatus,
-    #[serde(flatten)]
-    pub receipt: TransactionReceipt,
+#[serde(untagged)]
+pub enum GeneralTransactionReceipt {
+    TransactionReceipt(TransactionReceipt),
+    PendingTransactionReceipt(PendingTransactionReceipt),
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct TransactionReceipt {
+    pub finality_status: TransactionFinalityStatus,
     pub transaction_hash: TransactionHash,
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
     #[serde(flatten)]
     pub output: TransactionOutput,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+pub struct PendingTransactionReceipt {
+    pub finality_status: PendingTransactionFinalityStatus,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub output: PendingTransactionOutput,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -373,6 +427,7 @@ pub enum TransactionOutput {
 }
 
 /// A declare transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
@@ -382,6 +437,7 @@ pub struct DeclareTransactionOutput {
 }
 
 /// A deploy-account transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployAccountTransactionOutput {
     pub actual_fee: Fee,
@@ -392,6 +448,7 @@ pub struct DeployAccountTransactionOutput {
 }
 
 /// A deploy transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployTransactionOutput {
     pub actual_fee: Fee,
@@ -402,6 +459,7 @@ pub struct DeployTransactionOutput {
 }
 
 /// An invoke transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
@@ -411,6 +469,7 @@ pub struct InvokeTransactionOutput {
 }
 
 /// An L1 handler transaction output.
+// Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
@@ -419,7 +478,35 @@ pub struct L1HandlerTransactionOutput {
     pub execution_status: TransactionExecutionStatus,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(tag = "type")]
+// Applying deny_unknown_fields on the inner type instead of on PendingTransactionReceipt because
+// of a bug that makes deny_unknown_fields not work well with flatten:
+// https://github.com/serde-rs/serde/issues/1358
+#[serde(deny_unknown_fields)]
+pub enum PendingTransactionOutput {
+    #[serde(rename = "DECLARE")]
+    Declare(DeclareTransactionOutput),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransactionOutput),
+    #[serde(rename = "INVOKE")]
+    Invoke(InvokeTransactionOutput),
+    #[serde(rename = "L1_HANDLER")]
+    L1Handler(L1HandlerTransactionOutput),
+}
+
 impl TransactionOutput {
+    #[cfg(test)]
+    pub fn execution_status(&self) -> &TransactionExecutionStatus {
+        match self {
+            TransactionOutput::Declare(tx_output) => &tx_output.execution_status,
+            TransactionOutput::Deploy(tx_output) => &tx_output.execution_status,
+            TransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
+            TransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
+            TransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
+        }
+    }
+
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         events: Vec<starknet_api::transaction::Event>,
@@ -521,10 +608,42 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
     }
 }
 
+impl TryFrom<TransactionOutput> for PendingTransactionOutput {
+    type Error = ErrorObjectOwned;
+
+    fn try_from(tx_output: TransactionOutput) -> Result<Self, Self::Error> {
+        match tx_output {
+            TransactionOutput::Declare(declare_tx_output) => {
+                Ok(PendingTransactionOutput::Declare(declare_tx_output))
+            }
+            TransactionOutput::Deploy(_) => {
+                Err(internal_server_error("Got a pending deploy transaction."))
+            }
+            TransactionOutput::DeployAccount(deploy_tx_output) => {
+                Ok(PendingTransactionOutput::DeployAccount(deploy_tx_output))
+            }
+            TransactionOutput::Invoke(invoke_tx_output) => {
+                Ok(PendingTransactionOutput::Invoke(invoke_tx_output))
+            }
+            TransactionOutput::L1Handler(l1_handler_tx_output) => {
+                Ok(PendingTransactionOutput::L1Handler(l1_handler_tx_output))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct Event {
-    pub block_hash: BlockHash,
-    pub block_number: BlockNumber,
+    // Can't have a different struct for pending events because then that struct will need to have
+    // deny_unknown_fields. And there's a bug in serde that forbids having deny_unknown_fields with
+    // flatten: https://github.com/serde-rs/serde/issues/1701
+    // TODO(shahak): Create a PendingEvent struct when the serde bug is solved.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub block_hash: Option<BlockHash>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub block_number: Option<BlockNumber>,
     pub transaction_hash: TransactionHash,
     #[serde(flatten)]
     pub event: starknet_api::transaction::Event,
@@ -540,7 +659,7 @@ pub fn get_block_txs_by_number<
     let transactions = txn
         .get_block_transactions(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     transactions.into_iter().map(Transaction::try_from).collect()
 }
@@ -552,7 +671,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
     let transaction_hashes = txn
         .get_block_transaction_hashes(block_number)
         .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(JsonRpcError::BlockNotFound))?;
+        .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)
 }

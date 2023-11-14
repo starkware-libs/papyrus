@@ -11,8 +11,9 @@ mod rpc_test;
 mod syncing_state;
 #[cfg(test)]
 mod test_utils;
-mod v0_3_0;
-mod v0_4_0;
+mod v0_3;
+mod v0_4;
+mod v0_5;
 mod version_config;
 
 use std::collections::BTreeMap;
@@ -49,11 +50,11 @@ use validator::Validate;
 use crate::api::get_methods_from_supported_apis;
 use crate::middleware::{deny_requests_with_unsupported_path, proxy_rpc_request};
 use crate::syncing_state::get_last_synced_block;
-pub use crate::v0_4_0::transaction::{
+pub use crate::v0_4::transaction::{
     InvokeTransaction as InvokeTransactionRPC0_4,
     InvokeTransactionV1 as InvokeTransactionV1RPC0_4,
 };
-pub use crate::v0_4_0::write_api_result::AddInvokeOkResult as AddInvokeOkResultRPC0_4;
+pub use crate::v0_4::write_api_result::AddInvokeOkResult as AddInvokeOkResultRPC0_4;
 
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;

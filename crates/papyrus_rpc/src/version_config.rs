@@ -22,6 +22,8 @@ pub enum VersionState {
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
 pub struct VersionId {
+    // TODO(yair): change to enum so that the match in get_methods_from_supported_apis can be
+    // exhaustive.
     pub name: &'static str,
     pub patch: u8,
 }
@@ -33,7 +35,11 @@ impl fmt::Display for VersionId {
 }
 
 /// latest version must be set as supported
-pub const VERSION_CONFIG: &[(VersionId, VersionState)] =
-    &[(VERSION_0_3, VersionState::Supported), (VERSION_0_4, VersionState::Supported)];
+pub const VERSION_CONFIG: &[(VersionId, VersionState)] = &[
+    (VERSION_0_3, VersionState::Supported),
+    (VERSION_0_4, VersionState::Supported),
+    (VERSION_0_5, VersionState::Supported),
+];
 pub const VERSION_0_3: VersionId = VersionId { name: "V0_3", patch: 0 };
 pub const VERSION_0_4: VersionId = VersionId { name: "V0_4", patch: 0 };
+pub const VERSION_0_5: VersionId = VersionId { name: "V0_5", patch: 1 };

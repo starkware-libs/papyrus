@@ -18,7 +18,7 @@ use super::state::{ContractClass, StateUpdate};
 use super::transaction::{Event, TransactionReceiptWithStatus, TransactionWithHash};
 use crate::api::BlockId;
 use crate::syncing_state::SyncingState;
-use crate::v0_3_0::error::JsonRpcError;
+use crate::v0_3::error::JsonRpcError;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
