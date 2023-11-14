@@ -172,6 +172,20 @@ use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
+async fn spec_version() {
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+
+    call_api_then_assert_and_validate_schema_for_result::<_, _, String>(
+        &module,
+        "starknet_V0_5_specVersion",
+        &None::<()>,
+        &VERSION,
+        &format!("{VERSION}"),
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 

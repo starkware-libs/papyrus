@@ -66,6 +66,10 @@ mod test;
 #[versioned_rpc("V0_5")]
 #[async_trait]
 pub trait JsonRpc {
+    /// Returns the version of the Starknet JSON-RPC specification being used
+    #[method(name = "specVersion")]
+    fn spec_version(&self) -> RpcResult<String>;
+
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
     fn block_number(&self) -> RpcResult<BlockNumber>;
