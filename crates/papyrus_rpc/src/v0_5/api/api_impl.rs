@@ -87,6 +87,7 @@ use super::super::transaction::{
     Transaction,
     TransactionOutput,
     TransactionReceipt,
+    TransactionStatus,
     TransactionWithHash,
     Transactions,
 };
@@ -433,6 +434,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             old_root,
             state_diff: thin_state_diff.into(),
         }))
+    }
+
+    async fn get_transaction_status(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionStatus> {
+        Ok(self.get_transaction_receipt(transaction_hash).await?.transaction_status())
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

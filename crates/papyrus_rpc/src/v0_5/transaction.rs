@@ -348,6 +348,12 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default)]
+pub struct TransactionStatus {
+    pub finality_status: TransactionFinalityStatus,
+    pub execution_status: TransactionExecutionStatus,
+}
+
 /// Transaction Finality status on starknet.
 #[derive(
     Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
@@ -391,6 +397,21 @@ impl From<BlockStatus> for TransactionFinalityStatus {
 pub enum GeneralTransactionReceipt {
     TransactionReceipt(TransactionReceipt),
     PendingTransactionReceipt(PendingTransactionReceipt),
+}
+
+impl GeneralTransactionReceipt {
+    pub fn transaction_status(&self) -> TransactionStatus {
+        match self {
+            GeneralTransactionReceipt::TransactionReceipt(receipt) => TransactionStatus {
+                execution_status: receipt.output.execution_status().clone(),
+                finality_status: receipt.finality_status,
+            },
+            GeneralTransactionReceipt::PendingTransactionReceipt(receipt) => TransactionStatus {
+                execution_status: receipt.output.execution_status().clone(),
+                finality_status: TransactionFinalityStatus::AcceptedOnL2,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -495,8 +516,18 @@ pub enum PendingTransactionOutput {
     L1Handler(L1HandlerTransactionOutput),
 }
 
+impl PendingTransactionOutput {
+    pub fn execution_status(&self) -> &TransactionExecutionStatus {
+        match self {
+            PendingTransactionOutput::Declare(tx_output) => &tx_output.execution_status,
+            PendingTransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
+            PendingTransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
+            PendingTransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
+        }
+    }
+}
+
 impl TransactionOutput {
-    #[cfg(test)]
     pub fn execution_status(&self) -> &TransactionExecutionStatus {
         match self {
             TransactionOutput::Declare(tx_output) => &tx_output.execution_status,

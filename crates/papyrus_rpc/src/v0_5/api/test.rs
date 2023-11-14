@@ -166,6 +166,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
+use crate::v0_5::transaction::TransactionStatus;
 use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
@@ -847,6 +848,114 @@ async fn get_class() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+}
+
+#[tokio::test]
+async fn get_transaction_status() {
+    let method_name = "starknet_V0_5_getTransactionStatus";
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerImpl,
+    >(None, None, Some(pending_data.clone()), None, None);
+    let block = get_test_block(1, None, None, None);
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let transaction_hash = block.body.transaction_hashes[0];
+    let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
+    let expected_status = TransactionStatus {
+        finality_status: TransactionFinalityStatus::AcceptedOnL2,
+        execution_status: output.execution_status().clone(),
+    };
+    let (json_response, res) = raw_call::<_, TransactionHash, TransactionStatus>(
+        &module,
+        method_name,
+        &Some(transaction_hash),
+    )
+    .await;
+    assert_eq!(res.unwrap(), expected_status);
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_results(
+            &[(
+                SpecFile::StarknetApiOpenrpc,
+                &[method_name_to_spec_method_name(method_name).as_str()]
+            )],
+            &VERSION,
+        ),
+        &json_response["result"],
+    ));
+
+    // Ask for a transaction in a block that was accepted on L1.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&block.header.block_number.next())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let res = module.call::<_, TransactionStatus>(method_name, [transaction_hash]).await.unwrap();
+    assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
+    assert_eq!(res.execution_status, TransactionExecutionStatus::Succeeded);
+
+    // Add a pending transaction and ask for its status.
+    let mut rng = get_rng();
+    let (client_transaction, client_transaction_receipt, expected_receipt) =
+        generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
+    let expected_status = TransactionStatus {
+        finality_status: TransactionFinalityStatus::AcceptedOnL2,
+        execution_status: expected_receipt.output.execution_status().clone(),
+    };
+
+    {
+        let pending_block = &mut pending_data.write().await.block;
+        pending_block.transactions.push(client_transaction.clone());
+        pending_block.transaction_receipts.push(client_transaction_receipt.clone());
+    }
+    let (json_response, result) = raw_call::<_, TransactionHash, TransactionStatus>(
+        &module,
+        method_name,
+        &Some(client_transaction_receipt.transaction_hash),
+    )
+    .await;
+    assert_eq!(result.unwrap(), expected_status);
+    // Validating schema again since pending has a different schema
+    assert!(validate_schema(
+        &get_starknet_spec_api_schema_for_method_results(
+            &[(
+                SpecFile::StarknetApiOpenrpc,
+                &[method_name_to_spec_method_name(method_name).as_str()]
+            )],
+            &VERSION,
+        ),
+        &json_response["result"],
+    ));
+
+    // Ask for transaction status when the pending block is not up to date.
+    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    let (_, res) = raw_call::<_, TransactionHash, TransactionStatus>(
+        &module,
+        method_name,
+        &Some(client_transaction_receipt.transaction_hash),
+    )
+    .await;
+    assert_eq!(res.unwrap_err(), TRANSACTION_HASH_NOT_FOUND.into());
+
+    // Ask for an invalid transaction.
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionStatus>(
+        &module,
+        method_name,
+        &Some(TransactionHash(StarkHash::from(1_u8))),
+        &VERSION,
+        &TRANSACTION_HASH_NOT_FOUND.into(),
+    )
+    .await;
 }
 
 #[tokio::test]
