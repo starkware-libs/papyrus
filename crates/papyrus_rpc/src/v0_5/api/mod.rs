@@ -52,6 +52,7 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    TransactionStatus,
     TransactionWithHash,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
@@ -117,6 +118,13 @@ pub trait JsonRpc {
     /// Gets the information about the result of executing the requested block.
     #[method(name = "getStateUpdate")]
     async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate>;
+
+    /// Gets the transaction status.
+    #[method(name = "getTransactionStatus")]
+    async fn get_transaction_status(
+        &self,
+        transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionStatus>;
 
     /// Gets the transaction receipt by the transaction hash.
     #[method(name = "getTransactionReceipt")]
