@@ -12,6 +12,7 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
 
+use crate::execution_utils;
 use crate::execution_utils::{get_contract_class, ExecutionUtilsError};
 use crate::objects::PendingStateDiff;
 
@@ -29,13 +30,16 @@ impl BlockifierStateReader for ExecutionStateReader {
         contract_address: ContractAddress,
         key: StorageKey,
     ) -> StateResult<StarkFelt> {
-        self.storage_reader
-            .begin_ro_txn()
-            .map_err(storage_err_to_state_err)?
-            .get_state_reader()
-            .map_err(storage_err_to_state_err)?
-            .get_storage_at(self.state_number, &contract_address, &key)
-            .map_err(storage_err_to_state_err)
+        execution_utils::get_storage_at(
+            &self.storage_reader,
+            self.state_number,
+            self.maybe_pending_state_diff
+                .as_ref()
+                .map(|pending_state_diff| &pending_state_diff.storage_diffs),
+            contract_address,
+            key,
+        )
+        .map_err(storage_err_to_state_err)
     }
 
     // Returns the default value if the contract address is not found.
