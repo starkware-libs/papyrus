@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.4.0",
+        "version": "0.5.1",
         "title": "StarkNet Trace API",
         "license": {}
     },
@@ -57,20 +57,7 @@
                         "type": "array",
                         "description": "a sequence of transactions to simulate, running each transaction on the state resulting from applying all the previous ones",
                         "items": {
-                            "oneOf": [
-                                {
-                                    "title": "Declare transaction",
-                                    "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
-                                },
-                                {
-                                    "title": "Invoke transaction",
-                                    "$ref": "#/components/schemas/INVOKE_TXN"
-                                },
-                                {
-                                    "title": "Deploy account transaction",
-                                    "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN"
-                                }
-                            ]
+                            "$ref": "#/components/schemas/BROADCASTED_TXN"
                         }
                     }
                 },
@@ -126,11 +113,11 @@
             "description": "Returns the execution traces of all transactions included in the given block",
             "params": [
                 {
-                    "name": "block_hash",
-                    "summary": "The hash of the requested block",
+                    "name": "block_id",
+                    "description": "The hash of the requested block, or number (height) of the requested block, or a block tag",
                     "required": true,
                     "schema": {
-                        "$ref": "#/components/schemas/BLOCK_HASH"
+                        "$ref": "#/components/schemas/BLOCK_ID"
                     }
                 }
             ],
@@ -353,6 +340,7 @@
             "CALL_TYPE": {
                 "type": "string",
                 "enum": [
+                    "DELEGATE",
                     "LIBRARY_CALL",
                     "CALL"
                 ]
@@ -378,8 +366,8 @@
             "FEE_ESTIMATE": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/FEE_ESTIMATE"
             },
-            "INVOKE_TXN": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/INVOKE_TXN"
+            "BROADCASTED_TXN": {
+                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_TXN"
             },
             "DECLARE_TXN": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"

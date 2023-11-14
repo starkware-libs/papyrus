@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.4.0",
+        "version": "0.5.1",
         "title": "StarkNet Node Write API",
         "license": {}
     },
@@ -16,7 +16,7 @@
                     "description": "The information needed to invoke the function (or account, for version 1 transactions)",
                     "required": true,
                     "schema": {
-                        "$ref": "#/components/schemas/INVOKE_TXN_V1"
+                        "$ref": "#/components/schemas/BROADCASTED_INVOKE_TXN"
                     }
                 }
             ],
@@ -31,7 +31,9 @@
                             "$ref": "#/components/schemas/TXN_HASH"
                         }
                     },
-                    "required": ["transaction_hash"]
+                    "required": [
+                        "transaction_hash"
+                    ]
                 }
             },
             "errors": [
@@ -71,7 +73,7 @@
                     "required": true,
                     "schema": {
                         "title": "Declare transaction",
-                        "$ref": "#/components/schemas/DECLARE_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
                     }
                 }
             ],
@@ -90,7 +92,10 @@
                             "$ref": "#/components/schemas/FELT"
                         }
                     },
-                    "required": ["transaction_hash", "class_hash"]
+                    "required": [
+                        "transaction_hash",
+                        "class_hash"
+                    ]
                 }
             },
             "errors": [
@@ -144,7 +149,7 @@
                     "description": "The deploy account transaction",
                     "required": true,
                     "schema": {
-                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN"
+                        "$ref": "#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
                     }
                 }
             ],
@@ -163,7 +168,10 @@
                             "$ref": "#/components/schemas/FELT"
                         }
                     },
-                    "required": ["transaction_hash", "contract_address"]
+                    "required": [
+                        "transaction_hash",
+                        "contract_address"
+                    ]
                 }
             },
             "errors": [
@@ -214,14 +222,14 @@
             "TXN_HASH": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/TXN_HASH"
             },
-            "INVOKE_TXN_V1": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/INVOKE_TXN_V1"
+            "BROADCASTED_INVOKE_TXN": {
+                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_INVOKE_TXN"
             },
             "DECLARE_TXN": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"
             },
-            "DEPLOY_ACCOUNT_TXN": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/DEPLOY_ACCOUNT_TXN"
+            "BROADCASTED_DEPLOY_ACCOUNT_TXN": {
+                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
             },
             "FUNCTION_CALL": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/FUNCTION_CALL"
