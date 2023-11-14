@@ -30,7 +30,7 @@ use crate::version_config::VERSION_0_5 as Version;
 fn validate_tx_fits_rpc(tx: BroadcastedDeclareTransaction) {
     lazy_static! {
         static ref SCHEMA: JSONSchema = get_starknet_spec_api_schema_for_components(
-            &[(SpecFile::StarknetApiOpenrpc, &["DECLARE_TXN"])],
+            &[(SpecFile::StarknetApiOpenrpc, &["BROADCASTED_DECLARE_TXN"])],
             &Version
         );
     }

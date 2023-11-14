@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.4.0",
+        "version": "0.5.1",
         "title": "StarkNet Node API",
         "license": {}
     },
@@ -104,6 +104,10 @@
                         {
                             "title": "State update",
                             "$ref": "#/components/schemas/STATE_UPDATE"
+                        },
+                        {
+                            "title": "Pending state update",
+                            "$ref": "#/components/schemas/PENDING_STATE_UPDATE"
                         }
                     ]
                 }
@@ -285,8 +289,16 @@
             "result": {
                 "name": "result",
                 "schema": {
-                    "title": "Transaction receipt",
-                    "$ref": "#/components/schemas/TXN_RECEIPT"
+                    "oneOf": [
+                        {
+                            "title": "Transaction receipt",
+                            "$ref": "#/components/schemas/TXN_RECEIPT"
+                        },
+                        {
+                            "title": "Pending transaction receipt",
+                            "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
+                        }
+                    ]
                 }
             },
             "errors": [
@@ -525,20 +537,7 @@
                         "description": "a sequence of transactions to estimate, running each transaction on the state resulting from applying all the previous ones",
                         "title": "Transaction",
                         "items": {
-                            "oneOf": [
-                                {
-                                    "title": "Declare transaction",
-                                    "$ref": "#/components/schemas/DECLARE_TXN"
-                                },
-                                {
-                                    "title": "Invoke transaction",
-                                    "$ref": "#/components/schemas/INVOKE_TXN"
-                                },
-                                {
-                                    "title": "Deploy account transaction",
-                                    "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN"
-                                }
-                            ]
+                            "$ref": "#/components/schemas/BROADCASTED_TXN"
                         }
                     },
                     "required": true
@@ -809,7 +808,7 @@
             ],
             "result": {
                 "name": "result",
-                "description": "The last nonce used for the given contract.",
+                "description": "The contract's nonce at the requested state",
                 "schema": {
                     "title": "Field element",
                     "$ref": "#/components/schemas/FELT"
@@ -1087,6 +1086,128 @@
                 "type": "string",
                 "pattern": "^0x[a-fA-F0-9]+$"
             },
+            "STATE_DIFF": {
+                "description": "The change in state applied in this block, given as a mapping of addresses to the new values and/or new contracts",
+                "type": "object",
+                "properties": {
+                    "storage_diffs": {
+                        "title": "Storage diffs",
+                        "type": "array",
+                        "items": {
+                            "description": "The changes in the storage per contract address",
+                            "$ref": "#/components/schemas/CONTRACT_STORAGE_DIFF_ITEM"
+                        }
+                    },
+                    "deprecated_declared_classes": {
+                        "title": "Deprecated declared classes",
+                        "type": "array",
+                        "items": {
+                            "description": "The hash of the declared class",
+                            "$ref": "#/components/schemas/FELT"
+                        }
+                    },
+                    "declared_classes": {
+                        "title": "Declared classes",
+                        "type": "array",
+                        "items": {
+                            "title": "New classes",
+                            "type": "object",
+                            "description": "The declared class hash and compiled class hash",
+                            "properties": {
+                                "class_hash": {
+                                    "title": "Class hash",
+                                    "description": "The hash of the declared class",
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "compiled_class_hash": {
+                                    "title": "Compiled class hash",
+                                    "description": "The Cairo assembly hash corresponding to the declared class",
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        }
+                    },
+                    "deployed_contracts": {
+                        "title": "Deployed contracts",
+                        "type": "array",
+                        "items": {
+                            "description": "A new contract deployed as part of the state update",
+                            "$ref": "#/components/schemas/DEPLOYED_CONTRACT_ITEM"
+                        }
+                    },
+                    "replaced_classes": {
+                        "title": "Replaced classes",
+                        "type": "array",
+                        "items": {
+                            "description": "The list of contracts whose class was replaced",
+                            "title": "Replaced class",
+                            "type": "object",
+                            "properties": {
+                                "contract_address": {
+                                    "title": "Contract address",
+                                    "description": "The address of the contract whose class was replaced",
+                                    "$ref": "#/components/schemas/ADDRESS"
+                                },
+                                "class_hash": {
+                                    "title": "Class hash",
+                                    "description": "The new class hash",
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        }
+                    },
+                    "nonces": {
+                        "title": "Nonces",
+                        "type": "array",
+                        "items": {
+                            "title": "Nonce update",
+                            "description": "The updated nonce per contract address",
+                            "type": "object",
+                            "properties": {
+                                "contract_address": {
+                                    "title": "Contract address",
+                                    "description": "The address of the contract",
+                                    "$ref": "#/components/schemas/ADDRESS"
+                                },
+                                "nonce": {
+                                    "title": "Nonce",
+                                    "description": "The nonce for the given address at the end of the block",
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            }
+                        }
+                    }
+                },
+                "required": [
+                    "storage_diffs",
+                    "deprecated_declared_classes",
+                    "declared_classes",
+                    "replaced_classes",
+                    "deployed_contracts",
+                    "nonces"
+                ]
+            },
+            "PENDING_STATE_UPDATE": {
+                "title": "Pending state update",
+                "description": "Pending state update",
+                "type": "object",
+                "properties": {
+                    "old_root": {
+                        "title": "Old root",
+                        "description": "The previous global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "state_diff": {
+                        "title": "State diff",
+                        "$ref": "#/components/schemas/STATE_DIFF"
+                    }
+                },
+                "required": [
+                    "old_root",
+                    "state_diff"
+                ],
+                "additionalProperties": false
+            },
             "STATE_UPDATE": {
                 "title": "State update",
                 "type": "object",
@@ -1095,122 +1216,26 @@
                         "title": "Block hash",
                         "$ref": "#/components/schemas/BLOCK_HASH"
                     },
-                    "new_root": {
-                        "title": "New root",
-                        "description": "The new global state root",
-                        "$ref": "#/components/schemas/FELT"
-                    },
                     "old_root": {
                         "title": "Old root",
                         "description": "The previous global state root",
                         "$ref": "#/components/schemas/FELT"
                     },
+                    "new_root": {
+                        "title": "New root",
+                        "description": "The new global state root",
+                        "$ref": "#/components/schemas/FELT"
+                    },
                     "state_diff": {
                         "title": "State diff",
-                        "description": "The change in state applied in this block, given as a mapping of addresses to the new values and/or new contracts",
-                        "type": "object",
-                        "properties": {
-                            "storage_diffs": {
-                                "title": "Storage diffs",
-                                "type": "array",
-                                "items": {
-                                    "description": "The changes in the storage per contract address",
-                                    "$ref": "#/components/schemas/CONTRACT_STORAGE_DIFF_ITEM"
-                                }
-                            },
-                            "deprecated_declared_classes": {
-                                "title": "Deprecated declared classes",
-                                "type": "array",
-                                "items": {
-                                    "description": "The hash of the declared class",
-                                    "$ref": "#/components/schemas/FELT"
-                                }
-                            },
-                            "declared_classes": {
-                                "title": "Declared classes",
-                                "type": "array",
-                                "items": {
-                                    "title": "New classes",
-                                    "type": "object",
-                                    "description": "The declared class hash and compiled class hash",
-                                    "properties": {
-                                        "class_hash": {
-                                            "title": "Class hash",
-                                            "description": "The hash of the declared class",
-                                            "$ref": "#/components/schemas/FELT"
-                                        },
-                                        "compiled_class_hash": {
-                                            "title": "Compiled class hash",
-                                            "description": "The Cairo assembly hash corresponding to the declared class",
-                                            "$ref": "#/components/schemas/FELT"
-                                        }
-                                    }
-                                }
-                            },
-                            "deployed_contracts": {
-                                "title": "Deployed contracts",
-                                "type": "array",
-                                "items": {
-                                    "description": "A new contract deployed as part of the state update",
-                                    "$ref": "#/components/schemas/DEPLOYED_CONTRACT_ITEM"
-                                }
-                            },
-                            "replaced_classes": {
-                                "title": "Replaced classes",
-                                "type": "array",
-                                "items": {
-                                    "description": "The list of contracts whose class was replaced",
-                                    "title": "Replaced class",
-                                    "type": "object",
-                                    "properties": {
-                                        "contract_address": {
-                                            "title": "Contract address",
-                                            "description": "The address of the contract whose class was replaced",
-                                            "$ref": "#/components/schemas/ADDRESS"
-                                        },
-                                        "class_hash": {
-                                            "title": "Class hash",
-                                            "description": "The new class hash",
-                                            "$ref": "#/components/schemas/FELT"
-                                        }
-                                    }
-                                }
-                            },
-                            "nonces": {
-                                "title": "Nonces",
-                                "type": "array",
-                                "items": {
-                                    "title": "Nonce update",
-                                    "description": "The updated nonce per contract address",
-                                    "type": "object",
-                                    "properties": {
-                                        "contract_address": {
-                                            "title": "Contract address",
-                                            "description": "The address of the contract",
-                                            "$ref": "#/components/schemas/ADDRESS"
-                                        },
-                                        "nonce": {
-                                            "title": "Nonce",
-                                            "description": "The nonce for the given address at the end of the block",
-                                            "$ref": "#/components/schemas/FELT"
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "required": [
-                            "storage_diffs",
-                            "deprecated_declared_classes",
-                            "declared_classes",
-                            "replaced_classes",
-                            "deployed_contracts",
-                            "nonces"
-                        ]
+                        "$ref": "#/components/schemas/STATE_DIFF"
                     }
                 },
                 "required": [
+                    "state_diff",
+                    "block_hash",
                     "old_root",
-                    "state_diff"
+                    "new_root"
                 ]
             },
             "ADDRESS": {
@@ -1257,7 +1282,7 @@
                 "type": "object",
                 "properties": {
                     "transactions": {
-                        "title": "Transaction",
+                        "title": "Transaction hashes",
                         "description": "The hashes of the transactions included in this block",
                         "type": "array",
                         "items": {
@@ -1349,6 +1374,46 @@
                     "timestamp",
                     "sequencer_address"
                 ]
+            },
+            "PENDING_BLOCK_HEADER": {
+                "title": "Pending block header",
+                "type": "object",
+                "properties": {
+                    "parent_hash": {
+                        "title": "Parent hash",
+                        "description": "The hash of this block's parent",
+                        "$ref": "#/components/schemas/BLOCK_HASH"
+                    },
+                    "timestamp": {
+                        "title": "Timestamp",
+                        "description": "The time in which the block was created, encoded in Unix time",
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "sequencer_address": {
+                        "title": "Sequencer address",
+                        "description": "The StarkNet identity of the sequencer submitting this block",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "l1_gas_price": {
+                        "title": "L1 gas price",
+                        "descritpion": "The price of l1 gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "starknet_version": {
+                        "title": "Starknet version",
+                        "description": "Semver of the current Starknet protocol",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "parent_hash",
+                    "timestamp",
+                    "sequencer_address",
+                    "l1_gas_price",
+                    "starknet_version"
+                ],
+                "additionalProperties": false
             },
             "BLOCK_WITH_TX_HASHES": {
                 "title": "Block with transaction hashes",
@@ -1614,6 +1679,11 @@
                                     "DECLARE"
                                 ]
                             },
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
                             "max_fee": {
                                 "title": "Max fee",
                                 "$ref": "#/components/schemas/FELT",
@@ -1630,47 +1700,20 @@
                             "signature": {
                                 "title": "Signature",
                                 "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
                             "type",
+                            "sender_address",
                             "max_fee",
                             "version",
-                            "signature"
-                        ]
-                    },
-                    {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "ContractClass",
-                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
-                                "properties": {
-                                    "contract_class": {
-                                        "title": "Contract class",
-                                        "description": "The class to be declared",
-                                        "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
-                                    }
-                                },
-                                "required": [
-                                    "contract_class"
-                                ]
-                            },
-                            {
-                                "type": "object",
-                                "title": "ClassHash",
-                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
-                                "properties": {
-                                    "class_hash": {
-                                        "title": "Class hash",
-                                        "description": "The hash of the declared class",
-                                        "$ref": "#/components/schemas/FELT"
-                                    }
-                                },
-                                "required": [
-                                    "class_hash"
-                                ]
-                            }
+                            "signature",
+                            "class_hash"
                         ]
                     }
                 ]
@@ -1715,6 +1758,11 @@
                             "nonce": {
                                 "title": "Nonce",
                                 "$ref": "#/components/schemas/FELT"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
@@ -1723,41 +1771,8 @@
                             "max_fee",
                             "version",
                             "signature",
-                            "nonce"
-                        ]
-                    },
-                    {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "ContractClass",
-                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
-                                "properties": {
-                                    "contract_class": {
-                                        "title": "Contract class",
-                                        "description": "The class to be declared",
-                                        "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
-                                    }
-                                },
-                                "required": [
-                                    "contract_class"
-                                ]
-                            },
-                            {
-                                "type": "object",
-                                "title": "ClassHash",
-                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
-                                "properties": {
-                                    "class_hash": {
-                                        "title": "Class hash",
-                                        "description": "The hash of the declared class",
-                                        "$ref": "#/components/schemas/FELT"
-                                    }
-                                },
-                                "required": [
-                                    "class_hash"
-                                ]
-                            }
+                            "nonce",
+                            "class_hash"
                         ]
                     }
                 ]
@@ -1807,6 +1822,11 @@
                             "nonce": {
                                 "title": "Nonce",
                                 "$ref": "#/components/schemas/FELT"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
                             }
                         },
                         "required": [
@@ -1816,46 +1836,183 @@
                             "max_fee",
                             "version",
                             "signature",
-                            "nonce"
+                            "nonce",
+                            "class_hash"
                         ]
+                    }
+                ]
+            },
+            "BROADCASTED_TXN": {
+                "oneOf": [
+                    {
+                        "$ref": "#/components/schemas/BROADCASTED_INVOKE_TXN"
                     },
                     {
-                        "oneOf": [
-                            {
-                                "type": "object",
-                                "title": "ContractClass",
-                                "description": "The class to be declared. Expected to be included for all methods involving execution (estimateFee, simulateTransactions)",
-                                "properties": {
-                                    "contract_class": {
-                                        "title": "Contract class",
-                                        "description": "The class to be declared",
-                                        "$ref": "#/components/schemas/CONTRACT_CLASS"
-                                    }
-                                },
-                                "required": [
-                                    "contract_class"
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN"
+                    },
+                    {
+                        "$ref": "#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
+                    }
+                ]
+            },
+            "BROADCASTED_INVOKE_TXN": {
+                "title": "Broadcasted invoke transaction",
+                "oneOf": [
+                    {
+                        "title": "Broadcasted invoke transaction V0",
+                        "$ref": "#/components/schemas/INVOKE_TXN_V0"
+                    },
+                    {
+                        "title": "Broadcasted invoke transaction V1",
+                        "$ref": "#/components/schemas/INVOKE_TXN_V1"
+                    }
+                ]
+            },
+            "BROADCASTED_DEPLOY_ACCOUNT_TXN": {
+                "title": "Broadcasted deploy account transaction",
+                "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN"
+            },
+            "BROADCASTED_DECLARE_TXN": {
+                "title": "Broadcasted declare transaction",
+                "oneOf": [
+                    {
+                        "title": "Broadcasted declare transaction V1",
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V1"
+                    },
+                    {
+                        "title": "Broadcasted declare transaction V2",
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V2"
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V1": {
+                "title": "Broadcasted declare contract transaction V1",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v1",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
                                 ]
                             },
-                            {
-                                "type": "object",
-                                "title": "ClassHash",
-                                "description": "The hash of the declared class. Responses to getBlock and getTransaction are expected to include the hash rather than the full definition",
-                                "properties": {
-                                    "class_hash": {
-                                        "title": "Class hash",
-                                        "description": "The hash of the declared class",
-                                        "$ref": "#/components/schemas/FELT"
-                                    }
-                                },
-                                "required": [
-                                    "class_hash"
-                                ]
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "max_fee": {
+                                "title": "Max fee",
+                                "$ref": "#/components/schemas/FELT",
+                                "description": "The maximal fee that can be charged for including the transaction"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "contract_class": {
+                                "title": "Contract class",
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/DEPRECATED_CONTRACT_CLASS"
                             }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "max_fee",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "contract_class"
+                        ]
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V2": {
+                "title": "Broadcasted declare Transaction V2",
+                "description": "Broadcasted declare Contract Transaction V2",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v2",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            },
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "compiled_class_hash": {
+                                "title": "Compiled class hash",
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "max_fee": {
+                                "title": "Max fee",
+                                "$ref": "#/components/schemas/FELT",
+                                "description": "The maximal fee that can be charged for including the transaction"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "contract_class": {
+                                "title": "Contract class",
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/CONTRACT_CLASS"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "compiled_class_hash",
+                            "max_fee",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "contract_class"
                         ]
                     }
                 ]
             },
             "DEPLOY_ACCOUNT_TXN": {
+                "title": "Deploy account transaction",
+                "description": "deploys a new account contract",
+                "oneOf": [
+                    {
+                        "title": "Deploy account V1",
+                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_V1"
+                    }
+                ]
+            },
+            "DEPLOY_ACCOUNT_TXN_V1": {
                 "title": "Deploy account transaction",
                 "description": "Deploys an account contract, charges fee from the pre-funded account addresses",
                 "properties": {
@@ -2052,10 +2209,7 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "type": "string",
-                                "enum": [
-                                    "0x1"
-                                ]
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2461,10 +2615,6 @@
                     {
                         "title": "Deploy account transaction receipt",
                         "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_RECEIPT"
-                    },
-                    {
-                        "title": "Pending transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
                     }
                 ]
             },
