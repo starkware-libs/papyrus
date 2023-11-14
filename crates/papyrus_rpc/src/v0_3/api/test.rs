@@ -78,7 +78,7 @@ use crate::test_utils::{
 };
 use crate::v0_3::error::JsonRpcError;
 use crate::version_config::VERSION_0_3;
-use crate::{run_server, ContinuationTokenAsStruct};
+use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -211,6 +211,42 @@ async fn syncing() {
         &None::<()>,
         &VERSION_0_3,
         &SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() },
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn test_not_synced_api_call() {
+    let method_name = "starknet_V0_3_blockNumber";
+
+    let shared_highest_block = get_test_highest_block();
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_3Impl>(
+        None,
+        Some(shared_highest_block.clone()),
+        None,
+        None,
+        None,
+    );
+
+    // Tests that API call fails when server is not synced.
+    // Set highest block to be 5, to simulate out-of-sync server.
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
+    let expected_err = internal_server_error("Server is not synchronized");
+    let params = Some(BlockId::Tag(Tag::Pending));
+    let (_, err) = raw_call::<_, BlockId, Block>(&module, method_name, &params).await;
+    assert_eq!(err.unwrap_err(), expected_err);
+
+    // Set highest block to be 0.
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(0), ..Default::default() });
+    let expected_err = ErrorObjectOwned::from(JsonRpcError::NoBlocks);
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_3,
+        &expected_err,
     )
     .await;
 }

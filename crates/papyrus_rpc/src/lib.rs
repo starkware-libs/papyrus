@@ -34,7 +34,6 @@ use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageReader, StorageTxn};
 use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
@@ -157,12 +156,6 @@ impl SerializeConfig for RpcConfig {
 fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
-}
-
-fn get_latest_block_number<Mode: TransactionKind>(
-    txn: &StorageTxn<'_, Mode>,
-) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
-    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_status<Mode: TransactionKind>(

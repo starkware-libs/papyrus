@@ -68,11 +68,11 @@ mod test;
 pub trait JsonRpc {
     /// Gets the most recent accepted block number.
     #[method(name = "blockNumber")]
-    fn block_number(&self) -> RpcResult<BlockNumber>;
+    async fn block_number(&self) -> RpcResult<BlockNumber>;
 
     /// Gets the most recent accepted block hash and number.
     #[method(name = "blockHashAndNumber")]
-    fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber>;
+    async fn block_hash_and_number(&self) -> RpcResult<BlockHashAndNumber>;
 
     /// Gets block information with transaction hashes given a block identifier.
     #[method(name = "getBlockWithTxHashes")]

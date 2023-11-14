@@ -297,6 +297,42 @@ async fn syncing() {
 }
 
 #[tokio::test]
+async fn test_not_synced_api_call() {
+    let method_name = "starknet_V0_4_blockNumber";
+
+    let shared_highest_block = get_test_highest_block();
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        None,
+        Some(shared_highest_block.clone()),
+        None,
+        None,
+        None,
+    );
+
+    // Tests that API call fails when server is not synced.
+    // Set highest block to be 5, to simulate out-of-sync server.
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
+    let expected_err = internal_server_error("Server is not synchronized");
+    let params = Some(BlockId::Tag(Tag::Pending));
+    let (_, err) = raw_call::<_, BlockId, Block>(&module, method_name, &params).await;
+    assert_eq!(err.unwrap_err(), expected_err);
+
+    // Set highest block to be 0.
+    *shared_highest_block.write().await =
+        Some(BlockHashAndNumber { block_number: BlockNumber(0), ..Default::default() });
+    let expected_err = NO_BLOCKS.into();
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION_0_4,
+        &expected_err,
+    )
+    .await;
+}
+
+#[tokio::test]
 async fn get_block_transaction_count() {
     let method_name = "starknet_V0_4_getBlockTransactionCount";
     let pending_data = get_test_pending_data();

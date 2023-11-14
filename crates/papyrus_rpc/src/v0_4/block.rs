@@ -9,7 +9,7 @@ use starknet_api::core::{ContractAddress, GlobalRoot};
 use super::error::BLOCK_NOT_FOUND;
 use super::transaction::Transactions;
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
-use crate::{get_latest_block_number, internal_server_error};
+use crate::internal_server_error;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct BlockHeader {
@@ -76,6 +76,7 @@ pub fn get_block_header_by_number<
 pub(crate) fn get_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
+    synced: bool,
 ) -> Result<BlockNumber, ErrorObjectOwned> {
     Ok(match block_id {
         BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
@@ -84,16 +85,15 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
             // Check that the block exists.
-            let last_block_number = get_latest_block_number(txn)?
+            let last_block_number = get_latest_block_number(txn, true)?
                 .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
             if block_number > last_block_number {
                 return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND));
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => {
-            get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
-        }
+        BlockId::Tag(Tag::Latest) => get_latest_block_number(txn, synced)?
+            .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
         BlockId::Tag(Tag::Pending) => {
             // TODO(shahak): Panic here instead when all pending blocks are handled separately.
             return Err(ErrorObjectOwned::owned(
@@ -103,4 +103,14 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             ));
         }
     })
+}
+
+pub(crate) fn get_latest_block_number<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    synced: bool,
+) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
+    if !synced {
+        return Err(internal_server_error("Server is not synchronized"));
+    }
+    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
 }
