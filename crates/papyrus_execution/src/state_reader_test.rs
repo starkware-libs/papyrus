@@ -6,6 +6,7 @@ use blockifier::execution::contract_class::{
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
 use indexmap::{indexmap, IndexMap};
+use papyrus_common::state::StorageEntry;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -17,6 +18,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 
+use crate::objects::PendingStateDiff;
 use crate::state_reader::ExecutionStateReader;
 use crate::test_utils::{get_test_casm, get_test_deprecated_contract_class};
 
@@ -29,6 +31,9 @@ fn read_state() {
 
     let class_hash0 = ClassHash(2u128.into());
     let address0 = ContractAddress(patricia_key!(CONTRACT_ADDRESS));
+    let storage_key0 = StorageKey(patricia_key!("0x0"));
+    let storage_value0 = stark_felt!(777_u128);
+    let storage_value1 = stark_felt!(888_u128);
     // The class is not used in the execution, so it can be default.
     let class0 = ContractClass::default();
     let casm0 = get_test_casm();
@@ -37,6 +42,9 @@ fn read_state() {
     let class_hash1 = ClassHash(1u128.into());
     let class1 = get_test_deprecated_contract_class();
     let address1 = ContractAddress(patricia_key!(DEPRECATED_CONTRACT_ADDRESS));
+
+    let address2 = ContractAddress(patricia_key!("0x123"));
+    let storage_value2 = stark_felt!(999_u128);
 
     storage_writer
         .begin_rw_txn()
@@ -67,7 +75,7 @@ fn read_state() {
                 ),
                 storage_diffs: indexmap!(
                     address0 => indexmap!(
-                        StorageKey(patricia_key!("0x0")) => stark_felt!(777_u128),
+                        storage_key0 => storage_value0,
                     ),
                 ),
                 declared_classes: indexmap!(
@@ -111,8 +119,7 @@ fn read_state() {
         maybe_pending_state_diff: None,
         maybe_pending_classes: None,
     };
-    let storage_after_block_0 =
-        state_reader0.get_storage_at(address0, StorageKey(patricia_key!("0x0"))).unwrap();
+    let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_0, StarkFelt::default());
     let nonce_after_block_0 = state_reader0.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_0, Nonce::default());
@@ -132,9 +139,8 @@ fn read_state() {
         maybe_pending_state_diff: None,
         maybe_pending_classes: None,
     };
-    let storage_after_block_1 =
-        state_reader1.get_storage_at(address0, StorageKey(patricia_key!("0x0"))).unwrap();
-    assert_eq!(storage_after_block_1, stark_felt!(777_u128));
+    let storage_after_block_1 = state_reader1.get_storage_at(address0, storage_key0).unwrap();
+    assert_eq!(storage_after_block_1, storage_value0);
     let nonce_after_block_1 = state_reader1.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_1, Nonce(stark_felt!(1_u128)));
     let class_hash_after_block_1 = state_reader1.get_class_hash_at(address0).unwrap();
@@ -153,6 +159,17 @@ fn read_state() {
     };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_2, Nonce(stark_felt!(1_u128)));
+
+    // Test pending state diff
+    state_reader2.maybe_pending_state_diff = Some(PendingStateDiff {
+        storage_diffs: indexmap!(
+            address0 => vec![StorageEntry{key: storage_key0, value: storage_value1}],
+            address2 => vec![StorageEntry{key: storage_key0, value: storage_value2}],
+        ),
+        ..Default::default()
+    });
+    assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
+    assert_eq!(state_reader2.get_storage_at(address2, storage_key0).unwrap(), storage_value2);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
