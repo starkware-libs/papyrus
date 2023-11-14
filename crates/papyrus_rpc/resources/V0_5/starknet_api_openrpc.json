@@ -171,6 +171,47 @@
             ]
         },
         {
+            "name": "starknet_getTransactionStatus",
+            "summary": "Gets the transaction status (possibly reflecting that the tx is still in the mempool, or dropped from it)",
+            "paramStructure": "by-name",
+            "params": [
+                {
+                    "name": "transaction_hash",
+                    "summary": "The hash of the requested transaction",
+                    "required": true,
+                    "schema": {
+                        "title": "Transaction hash",
+                        "$ref": "#/components/schemas/TXN_HASH"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "schema": {
+                    "title": "Transaction status",
+                    "type": "object",
+                    "properties": {
+                        "finality_status": {
+                            "title": "finality status",
+                            "$ref": "#/components/schemas/TXN_STATUS"
+                        },
+                        "execution_status": {
+                            "title": "execution status",
+                            "$ref": "#/components/schemas/TXN_EXECUTION_STATUS"
+                        }
+                    },
+                    "required": [
+                        "finality_status"
+                    ]
+                }
+            },
+            "errors": [
+                {
+                    "$ref": "#/components/errors/TXN_HASH_NOT_FOUND"
+                }
+            ]
+        },
+        {
             "name": "starknet_getTransactionByHash",
             "summary": "Get the details and status of a submitted transaction",
             "paramStructure": "by-name",
@@ -2764,6 +2805,17 @@
                     "payload",
                     "entry_point_selector"
                 ]
+            },
+            "TXN_STATUS": {
+                "title": "Transaction status",
+                "type": "string",
+                "enum": [
+                    "RECEIVED",
+                    "REJECTED",
+                    "ACCEPTED_ON_L2",
+                    "ACCEPTED_ON_L1"
+                ],
+                "description": "The finality status of the transaction, including the case the txn is still in the mempool or failed validation during the block construction phase"
             },
             "TXN_FINALITY_STATUS": {
                 "title": "Finality status",
