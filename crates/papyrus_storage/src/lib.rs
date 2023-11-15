@@ -178,17 +178,16 @@ pub fn open_storage(
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
+// If in FullArchive mode, also set the blocks version.
 fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
     let current_storage_version_state = writer.begin_rw_txn()?.get_state_version()?;
+    // if the storage has no version, it means that it needs to be initialized.
     if current_storage_version_state.is_none() {
         writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
-    };
-
-    let current_storage_version_blocks = writer.begin_rw_txn()?.get_blocks_version()?;
-    if current_storage_version_blocks.is_none() {
-        writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
-    };
-
+        if writer.scope == StorageScope::FullArchive {
+            writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
+        }
+    }
     Ok(writer)
 }
 
@@ -201,12 +200,7 @@ fn verify_storage_version(reader: StorageReader, storage_scope: StorageScope) ->
 
     let current_storage_version_state =
         reader.begin_ro_txn()?.get_state_version()?.expect("Storage should have a version");
-    let current_storage_version_blocks =
-        reader.begin_ro_txn()?.get_blocks_version()?.expect("Storage should have a version");
-    debug!(
-        "Current storage version: State = {current_storage_version_state:}. Blocks = \
-         {current_storage_version_blocks:}."
-    );
+    debug!("Current storage version: State = {current_storage_version_state:}.");
 
     if STORAGE_VERSION_STATE != current_storage_version_state {
         return Err(StorageError::StorageVersionInconcistency(
@@ -217,18 +211,38 @@ fn verify_storage_version(reader: StorageReader, storage_scope: StorageScope) ->
         ));
     }
 
-    if storage_scope == StorageScope::StateOnly {
-        return Ok(());
-    }
+    let current_storage_version_blocks = reader.begin_ro_txn()?.get_blocks_version()?;
 
-    if STORAGE_VERSION_BLOCKS != current_storage_version_blocks {
+    if storage_scope == StorageScope::FullArchive {
+        if current_storage_version_blocks.is_none() {
+            return Err(StorageError::StorageVersionInconcistency(
+                StorageVersionError::InconsistentStorageScope {
+                    existing_scope: StorageScope::StateOnly,
+                    requested_scope: StorageScope::FullArchive,
+                },
+            ));
+        }
+
+        let current_storage_version_blocks = current_storage_version_blocks.unwrap();
+        debug!("Current storage version: Block = {current_storage_version_blocks:}.");
+
+        if STORAGE_VERSION_BLOCKS != current_storage_version_blocks {
+            return Err(StorageError::StorageVersionInconcistency(
+                StorageVersionError::InconsistentStorageVersion {
+                    crate_version: STORAGE_VERSION_BLOCKS,
+                    storage_version: current_storage_version_blocks,
+                },
+            ));
+        }
+    } else if current_storage_version_blocks.is_some() {
         return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION_BLOCKS,
-                storage_version: current_storage_version_blocks,
+            StorageVersionError::InconsistentStorageScope {
+                existing_scope: StorageScope::FullArchive,
+                requested_scope: StorageScope::StateOnly,
             },
         ));
     }
+
     Ok(())
 }
 
