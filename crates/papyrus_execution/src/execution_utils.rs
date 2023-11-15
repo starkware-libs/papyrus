@@ -14,7 +14,7 @@ use blockifier::state::state_api::{State, StateReader};
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
-use papyrus_common::state::StorageEntry;
+use papyrus_common::state::{DeployedContract, StorageEntry};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
@@ -166,4 +166,25 @@ pub fn get_storage_at(
         &contract_address,
         &key,
     )
+}
+
+/// Get the class hash of the contract at the given address, if it exists. If there's a given
+/// pending deployed contracts, search in them as well.
+pub fn get_class_hash_at(
+    storage_reader: &StorageReader,
+    state_number: StateNumber,
+    pending_deployed_contracts: Option<&Vec<DeployedContract>>,
+    contract_address: ContractAddress,
+) -> StorageResult<Option<ClassHash>> {
+    if let Some(pending_deployed_contracts) = pending_deployed_contracts {
+        for DeployedContract { address, class_hash } in pending_deployed_contracts {
+            if *address == contract_address {
+                return Ok(Some(*class_hash));
+            }
+        }
+    }
+    storage_reader
+        .begin_ro_txn()?
+        .get_state_reader()?
+        .get_class_hash_at(state_number, &contract_address)
 }

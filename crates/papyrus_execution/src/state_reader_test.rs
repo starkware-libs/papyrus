@@ -6,7 +6,7 @@ use blockifier::execution::contract_class::{
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
 use indexmap::{indexmap, IndexMap};
-use papyrus_common::state::StorageEntry;
+use papyrus_common::state::{DeployedContract, StorageEntry};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -45,6 +45,7 @@ fn read_state() {
 
     let address2 = ContractAddress(patricia_key!("0x123"));
     let storage_value2 = stark_felt!(999_u128);
+    let class_hash2 = ClassHash(1234u128.into());
 
     storage_writer
         .begin_rw_txn()
@@ -166,10 +167,12 @@ fn read_state() {
             address0 => vec![StorageEntry{key: storage_key0, value: storage_value1}],
             address2 => vec![StorageEntry{key: storage_key0, value: storage_value2}],
         ),
+        deployed_contracts: vec![DeployedContract { address: address2, class_hash: class_hash2 }],
         ..Default::default()
     });
     assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
     assert_eq!(state_reader2.get_storage_at(address2, storage_key0).unwrap(), storage_value2);
+    assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash2);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
