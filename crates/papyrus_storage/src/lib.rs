@@ -95,7 +95,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
-use tracing::debug;
+use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
@@ -171,63 +171,126 @@ pub fn open_storage(
     };
     let writer = StorageWriter { db_writer, tables, scope: storage_config.scope, file_writers };
 
-    let writer = set_initial_version_if_needed(writer)?;
-    verify_storage_version(reader.clone(), storage_config.scope)?;
+    let writer = set_version_if_needed(reader.clone(), writer)?;
+    verify_storage_version(reader.clone())?;
     Ok((reader, writer))
 }
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
-fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
-    let current_storage_version_state = writer.begin_rw_txn()?.get_state_version()?;
-    if current_storage_version_state.is_none() {
-        writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
-    };
-
-    let current_storage_version_blocks = writer.begin_rw_txn()?.get_blocks_version()?;
-    if current_storage_version_blocks.is_none() {
-        writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
-    };
-
+// If the storage scope has changed, update accordingly.
+fn set_version_if_needed(
+    reader: StorageReader,
+    mut writer: StorageWriter,
+) -> StorageResult<StorageWriter> {
+    let existing_storage_state = get_storage_state(reader)?;
+    debug!("Existing storage state: {:?}", existing_storage_state);
+    match existing_storage_state {
+        StorageState::Uninitialized => {
+            // Initialize the storage version.
+            writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
+            // If in full-archive mode, also set the block version.
+            if writer.scope == StorageScope::FullArchive {
+                writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
+            }
+        }
+        StorageState::Initialized(StorageVersion {
+            state_version: _,
+            blocks_version: _,
+            scope: existing_scope,
+        }) => match existing_scope {
+            StorageScope::FullArchive => {
+                if writer.scope == StorageScope::StateOnly {
+                    writer.begin_rw_txn()?.delete_blocks_version()?.commit()?;
+                    warn!(
+                        "Storage was operating in full-archive mode and is now shifting to \
+                         state-only mode."
+                    );
+                }
+            }
+            StorageScope::StateOnly => {
+                // The storage cannot change from state-only to full-archive mode.
+                if writer.scope == StorageScope::FullArchive {
+                    return Err(StorageError::StorageVersionInconcistency(
+                        StorageVersionError::InconsistentStorageScope,
+                    ));
+                }
+            }
+        },
+    }
     Ok(writer)
 }
 
+#[derive(Debug)]
+struct StorageVersion {
+    state_version: Version,
+    blocks_version: Option<Version>,
+    scope: StorageScope,
+}
+
+#[derive(Debug)]
+enum StorageState {
+    Uninitialized,
+    Initialized(StorageVersion),
+}
+
+fn get_storage_state(reader: StorageReader) -> StorageResult<StorageState> {
+    let current_storage_version_state = reader.begin_ro_txn()?.get_state_version()?;
+    let current_storage_version_blocks = reader.begin_ro_txn()?.get_blocks_version()?;
+    if current_storage_version_state.is_none() {
+        return Ok(StorageState::Uninitialized);
+    }
+    match current_storage_version_blocks {
+        Some(_) => Ok(StorageState::Initialized(StorageVersion {
+            state_version: current_storage_version_state.unwrap(),
+            blocks_version: current_storage_version_blocks,
+            scope: StorageScope::FullArchive,
+        })),
+        None => Ok(StorageState::Initialized(StorageVersion {
+            state_version: current_storage_version_state.unwrap(),
+            blocks_version: current_storage_version_blocks,
+            scope: StorageScope::StateOnly,
+        })),
+    }
+}
+
 // Assumes the storage has a version.
-fn verify_storage_version(reader: StorageReader, storage_scope: StorageScope) -> StorageResult<()> {
+fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
     debug!(
-        "Storage crate version: State = {STORAGE_VERSION_STATE:} Blocks = \
-         {STORAGE_VERSION_BLOCKS:}. Storage scope = {storage_scope:?}."
+        "Crate storage version: State = {STORAGE_VERSION_STATE:} Blocks = \
+         {STORAGE_VERSION_BLOCKS:}."
     );
 
-    let current_storage_version_state =
-        reader.begin_ro_txn()?.get_state_version()?.expect("Storage should have a version");
-    let current_storage_version_blocks =
-        reader.begin_ro_txn()?.get_blocks_version()?.expect("Storage should have a version");
-    debug!(
-        "Current storage version: State = {current_storage_version_state:}. Blocks = \
-         {current_storage_version_blocks:}."
-    );
+    let existing_storage_state = get_storage_state(reader)?;
+    debug!("Existing storage state: {:?}", existing_storage_state);
 
-    if STORAGE_VERSION_STATE != current_storage_version_state {
-        return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION_STATE,
-                storage_version: current_storage_version_state,
-            },
-        ));
-    }
-
-    if storage_scope == StorageScope::StateOnly {
-        return Ok(());
-    }
-
-    if STORAGE_VERSION_BLOCKS != current_storage_version_blocks {
-        return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION_BLOCKS,
-                storage_version: current_storage_version_blocks,
-            },
-        ));
+    match existing_storage_state {
+        StorageState::Uninitialized => panic!("Storage should be initialized."),
+        StorageState::Initialized(StorageVersion {
+            state_version: existing_state_version,
+            blocks_version: existing_blocks_version,
+            scope: existing_scope,
+        }) => {
+            if STORAGE_VERSION_STATE != existing_state_version {
+                return Err(StorageError::StorageVersionInconcistency(
+                    StorageVersionError::InconsistentStorageVersion {
+                        crate_version: STORAGE_VERSION_STATE,
+                        storage_version: existing_state_version,
+                    },
+                ));
+            }
+            if existing_scope == StorageScope::FullArchive {
+                let Some(existing_blocks_version) = existing_blocks_version else { panic!("Storage blocks should have a version.") };
+                if STORAGE_VERSION_BLOCKS != existing_blocks_version {
+                    return Err(StorageError::StorageVersionInconcistency(
+                        StorageVersionError::InconsistentStorageVersion {
+                            crate_version: STORAGE_VERSION_BLOCKS,
+                            storage_version: existing_blocks_version,
+                        },
+                    ));
+                }
+            }
+        }
     }
     Ok(())
 }
