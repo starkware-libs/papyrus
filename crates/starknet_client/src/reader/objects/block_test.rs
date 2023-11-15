@@ -24,7 +24,10 @@ use crate::test_utils::read_resource::read_resource_file;
 
 #[test]
 fn load_block_succeeds() {
-    serde_json::from_str::<Block>(&read_resource_file("reader/block.json")).unwrap();
+    for block_path in ["reader/block.json", "reader/block_pre_v0_13.json"] {
+        serde_json::from_str::<Block>(&read_resource_file(block_path))
+            .unwrap_or_else(|_| panic!("Failed loading block in path {}", block_path));
+    }
 }
 
 #[test]
@@ -161,18 +164,19 @@ async fn to_starknet_api_block_and_version() {
 
     let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0] = TransactionReceipt {
-        transaction_index: TransactionOffsetInBlock(0),
-        transaction_hash: err_block.transactions[0].transaction_hash(),
-        ..err_block.transaction_receipts[4].clone()
+        transaction_hash: err_block.transactions[1].transaction_hash(),
+        ..err_block.transaction_receipts[0].clone()
     };
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
-        ReaderClientError::TransactionReceiptsError(TransactionReceiptsError::MismatchFields {
-            block_number: _,
-            tx_index: _,
-            tx_hash: _,
-            tx_type: _,
-        })
+        ReaderClientError::TransactionReceiptsError(
+            TransactionReceiptsError::MismatchTransactionHash {
+                block_number: _,
+                tx_index: _,
+                tx_hash: _,
+                receipt_tx_hash: _,
+            }
+        )
     );
 }
