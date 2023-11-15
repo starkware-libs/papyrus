@@ -16,7 +16,11 @@ pub struct PendingData {
 pub struct PendingBlock {
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
-    pub gas_price: GasPrice,
+    // In older versions, eth_l1_gas_price was named gas_price and there was no strk_l1_gas_price.
+    #[serde(alias = "gas_price")]
+    pub eth_l1_gas_price: GasPrice,
+    #[serde(default)]
+    pub strk_l1_gas_price: GasPrice,
     pub transactions: Vec<Transaction>,
     pub timestamp: BlockTimestamp,
     pub sequencer_address: ContractAddress,
