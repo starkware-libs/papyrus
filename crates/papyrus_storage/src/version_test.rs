@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
-use crate::test_utils::get_test_storage;
+use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
 use crate::version::{StorageVersionError, Version, VersionStorageReader, VersionStorageWriter};
 use crate::{
     verify_storage_version,
@@ -44,35 +44,42 @@ async fn version() {
     );
 }
 
-#[tokio::test]
-async fn test_verify_storage_version() {
-    let ((reader, mut writer), _temp_dir) = get_test_storage();
+#[test]
+fn test_verify_storage_version() {
+    let ((reader_full_archive, mut writer_full_archive), _temp_dir) =
+        get_test_storage_by_scope(StorageScope::FullArchive);
+    let ((reader_state_only, _), _temp_dir) = get_test_storage_by_scope(StorageScope::StateOnly);
     let blocks_higher_version = Version(STORAGE_VERSION_BLOCKS.0 + 1);
     let state_higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
+    verify_storage_version(reader_full_archive.clone(), StorageScope::FullArchive).unwrap();
+    verify_storage_version(reader_state_only.clone(), StorageScope::StateOnly).unwrap();
 
-    verify_storage_version(reader.clone(), StorageScope::FullArchive).unwrap();
-    verify_storage_version(reader.clone(), StorageScope::StateOnly).unwrap();
-
-    writer
+    writer_full_archive
         .begin_rw_txn()
         .unwrap()
         .set_blocks_version(&blocks_higher_version)
         .unwrap()
         .commit()
         .unwrap();
-    verify_storage_version(reader.clone(), StorageScope::FullArchive)
+    verify_storage_version(reader_full_archive.clone(), StorageScope::FullArchive)
         .expect_err("Should fail, because storage blocks version does not match.");
-    verify_storage_version(reader.clone(), StorageScope::StateOnly).unwrap();
+    verify_storage_version(reader_full_archive.clone(), StorageScope::StateOnly).expect_err(
+        "Should fail, because storage blocks version should be none for scope state_only.",
+    );
+    verify_storage_version(reader_state_only.clone(), StorageScope::FullArchive).expect_err(
+        "Should fail, because storage blocks version should be none for state_only and have a \
+         value for full_archive.",
+    );
 
-    writer
+    writer_full_archive
         .begin_rw_txn()
         .unwrap()
         .set_state_version(&state_higher_version)
         .unwrap()
         .commit()
         .unwrap();
-    verify_storage_version(reader.clone(), StorageScope::FullArchive)
+    verify_storage_version(reader_full_archive.clone(), StorageScope::FullArchive)
         .expect_err("Should fail, because both versions do not match.");
-    verify_storage_version(reader, StorageScope::StateOnly)
+    verify_storage_version(reader_full_archive, StorageScope::StateOnly)
         .expect_err("Should fail, because state blocks version does not match.");
 }

@@ -5,7 +5,7 @@ mod version_test;
 use std::fmt::Display;
 
 use crate::db::{TransactionKind, RW};
-use crate::{StorageError, StorageResult, StorageTxn};
+use crate::{StorageError, StorageResult, StorageScope, StorageTxn};
 
 const VERSION_STATE_KEY: &str = "storage_version_state";
 const VERSION_BLOCKS_KEY: &str = "storage_version_blocks";
@@ -19,6 +19,12 @@ pub enum StorageVersionError {
         "Storage crate version {crate_version} is inconsistent with DB version {storage_version}."
     )]
     InconsistentStorageVersion { crate_version: Version, storage_version: Version },
+    #[error(
+        "Storage scope {existing_scope:?} is inconsistent with the requested scope \
+         {requested_scope:?}."
+    )]
+    InconsistentStorageScope { existing_scope: StorageScope, requested_scope: StorageScope },
+
     #[error(
         "Trying to set a DB version {crate_version:} which is not higher that the existing one \
          {storage_version}."
