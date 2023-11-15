@@ -20,6 +20,12 @@ pub enum StorageVersionError {
     )]
     InconsistentStorageVersion { crate_version: Version, storage_version: Version },
     #[error(
+        "The existing storage is operating in state-only mode and cannot support the requested \
+         full-archive mode."
+    )]
+    InconsistentStorageScope,
+
+    #[error(
         "Trying to set a DB version {crate_version:} which is not higher that the existing one \
          {storage_version}."
     )]
@@ -38,6 +44,7 @@ where
     // To enforce that no commit happen after a failure, we consume and return Self on success.
     fn set_state_version(self, version: &Version) -> StorageResult<Self>;
     fn set_blocks_version(self, version: &Version) -> StorageResult<Self>;
+    fn delete_blocks_version(self) -> StorageResult<Self>;
 }
 
 impl<'env, Mode: TransactionKind> VersionStorageReader for StorageTxn<'env, Mode> {
@@ -82,6 +89,11 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
             };
         }
         version_table.upsert(&self.txn, &VERSION_BLOCKS_KEY.to_string(), version)?;
+        Ok(self)
+    }
+    fn delete_blocks_version(self) -> StorageResult<Self> {
+        let version_table = self.open_table(&self.tables.storage_version)?;
+        version_table.delete(&self.txn, &VERSION_BLOCKS_KEY.to_string())?;
         Ok(self)
     }
 }
