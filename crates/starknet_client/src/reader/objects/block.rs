@@ -31,7 +31,11 @@ use crate::reader::{ReaderClientError, ReaderClientResult};
 pub struct Block {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
-    pub gas_price: GasPrice,
+    // In older versions, eth_l1_gas_price was named gas_price and there was no strk_l1_gas_price.
+    #[serde(alias = "gas_price")]
+    pub eth_l1_gas_price: GasPrice,
+    #[serde(default)]
+    pub strk_l1_gas_price: GasPrice,
     pub parent_block_hash: BlockHash,
     #[serde(default)]
     pub sequencer_address: ContractAddress,
@@ -189,7 +193,8 @@ impl Block {
             block_hash: self.block_hash,
             parent_hash: self.parent_block_hash,
             block_number: self.block_number,
-            gas_price: self.gas_price,
+            // TODO(shahak): Add eth_l1_gas_price and strk_l1_gas_price to starknet_api's Block.
+            gas_price: self.eth_l1_gas_price,
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,

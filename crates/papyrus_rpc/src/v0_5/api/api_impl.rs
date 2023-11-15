@@ -1231,7 +1231,7 @@ async fn read_pending_data(
         Ok(PendingData {
             block: PendingBlock {
                 parent_block_hash: latest_header.block_hash,
-                gas_price: latest_header.gas_price,
+                eth_l1_gas_price: latest_header.gas_price,
                 timestamp: latest_header.timestamp,
                 sequencer_address: latest_header.sequencer,
                 ..Default::default()
