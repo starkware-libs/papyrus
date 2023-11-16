@@ -2,10 +2,13 @@
 #[path = "state_reader_test.rs"]
 mod state_reader_test;
 
-use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
+use blockifier::execution::contract_class::{
+    ContractClass as BlockifierContractClass,
+    ContractClassV1,
+};
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};
-use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_common::state::DeclaredClassHashEntry;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -74,6 +77,16 @@ impl BlockifierStateReader for ExecutionStateReader {
         &mut self,
         class_hash: &ClassHash,
     ) -> StateResult<BlockifierContractClass> {
+        if let Some(pending_casm) = self
+            .maybe_pending_classes
+            .as_ref()
+            .and_then(|pending_classes| pending_classes.get_compiled_class(*class_hash))
+            .clone()
+        {
+            return Ok(BlockifierContractClass::V1(
+                ContractClassV1::try_from(pending_casm).map_err(StateError::ProgramError)?,
+            ));
+        }
         match get_contract_class(
             &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             class_hash,

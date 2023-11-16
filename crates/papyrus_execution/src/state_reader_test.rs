@@ -5,7 +5,9 @@ use blockifier::execution::contract_class::{
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
+use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
+use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
@@ -37,6 +39,8 @@ fn read_state() {
     // The class is not used in the execution, so it can be default.
     let class0 = ContractClass::default();
     let casm0 = get_test_casm();
+    let blockifier_casm0 =
+        BlockifierContractClass::V1(ContractClassV1::try_from(casm0.clone()).unwrap());
     let compiled_class_hash0 = CompiledClassHash(StarkHash::default());
 
     let class_hash1 = ClassHash(1u128.into());
@@ -47,6 +51,10 @@ fn read_state() {
     let storage_value2 = stark_felt!(999_u128);
     let class_hash2 = ClassHash(1234u128.into());
     let compiled_class_hash2 = CompiledClassHash(StarkHash::TWO);
+    let mut casm1 = get_test_casm();
+    casm1.bytecode[0] = BigUintAsHex { value: 12345u32.into() };
+    let blockifier_casm1 =
+        BlockifierContractClass::V1(ContractClassV1::try_from(casm1.clone()).unwrap());
 
     storage_writer
         .begin_rw_txn()
@@ -150,8 +158,7 @@ fn read_state() {
     assert_eq!(class_hash_after_block_1, class_hash0);
     let compiled_contract_class_after_block_1 =
         state_reader1.get_compiled_contract_class(&class_hash0).unwrap();
-    let expected_class = BlockifierContractClass::V1(ContractClassV1::try_from(casm0).unwrap());
-    assert_eq!(compiled_contract_class_after_block_1, expected_class);
+    assert_eq!(compiled_contract_class_after_block_1, blockifier_casm0);
 
     let state_number2 = StateNumber::right_after_block(BlockNumber(2));
     let mut state_reader2 = ExecutionStateReader {
@@ -176,12 +183,18 @@ fn read_state() {
         }],
         ..Default::default()
     });
+    let mut pending_classes = PendingClasses::default();
+    pending_classes.add_compiled_class(class_hash2, casm1);
+    state_reader2.maybe_pending_classes = Some(pending_classes);
+
     assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
     assert_eq!(state_reader2.get_storage_at(address2, storage_key0).unwrap(), storage_value2);
     assert_eq!(state_reader2.get_class_hash_at(address0).unwrap(), class_hash0);
     assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash2);
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
+    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
+    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
