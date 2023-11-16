@@ -590,33 +590,31 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_nonce(
         &self,
-        block_id: BlockId,
+        mut block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<Nonce> {
-        let block_id = if let BlockId::Tag(Tag::Pending) = block_id {
-            let pending_nonces = read_pending_data(&self.pending_data, &self.storage_reader)
-                .await?
-                .state_update
-                .state_diff
-                .nonces;
-            match pending_nonces.get(&contract_address) {
-                Some(nonce) => return Ok(*nonce),
-                None => BlockId::Tag(Tag::Latest),
-            }
-        } else {
-            block_id
-        };
+        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
+            &mut block_id,
+            &self.pending_data,
+            &self.storage_reader,
+        )
+        .await?;
+        let maybe_pending_nonces =
+            maybe_pending_data.map(|pending_data| pending_data.state_update.state_diff.nonces);
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
+        // Check that the block is valid and get the state number.
         let block_number = get_block_number(&txn, block_id)?;
-        let state = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
-
-        state_reader
-            .get_nonce_at(state, &contract_address)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
+        let state_number = StateNumber::right_after_block(block_number);
+        execution_utils::get_nonce_at(
+            &self.storage_reader,
+            state_number,
+            maybe_pending_nonces.as_ref(),
+            contract_address,
+        )
+        .map_err(internal_server_error)?
+        .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]

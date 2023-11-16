@@ -46,6 +46,7 @@ fn read_state() {
     let class_hash1 = ClassHash(1u128.into());
     let class1 = get_test_deprecated_contract_class();
     let address1 = ContractAddress(patricia_key!(DEPRECATED_CONTRACT_ADDRESS));
+    let nonce0 = Nonce(stark_felt!(1_u128));
 
     let address2 = ContractAddress(patricia_key!("0x123"));
     let storage_value2 = stark_felt!(999_u128);
@@ -55,6 +56,7 @@ fn read_state() {
     casm1.bytecode[0] = BigUintAsHex { value: 12345u32.into() };
     let blockifier_casm1 =
         BlockifierContractClass::V1(ContractClassV1::try_from(casm1.clone()).unwrap());
+    let nonce1 = Nonce(stark_felt!(2_u128));
 
     storage_writer
         .begin_rw_txn()
@@ -96,7 +98,7 @@ fn read_state() {
                     class_hash1 => class1,
                 ),
                 nonces: indexmap!(
-                    address0 => Nonce(stark_felt!(1_u128)),
+                    address0 => nonce0,
                     address1 => Nonce::default(),
                 ),
                 replaced_classes: indexmap!(),
@@ -153,7 +155,7 @@ fn read_state() {
     let storage_after_block_1 = state_reader1.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_1, storage_value0);
     let nonce_after_block_1 = state_reader1.get_nonce_at(address0).unwrap();
-    assert_eq!(nonce_after_block_1, Nonce(stark_felt!(1_u128)));
+    assert_eq!(nonce_after_block_1, nonce0);
     let class_hash_after_block_1 = state_reader1.get_class_hash_at(address0).unwrap();
     assert_eq!(class_hash_after_block_1, class_hash0);
     let compiled_contract_class_after_block_1 =
@@ -168,7 +170,7 @@ fn read_state() {
         maybe_pending_classes: None,
     };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
-    assert_eq!(nonce_after_block_2, Nonce(stark_felt!(1_u128)));
+    assert_eq!(nonce_after_block_2, nonce0);
 
     // Test pending state diff
     state_reader2.maybe_pending_state_diff = Some(PendingStateDiff {
@@ -181,6 +183,9 @@ fn read_state() {
             class_hash: class_hash2,
             compiled_class_hash: compiled_class_hash2,
         }],
+        nonces: indexmap!(
+            address2 => nonce1,
+        ),
         ..Default::default()
     });
     let mut pending_classes = PendingClasses::default();
@@ -195,6 +200,8 @@ fn read_state() {
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
     assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
     assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
+    assert_eq!(state_reader2.get_nonce_at(address0).unwrap(), nonce0);
+    assert_eq!(state_reader2.get_nonce_at(address2).unwrap(), nonce1);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
