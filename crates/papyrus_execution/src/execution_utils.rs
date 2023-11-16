@@ -19,7 +19,7 @@ use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageResult, StorageTxn};
-use starknet_api::core::{ClassHash, ContractAddress};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
 use thiserror::Error;
@@ -166,6 +166,23 @@ pub fn get_storage_at(
         &contract_address,
         &key,
     )
+}
+
+/// Get the nonce at the given contract in the given state. If there's a given pending nonces
+/// update, apply them on top of the given state.
+pub fn get_nonce_at(
+    storage_reader: &StorageReader,
+    state_number: StateNumber,
+    pending_nonces: Option<&IndexMap<ContractAddress, Nonce>>,
+    contract_address: ContractAddress,
+) -> StorageResult<Option<Nonce>> {
+    if let Some(pending_nonces) = pending_nonces {
+        if let Some(nonce) = pending_nonces.get(&contract_address) {
+            return Ok(Some(*nonce));
+        }
+    }
+
+    storage_reader.begin_ro_txn()?.get_state_reader()?.get_nonce_at(state_number, &contract_address)
 }
 
 /// Get the class hash of the contract at the given address, if it exists. If there's a given
