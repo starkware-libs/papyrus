@@ -142,7 +142,7 @@
             },
             "errors": [
                 {
-                    "$ref": "#/components/errors/INVALID_BLOCK_HASH"
+                    "$ref": "#/components/errors/BLOCK_NOT_FOUND"
                 }
             ]
         }
@@ -401,16 +401,12 @@
                 "code": 20,
                 "message": "Contract not found"
             },
-            "BLOCK_NOT_FOUND": {
-                "code": 24,
-                "message": "Block not found"
-            },
             "INVALID_TXN_HASH": {
                 "code": 25,
                 "message": "Invalid transaction hash"
             },
-            "INVALID_BLOCK_HASH": {
-                "code": 26,
+            "BLOCK_NOT_FOUND": {
+                "code": 24,
                 "message": "Invalid block hash"
             },
             "CONTRACT_ERROR": {
