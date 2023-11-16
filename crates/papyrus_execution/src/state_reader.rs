@@ -6,6 +6,7 @@ use blockifier::execution::contract_class::ContractClass as BlockifierContractCl
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};
 use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::state::DeclaredClassHashEntry;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
@@ -89,6 +90,15 @@ impl BlockifierStateReader for ExecutionStateReader {
     }
 
     fn get_compiled_class_hash(&mut self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
+        if let Some(pending_state_diff) = &self.maybe_pending_state_diff {
+            for DeclaredClassHashEntry { class_hash: other_class_hash, compiled_class_hash } in
+                &pending_state_diff.declared_classes
+            {
+                if class_hash == *other_class_hash {
+                    return Ok(*compiled_class_hash);
+                }
+            }
+        }
         let block_number = self
             .storage_reader
             .begin_ro_txn()
