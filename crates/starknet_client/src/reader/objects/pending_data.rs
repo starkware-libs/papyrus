@@ -14,6 +14,8 @@ pub struct PendingData {
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct PendingBlock {
+    #[serde(default)]
+    pub block_hash: Option<BlockHash>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     // In older versions, eth_l1_gas_price was named gas_price and there was no strk_l1_gas_price.
