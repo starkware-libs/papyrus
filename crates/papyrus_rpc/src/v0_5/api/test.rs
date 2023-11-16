@@ -18,7 +18,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
-use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::header::{HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageScope;
@@ -227,6 +227,8 @@ async fn block_hash_and_number() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
+        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
+        .unwrap()
         .commit()
         .unwrap();
     call_api_then_assert_and_validate_schema_for_result::<_, _, BlockHashAndNumber>(
@@ -264,6 +266,8 @@ async fn block_number() {
         .begin_rw_txn()
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -324,6 +328,8 @@ async fn get_block_transaction_count() {
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
@@ -405,6 +411,7 @@ async fn get_block_w_full_transactions() {
     let block_hash = BlockHash(random::<u64>().into());
     let sequencer_address: ContractAddress = random::<u64>().into();
     let timestamp = BlockTimestamp(random::<u64>());
+    let starknet_version = StarknetVersion("test".to_owned());
     block.header.block_hash = block_hash;
     block.header.sequencer = sequencer_address;
     block.header.timestamp = timestamp;
@@ -412,6 +419,8 @@ async fn get_block_w_full_transactions() {
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -424,7 +433,7 @@ async fn get_block_w_full_transactions() {
     };
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader(block.header.into()),
+        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
         transactions: Transactions::Full(vec![expected_transaction]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -510,6 +519,7 @@ async fn get_block_w_full_transactions() {
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
             l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            starknet_version: starknet_version.0.clone(),
         }),
         status: None,
         transactions: Transactions::Full(rpc_transactions),
@@ -522,6 +532,7 @@ async fn get_block_w_full_transactions() {
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
         pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
+        pending_block.starknet_version = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -562,6 +573,7 @@ async fn get_block_w_transaction_hashes() {
     let block_hash = BlockHash(random::<u64>().into());
     let sequencer_address: ContractAddress = random::<u64>().into();
     let timestamp = BlockTimestamp(random::<u64>());
+    let starknet_version = StarknetVersion("test".to_owned());
     block.header.block_hash = block_hash;
     block.header.sequencer = sequencer_address;
     block.header.timestamp = timestamp;
@@ -570,6 +582,8 @@ async fn get_block_w_transaction_hashes() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
+        .update_starknet_version(&block.header.block_number, &starknet_version)
+        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .commit()
@@ -577,7 +591,7 @@ async fn get_block_w_transaction_hashes() {
 
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader(block.header.into()),
+        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
         transactions: Transactions::Hashes(vec![block.body.transaction_hashes[0]]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -663,6 +677,7 @@ async fn get_block_w_transaction_hashes() {
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
             l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            starknet_version: starknet_version.0.clone(),
         }),
         status: None,
         transactions: Transactions::Hashes(
@@ -680,6 +695,7 @@ async fn get_block_w_transaction_hashes() {
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
         pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
+        pending_block.starknet_version = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -727,6 +743,8 @@ async fn get_class() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -883,6 +901,8 @@ async fn get_transaction_receipt() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
+        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
+        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .commit()
@@ -1009,6 +1029,8 @@ async fn get_class_at() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -1155,6 +1177,8 @@ async fn get_class_hash_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
+        .update_starknet_version(&header.block_number, &StarknetVersion::default())
+        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1283,6 +1307,8 @@ async fn get_nonce() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
+        .update_starknet_version(&header.block_number, &StarknetVersion::default())
+        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1410,6 +1436,8 @@ async fn get_storage_at() {
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
+        .unwrap()
+        .update_starknet_version(&header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
@@ -1743,6 +1771,8 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
+        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
+        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .commit()
@@ -1888,6 +1918,8 @@ async fn get_state_update() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
+        .unwrap()
+        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -2165,6 +2197,8 @@ async fn test_get_events(
 
         rw_txn = rw_txn
             .append_header(block_number, &block.header)
+            .unwrap()
+            .update_starknet_version(&block_number, &StarknetVersion::default())
             .unwrap()
             .append_body(block_number, block.body)
             .unwrap();
@@ -2743,6 +2777,8 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_header(parent_block.header.block_number, &parent_block.header)
         .unwrap()
+        .update_starknet_version(&parent_block.header.block_number, &StarknetVersion::default())
+        .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
         .append_state_diff(parent_block.header.block_number, StateDiff::default(), IndexMap::new())
@@ -3290,6 +3326,7 @@ auto_impl_get_test_instance! {
         pub sequencer_address: ContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_gas_price: ResourcePrice,
+        pub starknet_version: String,
     }
     pub struct ResourcePrice {
         pub price_in_wei: GasPrice,

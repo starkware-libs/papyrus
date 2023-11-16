@@ -16,6 +16,7 @@ use papyrus_execution::{
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::compiled_class::CasmStorageReader;
+use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
@@ -162,7 +163,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number =
             get_latest_block_number(&txn)?.ok_or_else(|| ErrorObjectOwned::from(NO_BLOCKS))?;
-        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
+        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?.into();
 
         Ok(BlockHashAndNumber { block_hash: header.block_hash, block_number })
     }
@@ -176,6 +177,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
                 l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
+                starknet_version: block.starknet_version,
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
             let client_transactions = block.transactions;
@@ -194,7 +196,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
         let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
 
         Ok(Block {
@@ -213,6 +215,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
                 l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
+                starknet_version: block.starknet_version,
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
             let client_transactions = block.transactions;
@@ -240,7 +243,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let block_number = get_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?);
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
         // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
         // the transaction hashes by the index.
         let transactions = get_block_txs_by_number(&txn, block_number)?;
@@ -417,7 +420,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
 
         // Get the block header for the block hash and state root.
         let block_number = get_block_number(&txn, block_id)?;
-        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
+        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?.into();
 
         // Get the old root.
         let old_root = match get_block_number(
@@ -425,7 +428,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.parent_hash)),
         ) {
             Ok(parent_block_number) => {
-                get_block_header_by_number::<_, BlockHeader>(&txn, parent_block_number)?.new_root
+                BlockHeader::from(get_block_header_by_number(&txn, parent_block_number)?).new_root
             }
             Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
         };
@@ -464,8 +467,9 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
             }
 
-            let block_hash = get_block_header_by_number::<_, BlockHeader>(&txn, block_number)
+            let block_hash = get_block_header_by_number(&txn, block_number)
                 .map_err(internal_server_error)?
+                .0
                 .block_hash;
 
             let thin_tx_output = txn
@@ -749,7 +753,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                         });
                     }
                     let header: BlockHeader = get_block_header_by_number(&txn, block_number)
-                        .map_err(internal_server_error)?;
+                        .map_err(internal_server_error)?
+                        .into();
                     let transaction_hash = txn
                         .get_transaction_hash_by_idx(&event_index.0)
                         .map_err(internal_server_error)?
@@ -1224,14 +1229,17 @@ async fn read_pending_data(
     storage_reader: &StorageReader,
 ) -> RpcResult<PendingData> {
     let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-    let latest_header: starknet_api::block::BlockHeader = match get_latest_block_number(&txn)? {
+    let (latest_header, starknet_version) = match get_latest_block_number(&txn)? {
         Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
-        None => starknet_api::block::BlockHeader {
-            parent_hash: BlockHash(
-                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
-            ),
-            ..Default::default()
-        },
+        None => (
+            starknet_api::block::BlockHeader {
+                parent_hash: BlockHash(
+                    StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
+                ),
+                ..Default::default()
+            },
+            StarknetVersion::default(),
+        ),
     };
     let pending_data = &pending_data.read().await;
     if pending_data.block.parent_block_hash == latest_header.block_hash {
@@ -1243,6 +1251,7 @@ async fn read_pending_data(
                 eth_l1_gas_price: latest_header.gas_price,
                 timestamp: latest_header.timestamp,
                 sequencer_address: latest_header.sequencer,
+                starknet_version: starknet_version.0,
                 ..Default::default()
             },
             state_update: ClientPendingStateUpdate {
