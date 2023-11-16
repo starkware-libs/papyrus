@@ -6,7 +6,7 @@ use blockifier::execution::contract_class::{
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
 use indexmap::{indexmap, IndexMap};
-use papyrus_common::state::{DeployedContract, StorageEntry};
+use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -46,6 +46,7 @@ fn read_state() {
     let address2 = ContractAddress(patricia_key!("0x123"));
     let storage_value2 = stark_felt!(999_u128);
     let class_hash2 = ClassHash(1234u128.into());
+    let compiled_class_hash2 = CompiledClassHash(StarkHash::TWO);
 
     storage_writer
         .begin_rw_txn()
@@ -132,6 +133,7 @@ fn read_state() {
         compiled_contract_class_after_block_0, Err(StateError::UndeclaredClassHash(class_hash))
         if class_hash == class_hash0
     );
+    assert_eq!(state_reader0.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
 
     let state_number1 = StateNumber::right_after_block(BlockNumber(1));
     let mut state_reader1 = ExecutionStateReader {
@@ -168,11 +170,18 @@ fn read_state() {
             address2 => vec![StorageEntry{key: storage_key0, value: storage_value2}],
         ),
         deployed_contracts: vec![DeployedContract { address: address2, class_hash: class_hash2 }],
+        declared_classes: vec![DeclaredClassHashEntry {
+            class_hash: class_hash2,
+            compiled_class_hash: compiled_class_hash2,
+        }],
         ..Default::default()
     });
     assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
     assert_eq!(state_reader2.get_storage_at(address2, storage_key0).unwrap(), storage_value2);
+    assert_eq!(state_reader2.get_class_hash_at(address0).unwrap(), class_hash0);
     assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash2);
+    assert_eq!(state_reader2.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
+    assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
