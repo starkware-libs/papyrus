@@ -8,6 +8,20 @@
     "servers": [],
     "methods": [
         {
+            "name": "starknet_specVersion",
+            "summary": "Returns the version of the Starknet JSON-RPC specification being used",
+            "params": [],
+            "result": {
+                "name": "result",
+                "description": "Semver of Starknet's JSON-RPC spec being used",
+                "required": true,
+                "schema": {
+                    "title": "JSON-RPC spec version",
+                    "type": "string"
+                }
+            }
+        },
+        {
             "name": "starknet_getBlockWithTxHashes",
             "summary": "Get block information with transaction hashes given the block id",
             "params": [

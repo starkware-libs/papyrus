@@ -116,6 +116,7 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
+use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{
     get_block_status,
     get_latest_block_number,
@@ -144,6 +145,11 @@ pub struct JsonRpcServerV0_5Impl {
 
 #[async_trait]
 impl JsonRpcServer for JsonRpcServerV0_5Impl {
+    #[instrument(skip(self), level = "debug", err, ret)]
+    fn spec_version(&self) -> RpcResult<String> {
+        Ok(format!("{VERSION}"))
+    }
+
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
