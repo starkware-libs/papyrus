@@ -696,37 +696,6 @@
             }
         },
         {
-            "name": "starknet_pendingTransactions",
-            "summary": "Returns the transactions in the transaction pool, recognized by this sequencer",
-            "params": [],
-            "result": {
-                "name": "result",
-                "schema": {
-                    "type": "array",
-                    "title": "Pending Transactions",
-                    "items": {
-                        "allOf": [
-                            {
-                                "$ref": "#/components/schemas/TXN"
-                            },
-                            {
-                                "type": "object",
-                                "properties": {
-                                    "transaction_hash": {
-                                        "title": "transaction hash",
-                                        "$ref": "#/components/schemas/TXN_HASH"
-                                    }
-                                },
-                                "required": [
-                                    "transaction_hash"
-                                ]
-                            }
-                        ]
-                    }
-                }
-            }
-        },
-        {
             "name": "starknet_syncing",
             "summary": "Returns an object about the sync status, or false if the node is not synching",
             "params": [],
