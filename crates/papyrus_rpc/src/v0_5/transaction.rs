@@ -149,7 +149,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
             starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                 Err(internal_server_error(
                     "The requested transaction is a deploy account of version 3, which is not \
-                     supported on v0.5.1.",
+                     supported on v0.4.0.",
                 ))
             }
         }
@@ -256,7 +256,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
             })),
             starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
                 "The requested transaction is an invoke of version 3, which is not supported on \
-                 v0.5.1.",
+                 v0.4.0.",
             )),
         }
     }
@@ -317,7 +317,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 }
                 starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
                     "The requested transaction is a declare of version 3, which is not supported \
-                     on v0.5.1.",
+                     on v0.4.0.",
                 )),
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
@@ -328,7 +328,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                     starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                         Err(internal_server_error(
                             "The requested transaction is a deploy account of version 3, which is \
-                             not supported on v0.5.1.",
+                             not supported on v0.4.0.",
                         ))
                     }
                     _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
@@ -337,7 +337,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
                     "The requested transaction is a invoke of version 3, which is not supported \
-                     on v0.5.1.",
+                     on v0.4.0.",
                 )),
                 _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
             },

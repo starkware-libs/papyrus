@@ -25,7 +25,7 @@ use super::{
     DeclareType,
 };
 use crate::test_utils::{get_starknet_spec_api_schema_for_components, SpecFile};
-use crate::version_config::VERSION_0_5 as Version;
+use crate::version_config::VERSION_0_4;
 
 fn validate_tx_fits_rpc(tx: BroadcastedDeclareTransaction) {
     lazy_static! {

@@ -13,7 +13,7 @@ use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
 use super::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::test_utils::{get_starknet_spec_api_schema_for_method_results, SpecFile};
-use crate::version_config::VERSION_0_5 as VERSION;
+use crate::version_config::VERSION_0_4;
 
 auto_impl_get_test_instance! {
     pub struct AddInvokeOkResult {
@@ -32,7 +32,7 @@ auto_impl_get_test_instance! {
 fn test_ok_result_fits_rpc<AddOkResult: GetTestInstance + Serialize>(spec_method: &str) {
     let schema = get_starknet_spec_api_schema_for_method_results(
         &[(SpecFile::WriteApi, &[spec_method])],
-        &VERSION,
+        &VERSION_0_4,
     );
     let result = AddOkResult::get_test_instance(&mut get_rng());
     assert!(schema.is_valid(&serde_json::to_value(result).unwrap()));

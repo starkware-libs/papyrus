@@ -63,7 +63,7 @@ pub mod api_impl;
 #[cfg(test)]
 mod test;
 
-#[versioned_rpc("V0_5")]
+#[versioned_rpc("V0_4")]
 #[async_trait]
 pub trait JsonRpc {
     /// Returns the version of the Starknet JSON-RPC specification being used
@@ -135,7 +135,7 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
-    fn get_class_at(
+    async fn get_class_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
@@ -362,7 +362,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             starknet_api::transaction::DeclareTransaction::V3(_),
         ) => Err(internal_server_error(
             "The requested transaction is a declare of version 3, which is not supported on \
-             v0.5.1.",
+             v0.4.0.",
         )),
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
@@ -375,7 +375,7 @@ pub(crate) fn stored_txn_to_executable_txn(
                 starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                     Err(internal_server_error(
                         "The requested transaction is a deploy account of version 3, which is not \
-                         supported on v0.5.1.",
+                         supported on v0.4.0.",
                     ))
                 }
             }

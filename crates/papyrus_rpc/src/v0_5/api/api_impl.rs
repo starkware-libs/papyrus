@@ -111,7 +111,7 @@ use super::{
     EventsChunk,
     FeeEstimate,
     GatewayContractClass,
-    JsonRpcV0_5Server as JsonRpcServer,
+    JsonRpcV0_4Server,
     SimulatedTransaction,
     SimulationFlag,
     TransactionTraceWithHash,
@@ -132,7 +132,7 @@ lazy_static! {
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_5Impl {
+pub struct JsonRpcServerV0_4Impl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -146,7 +146,7 @@ pub struct JsonRpcServerV0_5Impl {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerV0_5Impl {
+impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn spec_version(&self) -> RpcResult<String> {
         Ok(format!("{VERSION}"))
@@ -564,34 +564,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    fn get_class_at(
+    async fn get_class_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<GatewayContractClass> {
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-
-        let block_number = get_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
-        let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
-
-        let class_hash = state_reader
-            .get_class_hash_at(state_number, &contract_address)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
-
-        if let Some(class) = state_reader
-            .get_class_definition_at(state_number, &class_hash)
-            .map_err(internal_server_error)?
-        {
-            Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
-        } else {
-            let class = state_reader
-                .get_deprecated_class_definition_at(state_number, &class_hash)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(CONTRACT_NOT_FOUND))?;
-            Ok(GatewayContractClass::Cairo0(class.try_into().map_err(internal_server_error)?))
-        }
+        let class_hash = self.get_class_hash_at(block_id, contract_address).await?;
+        self.get_class(block_id, class_hash).await
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -1268,7 +1247,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_5Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,

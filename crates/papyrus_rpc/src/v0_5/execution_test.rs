@@ -49,7 +49,7 @@ use test_utils::{
     GetTestInstance,
 };
 
-use super::api::api_impl::JsonRpcServerV0_5Impl as JsonRpcServerImpl;
+use super::api::api_impl::JsonRpcServerV0_4Impl;
 use super::api::{
     decompress_program,
     FeeEstimate,
@@ -81,7 +81,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::version_config::VERSION_0_5;
+use crate::version_config::VERSION_0_4;
 
 lazy_static! {
     pub static ref GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
@@ -99,7 +99,8 @@ lazy_static! {
 
 #[tokio::test]
 async fn execution_call() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -108,7 +109,7 @@ async fn execution_call() {
 
     let res = module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_5_call",
+            "starknet_V0_4_call",
             (
                 *DEPRECATED_CONTRACT_ADDRESS.0.key(),
                 selector_from_name("test_storage_read_write"),
@@ -124,7 +125,7 @@ async fn execution_call() {
     // Calling a non-existent contract.
     let err = module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_5_call",
+            "starknet_V0_4_call",
             (
                 ContractAddress(patricia_key!("0x1234")),
                 selector_from_name("aaa"),
@@ -140,7 +141,7 @@ async fn execution_call() {
     // Calling a non-existent block.
     let err = module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_5_call",
+            "starknet_V0_4_call",
             (
                 ContractAddress(patricia_key!("0x1234")),
                 selector_from_name("aaa"),
@@ -156,7 +157,7 @@ async fn execution_call() {
     // Calling a non-existent function (contract error).
     let err = module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_5_call",
+            "starknet_V0_4_call",
             (
                 *DEPRECATED_CONTRACT_ADDRESS,
                 selector_from_name("aaa"),
@@ -172,7 +173,8 @@ async fn execution_call() {
 
 #[tokio::test]
 async fn call_estimate_fee() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -193,7 +195,7 @@ async fn call_estimate_fee() {
 
     let res = module
         .call::<_, Vec<FeeEstimate>>(
-            "starknet_V0_5_estimateFee",
+            "starknet_V0_4_estimateFee",
             (
                 vec![invoke.clone()],
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
@@ -216,7 +218,7 @@ async fn call_estimate_fee() {
     // price produces a different fee.
     let res = module
         .call::<_, Vec<FeeEstimate>>(
-            "starknet_V0_5_estimateFee",
+            "starknet_V0_4_estimateFee",
             (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
         )
         .await
@@ -226,7 +228,8 @@ async fn call_estimate_fee() {
 
 #[tokio::test]
 async fn call_simulate() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -245,7 +248,7 @@ async fn call_simulate() {
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
+            "starknet_V0_4_simulateTransactions",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
@@ -283,7 +286,8 @@ async fn call_simulate() {
 
 #[tokio::test]
 async fn call_simulate_skip_validate() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -302,7 +306,7 @@ async fn call_simulate_skip_validate() {
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
+            "starknet_V0_4_simulateTransactions",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
@@ -340,7 +344,8 @@ async fn call_simulate_skip_validate() {
 
 #[tokio::test]
 async fn call_simulate_skip_fee_charge() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -359,7 +364,7 @@ async fn call_simulate_skip_fee_charge() {
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
+            "starknet_V0_4_simulateTransactions",
             (
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
                 vec![invoke],
@@ -397,7 +402,8 @@ async fn call_simulate_skip_fee_charge() {
 
 #[tokio::test]
 async fn trace_block_transactions() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
@@ -468,14 +474,14 @@ async fn trace_block_transactions() {
         .unwrap();
 
     let tx_1_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash1])
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
         .await
         .unwrap();
 
     assert_matches!(tx_1_trace, TransactionTrace::Invoke(_));
 
     let tx_2_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash2])
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
         .await
         .unwrap();
 
@@ -483,7 +489,7 @@ async fn trace_block_transactions() {
 
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_5_traceBlockTransactions",
+            "starknet_V0_4_traceBlockTransactions",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
@@ -515,7 +521,7 @@ fn validate_fee_estimation_schema() {
     let fee_estimate = FeeEstimate::get_test_instance(&mut rng);
     let schema = get_starknet_spec_api_schema_for_components(
         &[(SpecFile::StarknetApiOpenrpc, &["FEE_ESTIMATE"])],
-        &VERSION_0_5,
+        &VERSION_0_4,
     );
     let serialized = serde_json::to_value(fee_estimate).unwrap();
     assert!(validate_schema(&schema, &serialized));
@@ -528,7 +534,7 @@ fn validate_transaction_trace_with_hash_schema() {
     let serialized = serde_json::to_value(txs_with_trace).unwrap();
     let schema = get_starknet_spec_api_schema_for_method_results(
         &[(SpecFile::TraceApi, &["starknet_traceBlockTransactions"])],
-        &VERSION_0_5,
+        &VERSION_0_4,
     );
     assert!(validate_schema(&schema, &serialized));
 }
@@ -538,7 +544,7 @@ fn validate_transaction_trace_schema() {
     let mut rng = get_rng();
     let schema = get_starknet_spec_api_schema_for_components(
         &[(SpecFile::TraceApi, &["TRANSACTION_TRACE"])],
-        &VERSION_0_5,
+        &VERSION_0_4,
     );
 
     let invoke_trace =
