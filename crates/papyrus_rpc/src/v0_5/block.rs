@@ -3,7 +3,7 @@ use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GasPrice};
 use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::error::BLOCK_NOT_FOUND;
@@ -19,6 +19,7 @@ pub struct BlockHeader {
     pub sequencer_address: ContractAddress,
     pub new_root: GlobalRoot,
     pub timestamp: BlockTimestamp,
+    pub l1_gas_price: ResourcePrice,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -27,6 +28,7 @@ pub struct PendingBlockHeader {
     pub parent_hash: BlockHash,
     pub sequencer_address: ContractAddress,
     pub timestamp: BlockTimestamp,
+    pub l1_gas_price: ResourcePrice,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -45,8 +47,14 @@ impl From<starknet_api::block::BlockHeader> for BlockHeader {
             sequencer_address: header.sequencer,
             new_root: header.state_root,
             timestamp: header.timestamp,
+            l1_gas_price: ResourcePrice { price_in_wei: header.gas_price },
         }
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ResourcePrice {
+    pub price_in_wei: GasPrice,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

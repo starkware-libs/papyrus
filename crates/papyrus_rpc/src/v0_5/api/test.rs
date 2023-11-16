@@ -34,6 +34,7 @@ use starknet_api::block::{
     BlockNumber,
     BlockStatus,
     BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -95,7 +96,7 @@ use test_utils::{
 };
 
 use super::super::api::EventsChunk;
-use super::super::block::{Block, GeneralBlockHeader, PendingBlockHeader};
+use super::super::block::{Block, GeneralBlockHeader, PendingBlockHeader, ResourcePrice};
 use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::error::{
@@ -502,11 +503,13 @@ async fn get_block_w_full_transactions() {
             .unzip();
     let pending_sequencer_address: ContractAddress = random::<u64>().into();
     let pending_timestamp = BlockTimestamp(random::<u64>());
+    let pending_eth_l1_gas_price = GasPrice(random::<u128>());
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
+            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
         }),
         status: None,
         transactions: Transactions::Full(rpc_transactions),
@@ -518,6 +521,7 @@ async fn get_block_w_full_transactions() {
         pending_block.parent_block_hash = block_hash;
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
+        pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -652,11 +656,13 @@ async fn get_block_w_transaction_hashes() {
             .unzip();
     let pending_sequencer_address: ContractAddress = random::<u64>().into();
     let pending_timestamp = BlockTimestamp(random::<u64>());
+    let pending_eth_l1_gas_price = GasPrice(random::<u128>());
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
+            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
         }),
         status: None,
         transactions: Transactions::Hashes(
@@ -673,6 +679,7 @@ async fn get_block_w_transaction_hashes() {
         pending_block.parent_block_hash = block_hash;
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
+        pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -3282,5 +3289,9 @@ auto_impl_get_test_instance! {
         pub parent_hash: BlockHash,
         pub sequencer_address: ContractAddress,
         pub timestamp: BlockTimestamp,
+        pub l1_gas_price: ResourcePrice,
+    }
+    pub struct ResourcePrice {
+        pub price_in_wei: GasPrice,
     }
 }

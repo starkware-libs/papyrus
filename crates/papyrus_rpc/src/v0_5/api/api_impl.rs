@@ -54,6 +54,7 @@ use super::super::block::{
     BlockHeader,
     GeneralBlockHeader,
     PendingBlockHeader,
+    ResourcePrice,
 };
 use super::super::broadcasted_transaction::{
     BroadcastedDeclareTransaction,
@@ -174,6 +175,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
+                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
             let client_transactions = block.transactions;
@@ -210,6 +212,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
+                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
             let client_transactions = block.transactions;

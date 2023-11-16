@@ -1378,6 +1378,11 @@
                         "title": "Sequencer address",
                         "description": "The StarkNet identity of the sequencer submitting this block",
                         "$ref": "#/components/schemas/FELT"
+                    },
+                    "l1_gas_price": {
+                        "title": "L1 gas price",
+                        "descritpion": "The price of l1 gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
                     }
                 },
                 "required": [
@@ -1386,7 +1391,8 @@
                     "block_number",
                     "new_root",
                     "timestamp",
-                    "sequencer_address"
+                    "sequencer_address",
+                    "l1_gas_price"
                 ]
             },
             "PENDING_BLOCK_HEADER": {
@@ -3222,6 +3228,24 @@
                     "gas_consumed",
                     "gas_price",
                     "overall_fee"
+                ]
+            },
+            "RESOURCE_PRICE": {
+                "type": "object",
+                "properties": {
+                    "price_in_strk": {
+                        "title": "price in strk",
+                        "description": "the price of one unit of the given resource, denominated in strk",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    },
+                    "price_in_wei": {
+                        "title": "price in wei",
+                        "description": "the price of one unit of the given resource, denominated in wei",
+                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                    }
+                },
+                "required": [
+                    "price_in_wei"
                 ]
             }
         },
