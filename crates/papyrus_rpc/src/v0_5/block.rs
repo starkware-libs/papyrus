@@ -1,9 +1,9 @@
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
+use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GasPrice};
 use starknet_api::core::{ContractAddress, GlobalRoot};
 
 use super::error::BLOCK_NOT_FOUND;
@@ -19,6 +19,8 @@ pub struct BlockHeader {
     pub sequencer_address: ContractAddress,
     pub new_root: GlobalRoot,
     pub timestamp: BlockTimestamp,
+    pub l1_gas_price: ResourcePrice,
+    pub starknet_version: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -27,6 +29,8 @@ pub struct PendingBlockHeader {
     pub parent_hash: BlockHash,
     pub sequencer_address: ContractAddress,
     pub timestamp: BlockTimestamp,
+    pub l1_gas_price: ResourcePrice,
+    pub starknet_version: String,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -36,8 +40,9 @@ pub enum GeneralBlockHeader {
     PendingBlockHeader(PendingBlockHeader),
 }
 
-impl From<starknet_api::block::BlockHeader> for BlockHeader {
-    fn from(header: starknet_api::block::BlockHeader) -> Self {
+impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
+    fn from(header_version: (starknet_api::block::BlockHeader, StarknetVersion)) -> Self {
+        let (header, starknet_version) = header_version;
         BlockHeader {
             block_hash: header.block_hash,
             parent_hash: header.parent_hash,
@@ -45,8 +50,16 @@ impl From<starknet_api::block::BlockHeader> for BlockHeader {
             sequencer_address: header.sequencer,
             new_root: header.state_root,
             timestamp: header.timestamp,
+            l1_gas_price: ResourcePrice { price_in_wei: header.gas_price },
+            starknet_version: starknet_version.0,
         }
     }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ResourcePrice {
+    pub price_in_wei: GasPrice,
+    // TODO: Add price in strk.
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -58,19 +71,23 @@ pub struct Block {
     pub transactions: Transactions,
 }
 
-pub fn get_block_header_by_number<
-    Mode: TransactionKind,
-    BlockHeader: From<starknet_api::block::BlockHeader>,
->(
+pub fn get_block_header_by_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_number: BlockNumber,
-) -> Result<BlockHeader, ErrorObjectOwned> {
+) -> Result<(starknet_api::block::BlockHeader, StarknetVersion), ErrorObjectOwned> {
     let header = txn
         .get_block_header(block_number)
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
-    Ok(BlockHeader::from(header))
+    let starknet_version = txn
+        .get_starknet_version(block_number)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| {
+        internal_server_error(format!("Couldn't find starknet version for block {}", block_number))
+    })?;
+
+    Ok((header, starknet_version))
 }
 
 pub(crate) fn get_block_number<Mode: TransactionKind>(
