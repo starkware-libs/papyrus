@@ -183,9 +183,17 @@
                             },
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
+                            },
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "INVOKE"
+                                ]
                             }
                         },
                         "required": [
+                            "type",
                             "execute_invocation"
                         ],
                         "additionalProperties": false
@@ -200,11 +208,17 @@
                             },
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
+                            },
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
                             }
                         },
                         "required": [
-                            "validate_invocation",
-                            "fee_transfer_invocation"
+                            "type"
                         ],
                         "additionalProperties": false
                     },
@@ -222,12 +236,18 @@
                             },
                             "fee_transfer_invocation": {
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
+                            },
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "DEPLOY_ACCOUNT"
+                                ]
                             }
                         },
                         "required": [
-                            "validate_invocation",
-                            "constructor_invocation",
-                            "fee_transfer_invocation"
+                            "type",
+                            "constructor_invocation"
                         ],
                         "additionalProperties": false
                     },
@@ -239,9 +259,17 @@
                             "function_invocation": {
                                 "description": "the trace of the __execute__ call or constructor call, depending on the transaction type (none for declare transactions)",
                                 "$ref": "#/components/schemas/FUNCTION_INVOCATION"
+                            },
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "L1_HANDLER"
+                                ]
                             }
                         },
                         "required": [
+                            "type",
                             "function_invocation"
                         ],
                         "additionalProperties": false
@@ -368,15 +396,6 @@
             },
             "BROADCASTED_TXN": {
                 "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_TXN"
-            },
-            "DECLARE_TXN": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"
-            },
-            "BROADCASTED_DECLARE_TXN": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/BROADCASTED_DECLARE_TXN"
-            },
-            "DEPLOY_ACCOUNT_TXN": {
-                "$ref": "./starknet_api_openrpc.json#/components/schemas/DEPLOY_ACCOUNT_TXN"
             }
         },
         "errors": {
