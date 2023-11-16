@@ -48,20 +48,21 @@ impl BlockifierStateReader for ExecutionStateReader {
 
     // Returns the default value if the contract address is not found.
     fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
-        Ok(self
-            .storage_reader
-            .begin_ro_txn()
-            .map_err(storage_err_to_state_err)?
-            .get_state_reader()
-            .map_err(storage_err_to_state_err)?
-            .get_nonce_at(self.state_number, &contract_address)
-            .map_err(storage_err_to_state_err)?
-            .unwrap_or_default())
+        Ok(execution_utils::get_nonce_at(
+            &self.storage_reader,
+            self.state_number,
+            self.maybe_pending_state_diff
+                .as_ref()
+                .map(|pending_state_diff| &pending_state_diff.nonces),
+            contract_address,
+        )
+        .map_err(storage_err_to_state_err)?
+        .unwrap_or_default())
     }
 
     // Returns the default value if the contract address is not found.
     fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> StateResult<ClassHash> {
-        execution_utils::get_class_hash_at(
+        Ok(execution_utils::get_class_hash_at(
             &self.storage_reader,
             self.state_number,
             self.maybe_pending_state_diff
@@ -69,8 +70,8 @@ impl BlockifierStateReader for ExecutionStateReader {
                 .map(|pending_state_diff| &pending_state_diff.deployed_contracts),
             contract_address,
         )
-        .map_err(storage_err_to_state_err)
-        .map(|maybe_class_hash| maybe_class_hash.unwrap_or_default())
+        .map_err(storage_err_to_state_err)?
+        .unwrap_or_default())
     }
 
     fn get_compiled_contract_class(
