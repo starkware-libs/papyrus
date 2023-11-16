@@ -5,11 +5,15 @@ use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::transaction::{EventContent, MessageToL1};
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum TransactionTrace {
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransactionTrace),
+    #[serde(rename = "INVOKE")]
     Invoke(InvokeTransactionTrace),
+    #[serde(rename = "DECLARE")]
     Declare(DeclareTransactionTrace),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransactionTrace),
 }
 
