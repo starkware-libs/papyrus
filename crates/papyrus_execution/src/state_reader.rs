@@ -48,15 +48,16 @@ impl BlockifierStateReader for ExecutionStateReader {
 
     // Returns the default value if the contract address is not found.
     fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
-        Ok(self
-            .storage_reader
-            .begin_ro_txn()
-            .map_err(storage_err_to_state_err)?
-            .get_state_reader()
-            .map_err(storage_err_to_state_err)?
-            .get_nonce_at(self.state_number, &contract_address)
-            .map_err(storage_err_to_state_err)?
-            .unwrap_or_default())
+        execution_utils::get_nonce_at(
+            &self.storage_reader,
+            self.state_number,
+            self.maybe_pending_state_diff
+                .as_ref()
+                .map(|pending_state_diff| &pending_state_diff.nonces),
+            contract_address,
+        )
+        .map_err(storage_err_to_state_err)
+        .map(|maybe_nonce| maybe_nonce.unwrap_or_default())
     }
 
     // Returns the default value if the contract address is not found.
