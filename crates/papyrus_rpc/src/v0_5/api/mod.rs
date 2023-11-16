@@ -135,7 +135,7 @@ pub trait JsonRpc {
 
     /// Gets the contract class definition in the given block at the given address.
     #[method(name = "getClassAt")]
-    fn get_class_at(
+    async fn get_class_at(
         &self,
         block_id: BlockId,
         contract_address: ContractAddress,
