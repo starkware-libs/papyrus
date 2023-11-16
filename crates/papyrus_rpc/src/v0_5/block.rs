@@ -59,6 +59,7 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ResourcePrice {
     pub price_in_wei: GasPrice,
+    // TODO: Add price in strk.
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
