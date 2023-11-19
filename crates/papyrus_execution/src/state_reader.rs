@@ -4,11 +4,12 @@ mod state_reader_test;
 
 use blockifier::execution::contract_class::{
     ContractClass as BlockifierContractClass,
+    ContractClassV0,
     ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};
-use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::DeclaredClassHashEntry;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -86,6 +87,17 @@ impl BlockifierStateReader for ExecutionStateReader {
         {
             return Ok(BlockifierContractClass::V1(
                 ContractClassV1::try_from(pending_casm).map_err(StateError::ProgramError)?,
+            ));
+        }
+        if let Some(ApiContractClass::DeprecatedContractClass(pending_deprecated_class)) = self
+            .maybe_pending_classes
+            .as_ref()
+            .and_then(|pending_classes| pending_classes.get_class(*class_hash))
+            .clone()
+        {
+            return Ok(BlockifierContractClass::V0(
+                ContractClassV0::try_from(pending_deprecated_class)
+                    .map_err(StateError::ProgramError)?,
             ));
         }
         match get_contract_class(
