@@ -1,5 +1,13 @@
 #![warn(missing_docs)]
 //! Functionality for executing Starknet transactions and contract entry points.
+//!
+//! In this module, we use the term "state_number" to refer to the state of the storage at the
+//! execution, and "block_context_block_number" to refer to the block in which the transactions
+//! should run. For example, if you want to simulate transactions at the beginning of block 10, you
+//! should use state_number = 10 and block_context_block_number = 10. If you want to simulate
+//! transactions at the end of block 10, you should use state_number = 11 and
+//! block_context_block_number = 10.
+//! See documentation of [StateNumber] for more details.
 #[cfg(test)]
 mod execution_test;
 pub mod execution_utils;
@@ -182,7 +190,7 @@ pub fn execute_call(
     // transactions.
     {
         let txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&txn, state_number.0, state_number)?;
+        verify_node_synced(&txn, block_context_number, state_number)?;
         verify_contract_exists(contract_address, &txn, state_number)?;
     }
 
