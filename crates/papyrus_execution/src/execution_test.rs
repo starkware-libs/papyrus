@@ -6,6 +6,7 @@ use blockifier::abi::abi_utils::get_storage_var_address;
 use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::execution::call_info::Retdata;
 use indexmap::indexmap;
+use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockNumber, GasPrice};
@@ -52,6 +53,7 @@ use crate::{
     BlockExecutionConfig,
     ExecutableTransactionInput,
     ExecutionConfigByBlock,
+    ExecutionError,
 };
 
 // Test calling entry points of a deprecated class.
@@ -773,4 +775,60 @@ fn induced_state_diff() {
         replaced_classes: indexmap! {},
     };
     assert_eq!(simulation_results[3].1, expected_deploy_account);
+}
+
+#[test]
+fn block_numbers() {
+    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
+    prepare_storage(storage_writer);
+
+    let casm_marker = storage_reader.begin_ro_txn().unwrap().get_compiled_class_marker().unwrap();
+    let latest_block = casm_marker.prev().unwrap();
+    let chain_id = ChainId(CHAIN_ID.to_string());
+
+    // At the beginning of the latest block.
+    let state_number = StateNumber::right_before_block(latest_block);
+    let block_context = latest_block;
+    execute_call(
+        storage_reader.clone(),
+        &chain_id,
+        state_number,
+        block_context,
+        &DEPRECATED_CONTRACT_ADDRESS,
+        selector_from_name("without_arg"),
+        Calldata::default(),
+        &test_block_execution_config(),
+    )
+    .unwrap();
+
+    // At the end of the latest block.
+    let state_number = StateNumber::right_after_block(latest_block);
+    let block_context = latest_block;
+    execute_call(
+        storage_reader.clone(),
+        &chain_id,
+        state_number,
+        block_context,
+        &DEPRECATED_CONTRACT_ADDRESS,
+        selector_from_name("without_arg"),
+        Calldata::default(),
+        &test_block_execution_config(),
+    )
+    .unwrap();
+
+    // At the beginning of the next block.
+    let state_number = StateNumber::right_before_block(latest_block.next());
+    let block_context = latest_block.next();
+    let err = execute_call(
+        storage_reader.clone(),
+        &chain_id,
+        state_number,
+        block_context,
+        &DEPRECATED_CONTRACT_ADDRESS,
+        selector_from_name("without_arg"),
+        Calldata::default(),
+        &test_block_execution_config(),
+    )
+    .unwrap_err();
+    assert_matches!(err, ExecutionError::NotSynced { state_number: _, compiled_class_marker: _ });
 }
