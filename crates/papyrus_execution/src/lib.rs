@@ -178,13 +178,13 @@ pub fn execute_call(
     calldata: Calldata,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
-    // Pre-execution checks, drop the storage transaction before the execution to avoid long read
-    // transactions.
-    {
-        let txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&txn, state_number.0, state_number)?;
-        verify_contract_exists(contract_address, &txn, state_number)?;
-    }
+    verify_node_synced(&storage_reader.begin_ro_txn()?, block_context_number, state_number)?;
+    verify_contract_exists(
+        contract_address.clone(),
+        &storage_reader,
+        state_number,
+        maybe_pending_state_diff.as_ref(),
+    )?;
 
     let call_entry_point = CallEntryPoint {
         class_hash: None,
@@ -247,13 +247,18 @@ fn verify_node_synced(
 }
 
 fn verify_contract_exists(
-    contract_address: &ContractAddress,
-    txn: &StorageTxn<'_, RO>,
+    contract_address: ContractAddress,
+    storage_reader: &StorageReader,
     state_number: StateNumber,
+    maybe_pending_state_diff: Option<&PendingStateDiff>,
 ) -> ExecutionResult<()> {
-    txn.get_state_reader()?.get_class_hash_at(state_number, contract_address)?.ok_or(
-        ExecutionError::ContractNotFound { contract_address: *contract_address, state_number },
-    )?;
+    execution_utils::get_class_hash_at(
+        storage_reader,
+        state_number,
+        maybe_pending_state_diff.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
+        contract_address,
+    )?
+    .ok_or(ExecutionError::ContractNotFound { contract_address, state_number })?;
     Ok(())
 }
 
