@@ -2,6 +2,8 @@
 #[path = "transaction_test.rs"]
 mod transaction_test;
 
+use std::collections::HashMap;
+
 use jsonrpsee::types::ErrorObjectOwned;
 use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
@@ -17,7 +19,9 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
+use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
+    Builtin,
     Calldata,
     ContractAddressSalt,
     DeployTransaction,
@@ -455,6 +459,7 @@ pub struct DeclareTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
+    pub execution_resources: ExecutionResources,
 }
 
 /// A deploy-account transaction output.
@@ -466,6 +471,7 @@ pub struct DeployAccountTransactionOutput {
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
     pub execution_status: TransactionExecutionStatus,
+    pub execution_resources: ExecutionResources,
 }
 
 /// A deploy transaction output.
@@ -477,6 +483,7 @@ pub struct DeployTransactionOutput {
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
     pub execution_status: TransactionExecutionStatus,
+    pub execution_resources: ExecutionResources,
 }
 
 /// An invoke transaction output.
@@ -487,6 +494,7 @@ pub struct InvokeTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
+    pub execution_resources: ExecutionResources,
 }
 
 /// An L1 handler transaction output.
@@ -497,6 +505,45 @@ pub struct L1HandlerTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
+    pub execution_resources: ExecutionResources,
+}
+
+// Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct ExecutionResources {
+    pub steps: StarkFelt,
+    #[serde(flatten)]
+    pub builtin_instance_counter: HashMap<Builtin, StarkFelt>,
+    pub memory_holes: StarkFelt,
+}
+
+impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources {
+    fn from(value: starknet_api::transaction::ExecutionResources) -> Self {
+        let mut res = Self {
+            steps: value.steps.into(),
+            builtin_instance_counter: value
+                .builtin_instance_counter
+                .into_iter()
+                .map(|(k, v)| (k, v.into()))
+                .collect(),
+            memory_holes: value.memory_holes.into(),
+        };
+
+        // In RPC 0.5 all builtins are required to be present in the serialization.
+        for builtin in [
+            Builtin::RangeCheck,
+            Builtin::Pedersen,
+            Builtin::Poseidon,
+            Builtin::EcOp,
+            Builtin::Ecdsa,
+            Builtin::Bitwise,
+            Builtin::Keccak,
+            Builtin::SegmentArena,
+        ] {
+            res.builtin_instance_counter.entry(builtin).or_default();
+        }
+        res
+    }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -549,6 +596,7 @@ impl TransactionOutput {
                     messages_sent: thin_declare.messages_sent,
                     events,
                     execution_status: thin_declare.execution_status,
+                    execution_resources: thin_declare.execution_resources.into(),
                 })
             }
             ThinTransactionOutput::Deploy(thin_deploy) => {
@@ -558,6 +606,7 @@ impl TransactionOutput {
                     events,
                     contract_address: thin_deploy.contract_address,
                     execution_status: thin_deploy.execution_status,
+                    execution_resources: thin_deploy.execution_resources.into(),
                 })
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
@@ -567,6 +616,7 @@ impl TransactionOutput {
                     events,
                     contract_address: thin_deploy.contract_address,
                     execution_status: thin_deploy.execution_status,
+                    execution_resources: thin_deploy.execution_resources.into(),
                 })
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {
@@ -575,6 +625,7 @@ impl TransactionOutput {
                     messages_sent: thin_invoke.messages_sent,
                     events,
                     execution_status: thin_invoke.execution_status,
+                    execution_resources: thin_invoke.execution_resources.into(),
                 })
             }
             ThinTransactionOutput::L1Handler(thin_l1handler) => {
@@ -583,6 +634,7 @@ impl TransactionOutput {
                     messages_sent: thin_l1handler.messages_sent,
                     events,
                     execution_status: thin_l1handler.execution_status,
+                    execution_resources: thin_l1handler.execution_resources.into(),
                 })
             }
         }
@@ -599,6 +651,7 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     messages_sent: declare_tx_output.messages_sent,
                     events: declare_tx_output.events,
                     execution_status: declare_tx_output.execution_status,
+                    execution_resources: declare_tx_output.execution_resources.into(),
                 })
             }
             starknet_api::transaction::TransactionOutput::Deploy(deploy_tx_output) => {
@@ -608,6 +661,7 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     events: deploy_tx_output.events,
                     contract_address: deploy_tx_output.contract_address,
                     execution_status: deploy_tx_output.execution_status,
+                    execution_resources: deploy_tx_output.execution_resources.into(),
                 })
             }
             starknet_api::transaction::TransactionOutput::DeployAccount(deploy_tx_output) => {
@@ -617,6 +671,7 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     events: deploy_tx_output.events,
                     contract_address: deploy_tx_output.contract_address,
                     execution_status: deploy_tx_output.execution_status,
+                    execution_resources: deploy_tx_output.execution_resources.into(),
                 })
             }
             starknet_api::transaction::TransactionOutput::Invoke(invoke_tx_output) => {
@@ -625,6 +680,7 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     messages_sent: invoke_tx_output.messages_sent,
                     events: invoke_tx_output.events,
                     execution_status: invoke_tx_output.execution_status,
+                    execution_resources: invoke_tx_output.execution_resources.into(),
                 })
             }
             starknet_api::transaction::TransactionOutput::L1Handler(l1_handler_tx_output) => {
@@ -633,6 +689,7 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     messages_sent: l1_handler_tx_output.messages_sent,
                     events: l1_handler_tx_output.events,
                     execution_status: l1_handler_tx_output.execution_status,
+                    execution_resources: l1_handler_tx_output.execution_resources.into(),
                 })
             }
         }

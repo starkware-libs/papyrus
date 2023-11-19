@@ -1038,8 +1038,8 @@ async fn get_transaction_receipt() {
     // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
     // on the order of structs we compare the serialized data.
     assert_eq!(
-        serde_json::to_string(&res.unwrap()).unwrap(),
-        serde_json::to_string(&expected_receipt).unwrap(),
+        serde_json::to_value(&res.unwrap()).unwrap(),
+        serde_json::to_value(&expected_receipt).unwrap(),
     );
     assert!(validate_schema(
         &get_starknet_spec_api_schema_for_method_results(
@@ -1084,8 +1084,8 @@ async fn get_transaction_receipt() {
     .await;
     // See above for explanation why we compare the json strings.
     assert_eq!(
-        serde_json::to_string(&result.unwrap()).unwrap(),
-        serde_json::to_string(&expected_result).unwrap(),
+        serde_json::to_value(&result.unwrap()).unwrap(),
+        serde_json::to_value(&expected_result).unwrap(),
     );
     // Validating schema again since pending has a different schema
     assert!(validate_schema(
