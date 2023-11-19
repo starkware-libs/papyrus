@@ -51,7 +51,6 @@ use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockTimestamp, GasPrice};
@@ -191,13 +190,13 @@ pub fn execute_call(
     calldata: Calldata,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
-    // Pre-execution checks, drop the storage transaction before the execution to avoid long read
-    // transactions.
-    {
-        let txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&txn, block_context_number, state_number)?;
-        verify_contract_exists(contract_address, &txn, state_number)?;
-    }
+    verify_node_synced(&storage_reader.begin_ro_txn()?, block_context_number, state_number)?;
+    verify_contract_exists(
+        *contract_address,
+        &storage_reader,
+        state_number,
+        maybe_pending_state_diff.as_ref(),
+    )?;
 
     let call_entry_point = CallEntryPoint {
         class_hash: None,
@@ -262,13 +261,18 @@ fn verify_node_synced(
 }
 
 fn verify_contract_exists(
-    contract_address: &ContractAddress,
-    txn: &StorageTxn<'_, RO>,
+    contract_address: ContractAddress,
+    storage_reader: &StorageReader,
     state_number: StateNumber,
+    maybe_pending_state_diff: Option<&PendingStateDiff>,
 ) -> ExecutionResult<()> {
-    txn.get_state_reader()?.get_class_hash_at(state_number, contract_address)?.ok_or(
-        ExecutionError::ContractNotFound { contract_address: *contract_address, state_number },
-    )?;
+    execution_utils::get_class_hash_at(
+        storage_reader,
+        state_number,
+        maybe_pending_state_diff.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
+        contract_address,
+    )?
+    .ok_or(ExecutionError::ContractNotFound { contract_address, state_number })?;
     Ok(())
 }
 
