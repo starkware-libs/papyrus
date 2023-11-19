@@ -8,6 +8,7 @@ mod middleware;
 mod rpc_metrics;
 #[cfg(test)]
 mod rpc_test;
+mod state;
 mod syncing_state;
 #[cfg(test)]
 mod test_utils;

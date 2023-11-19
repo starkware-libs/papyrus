@@ -116,6 +116,7 @@ use super::{
     TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
+use crate::state::client_state_diff_to_execution_state_diff;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::{
     get_block_status,
@@ -807,8 +808,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         contract_address: ContractAddress,
         entry_point_selector: EntryPointSelector,
         calldata: Calldata,
-        block_id: BlockId,
+        mut block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
+        let maybe_pending_classes = match block_id {
+            BlockId::Tag(Tag::Pending) => Some(self.pending_classes.read().await.clone()),
+            _ => None,
+        };
+        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
+            &mut block_id,
+            &self.pending_data,
+            &self.storage_reader,
+        )
+        .await?;
         let block_number = get_block_number(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
@@ -828,9 +839,10 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let call_result = tokio::task::spawn_blocking(move || {
             execute_call(
                 reader,
-                // TODO(shahak): Add pending data here.
-                None,
-                None,
+                maybe_pending_data.map(|pending_data| {
+                    client_state_diff_to_execution_state_diff(pending_data.state_update.state_diff)
+                }),
+                maybe_pending_classes,
                 &chain_id,
                 state_number,
                 block_number,
