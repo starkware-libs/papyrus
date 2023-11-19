@@ -1,13 +1,14 @@
 use assert_matches::assert_matches;
 use blockifier::execution::contract_class::{
     ContractClass as BlockifierContractClass,
+    ContractClassV0,
     ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
-use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
@@ -57,6 +58,8 @@ fn read_state() {
     let blockifier_casm1 =
         BlockifierContractClass::V1(ContractClassV1::try_from(casm1.clone()).unwrap());
     let nonce1 = Nonce(stark_felt!(2_u128));
+    let class_hash3 = ClassHash(567_u128.into());
+    let class_hash4 = ClassHash(89_u128.into());
 
     storage_writer
         .begin_rw_txn()
@@ -92,10 +95,10 @@ fn read_state() {
                 ),
                 declared_classes: indexmap!(
                     class_hash0 =>
-                    (compiled_class_hash0, class0)
+                    (compiled_class_hash0, class0.clone())
                 ),
                 deprecated_declared_classes: indexmap!(
-                    class_hash1 => class1,
+                    class_hash1 => class1.clone(),
                 ),
                 nonces: indexmap!(
                     address0 => nonce0,
@@ -190,6 +193,9 @@ fn read_state() {
     });
     let mut pending_classes = PendingClasses::default();
     pending_classes.add_compiled_class(class_hash2, casm1);
+    pending_classes.add_class(class_hash3, ApiContractClass::ContractClass(class0));
+    pending_classes
+        .add_class(class_hash4, ApiContractClass::DeprecatedContractClass(class1.clone()));
     state_reader2.maybe_pending_classes = Some(pending_classes);
 
     assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
@@ -198,10 +204,17 @@ fn read_state() {
     assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash2);
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
     assert_eq!(state_reader2.get_nonce_at(address0).unwrap(), nonce0);
     assert_eq!(state_reader2.get_nonce_at(address2).unwrap(), nonce1);
+    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
+    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
+    // Test that if we only got the class without the casm then an error is returned.
+    state_reader2.get_compiled_contract_class(&class_hash3).unwrap_err();
+    // Test that if the class is deprecated it is returned.
+    assert_eq!(
+        state_reader2.get_compiled_contract_class(&class_hash4).unwrap(),
+        BlockifierContractClass::V0(ContractClassV0::try_from(class1).unwrap())
+    );
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.
