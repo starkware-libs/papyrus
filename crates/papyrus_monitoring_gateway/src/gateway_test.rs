@@ -10,9 +10,11 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::{table_names, test_utils};
 use pretty_assertions::assert_eq;
 use serde_json::{json, Value};
+use starknet_client::reader::MockStarknetReader;
+use starknet_client::writer::MockStarknetWriter;
 use tower::ServiceExt;
 
-use crate::{app, MONITORING_PREFIX};
+use crate::{app, is_ready_inner, MONITORING_PREFIX};
 
 const TEST_CONFIG_PRESENTATION: &str = "full_general_config_presentation";
 const PUBLIC_TEST_CONFIG_PRESENTATION: &str = "public_general_config_presentation";
@@ -111,6 +113,18 @@ async fn alive() {
     let response = request_app(app, "alive").await;
 
     assert_eq!(response.status(), StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_ready_inner() {
+    let mut gateway_client_mock = MockStarknetWriter::new();
+    let mut feeder_gateway_client_mock = MockStarknetReader::new();
+
+    gateway_client_mock.expect_is_alive().times(1).returning(|| true);
+    feeder_gateway_client_mock.expect_is_alive().times(1).returning(|| true);
+
+    let response: String = is_ready_inner(gateway_client_mock, feeder_gateway_client_mock).await;
+    assert_eq!(response, StatusCode::OK.to_string());
 }
 
 #[tokio::test]

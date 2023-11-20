@@ -67,6 +67,9 @@ pub trait StarknetWriter: Sync + Send + 'static {
         &self,
         tx: &DeployAccountTransaction,
     ) -> WriterClientResult<DeployAccountResponse>;
+
+    // Returns true if the reader is alive.
+    async fn is_alive(&self) -> bool;
 }
 
 const ADD_TRANSACTION_URL_SUFFIX: &str = "gateway/add_transaction";
@@ -107,6 +110,13 @@ impl StarknetWriter for StarknetGatewayClient {
     ) -> WriterClientResult<DeclareResponse> {
         self.add_transaction(&tx).await
     }
+
+    async fn is_alive(&self) -> bool {
+        let url = self.is_alive_url.clone();
+        let response = self.client.request_with_retry(self.client.internal_client.get(url)).await;
+        let expected_response = GATEWAY_ALIVE_RESPONSE.to_string();
+        response.is_ok_and(|response| response == expected_response)
+    }
 }
 
 impl StarknetGatewayClient {
@@ -136,12 +146,5 @@ impl StarknetGatewayClient {
             )
             .await?;
         Ok(serde_json::from_str::<Response>(&response)?)
-    }
-
-    pub async fn is_alive(&self) -> bool {
-        let url = self.is_alive_url.clone();
-        let response = self.client.request_with_retry(self.client.internal_client.get(url)).await;
-        let expected_response = GATEWAY_ALIVE_RESPONSE.to_string();
-        response.is_ok_and(|response| response == expected_response)
     }
 }

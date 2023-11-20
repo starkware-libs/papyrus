@@ -94,6 +94,9 @@ pub trait StarknetReader {
     // TODO(dvir): delete this when stop supporting pending data.
     /// Returns pending [`starknet_client`][`PendingData`].
     async fn pending_data(&self) -> ReaderClientResult<Option<PendingData>>;
+
+    // Returns true if the reader is alive.
+    async fn is_alive(&self) -> bool;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -183,13 +186,6 @@ impl StarknetFeederGatewayClient {
             KnownStarknetErrorCode::BlockNotFound,
             format!("Failed to get block number {block_number:?} from starknet server."),
         )
-    }
-
-    pub async fn is_alive(&self) -> bool {
-        let url = self.urls.feeder_gateway_is_alive.clone();
-        let response = self.request_with_retry_url(url).await;
-        let expected_response = FEEDER_GATEWAY_ALIVE_RESPONSE.to_string();
-        response.is_ok_and(|response| response == expected_response)
     }
 }
 
@@ -320,6 +316,13 @@ impl StarknetReader for StarknetFeederGatewayClient {
             KnownStarknetErrorCode::BlockNotFound,
             "Failed to get pending data from starknet server.".to_string(),
         )
+    }
+
+    async fn is_alive(&self) -> bool {
+        let url = self.urls.feeder_gateway_is_alive.clone();
+        let response = self.request_with_retry_url(url).await;
+        let expected_response = FEEDER_GATEWAY_ALIVE_RESPONSE.to_string();
+        response.is_ok_and(|response| response == expected_response)
     }
 }
 
