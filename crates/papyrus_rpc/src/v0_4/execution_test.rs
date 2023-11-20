@@ -1,12 +1,15 @@
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
+use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use lazy_static::lazy_static;
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
+use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_execution::objects::{CallType, FunctionCall, Retdata, RevertReason};
 use papyrus_execution::testing_instances::get_storage_var_address;
@@ -41,6 +44,9 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
+use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
+use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
+use starknet_client::reader::PendingData;
 use test_utils::{
     auto_impl_get_test_instance,
     get_number_of_variants,
@@ -48,6 +54,7 @@ use test_utils::{
     read_json_file,
     GetTestInstance,
 };
+use tokio::sync::RwLock;
 
 use super::api::api_impl::JsonRpcServerV0_4Impl;
 use super::api::{
@@ -73,11 +80,14 @@ use super::execution::{
     TransactionTrace,
 };
 use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
-use crate::api::{BlockHashOrNumber, BlockId};
+use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::test_utils::{
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
+    get_test_pending_classes,
+    get_test_pending_data,
     get_test_rpc_server_and_storage_writer,
+    get_test_rpc_server_and_storage_writer_from_params,
     validate_schema,
     SpecFile,
 };
@@ -169,6 +179,37 @@ async fn execution_call() {
         .unwrap_err();
 
     assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
+}
+
+#[tokio::test]
+async fn pending_execution_call() {
+    let pending_data = get_test_pending_data();
+    let pending_classes = get_test_pending_classes();
+    write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(
+        None, None, Some(pending_data), Some(pending_classes), None
+    );
+    write_empty_block(storage_writer);
+
+    let key = stark_felt!(1234_u16);
+    let value = stark_felt!(18_u8);
+
+    let res = module
+        .call::<_, Vec<StarkFelt>>(
+            "starknet_V0_4_call",
+            (
+                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
+                selector_from_name("test_storage_read_write"),
+                calldata![key, value],
+                BlockId::Tag(Tag::Pending),
+            ),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(res, vec![value]);
 }
 
 #[tokio::test]
@@ -618,6 +659,99 @@ auto_impl_get_test_instance! {
     }
 }
 
+// Write into the pending block the first block that the function `prepare_storage_for_execution`
+// writes to the storage.
+async fn write_block_0_as_pending(
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
+) {
+    let class1 = serde_json::from_value::<SN_API_DeprecatedContractClass>(read_json_file(
+        "deprecated_class.json",
+    ))
+    .unwrap();
+    let class_hash1 = class_hash!("0x1");
+
+    let class2 = starknet_api::state::ContractClass::default();
+    let casm = serde_json::from_value::<CasmContractClass>(read_json_file("casm.json")).unwrap();
+    let class_hash2 = class_hash!("0x2");
+    let compiled_class_hash = CompiledClassHash(StarkHash::default());
+
+    let account_class = serde_json::from_value(read_json_file("account_class.json")).unwrap();
+    let account_balance_key =
+        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
+
+    let fee_contract_class = serde_json::from_value::<SN_API_DeprecatedContractClass>(
+        read_json_file("erc20_fee_contract_class.json"),
+    )
+    .unwrap();
+    let minter_var_address = get_storage_var_address("permitted_minter", &[]);
+
+    let mut pending_classes_ref = pending_classes.write().await;
+    pending_classes_ref.add_class(class_hash2, ApiContractClass::ContractClass(class2));
+    pending_classes_ref.add_compiled_class(class_hash2, casm);
+    pending_classes_ref.add_class(class_hash1, ApiContractClass::DeprecatedContractClass(class1));
+    pending_classes_ref
+        .add_class(*ACCOUNT_CLASS_HASH, ApiContractClass::DeprecatedContractClass(account_class));
+    pending_classes_ref.add_class(
+        *TEST_ERC20_CONTRACT_CLASS_HASH,
+        ApiContractClass::DeprecatedContractClass(fee_contract_class),
+    );
+
+    *pending_data.write().await = PendingData {
+        block: PendingBlock {
+            eth_l1_gas_price: *GAS_PRICE,
+            sequencer_address: *SEQUENCER_ADDRESS,
+            timestamp: *BLOCK_TIMESTAMP,
+            ..Default::default()
+        },
+        state_update: PendingStateUpdate {
+            old_root: Default::default(),
+            state_diff: ClientStateDiff {
+                deployed_contracts: vec![
+                    DeployedContract {
+                        address: *DEPRECATED_CONTRACT_ADDRESS,
+                        class_hash: class_hash1,
+                    },
+                    DeployedContract { address: *CONTRACT_ADDRESS, class_hash: class_hash2 },
+                    DeployedContract { address: *ACCOUNT_ADDRESS, class_hash: *ACCOUNT_CLASS_HASH },
+                    DeployedContract {
+                        address: *TEST_ERC20_CONTRACT_ADDRESS,
+                        class_hash: *TEST_ERC20_CONTRACT_CLASS_HASH,
+                    },
+                ],
+                storage_diffs: indexmap!(
+                    *TEST_ERC20_CONTRACT_ADDRESS => vec![
+                        // Give the accounts some balance.
+                        StorageEntry {
+                            key: account_balance_key, value: *ACCOUNT_INITIAL_BALANCE
+                        },
+                        // Give the first account mint permission (what is this?).
+                        StorageEntry {
+                            key: minter_var_address, value: *ACCOUNT_ADDRESS.0.key()
+                        },
+                    ],
+                ),
+                declared_classes: vec![DeclaredClassHashEntry {
+                    class_hash: class_hash2,
+                    compiled_class_hash,
+                }],
+                old_declared_contracts: vec![
+                    class_hash1,
+                    *ACCOUNT_CLASS_HASH,
+                    *TEST_ERC20_CONTRACT_CLASS_HASH,
+                ],
+                nonces: indexmap!(
+                    *TEST_ERC20_CONTRACT_ADDRESS => Nonce::default(),
+                    *CONTRACT_ADDRESS => Nonce::default(),
+                    *DEPRECATED_CONTRACT_ADDRESS => Nonce::default(),
+                    *ACCOUNT_ADDRESS => Nonce::default(),
+                ),
+                replaced_classes: vec![],
+            },
+        },
+    }
+}
+
 fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWriter {
     let class1 = serde_json::from_value::<SN_API_DeprecatedContractClass>(read_json_file(
         "deprecated_class.json",
@@ -716,6 +850,28 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap();
 
     storage_writer
+}
+
+fn write_empty_block(mut storage_writer: StorageWriter) {
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(0),
+            &BlockHeader {
+                gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(BlockNumber(0), BlockBody::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(0), StateDiff::default(), indexmap!())
+        .unwrap()
+        .commit()
+        .unwrap();
 }
 
 auto_impl_get_test_instance! {
