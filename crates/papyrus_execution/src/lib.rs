@@ -224,7 +224,8 @@ pub fn execute_call(
         chain_id.clone(),
         header.block_number,
         header.timestamp,
-        header.gas_price,
+        header.eth_l1_gas_price,
+        header.strk_l1_gas_price,
         &header.sequencer,
         execution_config,
     );
@@ -280,7 +281,8 @@ fn create_block_context(
     chain_id: ChainId,
     block_number: BlockNumber,
     block_timestamp: BlockTimestamp,
-    gas_price: GasPrice,
+    eth_l1_gas_price: GasPrice,
+    strk_l1_gas_price: GasPrice,
     sequencer_address: &ContractAddress,
     execution_config: &BlockExecutionConfig,
 ) -> BlockContext {
@@ -299,7 +301,10 @@ fn create_block_context(
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
         // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
-        gas_prices: GasPrices { eth_l1_gas_price: gas_price.0, strk_l1_gas_price: 1_u128 },
+        gas_prices: GasPrices {
+            eth_l1_gas_price: eth_l1_gas_price.0,
+            strk_l1_gas_price: strk_l1_gas_price.0,
+        },
     }
 }
 
@@ -482,7 +487,8 @@ fn execute_transactions(
         chain_id.clone(),
         header.block_number,
         header.timestamp,
-        header.gas_price,
+        header.eth_l1_gas_price,
+        header.strk_l1_gas_price,
         &header.sequencer,
         execution_config,
     );

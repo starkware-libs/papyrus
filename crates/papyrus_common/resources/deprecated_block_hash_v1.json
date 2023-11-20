@@ -3,7 +3,8 @@
     "block_hash": "0x671849e624ed7f8cb038aa9a18af6028e14345cdcee5cfb7e08b86072298ce5",
     "parent_hash": "0x4ac38f03e70f1e2ba65357ac3b2d0e9380aa7f1669d9a7ba6b9086ff6ef3bf6",
     "block_number": 867,
-    "gas_price": "0x0",
+    "eth_l1_gas_price": "0x0",
+    "strk_l1_gas_price": "0x0",
     "state_root": "0x46a99896768700c5848dbc53a6048e554884ea6b0e881ba2f9a3d4e3096feb6",
     "sequencer": "0x0",
     "timestamp": 1643463800
