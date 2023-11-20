@@ -116,7 +116,7 @@ use super::{
     TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
-use crate::state::client_state_diff_to_execution_state_diff;
+use crate::state::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::{
     get_block_status,
@@ -810,16 +810,20 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         calldata: Calldata,
         mut block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
-        let maybe_pending_classes = match block_id {
-            BlockId::Tag(Tag::Pending) => Some(self.pending_classes.read().await.clone()),
-            _ => None,
-        };
-        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
+        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
             &mut block_id,
             &self.pending_data,
             &self.storage_reader,
         )
         .await?;
+        // Can't use Option::map because the code is async.
+        let maybe_pending_data = match maybe_client_pending_data {
+            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
+                client_pending_data,
+                self.pending_classes.read().await.clone(),
+            )),
+            None => None,
+        };
         let block_number = get_block_number(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
@@ -839,10 +843,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let call_result = tokio::task::spawn_blocking(move || {
             execute_call(
                 reader,
-                maybe_pending_data.map(|pending_data| {
-                    client_state_diff_to_execution_state_diff(pending_data.state_update.state_diff)
-                }),
-                maybe_pending_classes,
+                maybe_pending_data,
                 &chain_id,
                 state_number,
                 block_number,
@@ -947,7 +948,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 reader,
                 // TODO(shahak): Add pending data here.
                 None,
-                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1002,7 +1002,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 // TODO(shahak): Add pending data here.
-                None,
                 None,
                 state_number,
                 block_number,
@@ -1095,7 +1094,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 reader,
                 // TODO(shahak): Add pending data here.
                 None,
-                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1179,7 +1177,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &chain_id,
                 reader,
                 // TODO(shahak): Add pending data here.
-                None,
                 None,
                 state_number,
                 block_number,

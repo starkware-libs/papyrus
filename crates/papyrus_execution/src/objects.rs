@@ -10,6 +10,7 @@ use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use indexmap::IndexMap;
 use itertools::Itertools;
+use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::state::{
     DeclaredClassHashEntry,
     DeployedContract,
@@ -17,6 +18,7 @@ use papyrus_common::state::{
     StorageEntry,
 };
 use serde::{Deserialize, Serialize};
+use starknet_api::block::{BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
@@ -325,8 +327,8 @@ pub struct FunctionCall {
 }
 
 /// A state diff for the pending block.
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-pub struct PendingStateDiff {
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
+pub struct PendingData {
     // TODO(shahak): Consider indexing by address and key.
     /// All the contract storages that were changed in the pending block.
     pub storage_diffs: IndexMap<ContractAddress, Vec<StorageEntry>>,
@@ -340,4 +342,12 @@ pub struct PendingStateDiff {
     pub nonces: IndexMap<ContractAddress, Nonce>,
     /// All the classes that were declared in the pending block.
     pub replaced_classes: Vec<ReplacedClass>,
+    /// The timestamp of the pending block.
+    pub timestamp: BlockTimestamp,
+    /// The gas price of the pending block.
+    pub gas_price: GasPrice,
+    /// The sequencer address of the pending block.
+    pub sequencer: ContractAddress,
+    /// The classes and casms that were declared in the pending block.
+    pub classes: PendingClasses,
 }
