@@ -44,6 +44,7 @@ use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
 const NODE_VERSION: &str = "NODE VERSION";
+const FEEDER_GATEWAY_ALIVE_RESPONSE: &str = "FeederGateway is alive!";
 
 #[test]
 fn new_urls() {
@@ -397,6 +398,24 @@ async fn compiled_class_by_hash() {
         starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x0"))).await.unwrap();
     mock_undeclared.assert();
     assert!(class.is_none());
+}
+
+#[tokio::test]
+async fn is_alive() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+    let mock_is_alive = mock("GET", &format!("/feeder_gateway/is_alive")[..])
+        .with_status(200)
+        .with_body(&FEEDER_GATEWAY_ALIVE_RESPONSE.to_string())
+        .create();
+    let response = starknet_client.is_alive().await;
+    mock_is_alive.assert();
+    assert!(response);
 }
 
 #[tokio::test]
