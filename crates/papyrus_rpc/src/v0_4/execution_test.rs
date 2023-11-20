@@ -41,11 +41,17 @@ use starknet_api::transaction::{
     Fee,
     MessageToL1,
     TransactionHash,
+    TransactionOffsetInBlock,
     TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
+use starknet_client::reader::objects::transaction::{
+    IntermediateInvokeTransaction as ClientInvokeTransaction,
+    Transaction as ClientTransaction,
+    TransactionReceipt as ClientTransactionReceipt,
+};
 use starknet_client::reader::PendingData;
 use test_utils::{
     auto_impl_get_test_instance,
@@ -547,8 +553,9 @@ async fn call_simulate_skip_fee_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, None);
 }
 
+// TODO(shahak): Add test for trace_transaction that doesn't depend on trace_block_transactions
 #[tokio::test]
-async fn trace_block_transactions() {
+async fn trace_block_transactions_regular_and_pending() {
     let (module, storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
 
@@ -557,38 +564,35 @@ async fn trace_block_transactions() {
     let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
     let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
 
-    let tx1 = starknet_api::transaction::Transaction::Invoke(
-        starknet_api::transaction::InvokeTransaction::V1(
-            starknet_api::transaction::InvokeTransactionV1 {
-                max_fee: *MAX_FEE,
-                sender_address: *ACCOUNT_ADDRESS,
-                calldata: calldata![
-                    *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-                    selector_from_name("return_result").0, // EP selector.
-                    stark_felt!(1_u8),                     // Calldata length.
-                    stark_felt!(2_u8)                      // Calldata: num.
-                ],
-                nonce: Nonce(stark_felt!(0_u128)),
-                ..Default::default()
-            },
-        ),
-    );
-    let tx2 = starknet_api::transaction::Transaction::Invoke(
-        starknet_api::transaction::InvokeTransaction::V1(
-            starknet_api::transaction::InvokeTransactionV1 {
-                max_fee: *MAX_FEE,
-                sender_address: *ACCOUNT_ADDRESS,
-                calldata: calldata![
-                    *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-                    selector_from_name("return_result").0, // EP selector.
-                    stark_felt!(1_u8),                     // Calldata length.
-                    stark_felt!(2_u8)                      // Calldata: num.
-                ],
-                nonce: Nonce(stark_felt!(1_u128)),
-                ..Default::default()
-            },
-        ),
-    );
+    let client_tx1 = ClientTransaction::Invoke(ClientInvokeTransaction {
+        max_fee: Some(*MAX_FEE),
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![
+            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+            selector_from_name("return_result").0, // EP selector.
+            stark_felt!(1_u8),                     // Calldata length.
+            stark_felt!(2_u8)                      // Calldata: num.
+        ],
+        nonce: Some(Nonce(stark_felt!(0_u128))),
+        version: TransactionVersion::ONE,
+        ..Default::default()
+    });
+    let tx1: starknet_api::transaction::Transaction = client_tx1.clone().try_into().unwrap();
+    let client_tx2 = ClientTransaction::Invoke(ClientInvokeTransaction {
+        max_fee: Some(*MAX_FEE),
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![
+            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+            selector_from_name("return_result").0, // EP selector.
+            stark_felt!(1_u8),                     // Calldata length.
+            stark_felt!(2_u8)                      // Calldata: num.
+        ],
+        nonce: Some(Nonce(stark_felt!(1_u128))),
+        version: TransactionVersion::ONE,
+        ..Default::default()
+    });
+    let tx2: starknet_api::transaction::Transaction = client_tx2.clone().try_into().unwrap();
+
     writer
         .begin_rw_txn()
         .unwrap()
@@ -615,7 +619,14 @@ async fn trace_block_transactions() {
             },
         )
         .unwrap()
-        .append_state_diff(BlockNumber(2), StateDiff::default(), IndexMap::new())
+        .append_state_diff(
+            BlockNumber(2),
+            StateDiff {
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                ..Default::default()
+            },
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -638,6 +649,60 @@ async fn trace_block_transactions() {
         .call::<_, Vec<TransactionTraceWithHash>>(
             "starknet_V0_4_traceBlockTransactions",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(res.len(), 2);
+    assert_eq!(res[0].trace_root, tx_1_trace);
+    assert_eq!(res[0].transaction_hash, tx_hash1);
+    assert_eq!(res[1].trace_root, tx_2_trace);
+    assert_eq!(res[1].transaction_hash, tx_hash2);
+
+    // Ask for trace of pending block.
+    // Create a new storage without the last block and put the last block as pending
+
+    let pending_data = get_test_pending_data();
+    *pending_data.write().await = PendingData {
+        block: PendingBlock {
+            eth_l1_gas_price: *GAS_PRICE,
+            sequencer_address: *SEQUENCER_ADDRESS,
+            timestamp: *BLOCK_TIMESTAMP,
+            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            transactions: vec![client_tx1, client_tx2],
+            transaction_receipts: vec![
+                ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(0),
+                    transaction_hash: tx_hash1,
+                    ..Default::default()
+                },
+                ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(0),
+                    transaction_hash: tx_hash2,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        },
+        state_update: PendingStateUpdate {
+            old_root: Default::default(),
+            state_diff: ClientStateDiff {
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                ..Default::default()
+            },
+        },
+    };
+
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data), None, None);
+
+    prepare_storage_for_execution(storage_writer);
+
+    let res = module
+        .call::<_, Vec<TransactionTraceWithHash>>(
+            "starknet_V0_4_traceBlockTransactions",
+            [BlockId::Tag(Tag::Pending)],
         )
         .await
         .unwrap();
