@@ -7318,4 +7318,4 @@ dependencies = [
 [[patch.unused]]
 name = "blockifier"
 version = "0.4.0-rc0"
-source = "git+https://github.com/starkware-libs/blockifier?tag=v0.3.0-rc1#b5dfbd31ff879cb8309b1e5e21d8f8556c796b6a"
+source = "git+https://github.com/starkware-libs/blockifier?branch=yair/blockifier_prints#7189a0a55890c07513d6668a442cccc278f079f2"

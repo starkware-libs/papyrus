@@ -100,4 +100,5 @@ url = "2.2.2"
 validator = "0.12"
 
 [patch.crates-io]
-blockifier = { git = "https://github.com/starkware-libs/blockifier", tag = "v0.3.0-rc1" }
+blockifier = { git = "https://github.com/starkware-libs/blockifier", branch = "yair/blockifier_prints" }
+# blockifier = { path = "../blockifier/crates/blockifier" }
