@@ -73,6 +73,9 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+        }
         let Some(sync_config) = config.sync else { return Ok(()) };
         let central_source =
             CentralSource::new(config.central, VERSION_FULL, storage_reader.clone())
