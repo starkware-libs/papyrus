@@ -98,3 +98,6 @@ tracing-subscriber = "0.3.16"
 tower = "0.4"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+blockifier = { git = "https://github.com/starkware-libs/blockifier", tag = "v0.3.0-rc1" }
