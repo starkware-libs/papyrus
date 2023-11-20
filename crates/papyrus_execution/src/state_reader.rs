@@ -83,7 +83,7 @@ impl BlockifierStateReader for ExecutionStateReader {
             .maybe_pending_classes
             .as_ref()
             .and_then(|pending_classes| pending_classes.get_compiled_class(*class_hash))
-            .clone()
+            
         {
             return Ok(BlockifierContractClass::V1(
                 ContractClassV1::try_from(pending_casm).map_err(StateError::ProgramError)?,
@@ -93,7 +93,7 @@ impl BlockifierStateReader for ExecutionStateReader {
             .maybe_pending_classes
             .as_ref()
             .and_then(|pending_classes| pending_classes.get_class(*class_hash))
-            .clone()
+            
         {
             return Ok(BlockifierContractClass::V0(
                 ContractClassV0::try_from(pending_deprecated_class)
