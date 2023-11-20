@@ -862,7 +862,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 reader,
                 // TODO(shahak): Add pending data here.
                 None,
-                None,
                 &chain_id,
                 state_number,
                 block_number,
@@ -967,7 +966,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 reader,
                 // TODO(shahak): Add pending data here.
                 None,
-                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1022,7 +1020,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 &chain_id,
                 reader,
                 // TODO(shahak): Add pending data here.
-                None,
                 None,
                 state_number,
                 block_number,
@@ -1115,7 +1112,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 reader,
                 // TODO(shahak): Add pending data here.
                 None,
-                None,
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1199,7 +1195,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 &chain_id,
                 reader,
                 // TODO(shahak): Add pending data here.
-                None,
                 None,
                 state_number,
                 block_number,

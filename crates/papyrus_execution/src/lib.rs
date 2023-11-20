@@ -46,7 +46,6 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::TransactionTrace;
-use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
@@ -78,7 +77,7 @@ use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
-use crate::objects::PendingStateDiff;
+use crate::objects::PendingData;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
@@ -180,8 +179,7 @@ pub enum ExecutionError {
 #[allow(clippy::too_many_arguments)]
 pub fn execute_call(
     storage_reader: StorageReader,
-    maybe_pending_state_diff: Option<PendingStateDiff>,
-    maybe_pending_classes: Option<PendingClasses>,
+    maybe_pending_data: Option<PendingData>,
     chain_id: &ChainId,
     state_number: StateNumber,
     block_context_number: BlockNumber,
@@ -195,7 +193,7 @@ pub fn execute_call(
         *contract_address,
         &storage_reader,
         state_number,
-        maybe_pending_state_diff.as_ref(),
+        maybe_pending_data.as_ref(),
     )?;
 
     let call_entry_point = CallEntryPoint {
@@ -210,24 +208,35 @@ pub fn execute_call(
         // TODO(yair): check if this is the correct value.
         initial_gas: execution_config.initial_gas_cost,
     };
+
+    let (timestamp, gas_price, sequencer) = match maybe_pending_data.as_ref() {
+        Some(pending_data) => {
+            (pending_data.timestamp, pending_data.gas_price, pending_data.sequencer)
+        }
+        None => {
+            let header = storage_reader
+                .begin_ro_txn()?
+                .get_block_header(block_context_number)?
+                .expect("Should have block header.");
+            (header.timestamp, header.gas_price, header.sequencer)
+        }
+    };
+
+    let block_context = create_block_context(
+        chain_id.clone(),
+        block_context_number,
+        timestamp,
+        gas_price,
+        &sequencer,
+        execution_config,
+    );
+
     let mut cached_state = CachedState::from(ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number,
-        maybe_pending_state_diff,
-        maybe_pending_classes,
+        maybe_pending_data,
     });
-    let header = storage_reader
-        .begin_ro_txn()?
-        .get_block_header(block_context_number)?
-        .expect("Should have block header.");
-    let block_context = create_block_context(
-        chain_id.clone(),
-        header.block_number,
-        header.timestamp,
-        header.gas_price,
-        &header.sequencer,
-        execution_config,
-    );
+
     let mut context = EntryPointExecutionContext::new_invoke(
         &block_context,
         // TODO(yair): fix when supporting v3 transactions
@@ -264,12 +273,12 @@ fn verify_contract_exists(
     contract_address: ContractAddress,
     storage_reader: &StorageReader,
     state_number: StateNumber,
-    maybe_pending_state_diff: Option<&PendingStateDiff>,
+    maybe_pending_data: Option<&PendingData>,
 ) -> ExecutionResult<()> {
     execution_utils::get_class_hash_at(
         storage_reader,
         state_number,
-        maybe_pending_state_diff.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
+        maybe_pending_data.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
         contract_address,
     )?
     .ok_or(ExecutionError::ContractNotFound { contract_address, state_number })?;
@@ -414,8 +423,7 @@ pub fn estimate_fee(
     txs: Vec<ExecutableTransactionInput>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
-    maybe_pending_state_diff: Option<PendingStateDiff>,
-    maybe_pending_classes: Option<PendingClasses>,
+    maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -425,8 +433,7 @@ pub fn estimate_fee(
         None,
         chain_id,
         storage_reader,
-        maybe_pending_state_diff,
-        maybe_pending_classes,
+        maybe_pending_data,
         state_number,
         block_context_block_number,
         execution_config,
@@ -449,8 +456,7 @@ fn execute_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
-    maybe_pending_state_diff: Option<PendingStateDiff>,
-    maybe_pending_classes: Option<PendingClasses>,
+    maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -462,30 +468,35 @@ fn execute_transactions(
         verify_node_synced(&storage_txn, block_context_block_number, state_number)?;
     }
 
-    // TODO(yair): When we support pending blocks, use the latest block header instead of the
-    // pending block header.
-
     // Create the block context from the block in which the transactions should run.
-    let header = storage_reader
-        .begin_ro_txn()?
-        .get_block_header(block_context_block_number)?
-        .expect("Should have block header.");
+    let (timestamp, gas_price, sequencer) = match maybe_pending_data.as_ref() {
+        Some(pending_data) => {
+            (pending_data.timestamp, pending_data.gas_price, pending_data.sequencer)
+        }
+        None => {
+            let header = storage_reader
+                .begin_ro_txn()?
+                .get_block_header(block_context_block_number)?
+                .expect("Should have block header.");
+            (header.timestamp, header.gas_price, header.sequencer)
+        }
+    };
+
+    let block_context = create_block_context(
+        chain_id.clone(),
+        block_context_block_number,
+        timestamp,
+        gas_price,
+        &sequencer,
+        execution_config,
+    );
 
     // The starknet state will be from right before the block in which the transactions should run.
     let mut cached_state = CachedState::from(ExecutionStateReader {
         storage_reader,
         state_number,
-        maybe_pending_state_diff,
-        maybe_pending_classes,
+        maybe_pending_data,
     });
-    let block_context = create_block_context(
-        chain_id.clone(),
-        header.block_number,
-        header.timestamp,
-        header.gas_price,
-        &header.sequencer,
-        execution_config,
-    );
 
     let (txs, tx_hashes) = match tx_hashes {
         Some(tx_hashes) => (txs, tx_hashes),
@@ -617,8 +628,7 @@ pub fn simulate_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     chain_id: &ChainId,
     storage_reader: StorageReader,
-    maybe_pending_state_diff: Option<PendingStateDiff>,
-    maybe_pending_classes: Option<PendingClasses>,
+    maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
@@ -631,8 +641,7 @@ pub fn simulate_transactions(
         tx_hashes,
         chain_id,
         storage_reader,
-        maybe_pending_state_diff,
-        maybe_pending_classes,
+        maybe_pending_data,
         state_number,
         block_context_block_number,
         execution_config,

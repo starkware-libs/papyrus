@@ -9,7 +9,7 @@ use blockifier::execution::contract_class::{
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};
-use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
+use papyrus_common::pending_classes::{ApiContractClass, PendingClassesTrait};
 use papyrus_common::state::DeclaredClassHashEntry;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
@@ -19,14 +19,13 @@ use starknet_api::state::{StateNumber, StorageKey};
 
 use crate::execution_utils;
 use crate::execution_utils::{get_contract_class, ExecutionUtilsError};
-use crate::objects::PendingStateDiff;
+use crate::objects::PendingData;
 
 /// A view into the state at a specific state number.
 pub struct ExecutionStateReader {
     pub storage_reader: StorageReader,
     pub state_number: StateNumber,
-    pub maybe_pending_state_diff: Option<PendingStateDiff>,
-    pub maybe_pending_classes: Option<PendingClasses>,
+    pub maybe_pending_data: Option<PendingData>,
 }
 
 impl BlockifierStateReader for ExecutionStateReader {
@@ -38,9 +37,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         execution_utils::get_storage_at(
             &self.storage_reader,
             self.state_number,
-            self.maybe_pending_state_diff
-                .as_ref()
-                .map(|pending_state_diff| &pending_state_diff.storage_diffs),
+            self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.storage_diffs),
             contract_address,
             key,
         )
@@ -52,9 +49,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         Ok(execution_utils::get_nonce_at(
             &self.storage_reader,
             self.state_number,
-            self.maybe_pending_state_diff
-                .as_ref()
-                .map(|pending_state_diff| &pending_state_diff.nonces),
+            self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.nonces),
             contract_address,
         )
         .map_err(storage_err_to_state_err)?
@@ -66,9 +61,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         Ok(execution_utils::get_class_hash_at(
             &self.storage_reader,
             self.state_number,
-            self.maybe_pending_state_diff
-                .as_ref()
-                .map(|pending_state_diff| &pending_state_diff.deployed_contracts),
+            self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.deployed_contracts),
             contract_address,
         )
         .map_err(storage_err_to_state_err)?
@@ -80,9 +73,9 @@ impl BlockifierStateReader for ExecutionStateReader {
         class_hash: &ClassHash,
     ) -> StateResult<BlockifierContractClass> {
         if let Some(pending_casm) = self
-            .maybe_pending_classes
+            .maybe_pending_data
             .as_ref()
-            .and_then(|pending_classes| pending_classes.get_compiled_class(*class_hash))
+            .and_then(|pending_data| pending_data.classes.get_compiled_class(*class_hash))
             .clone()
         {
             return Ok(BlockifierContractClass::V1(
@@ -90,9 +83,9 @@ impl BlockifierStateReader for ExecutionStateReader {
             ));
         }
         if let Some(ApiContractClass::DeprecatedContractClass(pending_deprecated_class)) = self
-            .maybe_pending_classes
+            .maybe_pending_data
             .as_ref()
-            .and_then(|pending_classes| pending_classes.get_class(*class_hash))
+            .and_then(|pending_data| pending_data.classes.get_class(*class_hash))
             .clone()
         {
             return Ok(BlockifierContractClass::V0(
@@ -116,9 +109,9 @@ impl BlockifierStateReader for ExecutionStateReader {
     }
 
     fn get_compiled_class_hash(&mut self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
-        if let Some(pending_state_diff) = &self.maybe_pending_state_diff {
+        if let Some(pending_data) = &self.maybe_pending_data {
             for DeclaredClassHashEntry { class_hash: other_class_hash, compiled_class_hash } in
-                &pending_state_diff.declared_classes
+                &pending_data.declared_classes
             {
                 if class_hash == *other_class_hash {
                     return Ok(*compiled_class_hash);
