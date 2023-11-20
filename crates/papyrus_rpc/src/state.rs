@@ -15,7 +15,8 @@ pub(crate) fn client_pending_data_to_execution_pending_data(
         replaced_classes: client_pending_data.state_update.state_diff.replaced_classes,
         classes: pending_classes,
         timestamp: client_pending_data.block.timestamp,
-        gas_price: client_pending_data.block.eth_l1_gas_price,
+        eth_l1_gas_price: client_pending_data.block.eth_l1_gas_price,
+        strk_l1_gas_price: client_pending_data.block.strk_l1_gas_price,
         sequencer: client_pending_data.block.sequencer_address,
     }
 }
