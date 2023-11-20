@@ -969,13 +969,28 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
     async fn simulate_transactions(
         &self,
-        block_id: BlockId,
+        mut block_id: BlockId,
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<SimulatedTransaction>> {
         trace!("Simulating transactions: {:#?}", transactions);
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
+
+        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
+            &mut block_id,
+            &self.pending_data,
+            &self.storage_reader,
+        )
+        .await?;
+        // Can't use Option::map because the code is async.
+        let maybe_pending_data = match maybe_client_pending_data {
+            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
+                client_pending_data,
+                self.pending_classes.read().await.clone(),
+            )),
+            None => None,
+        };
 
         let block_number = get_block_number(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
@@ -1001,8 +1016,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 None,
                 &chain_id,
                 reader,
-                // TODO(shahak): Add pending data here.
-                None,
+                maybe_pending_data,
                 state_number,
                 block_number,
                 &block_execution_config,
