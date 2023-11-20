@@ -923,7 +923,7 @@ fn execute_call_checks_if_node_is_synced() {
     let state_number = StateNumber::right_before_block(latest_block.next());
     let block_context = latest_block.next();
     let err = execute_call(
-        storage_reader.clone(),
+        storage_reader,
         None,
         None,
         &chain_id,
