@@ -920,9 +920,25 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
+        mut block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
+
+        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
+            &mut block_id,
+            &self.pending_data,
+            &self.storage_reader,
+        )
+        .await?;
+        // Can't use Option::map because the code is async.
+        let maybe_pending_data = match maybe_client_pending_data {
+            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
+                client_pending_data,
+                self.pending_classes.read().await.clone(),
+            )),
+            None => None,
+        };
+
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
@@ -946,8 +962,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 executable_txns,
                 &chain_id,
                 reader,
-                // TODO(shahak): Add pending data here.
-                None,
+                maybe_pending_data,
                 state_number,
                 block_number,
                 &block_execution_config,
