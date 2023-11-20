@@ -23,8 +23,8 @@ use papyrus_storage::{DbStats, StorageError, StorageReader};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use starknet_client::reader::StarknetFeederGatewayClient;
-use starknet_client::writer::StarknetGatewayClient;
+use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
+use starknet_client::writer::{StarknetGatewayClient, StarknetWriter};
 use starknet_client::RetryConfig;
 use tracing::{debug, info, instrument};
 use validator::Validate;
@@ -203,6 +203,19 @@ fn app(
         )
 }
 
+async fn is_ready_inner<TStarknetReader: StarknetReader, TStarknetWriter: StarknetWriter>(
+    starknet_client: TStarknetWriter,
+    starknet_feeder_client: TStarknetReader,
+) -> String {
+    let response = starknet_feeder_client.is_alive().await;
+    assert!(response);
+
+    let response = starknet_client.is_alive().await;
+    assert!(response);
+
+    StatusCode::OK.to_string()
+}
+
 #[instrument(level = "debug", ret)]
 async fn is_ready(version: &'static str, starknet_url: String) -> String {
     let is_ready_retry_config =
@@ -215,16 +228,13 @@ async fn is_ready(version: &'static str, starknet_url: String) -> String {
         is_ready_retry_config,
     )
     .expect("Failed creating Starknet feeder client.");
-    let response = starknet_feeder_client.is_alive().await;
-    assert!(response);
 
     let starknet_client =
         StarknetGatewayClient::new(starknet_url.as_str(), version, is_ready_retry_config)
             .expect("Failed creating Starknet client.");
-    let response = starknet_client.is_alive().await;
-    assert!(response);
 
-    StatusCode::OK.to_string()
+    let result: String = is_ready_inner(starknet_client, starknet_feeder_client).await;
+    result
 }
 
 /// Returns DB statistics.
