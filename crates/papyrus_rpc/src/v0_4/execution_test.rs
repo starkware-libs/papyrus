@@ -326,6 +326,65 @@ async fn call_simulate() {
 }
 
 #[tokio::test]
+async fn pending_call_simulate() {
+    let pending_data = get_test_pending_data();
+    let pending_classes = get_test_pending_classes();
+    write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(
+        None, None, Some(pending_data), Some(pending_classes), None
+    );
+    write_empty_block(storage_writer);
+
+    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+        max_fee: Fee(1000000 * GAS_PRICE.0),
+        version: TransactionVersion::ONE,
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![
+            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+            selector_from_name("return_result").0, // EP selector.
+            stark_felt!(1_u8),                     // Calldata length.
+            stark_felt!(2_u8)                      // Calldata: num.
+        ],
+        ..Default::default()
+    }));
+
+    let mut res = module
+        .call::<_, Vec<SimulatedTransaction>>(
+            "starknet_V0_4_simulateTransactions",
+            (BlockId::Tag(Tag::Pending), vec![invoke], Vec::<SimulationFlag>::new()),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(res.len(), 1);
+
+    let simulated_tx = res.pop().unwrap();
+
+    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
+    // call.
+    // Why is it different from the estimate_fee call?
+    let expected_fee_estimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x9ba"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(249000000000000),
+    };
+
+    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+
+    assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
+
+    let TransactionTrace::Invoke(invoke_trace) = simulated_tx.transaction_trace else {
+        unreachable!();
+    };
+
+    assert_matches!(invoke_trace.validate_invocation, Some(_));
+    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
+    assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
+}
+
+#[tokio::test]
 async fn call_simulate_skip_validate() {
     let (module, storage_writer) =
         get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
