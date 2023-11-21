@@ -50,8 +50,8 @@ fn test_verify_storage_version_good_flow() {
     let ((reader_full_archive, _), _temp_dir) =
         get_test_storage_by_scope(StorageScope::FullArchive);
     let ((reader_state_only, _), _temp_dir) = get_test_storage_by_scope(StorageScope::StateOnly);
-    verify_storage_version(reader_full_archive.clone()).unwrap();
-    verify_storage_version(reader_state_only.clone()).unwrap();
+    verify_storage_version(reader_full_archive).unwrap();
+    verify_storage_version(reader_state_only).unwrap();
 }
 
 #[test]
@@ -66,7 +66,7 @@ fn test_verify_storage_version_different_blocks_version() {
         .commit()
         .unwrap();
     assert_matches!(
-        verify_storage_version(reader.clone()),
+        verify_storage_version(reader),
         Err(StorageError::StorageVersionInconcistency(
             StorageVersionError::InconsistentStorageVersion {
                 crate_version: STORAGE_VERSION_BLOCKS,
@@ -104,7 +104,7 @@ fn test_set_version_if_needed() {
     reader.scope = StorageScope::FullArchive;
     writer.scope = StorageScope::FullArchive;
     assert!(
-        set_version_if_needed(reader.clone(), writer).is_err(),
+        set_version_if_needed(reader, writer).is_err(),
         "Should fail, because storage scope cannot shift from state-only to full-archive."
     );
 }
