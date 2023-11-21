@@ -102,7 +102,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                eth_l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -155,7 +155,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                eth_l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!(1_u128)),

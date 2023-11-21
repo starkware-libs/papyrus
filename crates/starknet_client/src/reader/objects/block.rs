@@ -193,8 +193,8 @@ impl Block {
             block_hash: self.block_hash,
             parent_hash: self.parent_block_hash,
             block_number: self.block_number,
-            // TODO(shahak): Add eth_l1_gas_price and strk_l1_gas_price to starknet_api's Block.
-            gas_price: self.eth_l1_gas_price,
+            eth_l1_gas_price: self.eth_l1_gas_price,
+            strk_l1_gas_price: self.strk_l1_gas_price,
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,

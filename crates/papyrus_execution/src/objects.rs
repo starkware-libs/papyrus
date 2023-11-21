@@ -344,8 +344,10 @@ pub struct PendingData {
     pub replaced_classes: Vec<ReplacedClass>,
     /// The timestamp of the pending block.
     pub timestamp: BlockTimestamp,
-    /// The gas price of the pending block.
-    pub gas_price: GasPrice,
+    /// The ETH gas price of the pending block.
+    pub eth_l1_gas_price: GasPrice,
+    /// The STRK gas price of the pending block.
+    pub strk_l1_gas_price: GasPrice,
     /// The sequencer address of the pending block.
     pub sequencer: ContractAddress,
     /// The classes and casms that were declared in the pending block.

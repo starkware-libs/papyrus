@@ -442,7 +442,7 @@ async fn trace_block_transactions() {
         .append_header(
             BlockNumber(2),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                eth_l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x2")),
@@ -642,7 +642,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                gas_price: *GAS_PRICE,
+                eth_l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -693,7 +693,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                gas_price: different_gas_price,
+                eth_l1_gas_price: different_gas_price,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x1")),

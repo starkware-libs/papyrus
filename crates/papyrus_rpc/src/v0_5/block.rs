@@ -50,7 +50,7 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
             sequencer_address: header.sequencer,
             new_root: header.state_root,
             timestamp: header.timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: header.gas_price },
+            l1_gas_price: ResourcePrice { price_in_wei: header.eth_l1_gas_price },
             starknet_version: starknet_version.0,
         }
     }

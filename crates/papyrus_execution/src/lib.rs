@@ -222,7 +222,6 @@ pub fn execute_call(
         state_number,
         maybe_pending_data,
     });
-
     let mut context = EntryPointExecutionContext::new_invoke(
         &block_context,
         // TODO(yair): fix when supporting v3 transactions
@@ -278,11 +277,14 @@ fn create_block_context(
     maybe_pending_data: Option<&PendingData>,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<BlockContext> {
-    let (block_number, block_timestamp, gas_price, sequencer_address) = match maybe_pending_data {
+    let (block_number, block_timestamp, gas_prices, sequencer_address) = match maybe_pending_data {
         Some(pending_data) => (
             block_context_number.next(),
             pending_data.timestamp,
-            pending_data.gas_price,
+            GasPrices {
+                eth_l1_gas_price: pending_data.eth_l1_gas_price.0,
+                strk_l1_gas_price: pending_data.strk_l1_gas_price.0,
+            },
             pending_data.sequencer,
         ),
         None => {
@@ -290,7 +292,15 @@ fn create_block_context(
                 .begin_ro_txn()?
                 .get_block_header(block_context_number)?
                 .expect("Should have block header.");
-            (header.block_number, header.timestamp, header.gas_price, header.sequencer)
+            (
+                header.block_number,
+                header.timestamp,
+                GasPrices {
+                    eth_l1_gas_price: header.eth_l1_gas_price.0,
+                    strk_l1_gas_price: header.strk_l1_gas_price.0,
+                },
+                header.sequencer,
+            )
         }
     };
 
@@ -309,7 +319,7 @@ fn create_block_context(
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
         // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
-        gas_prices: GasPrices { eth_l1_gas_price: gas_price.0, strk_l1_gas_price: 1_u128 },
+        gas_prices,
     })
 }
 
