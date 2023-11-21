@@ -167,7 +167,7 @@ use crate::test_utils::{
     SpecFile,
 };
 use crate::version_config::VERSION_0_4;
-use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
+use crate::{internal_server_error, internal_server_error_with_msg, run_server, ContinuationTokenAsStruct};
 
 const NODE_VERSION: &str = "NODE VERSION";
 
@@ -1747,7 +1747,10 @@ async fn get_transaction_by_hash_state_only() {
 
     let (_, err) =
         raw_call::<_, TransactionHash, TransactionWithHash>(&module, method_name, &params).await;
-    assert_eq!(err.unwrap_err(), internal_server_error(""));
+    assert_eq!(
+        err.unwrap_err(),
+        internal_server_error_with_msg("Unsupported method in state-only scope.")
+    );
 }
 
 #[tokio::test]

@@ -122,6 +122,7 @@ use crate::{
     get_block_status,
     get_latest_block_number,
     internal_server_error,
+    verify_storage_scope,
     ContinuationTokenAsStruct,
 };
 
@@ -164,6 +165,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
+        verify_storage_scope(&self.storage_reader)?;
+
         if let BlockId::Tag(Tag::Pending) = block_id {
             let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
             let pending_block_header = PendingBlockHeader {
@@ -200,6 +203,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
+        verify_storage_scope(&self.storage_reader)?;
+
         if let BlockId::Tag(Tag::Pending) = block_id {
             let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
             let pending_block_header = PendingBlockHeader {
@@ -304,6 +309,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionWithHash> {
+        verify_storage_scope(&self.storage_reader)?;
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         if let Some(transaction_index) =
@@ -342,6 +349,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
         index: TransactionOffsetInBlock,
     ) -> RpcResult<TransactionWithHash> {
+        verify_storage_scope(&self.storage_reader)?;
+
         let (starknet_api_transaction, transaction_hash) = if let BlockId::Tag(Tag::Pending) =
             block_id
         {
@@ -378,6 +387,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
+        verify_storage_scope(&self.storage_reader)?;
+
         if let BlockId::Tag(Tag::Pending) = block_id {
             let transactions_len = read_pending_data(&self.pending_data, &self.storage_reader)
                 .await?
@@ -439,6 +450,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<GeneralTransactionReceipt> {
+        verify_storage_scope(&self.storage_reader)?;
+
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         if let Some(transaction_index) =
@@ -625,6 +638,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_events(&self, filter: EventFilter) -> RpcResult<EventsChunk> {
+        verify_storage_scope(&self.storage_reader)?;
+
         // Check the chunk size.
         if filter.chunk_size > self.max_events_chunk_size {
             return Err(ErrorObjectOwned::from(PAGE_SIZE_TOO_BIG));
