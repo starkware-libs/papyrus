@@ -95,7 +95,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
-use tracing::debug;
+use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
@@ -171,65 +171,141 @@ pub fn open_storage(
     };
     let writer = StorageWriter { db_writer, tables, scope: storage_config.scope, file_writers };
 
-    let writer = set_initial_version_if_needed(writer)?;
-    verify_storage_version(reader.clone(), storage_config.scope)?;
+    let writer = set_version_if_needed(reader.clone(), writer)?;
+    verify_storage_version(reader.clone())?;
     Ok((reader, writer))
 }
 
 // In case storage version does not exist, set it to the crate version.
 // Expected to happen once - when the node is launched for the first time.
-fn set_initial_version_if_needed(mut writer: StorageWriter) -> StorageResult<StorageWriter> {
-    let current_storage_version_state = writer.begin_rw_txn()?.get_state_version()?;
-    if current_storage_version_state.is_none() {
-        writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
-    };
-
-    let current_storage_version_blocks = writer.begin_rw_txn()?.get_blocks_version()?;
-    if current_storage_version_blocks.is_none() {
-        writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
-    };
-
+// If the storage scope has changed, update accordingly.
+fn set_version_if_needed(
+    reader: StorageReader,
+    mut writer: StorageWriter,
+) -> StorageResult<StorageWriter> {
+    let existing_storage_version = get_storage_version(reader)?;
+    debug!("Existing storage state: {:?}", existing_storage_version);
+    match existing_storage_version {
+        None => {
+            // Initialize the storage version.
+            writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
+            // If in full-archive mode, also set the block version.
+            if writer.scope == StorageScope::FullArchive {
+                writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
+            }
+            debug!(
+                "Storage was initialized with state_version: {:?}, scope: {:?}, blocks_version: \
+                 {:?}",
+                STORAGE_VERSION_STATE, writer.scope, STORAGE_VERSION_BLOCKS
+            );
+        }
+        Some(StorageVersion::FullArchive(FullArchiveVersion {
+            state_version: _,
+            blocks_version: _,
+        })) => {
+            // TODO(yael): consider optimizing by deleting the block's data if the scope has changed
+            // to StateOnly
+            if writer.scope == StorageScope::StateOnly {
+                // Deletion of the block's version is required here. It ensures that the node knows
+                // that the storage operates in StateOnly mode and prevents the operator from
+                // running it in FullArchive mode again.
+                writer.begin_rw_txn()?.delete_blocks_version()?.commit()?;
+            }
+        }
+        Some(StorageVersion::StateOnly(StateOnlyVersion { state_version: _ })) => {
+            // The storage cannot change from state-only to full-archive mode.
+            if writer.scope == StorageScope::FullArchive {
+                return Err(StorageError::StorageVersionInconcistency(
+                    StorageVersionError::InconsistentStorageScope,
+                ));
+            }
+        }
+    }
     Ok(writer)
 }
 
+#[derive(Debug)]
+struct FullArchiveVersion {
+    state_version: Version,
+    blocks_version: Version,
+}
+
+#[derive(Debug)]
+struct StateOnlyVersion {
+    state_version: Version,
+}
+
+#[derive(Debug)]
+enum StorageVersion {
+    FullArchive(FullArchiveVersion),
+    StateOnly(StateOnlyVersion),
+}
+
+fn get_storage_version(reader: StorageReader) -> StorageResult<Option<StorageVersion>> {
+    let current_storage_version_state = reader.begin_ro_txn()?.get_state_version()?;
+    let current_storage_version_blocks = reader.begin_ro_txn()?.get_blocks_version()?;
+    let Some(current_storage_version_state) = current_storage_version_state else {
+        return Ok(None);
+    };
+    match current_storage_version_blocks {
+        Some(current_storage_version_blocks) => {
+            Ok(Some(StorageVersion::FullArchive(FullArchiveVersion {
+                state_version: current_storage_version_state,
+                blocks_version: current_storage_version_blocks,
+            })))
+        }
+        None => Ok(Some(StorageVersion::StateOnly(StateOnlyVersion {
+            state_version: current_storage_version_state,
+        }))),
+    }
+}
+
 // Assumes the storage has a version.
-fn verify_storage_version(reader: StorageReader, storage_scope: StorageScope) -> StorageResult<()> {
+fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
+    let existing_storage_version = get_storage_version(reader)?;
     debug!(
-        "Storage crate version: State = {STORAGE_VERSION_STATE:} Blocks = \
-         {STORAGE_VERSION_BLOCKS:}. Storage scope = {storage_scope:?}."
+        "Crate storage version: State = {STORAGE_VERSION_STATE:} Blocks = \
+         {STORAGE_VERSION_BLOCKS:}. Existing storage state: {existing_storage_version:?} "
     );
 
-    let current_storage_version_state =
-        reader.begin_ro_txn()?.get_state_version()?.expect("Storage should have a version");
-    let current_storage_version_blocks =
-        reader.begin_ro_txn()?.get_blocks_version()?.expect("Storage should have a version");
-    debug!(
-        "Current storage version: State = {current_storage_version_state:}. Blocks = \
-         {current_storage_version_blocks:}."
-    );
+    match existing_storage_version {
+        None => panic!("Storage should be initialized."),
+        Some(StorageVersion::FullArchive(FullArchiveVersion {
+            state_version: existing_state_version,
+            blocks_version: _,
+        })) if STORAGE_VERSION_STATE != existing_state_version => {
+            Err(StorageError::StorageVersionInconcistency(
+                StorageVersionError::InconsistentStorageVersion {
+                    crate_version: STORAGE_VERSION_STATE,
+                    storage_version: existing_state_version,
+                },
+            ))
+        }
 
-    if STORAGE_VERSION_STATE != current_storage_version_state {
-        return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION_STATE,
-                storage_version: current_storage_version_state,
-            },
-        ));
-    }
+        Some(StorageVersion::FullArchive(FullArchiveVersion {
+            state_version: _,
+            blocks_version: existing_blocks_version,
+        })) if STORAGE_VERSION_BLOCKS != existing_blocks_version => {
+            Err(StorageError::StorageVersionInconcistency(
+                StorageVersionError::InconsistentStorageVersion {
+                    crate_version: STORAGE_VERSION_BLOCKS,
+                    storage_version: existing_blocks_version,
+                },
+            ))
+        }
 
-    if storage_scope == StorageScope::StateOnly {
-        return Ok(());
+        Some(StorageVersion::StateOnly(StateOnlyVersion {
+            state_version: existing_state_version,
+        })) if STORAGE_VERSION_STATE != existing_state_version => {
+            Err(StorageError::StorageVersionInconcistency(
+                StorageVersionError::InconsistentStorageVersion {
+                    crate_version: STORAGE_VERSION_STATE,
+                    storage_version: existing_state_version,
+                },
+            ))
+        }
+        Some(_) => Ok(()),
     }
-
-    if STORAGE_VERSION_BLOCKS != current_storage_version_blocks {
-        return Err(StorageError::StorageVersionInconcistency(
-            StorageVersionError::InconsistentStorageVersion {
-                crate_version: STORAGE_VERSION_BLOCKS,
-                storage_version: current_storage_version_blocks,
-            },
-        ));
-    }
-    Ok(())
 }
 
 /// The categories of data to save in the storage.
