@@ -183,7 +183,7 @@ fn set_version_if_needed(
     reader: StorageReader,
     mut writer: StorageWriter,
 ) -> StorageResult<StorageWriter> {
-    let existing_storage_version = get_storage_version(reader)?;
+    let existing_storage_version = get_storage_version(&reader)?;
     debug!("Existing storage state: {:?}", existing_storage_version);
     match existing_storage_version {
         None => {
@@ -224,24 +224,30 @@ fn set_version_if_needed(
     Ok(writer)
 }
 
+/// The version of the storage in FullArchive mode.
 #[derive(Debug)]
-struct FullArchiveVersion {
+pub struct FullArchiveVersion {
     state_version: Version,
     blocks_version: Version,
 }
 
+/// The version of the storage in StateOnly mode.
 #[derive(Debug)]
-struct StateOnlyVersion {
+pub struct StateOnlyVersion {
     state_version: Version,
 }
 
+/// The version of the storage.
 #[derive(Debug)]
-enum StorageVersion {
+pub enum StorageVersion {
+    /// The version of the storage in FullArchive mode.
     FullArchive(FullArchiveVersion),
+    /// The version of the storage in StateOnly mode.
     StateOnly(StateOnlyVersion),
 }
 
-fn get_storage_version(reader: StorageReader) -> StorageResult<Option<StorageVersion>> {
+/// Returns the version of the storage.
+pub fn get_storage_version(reader: &StorageReader) -> StorageResult<Option<StorageVersion>> {
     let current_storage_version_state = reader.begin_ro_txn()?.get_state_version()?;
     let current_storage_version_blocks = reader.begin_ro_txn()?.get_blocks_version()?;
     let Some(current_storage_version_state) = current_storage_version_state else {
@@ -262,7 +268,7 @@ fn get_storage_version(reader: StorageReader) -> StorageResult<Option<StorageVer
 
 // Assumes the storage has a version.
 fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
-    let existing_storage_version = get_storage_version(reader)?;
+    let existing_storage_version = get_storage_version(&reader)?;
     debug!(
         "Crate storage version: State = {STORAGE_VERSION_STATE:} Blocks = \
          {STORAGE_VERSION_BLOCKS:}. Existing storage state: {existing_storage_version:?} "
@@ -489,6 +495,8 @@ pub enum StorageError {
     StorageVersionInconcistency(#[from] StorageVersionError),
     #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
     ScopeError { table_name: String, storage_scope: StorageScope },
+    #[error("The request is not valid under the state-only scope.")]
+    StateOnlyInvalidRequest,
     #[error(transparent)]
     IOError(#[from] std::io::Error),
     #[error(transparent)]
