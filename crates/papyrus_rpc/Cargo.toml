@@ -9,27 +9,29 @@ license-file.workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 base64.workspace = true
+ethers.workspace = true
 flate2.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+hex.workspace = true
 hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 lazy_static.workspace = true
 metrics.workspace = true
-papyrus_common = { path = "../papyrus_common"}
+papyrus_common = { path = "../papyrus_common" }
 papyrus_config = { path = "../papyrus_config", version = "0.2.0-rc2" }
 papyrus_execution = { path = "../papyrus_execution" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros"}
+papyrus_proc_macros = { path = "../papyrus_proc_macros" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.2.0-rc2" }
 starknet_client = { path = "../starknet_client" }
-regex = {workspace = true}
+regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, features = ["arbitrary_precision"]}
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
-tower = { workspace = true, features = ["full"]}
+tower = { workspace = true, features = ["full"] }
 tracing.workspace = true
 url.workspace = true
 validator = { workspace = true, features = ["derive"] }
@@ -41,7 +43,6 @@ cairo-lang-starknet.workspace = true
 camelpaste.workspace = true
 derive_more.workspace = true
 enum-iterator.workspace = true
-hex.workspace = true
 insta = { workspace = true, features = ["json"] }
 itertools.workspace = true
 jsonschema.workspace = true

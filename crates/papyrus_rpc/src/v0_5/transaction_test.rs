@@ -8,17 +8,25 @@ use papyrus_storage::body::events::{
     ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
+use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     Fee,
+    L1HandlerTransaction,
     Transaction,
     TransactionSignature,
     TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
-use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
+};
 
 use super::{
     DeployAccountTransaction,
@@ -28,6 +36,7 @@ use super::{
     InvokeTransactionV1,
     TransactionOutput,
 };
+use crate::v0_5::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
         Version1(DeployAccountTransactionV1) = 0,
@@ -140,4 +149,23 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
 fn test_invoke_transaction_to_client_transaction() {
     let _invoke_transaction: client_transaction::InvokeTransaction =
         InvokeTransactionV1::get_test_instance(&mut get_rng()).try_into().unwrap();
+}
+
+#[test]
+fn l1handler_msg_hash() {
+    let tx = serde_json::from_value::<L1HandlerTransaction>(read_json_file("l1handler_tx.json"))
+        .unwrap();
+    let msg_hash = format!("{}", tx.calc_msg_hash());
+    assert_eq!(msg_hash, "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2");
+}
+
+#[test]
+fn l1handler_msg_hash_serde() {
+    let tx = serde_json::from_value::<L1HandlerTransaction>(read_json_file("l1handler_tx.json"))
+        .unwrap();
+    let message_hash = tx.calc_msg_hash();
+    let ser = serde_json::to_string(&message_hash).unwrap();
+    assert_eq!(ser, "\"0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2\"");
+    let des = serde_json::from_str::<L1L2MsgHash>(&ser).unwrap();
+    assert_eq!(des, message_hash);
 }

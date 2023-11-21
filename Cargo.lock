@@ -4504,6 +4504,7 @@ dependencies = [
  "camelpaste",
  "derive_more",
  "enum-iterator",
+ "ethers",
  "flate2",
  "futures",
  "futures-util",
