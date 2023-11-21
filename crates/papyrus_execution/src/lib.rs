@@ -218,7 +218,7 @@ pub fn execute_call(
     )?;
 
     let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader: storage_reader.clone(),
+        storage_reader,
         state_number,
         maybe_pending_data,
     });
