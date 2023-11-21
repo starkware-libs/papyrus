@@ -21,7 +21,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 
-use crate::objects::PendingStateDiff;
+use crate::objects::PendingData;
 use crate::state_reader::ExecutionStateReader;
 use crate::test_utils::{get_test_casm, get_test_deprecated_contract_class};
 
@@ -131,8 +131,7 @@ fn read_state() {
     let mut state_reader0 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number0,
-        maybe_pending_state_diff: None,
-        maybe_pending_classes: None,
+        maybe_pending_data: None,
     };
     let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_0, StarkFelt::default());
@@ -152,8 +151,7 @@ fn read_state() {
     let mut state_reader1 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number1,
-        maybe_pending_state_diff: None,
-        maybe_pending_classes: None,
+        maybe_pending_data: None,
     };
     let storage_after_block_1 = state_reader1.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_1, storage_value0);
@@ -169,14 +167,18 @@ fn read_state() {
     let mut state_reader2 = ExecutionStateReader {
         storage_reader,
         state_number: state_number2,
-        maybe_pending_state_diff: None,
-        maybe_pending_classes: None,
+        maybe_pending_data: None,
     };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_2, nonce0);
 
     // Test pending state diff
-    state_reader2.maybe_pending_state_diff = Some(PendingStateDiff {
+    let mut pending_classes = PendingClasses::default();
+    pending_classes.add_compiled_class(class_hash2, casm1);
+    pending_classes.add_class(class_hash3, ApiContractClass::ContractClass(class0));
+    pending_classes
+        .add_class(class_hash4, ApiContractClass::DeprecatedContractClass(class1.clone()));
+    state_reader2.maybe_pending_data = Some(PendingData {
         storage_diffs: indexmap!(
             address0 => vec![StorageEntry{key: storage_key0, value: storage_value1}],
             address2 => vec![StorageEntry{key: storage_key0, value: storage_value2}],
@@ -189,14 +191,9 @@ fn read_state() {
         nonces: indexmap!(
             address2 => nonce1,
         ),
+        classes: pending_classes,
         ..Default::default()
     });
-    let mut pending_classes = PendingClasses::default();
-    pending_classes.add_compiled_class(class_hash2, casm1);
-    pending_classes.add_class(class_hash3, ApiContractClass::ContractClass(class0));
-    pending_classes
-        .add_class(class_hash4, ApiContractClass::DeprecatedContractClass(class1.clone()));
-    state_reader2.maybe_pending_classes = Some(pending_classes);
 
     assert_eq!(state_reader2.get_storage_at(address0, storage_key0).unwrap(), storage_value1);
     assert_eq!(state_reader2.get_storage_at(address2, storage_key0).unwrap(), storage_value2);
