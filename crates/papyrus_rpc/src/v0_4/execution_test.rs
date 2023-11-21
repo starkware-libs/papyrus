@@ -181,6 +181,8 @@ async fn execution_call() {
     assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
 }
 
+// TODO(shahak): Add test that checks the block context that blockifier got. (By adding a function
+// to the contract that returns the block context)
 #[tokio::test]
 async fn pending_execution_call() {
     let pending_data = get_test_pending_data();
@@ -265,6 +267,51 @@ async fn call_estimate_fee() {
         .await
         .unwrap();
     assert_ne!(res, expected_fee_estimate);
+}
+
+#[tokio::test]
+async fn pending_call_estimate_fee() {
+    let pending_data = get_test_pending_data();
+    let pending_classes = get_test_pending_classes();
+    write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(
+        None, None, Some(pending_data), Some(pending_classes), None
+    );
+    write_empty_block(storage_writer);
+
+    let account_address = ContractAddress(patricia_key!("0x444"));
+
+    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+        max_fee: Fee(1000000 * GAS_PRICE.0),
+        version: TransactionVersion::ONE,
+        sender_address: account_address,
+        calldata: calldata![
+            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
+            selector_from_name("return_result").0, // EP selector.
+            stark_felt!(1_u8),                     // Calldata length.
+            stark_felt!(2_u8)                      // Calldata: num.
+        ],
+        ..Default::default()
+    }));
+
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_4_estimateFee",
+            (vec![invoke.clone()], BlockId::Tag(Tag::Pending)),
+        )
+        .await
+        .unwrap();
+
+    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
+    // call.
+    let expected_fee_estimate = vec![FeeEstimate {
+        gas_consumed: stark_felt!("0x9ba"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(249000000000000),
+    }];
+    assert_eq!(res, expected_fee_estimate);
 }
 
 #[tokio::test]
