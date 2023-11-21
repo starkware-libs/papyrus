@@ -160,6 +160,11 @@ fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
 }
 
+fn internal_server_error_with_msg(err: impl Display) -> ErrorObjectOwned {
+    error!("{}: {}", INTERNAL_ERROR_MSG, err);
+    ErrorObjectOwned::owned(InternalError.code(), err.to_string(), None::<()>)
+}
+
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {

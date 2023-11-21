@@ -18,7 +18,7 @@ use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageReader};
+use papyrus_storage::{StorageError, StorageReader, StorageScope};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ChainId,
@@ -122,6 +122,7 @@ use crate::{
     get_block_status,
     get_latest_block_number,
     internal_server_error,
+    internal_server_error_with_msg,
     ContinuationTokenAsStruct,
 };
 
@@ -378,6 +379,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
+        if self.storage_reader.get_scope() == StorageScope::StateOnly {
+            return Err(internal_server_error_with_msg(
+                "The request is not valid under the state-only scope.",
+            ));
+        };
+
         if let BlockId::Tag(Tag::Pending) = block_id {
             let transactions_len = read_pending_data(&self.pending_data, &self.storage_reader)
                 .await?
