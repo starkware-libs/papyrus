@@ -132,6 +132,7 @@ use super::super::transaction::{
     Event,
     GeneralTransactionReceipt,
     InvokeTransactionV1,
+    L1HandlerMsgHash,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -167,7 +168,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-use crate::v0_5::transaction::TransactionStatus;
+use crate::v0_5::transaction::{L1L2MsgHash, TransactionStatus};
 use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
 
@@ -910,7 +911,12 @@ async fn get_transaction_status() {
         .unwrap();
 
     let transaction_hash = block.body.transaction_hashes[0];
-    let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
+    let tx = block.body.transaction_outputs.index(0).clone();
+    let msg_hash = match tx {
+        starknet_api::transaction::TransactionOutput::L1Handler(_) => Some(L1L2MsgHash::default()),
+        _ => None,
+    };
+    let output = TransactionOutput::from((tx, msg_hash));
     let expected_status = TransactionStatus {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         execution_status: output.execution_status().clone(),
@@ -1020,7 +1026,13 @@ async fn get_transaction_receipt() {
         .unwrap();
 
     let transaction_hash = block.body.transaction_hashes[0];
-    let output = TransactionOutput::from(block.body.transaction_outputs.index(0).clone());
+    let tx = block.body.transactions.index(0).clone();
+    let msg_hash = match tx {
+        starknet_api::transaction::Transaction::L1Handler(tx) => Some(tx.calc_msg_hash()),
+        _ => None,
+    };
+    let output =
+        TransactionOutput::from((block.body.transaction_outputs.index(0).clone(), msg_hash));
     let expected_receipt = TransactionReceipt {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         transaction_hash,
@@ -1784,8 +1796,16 @@ fn generate_client_transaction_client_receipt_and_rpc_receipt(
         let starknet_api_output = client_transaction_receipt
             .clone()
             .into_starknet_api_transaction_output(&client_transaction);
-        let maybe_output =
-            PendingTransactionOutput::try_from(TransactionOutput::from(starknet_api_output));
+        let msg_hash = match &client_transaction {
+            starknet_client::reader::objects::transaction::Transaction::L1Handler(tx) => {
+                Some(tx.calc_msg_hash())
+            }
+            _ => None,
+        };
+        let maybe_output = PendingTransactionOutput::try_from(TransactionOutput::from((
+            starknet_api_output,
+            msg_hash,
+        )));
         let Ok(output) = maybe_output else {
             continue;
         };

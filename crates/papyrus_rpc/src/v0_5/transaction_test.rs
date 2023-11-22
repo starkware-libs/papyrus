@@ -78,7 +78,7 @@ macro_rules! gen_test_from_thin_transaction_output_macro {
             #[tokio::test]
             async fn [<from_thin_transaction_output_ $variant:lower>]() {
                 let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
-                let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![]);
+                let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![], None);
                 assert_matches!(output, TransactionOutput::$variant(_));
             }
         }
@@ -89,7 +89,15 @@ gen_test_from_thin_transaction_output_macro!(Declare);
 gen_test_from_thin_transaction_output_macro!(Deploy);
 gen_test_from_thin_transaction_output_macro!(DeployAccount);
 gen_test_from_thin_transaction_output_macro!(Invoke);
-gen_test_from_thin_transaction_output_macro!(L1Handler);
+
+#[tokio::test]
+async fn from_thin_transaction_output_l1handler() {
+    let thin_output = ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput::default());
+    let msg_hash = L1L2MsgHash::default();
+    let output =
+        TransactionOutput::from_thin_transaction_output(thin_output, vec![], Some(msg_hash));
+    assert_matches!(output, TransactionOutput::L1Handler(_));
+}
 
 // TODO: check the conversion against the expected GW transaction.
 #[test]
