@@ -9,6 +9,7 @@ use crate::test_utils::retry::get_test_config;
 use crate::writer::{StarknetGatewayClient, StarknetWriter, WriterClientError, WriterClientResult};
 
 const NODE_VERSION: &str = "NODE VERSION";
+const GATEWAY_ALIVE_RESPONSE: &str = "Gateway is alive!";
 
 async fn run_add_transaction<
     Transaction: Serialize + for<'a> Deserialize<'a>,
@@ -79,6 +80,20 @@ async fn test_add_transaction_fails_serde<
     else {
         panic!("Adding a transaction with bad response did not cause a SerdeError");
     };
+}
+
+#[tokio::test]
+async fn is_alive() {
+    let starknet_client =
+        StarknetGatewayClient::new(&mockito::server_url(), NODE_VERSION, get_test_config())
+            .unwrap();
+    let mock_is_alive = mock("GET", "/gateway/is_alive")
+        .with_status(200)
+        .with_body(GATEWAY_ALIVE_RESPONSE)
+        .create();
+    let response = starknet_client.is_alive().await;
+    mock_is_alive.assert();
+    assert!(response);
 }
 
 #[tokio::test]
