@@ -510,6 +510,7 @@ pub struct L1HandlerTransactionOutput {
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
+    pub message_hash: L1L2MsgHash,
 }
 
 // Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
@@ -592,6 +593,7 @@ impl TransactionOutput {
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         events: Vec<starknet_api::transaction::Event>,
+        message_hash: Option<L1L2MsgHash>,
     ) -> Self {
         match thin_tx_output {
             ThinTransactionOutput::Declare(thin_declare) => {
@@ -639,15 +641,22 @@ impl TransactionOutput {
                     events,
                     execution_status: thin_l1handler.execution_status,
                     execution_resources: thin_l1handler.execution_resources.into(),
+                    message_hash: message_hash
+                        .expect("Missing message hash to construct L1Handler output."),
                 })
             }
         }
     }
 }
 
-impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
+impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
+    for TransactionOutput
+{
     #[cfg_attr(coverage_nightly, coverage_attribute)]
-    fn from(tx_output: starknet_api::transaction::TransactionOutput) -> Self {
+    fn from(
+        tx_output_msg_hash: (starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>),
+    ) -> Self {
+        let (tx_output, maybe_msg_hash) = tx_output_msg_hash;
         match tx_output {
             starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {
                 TransactionOutput::Declare(DeclareTransactionOutput {
@@ -694,6 +703,8 @@ impl From<starknet_api::transaction::TransactionOutput> for TransactionOutput {
                     events: l1_handler_tx_output.events,
                     execution_status: l1_handler_tx_output.execution_status,
                     execution_resources: l1_handler_tx_output.execution_resources.into(),
+                    message_hash: maybe_msg_hash
+                        .expect("Missing message hash to construct L1Handler output."),
                 })
             }
         }

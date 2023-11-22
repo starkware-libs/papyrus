@@ -2597,10 +2597,16 @@
                                 "enum": [
                                     "L1_HANDLER"
                                 ]
+                            },
+                            "message_hash": {
+                                "title": "Message hash",
+                                "description": "The message hash as it appears on the L1 core contract",
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
                             }
                         },
                         "required": [
-                            "type"
+                            "type",
+                            "message_hash"
                         ]
                     },
                     {
@@ -2623,10 +2629,16 @@
                                 "enum": [
                                     "L1_HANDLER"
                                 ]
+                            },
+                            "message_hash": {
+                                "title": "Message hash",
+                                "description": "The message hash as it appears on the L1 core contract",
+                                "$ref": "#/components/schemas/NUM_AS_HEX"
                             }
                         },
                         "required": [
-                            "type"
+                            "type",
+                            "message_hash"
                         ]
                     },
                     {
