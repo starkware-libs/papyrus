@@ -712,6 +712,18 @@ async fn trace_block_transactions_regular_and_pending() {
     assert_eq!(res[0].transaction_hash, tx_hash1);
     assert_eq!(res[1].trace_root, tx_2_trace);
     assert_eq!(res[1].transaction_hash, tx_hash2);
+
+    // Ask for trace of transactions in the pending block.
+    let pending_tx_1_trace = module
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+        .await
+        .unwrap();
+    assert_eq!(pending_tx_1_trace, tx_1_trace);
+    let pending_tx_2_trace = module
+        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+        .await
+        .unwrap();
+    assert_eq!(pending_tx_2_trace, tx_2_trace);
 }
 
 #[test]

@@ -1061,48 +1061,108 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionTrace> {
+        let pending_block =
+            read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let TransactionIndex(block_number, tx_offset) = storage_txn
-            .get_transaction_idx_by_hash(&transaction_hash)
-            .map_err(internal_server_error)?
-            .ok_or(INVALID_TRANSACTION_HASH)?;
-
-        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
-        if casm_marker <= block_number {
-            debug!(
-                ?transaction_hash,
-                ?block_number,
-                ?casm_marker,
-                "Transaction is in the storage, but the compiled classes are not fully synced up \
-                 to its block.",
-            );
-            return Err(INVALID_TRANSACTION_HASH.into());
-        }
-
-        let block_transactions = storage_txn
-            .get_block_transactions(block_number)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
-                    msg: format!("Missing block {block_number} transactions"),
+        // Search for the transaction inside the pending block.
+        let (
+            maybe_pending_data,
+            executable_transactions,
+            transaction_hashes,
+            block_number,
+            state_number,
+        ) = if let Some((pending_transaction_offset, _)) = pending_block
+            .transaction_receipts
+            .iter()
+            .enumerate()
+            .find(|(_, receipt)| receipt.transaction_hash == transaction_hash)
+        {
+            // If there are no blocks in the network and there is a pending block, as an edge
+            // case we treat this as if the pending block is empty.
+            let block_number =
+                get_latest_block_number(&storage_txn)?.ok_or(INVALID_TRANSACTION_HASH)?;
+            let state_number = StateNumber::right_after_block(block_number);
+            let executable_transactions = pending_block
+                .transactions
+                .iter()
+                .take(pending_transaction_offset + 1)
+                .map(|client_transaction| {
+                    let starknet_api_transaction: StarknetApiTransaction =
+                        client_transaction.clone().try_into().map_err(internal_server_error)?;
+                    stored_txn_to_executable_txn(
+                        starknet_api_transaction,
+                        &storage_txn,
+                        state_number,
+                    )
                 })
-            })?;
+                .collect::<Result<_, _>>()?;
+            let transaction_hashes = pending_block
+                .transaction_receipts
+                .iter()
+                .map(|receipt| receipt.transaction_hash)
+                .collect();
+            let maybe_pending_data = Some(ExecutionPendingData {
+                timestamp: pending_block.timestamp,
+                eth_l1_gas_price: pending_block.eth_l1_gas_price,
+                sequencer: pending_block.sequencer_address,
+                // The pending state diff should be empty since we look at the state in the
+                // start of the pending block.
+                ..Default::default()
+            });
+            (
+                maybe_pending_data,
+                executable_transactions,
+                transaction_hashes,
+                block_number,
+                state_number,
+            )
+        } else {
+            // Transaction is not inside the pending block. Search for it in the storage.
+            let TransactionIndex(block_number, tx_offset) = storage_txn
+                .get_transaction_idx_by_hash(&transaction_hash)
+                .map_err(internal_server_error)?
+                .ok_or(INVALID_TRANSACTION_HASH)?;
 
-        let tx_hashes = storage_txn
-            .get_block_transaction_hashes(block_number)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| {
-                internal_server_error(StorageError::DBInconsistency {
-                    msg: format!("Missing block {block_number} transactions"),
-                })
-            })?;
+            let casm_marker =
+                storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
+            if casm_marker <= block_number {
+                debug!(
+                    ?transaction_hash,
+                    ?block_number,
+                    ?casm_marker,
+                    "Transaction is in the storage, but the compiled classes are not fully synced \
+                     up to its block.",
+                );
+                return Err(INVALID_TRANSACTION_HASH.into());
+            }
 
-        let state_number = StateNumber::right_before_block(block_number);
-        let executable_txns = block_transactions
-            .into_iter()
-            .take(tx_offset.0 + 1)
-            .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
-            .collect::<Result<_, _>>()?;
+            let block_transactions = storage_txn
+                .get_block_transactions(block_number)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(StorageError::DBInconsistency {
+                        msg: format!("Missing block {block_number} transactions"),
+                    })
+                })?;
+
+            let transaction_hashes = storage_txn
+                .get_block_transaction_hashes(block_number)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(StorageError::DBInconsistency {
+                        msg: format!("Missing block {block_number} transactions"),
+                    })
+                })?;
+
+            let state_number = StateNumber::right_before_block(block_number);
+            let executable_transactions = block_transactions
+                .into_iter()
+                .take(tx_offset.0 + 1)
+                .map(|tx| stored_txn_to_executable_txn(tx, &storage_txn, state_number))
+                .collect::<Result<_, _>>()?;
+
+            (None, executable_transactions, transaction_hashes, block_number, state_number)
+        };
 
         drop(storage_txn);
 
@@ -1118,12 +1178,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
 
         let simulate_transactions_result = tokio::task::spawn_blocking(move || {
             exec_simulate_transactions(
-                executable_txns,
-                Some(tx_hashes),
+                executable_transactions,
+                Some(transaction_hashes),
                 &chain_id,
                 reader,
-                // TODO(shahak): Add pending data here.
-                None,
+                maybe_pending_data,
                 state_number,
                 block_number,
                 &block_execution_config,
