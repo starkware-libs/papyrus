@@ -1,4 +1,5 @@
 use std::net::{SocketAddr, TcpListener};
+use std::sync::Arc;
 
 use axum::body::Body;
 use axum::http::{Request, StatusCode};
@@ -10,9 +11,11 @@ use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::{table_names, test_utils};
 use pretty_assertions::assert_eq;
 use serde_json::{json, Value};
+use starknet_client::reader::MockStarknetReader;
+use starknet_client::writer::MockStarknetWriter;
 use tower::ServiceExt;
 
-use crate::{app, MONITORING_PREFIX};
+use crate::{app, is_ready, MONITORING_PREFIX};
 
 const TEST_CONFIG_PRESENTATION: &str = "full_general_config_presentation";
 const PUBLIC_TEST_CONFIG_PRESENTATION: &str = "public_general_config_presentation";
@@ -23,7 +26,7 @@ const TEST_VERSION: &str = "1.2.3-dev";
 fn setup_app() -> Router {
     let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     app(
-        String::from("default_url"),
+        String::from("https://default_url"),
         storage_reader,
         TEST_VERSION,
         serde_json::to_value(TEST_CONFIG_PRESENTATION).unwrap(),
@@ -114,6 +117,19 @@ async fn alive() {
 }
 
 #[tokio::test]
+async fn ready() {
+    let mut gateway_client_mock = MockStarknetWriter::new();
+    let mut feeder_gateway_client_mock = MockStarknetReader::new();
+
+    gateway_client_mock.expect_is_alive().times(1).returning(|| true);
+    feeder_gateway_client_mock.expect_is_alive().times(1).returning(|| true);
+
+    let response: String =
+        is_ready(Arc::new(gateway_client_mock), Arc::new(feeder_gateway_client_mock)).await;
+    assert_eq!(response, StatusCode::OK.to_string());
+}
+
+#[tokio::test]
 async fn without_metrics() {
     let app = setup_app();
     let response = request_app(app, "metrics").await;
@@ -129,7 +145,7 @@ async fn with_metrics() {
     let ((storage_reader, _), _temp_dir) = test_utils::get_test_storage();
     let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
     let app = app(
-        String::from("default_url"),
+        String::from("https://default_url"),
         storage_reader,
         TEST_VERSION,
         serde_json::Value::default(),

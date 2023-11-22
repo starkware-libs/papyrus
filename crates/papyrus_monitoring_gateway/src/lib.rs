@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
 use std::str::FromStr;
+use std::sync::Arc;
 
 use axum::extract::Path;
 use axum::http::StatusCode;
@@ -23,8 +24,8 @@ use papyrus_storage::{DbStats, StorageError, StorageReader};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
-use starknet_client::reader::StarknetFeederGatewayClient;
-use starknet_client::writer::StarknetGatewayClient;
+use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
+use starknet_client::writer::{StarknetGatewayClient, StarknetWriter};
 use starknet_client::RetryConfig;
 use tracing::{debug, info, instrument};
 use validator::Validate;
@@ -165,6 +166,22 @@ fn app(
     present_full_config_secret: String,
     prometheus_handle: Option<PrometheusHandle>,
 ) -> Router {
+    let is_ready_retry_config =
+        RetryConfig { retry_base_millis: 50, retry_max_delay_millis: 1000, max_retries: 0 };
+    let starknet_feeder_client = Arc::new(
+        StarknetFeederGatewayClient::new(
+            starknet_url.as_str(),
+            None,
+            version,
+            is_ready_retry_config,
+        )
+        .expect("Failed creating Starknet feeder client."),
+    );
+    let starknet_client = Arc::new(
+        StarknetGatewayClient::new(starknet_url.as_str(), version, is_ready_retry_config)
+            .expect("Failed creating Starknet client."),
+    );
+
     Router::new()
         .route(
             format!("/{MONITORING_PREFIX}/dbTablesStats").as_str(),
@@ -199,28 +216,17 @@ fn app(
         )
         .route(
             format!("/{MONITORING_PREFIX}/ready").as_str(),
-            get(move || is_ready(version, starknet_url.clone())),
+            get(move || is_ready(starknet_client, starknet_feeder_client)),
         )
 }
 
-#[instrument(level = "debug", ret)]
-async fn is_ready(version: &'static str, starknet_url: String) -> String {
-    let is_ready_retry_config =
-        RetryConfig { retry_base_millis: 50, retry_max_delay_millis: 1000, max_retries: 0 };
-
-    let starknet_feeder_client = StarknetFeederGatewayClient::new(
-        starknet_url.as_str(),
-        None,
-        version,
-        is_ready_retry_config,
-    )
-    .expect("Failed creating Starknet feeder client.");
+async fn is_ready<TStarknetWriter: StarknetWriter, TStarknetReader: StarknetReader>(
+    starknet_client: Arc<TStarknetWriter>,
+    starknet_feeder_client: Arc<TStarknetReader>,
+) -> String {
     let response = starknet_feeder_client.is_alive().await;
     assert!(response);
 
-    let starknet_client =
-        StarknetGatewayClient::new(starknet_url.as_str(), version, is_ready_retry_config)
-            .expect("Failed creating Starknet client.");
     let response = starknet_client.is_alive().await;
     assert!(response);
 
