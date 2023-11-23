@@ -31,11 +31,15 @@ use crate::{ExecutionError, ExecutionResult};
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum TransactionTrace {
+    #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransactionTrace),
+    #[serde(rename = "INVOKE")]
     Invoke(InvokeTransactionTrace),
+    #[serde(rename = "DECLARE")]
     Declare(DeclareTransactionTrace),
+    #[serde(rename = "DEPLOY_ACCOUNT")]
     DeployAccount(DeployAccountTransactionTrace),
 }
 
