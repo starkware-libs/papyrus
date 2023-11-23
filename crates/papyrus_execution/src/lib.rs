@@ -34,6 +34,7 @@ use blockifier::execution::entry_point::{
 use blockifier::execution::errors::{EntryPointExecutionError, PreExecutionError};
 use blockifier::state::cached_state::CachedState;
 use blockifier::state::errors::StateError;
+use blockifier::state::state_api::State;
 use blockifier::transaction::errors::TransactionExecutionError;
 use blockifier::transaction::objects::{
     AccountTransactionContext,
@@ -59,7 +60,7 @@ use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::state::{StateNumber, ThinStateDiff};
+use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
     DeclareTransaction,
@@ -494,6 +495,9 @@ fn execute_transactions(
         maybe_pending_data,
     });
 
+    // TODO(yair): this is a temporary bug fix, delete once the blockifier is fixed.
+    set_block_hash_contract(state_number, &mut cached_state)?;
+
     let (txs, tx_hashes) = match tx_hashes {
         Some(tx_hashes) => (txs, tx_hashes),
         None => {
@@ -529,6 +533,30 @@ fn execute_transactions(
     }
 
     Ok((res, block_context))
+}
+
+/// Sets the block hash contract (contract at address 1) with the block hash of the block 10 blocks
+/// ago.
+fn set_block_hash_contract(
+    state_number: StateNumber,
+    cached_state: &mut CachedState<ExecutionStateReader>,
+) -> ExecutionResult<()> {
+    if state_number.is_after(BlockNumber(10)) {
+        let block_min_10 = state_number.0.0 - 10;
+        let header_10_blocks_ago = cached_state
+            .state
+            .storage_reader
+            .begin_ro_txn()?
+            .get_block_header(BlockNumber(block_min_10))?
+            .expect("State should be > 10.");
+
+        cached_state.set_storage_at(
+            ContractAddress::from(1_u128),
+            StorageKey::from(block_min_10),
+            header_10_blocks_ago.block_hash.0,
+        );
+    }
+    Ok(())
 }
 
 fn to_blockifier_tx(
