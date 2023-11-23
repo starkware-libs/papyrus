@@ -348,6 +348,11 @@ impl StorageReader {
         }
         Ok(DbStats { db_stats: self.db_reader.get_db_stats()?, tables_stats })
     }
+
+    /// Returns the scope of the storage.
+    pub fn get_scope(&self) -> StorageScope {
+        self.scope
+    }
 }
 
 /// A struct for starting RW transactions ([`StorageTxn`]) to the storage.

@@ -23,6 +23,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use jsonrpsee::core::RpcResult;
 use jsonrpsee::server::{ServerBuilder, ServerHandle};
 use jsonrpsee::types::error::ErrorCode::InternalError;
 use jsonrpsee::types::error::INTERNAL_ERROR_MSG;
@@ -36,7 +37,7 @@ use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::{StorageReader, StorageTxn};
+use papyrus_storage::{StorageReader, StorageScope, StorageTxn};
 use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockStatus};
@@ -158,6 +159,20 @@ impl SerializeConfig for RpcConfig {
 fn internal_server_error(err: impl Display) -> ErrorObjectOwned {
     error!("{}: {}", INTERNAL_ERROR_MSG, err);
     ErrorObjectOwned::owned(InternalError.code(), INTERNAL_ERROR_MSG, None::<()>)
+}
+
+fn internal_server_error_with_msg(err: impl Display) -> ErrorObjectOwned {
+    error!("{}: {}", INTERNAL_ERROR_MSG, err);
+    ErrorObjectOwned::owned(InternalError.code(), err.to_string(), None::<()>)
+}
+
+fn verify_storage_scope(storage_reader: &StorageReader) -> RpcResult<()> {
+    match storage_reader.get_scope() {
+        StorageScope::StateOnly => {
+            Err(internal_server_error_with_msg("Unsupported method in state-only scope."))
+        }
+        StorageScope::FullArchive => Ok(()),
+    }
 }
 
 fn get_latest_block_number<Mode: TransactionKind>(
