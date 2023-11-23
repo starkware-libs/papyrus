@@ -265,16 +265,19 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
-        mut block_id: BlockId,
+        block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
-        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        let maybe_pending_storage_diffs = maybe_pending_data
-            .map(|pending_data| pending_data.state_update.state_diff.storage_diffs);
+        let maybe_pending_storage_diffs = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(
+                read_pending_data(&self.pending_data, &self.storage_reader)
+                    .await?
+                    .state_update
+                    .state_diff
+                    .storage_diffs,
+            )
+        } else {
+            None
+        };
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -576,17 +579,20 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_class_hash_at(
         &self,
-        mut block_id: BlockId,
+        block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<ClassHash> {
-        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        let maybe_pending_deployed_contracts = maybe_pending_data
-            .map(|pending_data| pending_data.state_update.state_diff.deployed_contracts);
+        let maybe_pending_deployed_contracts = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(
+                read_pending_data(&self.pending_data, &self.storage_reader)
+                    .await?
+                    .state_update
+                    .state_diff
+                    .deployed_contracts,
+            )
+        } else {
+            None
+        };
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -605,17 +611,20 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_nonce(
         &self,
-        mut block_id: BlockId,
+        block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<Nonce> {
-        let maybe_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        let maybe_pending_nonces =
-            maybe_pending_data.map(|pending_data| pending_data.state_update.state_diff.nonces);
+        let maybe_pending_nonces = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(
+                read_pending_data(&self.pending_data, &self.storage_reader)
+                    .await?
+                    .state_update
+                    .state_diff
+                    .nonces,
+            )
+        } else {
+            None
+        };
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -824,21 +833,15 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         contract_address: ContractAddress,
         entry_point_selector: EntryPointSelector,
         calldata: Calldata,
-        mut block_id: BlockId,
+        block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
-        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        // Can't use Option::map because the code is async.
-        let maybe_pending_data = match maybe_client_pending_data {
-            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
-                client_pending_data,
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &self.storage_reader).await?,
                 self.pending_classes.read().await.clone(),
-            )),
-            None => None,
+            ))
+        } else {
+            None
         };
         let block_number = get_block_number(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
@@ -936,23 +939,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
-        mut block_id: BlockId,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
 
-        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        // Can't use Option::map because the code is async.
-        let maybe_pending_data = match maybe_client_pending_data {
-            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
-                client_pending_data,
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &self.storage_reader).await?,
                 self.pending_classes.read().await.clone(),
-            )),
-            None => None,
+            ))
+        } else {
+            None
         };
 
         let executable_txns =
@@ -1000,7 +997,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
     async fn simulate_transactions(
         &self,
-        mut block_id: BlockId,
+        block_id: BlockId,
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<SimulatedTransaction>> {
@@ -1008,19 +1005,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
-        let maybe_client_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
-        // Can't use Option::map because the code is async.
-        let maybe_pending_data = match maybe_client_pending_data {
-            Some(client_pending_data) => Some(client_pending_data_to_execution_pending_data(
-                client_pending_data,
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &self.storage_reader).await?,
                 self.pending_classes.read().await.clone(),
-            )),
-            None => None,
+            ))
+        } else {
+            None
         };
 
         let block_number = get_block_number(
@@ -1222,20 +1213,19 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err)]
     async fn trace_block_transactions(
         &self,
-        mut block_id: BlockId,
+        block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
-        let client_pending_data = get_pending_data_if_block_id_is_pending(
-            &mut block_id,
-            &self.pending_data,
-            &self.storage_reader,
-        )
-        .await?;
+        let maybe_client_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(read_pending_data(&self.pending_data, &self.storage_reader).await?)
+        } else {
+            None
+        };
 
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_block_number(&storage_txn, block_id)?;
 
         let (maybe_pending_data, block_transactions, transaction_hashes, state_number) =
-            match client_pending_data {
+            match maybe_client_pending_data {
                 Some(client_pending_data) => (
                     Some(ExecutionPendingData {
                         timestamp: client_pending_data.block.timestamp,
@@ -1376,18 +1366,6 @@ async fn read_pending_data(
             },
         })
     }
-}
-
-async fn get_pending_data_if_block_id_is_pending(
-    block_id: &mut BlockId,
-    pending_data: &Arc<RwLock<PendingData>>,
-    storage_reader: &StorageReader,
-) -> RpcResult<Option<PendingData>> {
-    let BlockId::Tag(Tag::Pending) = block_id else {
-        return Ok(None);
-    };
-    *block_id = BlockId::Tag(Tag::Latest);
-    Ok(Some(read_pending_data(pending_data, storage_reader).await?))
 }
 
 fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter) -> bool {

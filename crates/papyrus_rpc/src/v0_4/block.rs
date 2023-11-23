@@ -73,6 +73,7 @@ pub fn get_block_header_by_number<
     Ok(BlockHeader::from(header))
 }
 
+// If the block_id is Pending, return the latest block.
 pub(crate) fn get_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
@@ -91,16 +92,8 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => {
+        BlockId::Tag(Tag::Latest | Tag::Pending) => {
             get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
-        }
-        BlockId::Tag(Tag::Pending) => {
-            // TODO(shahak): Panic here instead when all pending blocks are handled separately.
-            return Err(ErrorObjectOwned::owned(
-                jsonrpsee::types::error::ErrorCode::InternalError.code(),
-                "Currently, Papyrus doesn't support pending blocks.",
-                None::<()>,
-            ));
         }
     })
 }
