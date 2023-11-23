@@ -237,7 +237,7 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                 .into_iter()
                 .sorted_by_key(|ordered_message| ordered_message.order)
                 .map(|ordered_message| {
-                    OrderedL2ToL1Message::from(ordered_message, call_info.call.caller_address)
+                    OrderedL2ToL1Message::from(ordered_message, call_info.call.storage_address)
                 })
                 .collect(),
         })
