@@ -7,6 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -42,7 +43,6 @@ use super::error::{
     CONTRACT_NOT_FOUND,
     INVALID_CONTINUATION_TOKEN,
 };
-use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,

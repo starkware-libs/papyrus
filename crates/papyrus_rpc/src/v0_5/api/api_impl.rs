@@ -6,6 +6,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
+use papyrus_execution::objects::TransactionTrace;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -74,7 +75,6 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
-use super::super::execution::TransactionTrace;
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
@@ -1035,7 +1035,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
-                    transaction_trace: transaction_trace.into(),
+                    transaction_trace,
                     fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
                 .collect()),
@@ -1123,11 +1123,9 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .map_err(internal_server_error)?;
 
         match simulate_transactions_result {
-            Ok(mut simulation_results) => Ok(simulation_results
-                .pop()
-                .expect("Should have transaction exeuction result")
-                .0
-                .into()),
+            Ok(mut simulation_results) => {
+                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
+            }
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
@@ -1212,7 +1210,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .zip(tx_hashes)
                 .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
                     transaction_hash,
-                    trace_root: trace_root.into(),
+                    trace_root,
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
