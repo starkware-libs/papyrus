@@ -117,7 +117,7 @@ use super::{
     TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
-use crate::state::client_pending_data_to_execution_pending_data;
+use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::{
     get_block_status,
