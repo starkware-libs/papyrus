@@ -65,6 +65,7 @@ use super::super::error::{
     JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
+    CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
     INVALID_BLOCK_HASH,
     INVALID_TRANSACTION_HASH,
@@ -985,12 +986,12 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         .map_err(internal_server_error)?;
 
         match estimate_fee_result {
-            Ok(fees) => Ok(fees
+            Ok(Ok(fees)) => Ok(fees
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
                 .collect()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
-            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+            Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
+            Err(err) => Err(internal_server_error(err)),
         }
     }
 
