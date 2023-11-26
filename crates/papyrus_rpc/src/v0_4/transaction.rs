@@ -24,6 +24,7 @@ use starknet_api::transaction::{
     Fee,
     L1HandlerTransaction,
     MessageToL1,
+    Resource,
     TransactionExecutionStatus,
     TransactionHash,
     TransactionSignature,
@@ -120,7 +121,6 @@ pub enum DeployAccountTransaction {
     Version1(DeployAccountTransactionV1),
 }
 
-// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
 impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
     type Error = ErrorObjectOwned;
 
@@ -146,11 +146,32 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 constructor_calldata,
                 version: *TX_V1,
             })),
-            starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                Err(internal_server_error(
-                    "The requested transaction is a deploy account of version 3, which is not \
-                     supported on v0.4.0.",
-                ))
+            starknet_api::transaction::DeployAccountTransaction::V3(
+                starknet_api::transaction::DeployAccountTransactionV3 {
+                    resource_bounds,
+                    signature,
+                    nonce,
+                    class_hash,
+                    contract_address_salt,
+                    constructor_calldata,
+                    ..
+                },
+            ) => {
+                let l1_gas_bounds = resource_bounds
+                    .0
+                    .get(&Resource::L1Gas)
+                    .ok_or(internal_server_error("Got a v3 transaction with no L1 gas bounds."))?;
+                Ok(Self::Version1(DeployAccountTransactionV1 {
+                    max_fee: Fee(
+                        l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
+                    ),
+                    signature,
+                    nonce,
+                    class_hash,
+                    contract_address_salt,
+                    constructor_calldata,
+                    version: *TX_V1,
+                }))
             }
         }
     }
@@ -216,7 +237,6 @@ pub enum InvokeTransaction {
     Version1(InvokeTransactionV1),
 }
 
-// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
 impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction {
     type Error = ErrorObjectOwned;
 
@@ -254,10 +274,31 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 sender_address,
                 calldata,
             })),
-            starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                "The requested transaction is an invoke of version 3, which is not supported on \
-                 v0.4.0.",
-            )),
+            starknet_api::transaction::InvokeTransaction::V3(
+                starknet_api::transaction::InvokeTransactionV3 {
+                    resource_bounds,
+                    signature,
+                    nonce,
+                    sender_address,
+                    calldata,
+                    ..
+                },
+            ) => {
+                let l1_gas_bounds = resource_bounds
+                    .0
+                    .get(&Resource::L1Gas)
+                    .ok_or(internal_server_error("Got a v3 transaction with no L1 gas bounds."))?;
+                Ok(Self::Version1(InvokeTransactionV1 {
+                    max_fee: Fee(
+                        l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
+                    ),
+                    version: *TX_V1,
+                    signature,
+                    nonce,
+                    sender_address,
+                    calldata,
+                }))
+            }
         }
     }
 }
@@ -284,14 +325,12 @@ pub enum Transaction {
     L1Handler(L1HandlerTransaction),
 }
 
-// TODO(shahak, 01/11/2023): Add test that v3 transactions cause error.
 impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
     type Error = ErrorObjectOwned;
 
     fn try_from(tx: starknet_api::transaction::Transaction) -> Result<Self, Self::Error> {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
-                // TODO(shahak, 01/11/2023): impl TryFrom for declare separately.
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
                     Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
                         class_hash: tx.class_hash,
@@ -315,24 +354,28 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
                     Ok(Self::Declare(DeclareTransaction::Version2(tx.into())))
                 }
-                starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a declare of version 3, which is not supported \
-                     on v0.4.0.",
-                )),
+                starknet_api::transaction::DeclareTransaction::V3(tx) => {
+                    let l1_gas_bounds = tx.resource_bounds.0.get(&Resource::L1Gas).ok_or(
+                        internal_server_error("Got a v3 transaction with no L1 gas bounds."),
+                    )?;
+                    Ok(Self::Declare(DeclareTransaction::Version2(DeclareTransactionV2 {
+                        class_hash: tx.class_hash,
+                        compiled_class_hash: tx.compiled_class_hash,
+                        sender_address: tx.sender_address,
+                        nonce: tx.nonce,
+                        max_fee: Fee(
+                            l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
+                        ),
+                        version: *TX_V2,
+                        signature: tx.signature,
+                    })))
+                }
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Ok(Transaction::Deploy(deploy_tx))
             }
             starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
-                match deploy_account_tx {
-                    starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                        Err(internal_server_error(
-                            "The requested transaction is a deploy account of version 3, which is \
-                             not supported on v0.4.0.",
-                        ))
-                    }
-                    _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
-                }
+                Ok(Self::DeployAccount(deploy_account_tx.try_into()?))
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
