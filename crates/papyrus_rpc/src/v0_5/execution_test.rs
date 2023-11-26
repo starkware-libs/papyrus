@@ -53,7 +53,7 @@ use super::broadcasted_transaction::{
     BroadcastedDeclareV1Transaction,
     BroadcastedTransaction,
 };
-use super::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
+use super::error::{BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
 use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId};
 use crate::test_utils::{
@@ -149,7 +149,8 @@ async fn execution_call() {
         .await
         .unwrap_err();
 
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
+    const CONTRACT_ERROR_CODE: i32 = 40;
+    assert_matches!(err, Error::Call(err) if err.code() == CONTRACT_ERROR_CODE);
 }
 
 #[tokio::test]

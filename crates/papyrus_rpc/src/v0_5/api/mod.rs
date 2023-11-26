@@ -36,13 +36,7 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use super::error::{
-    JsonRpcError,
-    BLOCK_NOT_FOUND,
-    CONTRACT_ERROR,
-    CONTRACT_NOT_FOUND,
-    INVALID_CONTINUATION_TOKEN,
-};
+use super::error::{JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND, INVALID_CONTINUATION_TOKEN};
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
@@ -530,14 +524,13 @@ impl TryFrom<ApiContractClass> for GatewayContractClass {
     }
 }
 
-impl TryFrom<ExecutionError> for JsonRpcError {
+impl TryFrom<ExecutionError> for JsonRpcError<String> {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
             ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
             ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
-            // All other execution errors are considered contract errors.
-            _ => Ok(CONTRACT_ERROR),
+            _ => Err(internal_server_error(value)),
         }
     }
 }

@@ -3411,7 +3411,19 @@
             },
             "CONTRACT_ERROR": {
                 "code": 40,
-                "message": "Contract error"
+                "message": "Contract error",
+                "data": {
+                    "type": "object",
+                    "description": "More data about the execution failure",
+                    "properties": {
+                        "revert_error": {
+                            "title": "revert error",
+                            "description": "a string encoding the execution trace up to the point of failure",
+                            "type": "string"
+                        }
+                    },
+                    "required": "revert_error"
+                }
             }
         }
     }

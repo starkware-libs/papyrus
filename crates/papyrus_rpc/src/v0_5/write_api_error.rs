@@ -22,7 +22,7 @@ use super::error::{
 #[path = "write_api_error_test.rs"]
 mod write_api_error_test;
 
-pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcError {
+pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcError<String> {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
     };
@@ -43,7 +43,7 @@ pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcErr
     }
 }
 
-pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcError {
+pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcError<String> {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
     };
@@ -66,7 +66,7 @@ pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcEr
     }
 }
 
-pub(crate) fn starknet_error_to_deploy_account_error(error: StarknetError) -> JsonRpcError {
+pub(crate) fn starknet_error_to_deploy_account_error(error: StarknetError) -> JsonRpcError<String> {
     let StarknetErrorCode::KnownErrorCode(known_error_code) = error.code else {
         return unexpected_error(error.message);
     };
