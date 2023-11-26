@@ -119,6 +119,7 @@ use super::{
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
+use crate::v0_5::transaction::L1HandlerMsgHash;
 use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{
     get_block_status,
@@ -490,7 +491,22 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-            let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
+            let msg_hash = match thin_tx_output {
+                papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
+                    let tx = txn
+                        .get_transaction(transaction_index)
+                        .map_err(internal_server_error)?
+                        .unwrap_or_else(|| panic!("Should have tx {}", transaction_hash));
+                    let starknet_api::transaction::Transaction::L1Handler(tx) = tx else {
+                        panic!("tx {} should be L1 handler", transaction_hash);
+                    };
+                    Some(tx.calc_msg_hash())
+                }
+                _ => None,
+            };
+
+            let output =
+                TransactionOutput::from_thin_transaction_output(thin_tx_output, events, msg_hash);
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
@@ -521,8 +537,16 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
             let starknet_api_output =
                 client_transaction_receipt.into_starknet_api_transaction_output(client_transaction);
-            let output =
-                PendingTransactionOutput::try_from(TransactionOutput::from(starknet_api_output))?;
+            let msg_hash = match client_transaction {
+                starknet_client::reader::objects::transaction::Transaction::L1Handler(tx) => {
+                    Some(tx.calc_msg_hash())
+                }
+                _ => None,
+            };
+            let output = PendingTransactionOutput::try_from(TransactionOutput::from((
+                starknet_api_output,
+                msg_hash,
+            )))?;
             Ok(GeneralTransactionReceipt::PendingTransactionReceipt(PendingTransactionReceipt {
                 // ACCEPTED_ON_L2 is the only finality status of a pending transaction.
                 finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
