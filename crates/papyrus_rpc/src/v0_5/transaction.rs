@@ -3,14 +3,17 @@
 mod transaction_test;
 
 use std::collections::HashMap;
+use std::fmt::Display;
 
+use ethers::core::abi::{encode_packed, Token};
+use ethers::core::utils::keccak256;
 use jsonrpsee::types::ErrorObjectOwned;
 use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::StorageTxn;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ClassHash,
@@ -20,6 +23,7 @@ use starknet_api::core::{
     Nonce,
 };
 use starknet_api::hash::StarkFelt;
+use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::transaction::{
     Builtin,
     Calldata,
@@ -762,4 +766,88 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)
+}
+
+/// The hash of a L1 -> L2 message.
+// The hash is Keccak256, so it doesn't necessarily fit in a StarkFelt.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct L1L2MsgHash(pub [u8; 32]);
+
+impl Display for L1L2MsgHash {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "0x{}", hex::encode(self.0))
+    }
+}
+
+impl Serialize for L1L2MsgHash {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(format!("{}", self).as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for L1L2MsgHash {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        Ok(Self(bytes_from_hex_str::<32, true>(s.as_str()).map_err(serde::de::Error::custom)?))
+    }
+}
+
+pub trait L1HandlerMsgHash {
+    fn calc_msg_hash(&self) -> L1L2MsgHash;
+}
+
+impl L1HandlerMsgHash for L1HandlerTransaction {
+    fn calc_msg_hash(&self) -> L1L2MsgHash {
+        l1_handler_message_hash(
+            &self.contract_address,
+            self.nonce,
+            &self.entry_point_selector,
+            &self.calldata,
+        )
+    }
+}
+
+impl L1HandlerMsgHash for starknet_client::reader::objects::transaction::L1HandlerTransaction {
+    fn calc_msg_hash(&self) -> L1L2MsgHash {
+        l1_handler_message_hash(
+            &self.contract_address,
+            self.nonce,
+            &self.entry_point_selector,
+            &self.calldata,
+        )
+    }
+}
+
+/// Calculating the message hash of  L1 -> L2 message.
+/// `<For more info: https://docs.starknet.io/documentation/architecture_and_concepts/Network_Architecture/messaging-mechanism/#structure_and_hashing_l1-l2>`
+fn l1_handler_message_hash(
+    contract_address: &ContractAddress,
+    nonce: Nonce,
+    entry_point_selector: &EntryPointSelector,
+    calldata: &Calldata,
+) -> L1L2MsgHash {
+    let (from_address, payload) =
+        calldata.0.split_first().expect("Invalid calldata, expected at least from_address");
+
+    let from_address = Token::Bytes(from_address.bytes().to_vec());
+    let to_address = Token::Bytes(contract_address.0.key().bytes().to_vec());
+    let nonce = Token::Bytes(nonce.bytes().to_vec());
+    let selector = Token::Bytes(entry_point_selector.0.bytes().to_vec());
+    let payload_length_as_felt = StarkFelt::from(payload.len() as u64);
+    let payload_length = Token::Bytes(payload_length_as_felt.bytes().to_vec());
+
+    let mut payload: Vec<_> =
+        payload.iter().map(|felt| Token::Bytes(felt.bytes().to_vec())).collect();
+
+    let mut to_encode = vec![from_address, to_address, nonce, selector, payload_length];
+    to_encode.append(&mut payload);
+    let encoded = encode_packed(to_encode.as_slice()).expect("Should be able to encode");
+
+    L1L2MsgHash(keccak256(encoded))
 }
