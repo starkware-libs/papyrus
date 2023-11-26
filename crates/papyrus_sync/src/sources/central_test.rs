@@ -62,6 +62,7 @@ async fn last_block_number() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     let last_block_number = central_source.get_latest_block().await.unwrap().unwrap().block_number;
@@ -88,6 +89,7 @@ async fn stream_block_headers() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -126,6 +128,7 @@ async fn stream_block_headers_some_are_missing() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -179,6 +182,7 @@ async fn stream_block_headers_error() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     let mut expected_block_num = BlockNumber(START_BLOCK_NUMBER);
@@ -317,6 +321,7 @@ async fn stream_state_updates() {
         state_update_stream_config: state_update_stream_config_for_test(),
         // TODO(shahak): Check that downloaded classes appear in the cache.
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
     let initial_block_num = BlockNumber(START_BLOCK_NUMBER);
 
@@ -428,6 +433,7 @@ async fn stream_compiled_classes() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     let stream = central_source.stream_compiled_classes(BlockNumber(0), BlockNumber(2));
@@ -473,6 +479,7 @@ async fn get_class() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     assert_eq!(
@@ -509,11 +516,14 @@ async fn get_compiled_class() {
         storage_reader: reader,
         state_update_stream_config: state_update_stream_config_for_test(),
         class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
     };
 
     assert_eq!(central_source.get_compiled_class(class_hash).await.unwrap(), compiled_class);
 
-    // TODO(shahak): Repeat the call to test the cache once the cache is implemented.
+    // Repeating the call to see that source doesn't call the client and gets the result from
+    // cache.
+    assert_eq!(central_source.get_compiled_class(class_hash).await.unwrap(), compiled_class);
 }
 
 fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {
@@ -525,5 +535,9 @@ fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {
 }
 
 fn get_test_class_cache() -> Arc<Mutex<LruCache<ClassHash, ApiContractClass>>> {
+    Arc::from(Mutex::new(LruCache::new(NonZeroUsize::new(2).unwrap())))
+}
+
+fn get_test_compiled_class_cache() -> Arc<Mutex<LruCache<ClassHash, CasmContractClass>>> {
     Arc::from(Mutex::new(LruCache::new(NonZeroUsize::new(2).unwrap())))
 }

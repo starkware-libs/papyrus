@@ -129,6 +129,7 @@ pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub storage_reader: StorageReader,
     pub state_update_stream_config: StateUpdateStreamConfig,
     pub(crate) class_cache: Arc<Mutex<LruCache<ClassHash, ApiContractClass>>>,
+    compiled_class_cache: Arc<Mutex<LruCache<ClassHash, CasmContractClass>>>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -355,8 +356,20 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
         &self,
         class_hash: ClassHash,
     ) -> Result<CasmContractClass, CentralError> {
+        {
+            let mut compiled_class_cache =
+                self.compiled_class_cache.lock().expect("Failed to lock class cache.");
+            if let Some(class) = compiled_class_cache.get(&class_hash) {
+                return Ok(class.clone());
+            }
+        }
         match self.starknet_client.compiled_class_by_hash(class_hash).await {
-            Ok(Some(compiled_class)) => Ok(compiled_class),
+            Ok(Some(compiled_class)) => {
+                let mut compiled_class_cache =
+                    self.compiled_class_cache.lock().expect("Failed to lock class cache.");
+                compiled_class_cache.put(class_hash, compiled_class.clone());
+                Ok(compiled_class)
+            }
             Ok(None) => Err(CentralError::CompiledClassNotFound { class_hash }),
             Err(err) => Err(CentralError::ClientError(Arc::new(err))),
         }
@@ -412,6 +425,10 @@ impl CentralSource {
                 max_classes_to_download: config.max_classes_to_download,
             },
             class_cache: Arc::from(Mutex::new(LruCache::new(
+                NonZeroUsize::new(config.class_cache_size)
+                    .expect("class_cache_size should be a positive integer."),
+            ))),
+            compiled_class_cache: Arc::from(Mutex::new(LruCache::new(
                 NonZeroUsize::new(config.class_cache_size)
                     .expect("class_cache_size should be a positive integer."),
             ))),
