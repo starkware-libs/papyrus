@@ -429,6 +429,19 @@ fn calc_tx_hashes(
         .unzip())
 }
 
+/// Output for fee estimation when a transaction reverted.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub struct RevertedTransaction {
+    /// The index of the reverted transaction.
+    pub index: usize,
+    /// The revert reason.
+    pub revert_reason: String,
+}
+
+/// Valid output for fee estimation for a series of transactions can be either a list of fees or the
+/// index and revert reason of the first reverted transaction.
+pub type FeeEstimationResult = Result<Vec<(GasPrice, Fee)>, RevertedTransaction>;
+
 /// Returns the fee estimation for a series of transactions.
 #[allow(clippy::too_many_arguments)]
 pub fn estimate_fee(
@@ -439,7 +452,7 @@ pub fn estimate_fee(
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
-) -> ExecutionResult<Vec<(GasPrice, Fee)>> {
+) -> ExecutionResult<FeeEstimationResult> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
         None,
@@ -452,12 +465,23 @@ pub fn estimate_fee(
         false,
         false,
     )?;
-    Ok(txs_execution_info
+    let res: FeeEstimationResult = txs_execution_info
         .into_iter()
-        .map(|(tx_execution_info, _)| {
-            (GasPrice(block_context.gas_prices.eth_l1_gas_price), tx_execution_info.actual_fee)
+        .enumerate()
+        .map(|(index, (tx_execution_info, _))| {
+            // If the transaction reverted, fail the entire estimation.
+            if let Some(revert_reason) = tx_execution_info.revert_error {
+                Err(RevertedTransaction { index, revert_reason })
+            } else {
+                Ok((
+                    GasPrice(block_context.gas_prices.eth_l1_gas_price),
+                    tx_execution_info.actual_fee,
+                ))
+            }
         })
-        .collect())
+        .collect();
+
+    Ok(res)
 }
 
 // Executes a series of transactions and returns the execution results.
