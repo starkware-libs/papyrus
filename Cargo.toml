@@ -18,7 +18,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.2.0-rc2"
+version = "0.2.0-rc3"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
