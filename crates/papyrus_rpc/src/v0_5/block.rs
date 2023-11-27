@@ -90,7 +90,9 @@ pub fn get_block_header_by_number<Mode: TransactionKind>(
     Ok((header, starknet_version))
 }
 
-pub(crate) fn get_block_number<Mode: TransactionKind>(
+/// Return the closest block number that corresponds to the given block id and is accepted (i.e not
+/// pending)
+pub(crate) fn get_accepted_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
 ) -> Result<BlockNumber, ErrorObjectOwned> {
@@ -108,16 +110,8 @@ pub(crate) fn get_block_number<Mode: TransactionKind>(
             }
             block_number
         }
-        BlockId::Tag(Tag::Latest) => {
+        BlockId::Tag(Tag::Latest | Tag::Pending) => {
             get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
-        }
-        BlockId::Tag(Tag::Pending) => {
-            // TODO(shahak): Panic here instead when all pending blocks are handled separately.
-            return Err(ErrorObjectOwned::owned(
-                jsonrpsee::types::error::ErrorCode::InternalError.code(),
-                "Currently, Papyrus doesn't support pending blocks.",
-                None::<()>,
-            ));
         }
     })
 }
