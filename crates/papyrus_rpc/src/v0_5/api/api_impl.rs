@@ -6,12 +6,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-<<<<<<< v0_5
-use papyrus_execution::objects::TransactionTrace;
-||||||| v0_4_old
-=======
-use papyrus_execution::objects::PendingData as ExecutionPendingData;
->>>>>>> v0_4_new
+use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -439,16 +434,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
-<<<<<<< v0_5
-        let block_number = get_block_number(&txn, block_id)?;
-        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?.into();
-||||||| v0_4_old
-        let block_number = get_block_number(&txn, block_id)?;
-        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
-=======
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?;
->>>>>>> v0_4_new
+        let header: BlockHeader = get_block_header_by_number(&txn, block_number)?.into();
 
         // Get the old root.
         let old_root = match get_accepted_block_number(
@@ -920,13 +907,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let call_result = tokio::task::spawn_blocking(move || {
             execute_call(
                 reader,
-<<<<<<< v0_5
-                // TODO(shahak): Add pending data here.
-                None,
-||||||| v0_4_old
-=======
                 maybe_pending_data,
->>>>>>> v0_4_new
                 &chain_id,
                 state_number,
                 block_number,
@@ -1039,13 +1020,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 executable_txns,
                 &chain_id,
                 reader,
-<<<<<<< v0_5
-                // TODO(shahak): Add pending data here.
-                None,
-||||||| v0_4_old
-=======
                 maybe_pending_data,
->>>>>>> v0_4_new
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1108,13 +1083,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 None,
                 &chain_id,
                 reader,
-<<<<<<< v0_5
-                // TODO(shahak): Add pending data here.
-                None,
-||||||| v0_4_old
-=======
                 maybe_pending_data,
->>>>>>> v0_4_new
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1264,13 +1233,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 Some(transaction_hashes),
                 &chain_id,
                 reader,
-<<<<<<< v0_5
-                // TODO(shahak): Add pending data here.
-                None,
-||||||| v0_4_old
-=======
                 maybe_pending_data,
->>>>>>> v0_4_new
                 state_number,
                 block_number,
                 &block_execution_config,
@@ -1387,13 +1350,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 Some(transaction_hashes_clone),
                 &chain_id,
                 reader,
-<<<<<<< v0_5
-                // TODO(shahak): Add pending data here.
-                None,
-||||||| v0_4_old
-=======
                 maybe_pending_data,
->>>>>>> v0_4_new
                 state_number,
                 block_number,
                 &block_execution_config,

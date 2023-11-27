@@ -168,23 +168,14 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
-<<<<<<< v0_5
 use crate::v0_5::transaction::{L1L2MsgHash, TransactionStatus};
 use crate::version_config::VERSION_0_5 as VERSION;
-use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
-||||||| v0_4_old
-use crate::v0_5::transaction::{L1L2MsgHash, TransactionStatus};
-use crate::version_config::VERSION_0_4;
-use crate::{internal_server_error, run_server, ContinuationTokenAsStruct};
-=======
-use crate::version_config::VERSION_0_4;
 use crate::{
     internal_server_error,
     internal_server_error_with_msg,
     run_server,
     ContinuationTokenAsStruct,
 };
->>>>>>> v0_4_new
 
 const NODE_VERSION: &str = "NODE VERSION";
 

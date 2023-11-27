@@ -154,19 +154,6 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 constructor_calldata,
                 version: *TX_V1,
             })),
-<<<<<<< v0_5
-            starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                Err(internal_server_error(
-                    "The requested transaction is a deploy account of version 3, which is not \
-                     supported on v0.5.1.",
-                ))
-||||||| v0_4_old
-            starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                Err(internal_server_error(
-                    "The requested transaction is a deploy account of version 3, which is not \
-                     supported on v0.4.0.",
-                ))
-=======
             starknet_api::transaction::DeployAccountTransaction::V3(
                 starknet_api::transaction::DeployAccountTransactionV3 {
                     resource_bounds,
@@ -193,7 +180,6 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                     constructor_calldata,
                     version: *TX_V1,
                 }))
->>>>>>> v0_4_new
             }
         }
     }
@@ -296,17 +282,6 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 sender_address,
                 calldata,
             })),
-<<<<<<< v0_5
-            starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                "The requested transaction is an invoke of version 3, which is not supported on \
-                 v0.5.1.",
-            )),
-||||||| v0_4_old
-            starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                "The requested transaction is an invoke of version 3, which is not supported on \
-                 v0.4.0.",
-            )),
-=======
             starknet_api::transaction::InvokeTransaction::V3(
                 starknet_api::transaction::InvokeTransactionV3 {
                     resource_bounds,
@@ -332,7 +307,6 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                     calldata,
                 }))
             }
->>>>>>> v0_4_new
         }
     }
 }
@@ -388,17 +362,6 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                 starknet_api::transaction::DeclareTransaction::V2(tx) => {
                     Ok(Self::Declare(DeclareTransaction::Version2(tx.into())))
                 }
-<<<<<<< v0_5
-                starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a declare of version 3, which is not supported \
-                     on v0.5.1.",
-                )),
-||||||| v0_4_old
-                starknet_api::transaction::DeclareTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a declare of version 3, which is not supported \
-                     on v0.4.0.",
-                )),
-=======
                 starknet_api::transaction::DeclareTransaction::V3(tx) => {
                     let l1_gas_bounds = tx.resource_bounds.0.get(&Resource::L1Gas).ok_or(
                         internal_server_error("Got a v3 transaction with no L1 gas bounds."),
@@ -415,35 +378,12 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         signature: tx.signature,
                     })))
                 }
->>>>>>> v0_4_new
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {
                 Ok(Transaction::Deploy(deploy_tx))
             }
             starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
-<<<<<<< v0_5
-                match deploy_account_tx {
-                    starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                        Err(internal_server_error(
-                            "The requested transaction is a deploy account of version 3, which is \
-                             not supported on v0.5.1.",
-                        ))
-                    }
-                    _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
-                }
-||||||| v0_4_old
-                match deploy_account_tx {
-                    starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                        Err(internal_server_error(
-                            "The requested transaction is a deploy account of version 3, which is \
-                             not supported on v0.4.0.",
-                        ))
-                    }
-                    _ => Ok(Self::DeployAccount(deploy_account_tx.try_into()?)),
-                }
-=======
                 Ok(Self::DeployAccount(deploy_account_tx.try_into()?))
->>>>>>> v0_4_new
             }
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
                 starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(

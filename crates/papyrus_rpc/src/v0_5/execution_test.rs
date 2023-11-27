@@ -23,7 +23,7 @@ use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
-use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::header::{HeaderStorageWriter, StarknetVersion};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
@@ -39,40 +39,14 @@ use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, P
 use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
-<<<<<<< v0_5
-use starknet_api::transaction::{Calldata, Fee, TransactionHash, TransactionVersion};
-||||||| v0_4_old
 use starknet_api::transaction::{
     Calldata,
-    EventContent,
     Fee,
-    MessageToL1,
-    TransactionHash,
-    TransactionVersion,
-};
-=======
-use starknet_api::transaction::{
-    Calldata,
-    EventContent,
-    Fee,
-    MessageToL1,
     TransactionHash,
     TransactionOffsetInBlock,
     TransactionVersion,
 };
->>>>>>> v0_4_new
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
-<<<<<<< v0_5
-use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
-||||||| v0_4_old
-use test_utils::{
-    auto_impl_get_test_instance,
-    get_number_of_variants,
-    get_rng,
-    read_json_file,
-    GetTestInstance,
-};
-=======
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::{
@@ -81,15 +55,8 @@ use starknet_client::reader::objects::transaction::{
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
-use test_utils::{
-    auto_impl_get_test_instance,
-    get_number_of_variants,
-    get_rng,
-    read_json_file,
-    GetTestInstance,
-};
+use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
 use tokio::sync::RwLock;
->>>>>>> v0_4_new
 
 use super::api::api_impl::JsonRpcServerV0_5Impl as JsonRpcServerImpl;
 use super::api::{
@@ -214,7 +181,7 @@ async fn pending_execution_call() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -225,7 +192,7 @@ async fn pending_execution_call() {
 
     let res = module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
+            "starknet_V0_5_call",
             (
                 *DEPRECATED_CONTRACT_ADDRESS.0.key(),
                 selector_from_name("test_storage_read_write"),
@@ -299,7 +266,7 @@ async fn pending_call_estimate_fee() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -322,7 +289,7 @@ async fn pending_call_estimate_fee() {
 
     let res = module
         .call::<_, Vec<FeeEstimate>>(
-            "starknet_V0_4_estimateFee",
+            "starknet_V0_5_estimateFee",
             (vec![invoke.clone()], BlockId::Tag(Tag::Pending)),
         )
         .await
@@ -401,7 +368,7 @@ async fn pending_call_simulate() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -422,7 +389,7 @@ async fn pending_call_simulate() {
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
+            "starknet_V0_5_simulateTransactions",
             (BlockId::Tag(Tag::Pending), vec![invoke], Vec::<SimulationFlag>::new()),
         )
         .await
@@ -570,18 +537,8 @@ async fn call_simulate_skip_fee_charge() {
 
 // TODO(shahak): Add test for trace_transaction that doesn't depend on trace_block_transactions
 #[tokio::test]
-<<<<<<< v0_5
-async fn trace_block_transactions() {
-    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
-||||||| v0_4_old
-async fn trace_block_transactions() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
-=======
 async fn trace_block_transactions_regular_and_pending() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
->>>>>>> v0_4_new
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
@@ -718,14 +675,14 @@ async fn trace_block_transactions_regular_and_pending() {
     };
 
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data), None, None);
 
     prepare_storage_for_execution(storage_writer);
 
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_4_traceBlockTransactions",
+            "starknet_V0_5_traceBlockTransactions",
             [BlockId::Tag(Tag::Pending)],
         )
         .await
@@ -739,12 +696,12 @@ async fn trace_block_transactions_regular_and_pending() {
 
     // Ask for trace of transactions in the pending block.
     let pending_tx_1_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+        .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash1])
         .await
         .unwrap();
     assert_eq!(pending_tx_1_trace, tx_1_trace);
     let pending_tx_2_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+        .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash2])
         .await
         .unwrap();
     assert_eq!(pending_tx_2_trace, tx_2_trace);
@@ -996,6 +953,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
             },
         )
         .unwrap()
+        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
         .append_state_diff(
@@ -1058,54 +1017,6 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
 
     storage_writer
 }
-<<<<<<< v0_5
-||||||| v0_4_old
-
-auto_impl_get_test_instance! {
-    pub enum TransactionTrace {
-        Invoke(InvokeTransactionTrace) = 0,
-        Declare(DeclareTransactionTrace) = 1,
-        DeployAccount(DeployAccountTransactionTrace) = 2,
-    }
-    pub struct InvokeTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub execute_invocation: FunctionInvocationResult,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct DeclareTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct DeployAccountTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub constructor_invocation: FunctionInvocation,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct L1HandlerTransactionTrace {
-        pub function_invocation: FunctionInvocation,
-    }
-    pub enum FunctionInvocationResult {
-        Ok(FunctionInvocation) = 0,
-        Err(RevertReason) = 1,
-    }
-}
-
-impl GetTestInstance for FunctionInvocation {
-    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
-        Self {
-            function_call: FunctionCall::get_test_instance(rng),
-            caller_address: ContractAddress::get_test_instance(rng),
-            class_hash: ClassHash::get_test_instance(rng),
-            entry_point_type: EntryPointType::get_test_instance(rng),
-            call_type: CallType::get_test_instance(rng),
-            result: Retdata::get_test_instance(rng),
-            calls: Vec::new(),
-            events: Vec::<EventContent>::get_test_instance(rng),
-            messages: Vec::<MessageToL1>::get_test_instance(rng),
-        }
-    }
-}
-=======
 
 fn write_empty_block(mut storage_writer: StorageWriter) {
     storage_writer
@@ -1121,6 +1032,8 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
             },
         )
         .unwrap()
+        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
         .append_state_diff(BlockNumber(0), StateDiff::default(), indexmap!())
@@ -1128,49 +1041,3 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
         .commit()
         .unwrap();
 }
-
-auto_impl_get_test_instance! {
-    pub enum TransactionTrace {
-        Invoke(InvokeTransactionTrace) = 0,
-        Declare(DeclareTransactionTrace) = 1,
-        DeployAccount(DeployAccountTransactionTrace) = 2,
-    }
-    pub struct InvokeTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub execute_invocation: FunctionInvocationResult,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct DeclareTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct DeployAccountTransactionTrace {
-        pub validate_invocation: Option<FunctionInvocation>,
-        pub constructor_invocation: FunctionInvocation,
-        pub fee_transfer_invocation: Option<FunctionInvocation>,
-    }
-    pub struct L1HandlerTransactionTrace {
-        pub function_invocation: FunctionInvocation,
-    }
-    pub enum FunctionInvocationResult {
-        Ok(FunctionInvocation) = 0,
-        Err(RevertReason) = 1,
-    }
-}
-
-impl GetTestInstance for FunctionInvocation {
-    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
-        Self {
-            function_call: FunctionCall::get_test_instance(rng),
-            caller_address: ContractAddress::get_test_instance(rng),
-            class_hash: ClassHash::get_test_instance(rng),
-            entry_point_type: EntryPointType::get_test_instance(rng),
-            call_type: CallType::get_test_instance(rng),
-            result: Retdata::get_test_instance(rng),
-            calls: Vec::new(),
-            events: Vec::<EventContent>::get_test_instance(rng),
-            messages: Vec::<MessageToL1>::get_test_instance(rng),
-        }
-    }
-}
->>>>>>> v0_4_new
