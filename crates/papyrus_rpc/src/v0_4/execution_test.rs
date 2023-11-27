@@ -7,6 +7,7 @@ use assert_matches::assert_matches;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
+use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
@@ -92,6 +93,7 @@ use crate::test_utils::{
     get_starknet_spec_api_schema_for_method_results,
     get_test_pending_classes,
     get_test_pending_data,
+    get_test_rpc_config,
     get_test_rpc_server_and_storage_writer,
     get_test_rpc_server_and_storage_writer_from_params,
     validate_schema,
@@ -185,10 +187,35 @@ async fn execution_call() {
         .unwrap_err();
 
     assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
+
+    // Test that the block context is passed correctly to blockifier.
+    let mut calldata = get_calldata_for_test_execution_info(
+        BlockNumber(0),
+        *BLOCK_TIMESTAMP,
+        *SEQUENCER_ADDRESS,
+        &InvokeTransactionV1::default(),
+        TransactionHash(StarkHash::ZERO),
+        Some(StarkFelt::ZERO),
+    );
+    // Calling the contract directly and not through the account contract.
+    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+
+    module
+        .call::<_, Vec<StarkFelt>>(
+            "starknet_V0_4_call",
+            (
+                contract_address,
+                entry_point_selector,
+                calldata,
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+            ),
+        )
+        .await
+        .unwrap();
 }
 
-// TODO(shahak): Add test that checks the block context that blockifier got. (By adding a function
-// to the contract that returns the block context)
 #[tokio::test]
 async fn pending_execution_call() {
     let pending_data = get_test_pending_data();
@@ -218,6 +245,29 @@ async fn pending_execution_call() {
         .unwrap();
 
     assert_eq!(res, vec![value]);
+
+    // Test that the block context is passed correctly to blockifier with a block number that is
+    // after the latest block in the storage.
+    let mut calldata = get_calldata_for_test_execution_info(
+        BlockNumber(1),
+        *BLOCK_TIMESTAMP,
+        *SEQUENCER_ADDRESS,
+        &InvokeTransactionV1::default(),
+        TransactionHash(StarkHash::ZERO),
+        Some(StarkFelt::ZERO),
+    );
+    // Calling the contract directly and not through the account contract.
+    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+
+    module
+        .call::<_, Vec<StarkFelt>>(
+            "starknet_V0_4_call",
+            (contract_address, entry_point_selector, calldata, BlockId::Tag(Tag::Pending)),
+        )
+        .await
+        .unwrap();
 }
 
 #[tokio::test]
@@ -273,6 +323,10 @@ async fn call_estimate_fee() {
         .await
         .unwrap();
     assert_ne!(res, expected_fee_estimate);
+
+    // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
+    // the current contract is that the transaction hash appears in the calldata and thus it is
+    // calculated inside the hash.
 }
 
 #[tokio::test]
@@ -318,6 +372,10 @@ async fn pending_call_estimate_fee() {
         overall_fee: Fee(249000000000000),
     }];
     assert_eq!(res, expected_fee_estimate);
+
+    // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
+    // the current contract is that the transaction hash appears in the calldata and thus it is
+    // calculated inside the hash.
 }
 
 #[tokio::test]
@@ -327,55 +385,12 @@ async fn call_simulate() {
 
     prepare_storage_for_execution(storage_writer);
 
-    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
-        sender_address: *ACCOUNT_ADDRESS,
-        calldata: calldata![
-            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-            selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
-        ],
-        ..Default::default()
-    }));
-
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                Vec::<SimulationFlag>::new(),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res.len(), 1);
-
-    let simulated_tx = res.pop().unwrap();
-
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
-
-    assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
-
-    let TransactionTrace::Invoke(invoke_trace) = simulated_tx.transaction_trace else {
-        unreachable!();
-    };
-
-    assert_matches!(invoke_trace.validate_invocation, Some(_));
-    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
-    assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
+    test_call_simulate(
+        &module,
+        BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+        BlockNumber(0),
+    )
+    .await;
 }
 
 #[tokio::test]
@@ -390,7 +405,17 @@ async fn pending_call_simulate() {
     );
     write_empty_block(storage_writer);
 
-    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+    test_call_simulate(&module, BlockId::Tag(Tag::Pending), BlockNumber(1)).await;
+}
+
+// Test call_simulate. Assumes that the given block is equal to block number 0 that is returned
+// from the function `prepare_storage_for_execution`.
+async fn test_call_simulate(
+    module: &RpcModule<JsonRpcServerV0_4Impl>,
+    block_id: BlockId,
+    block_context_number: BlockNumber,
+) {
+    let mut invoke_v1 = InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
         version: TransactionVersion::ONE,
         sender_address: *ACCOUNT_ADDRESS,
@@ -401,12 +426,13 @@ async fn pending_call_simulate() {
             stark_felt!(2_u8)                      // Calldata: num.
         ],
         ..Default::default()
-    }));
+    };
+    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(invoke_v1.clone()));
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
             "starknet_V0_4_simulateTransactions",
-            (BlockId::Tag(Tag::Pending), vec![invoke], Vec::<SimulationFlag>::new()),
+            (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
         )
         .await
         .unwrap();
@@ -435,6 +461,42 @@ async fn pending_call_simulate() {
     assert_matches!(invoke_trace.validate_invocation, Some(_));
     assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
+
+    // Test that the block context is passed correctly to blockifier.
+    let calldata = get_calldata_for_test_execution_info(
+        block_context_number,
+        *BLOCK_TIMESTAMP,
+        *SEQUENCER_ADDRESS,
+        &invoke_v1,
+        // Because the transaction hash depends on the calldata and the calldata needs to contain
+        // the transaction hash, there's no way to put the correct hash here. Instead, we'll check
+        // that the function `test_get_execution_info` fails on the transaction hash validation.
+        TransactionHash(StarkHash::ZERO),
+        None,
+    );
+    invoke_v1.calldata = calldata;
+
+    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(invoke_v1));
+
+    let res = module
+        .call::<_, Vec<SimulatedTransaction>>(
+            "starknet_V0_4_simulateTransactions",
+            (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
+        )
+        .await
+        .unwrap();
+
+    let TransactionTrace::Invoke(invoke_trace) = &res[0].transaction_trace else {
+        panic!("Got a non-invoke transaction trace from an invoke transaction.");
+    };
+    // As described above, we want to check that `test_get_execution_info` fails on the transaction
+    // hash validation (which is done after the block context validation).
+    let FunctionInvocationResult::Err(RevertReason::RevertReason(error_str)) =
+        &invoke_trace.execute_invocation
+    else {
+        panic!("Expected call to test_get_execution_info to fail.");
+    };
+    assert!(error_str.contains("TX_INFO_MISMATCH"));
 }
 
 #[tokio::test]
@@ -726,6 +788,255 @@ async fn trace_block_transactions_regular_and_pending() {
     assert_eq!(pending_tx_2_trace, tx_2_trace);
 }
 
+#[tokio::test]
+async fn trace_block_transactions_and_trace_transaction_execution_context() {
+    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
+    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+
+    let mut invoke_tx1 = starknet_api::transaction::InvokeTransactionV1 {
+        max_fee: *MAX_FEE,
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![],
+        nonce: Nonce(stark_felt!(0_u128)),
+        ..Default::default()
+    };
+    let mut invoke_tx2 = starknet_api::transaction::InvokeTransactionV1 {
+        max_fee: *MAX_FEE,
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![],
+        nonce: Nonce(stark_felt!(1_u128)),
+        ..Default::default()
+    };
+
+    let fix_calldata_of_invoke_tx =
+        |invoke_tx: &mut starknet_api::transaction::InvokeTransactionV1, tx_hash| {
+            let tx: super::transaction::Transaction =
+                starknet_api::transaction::Transaction::Invoke(
+                    starknet_api::transaction::InvokeTransaction::V1(invoke_tx.clone()),
+                )
+                .try_into()
+                .unwrap();
+            let super::transaction::Transaction::Invoke(InvokeTransaction::Version1(rpc_invoke_v1)) =
+                tx
+            else {
+                panic!(
+                    "Converting an InvokeV1 client transaction to a starknet api transaction did \
+                     not yield an InvokeV1 transaction"
+                );
+            };
+            invoke_tx.calldata = get_calldata_for_test_execution_info(
+                BlockNumber(2),
+                *BLOCK_TIMESTAMP,
+                *SEQUENCER_ADDRESS,
+                &rpc_invoke_v1,
+                tx_hash,
+                None,
+            );
+        };
+    fix_calldata_of_invoke_tx(&mut invoke_tx1, tx_hash1);
+    fix_calldata_of_invoke_tx(&mut invoke_tx2, tx_hash2);
+    let tx1 = starknet_api::transaction::Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V1(invoke_tx1),
+    );
+    let tx2 = starknet_api::transaction::Transaction::Invoke(
+        starknet_api::transaction::InvokeTransaction::V1(invoke_tx2),
+    );
+
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+
+    let mut writer = prepare_storage_for_execution(storage_writer);
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(
+            BlockNumber(2),
+            &BlockHeader {
+                block_number: BlockNumber(2),
+                eth_l1_gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                block_hash: BlockHash(stark_felt!("0x2")),
+                parent_hash: BlockHash(stark_felt!("0x1")),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(
+            BlockNumber(2),
+            BlockBody {
+                transactions: vec![tx1, tx2],
+                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
+                    starknet_api::transaction::InvokeTransactionOutput::default(),
+                )],
+                transaction_hashes: vec![tx_hash1, tx_hash2],
+            },
+        )
+        .unwrap()
+        .append_state_diff(
+            BlockNumber(2),
+            StateDiff {
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                ..Default::default()
+            },
+            IndexMap::new(),
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let validate_result = |res| {
+        assert_matches!(
+            &res,
+            TransactionTrace::Invoke(invoke_trace)
+            if matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_))
+        );
+    };
+
+    validate_result(
+        module
+            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+            .await
+            .unwrap(),
+    );
+
+    validate_result(
+        module
+            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+            .await
+            .unwrap(),
+    );
+
+    let res = module
+        .call::<_, Vec<TransactionTraceWithHash>>(
+            "starknet_V0_4_traceBlockTransactions",
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
+        )
+        .await
+        .unwrap();
+    validate_result(res[0].trace_root.clone());
+    validate_result(res[1].trace_root.clone());
+}
+
+#[tokio::test]
+async fn pending_trace_block_transactions_and_trace_transaction_execution_context() {
+    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
+    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+
+    let mut client_invoke_tx1 = ClientInvokeTransaction {
+        max_fee: Some(*MAX_FEE),
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![],
+        nonce: Some(Nonce(stark_felt!(0_u128))),
+        version: TransactionVersion::ONE,
+        ..Default::default()
+    };
+    let mut client_invoke_tx2 = ClientInvokeTransaction {
+        max_fee: Some(*MAX_FEE),
+        sender_address: *ACCOUNT_ADDRESS,
+        calldata: calldata![],
+        nonce: Some(Nonce(stark_felt!(1_u128))),
+        version: TransactionVersion::ONE,
+        ..Default::default()
+    };
+
+    let fix_calldata_of_client_invoke_tx = |client_invoke_tx: &mut ClientInvokeTransaction,
+                                            tx_hash| {
+        let starknet_api_tx: starknet_api::transaction::Transaction =
+            ClientTransaction::Invoke(client_invoke_tx.clone()).try_into().unwrap();
+        let tx: super::transaction::Transaction = starknet_api_tx.try_into().unwrap();
+        let super::transaction::Transaction::Invoke(InvokeTransaction::Version1(invoke_v1)) = tx
+        else {
+            panic!(
+                "Converting an InvokeV1 client transaction to a starknet api transaction did not \
+                 yield an InvokeV1 transaction"
+            );
+        };
+        client_invoke_tx.calldata = get_calldata_for_test_execution_info(
+            BlockNumber(2),
+            *BLOCK_TIMESTAMP,
+            *SEQUENCER_ADDRESS,
+            &invoke_v1,
+            tx_hash,
+            None,
+        );
+    };
+    fix_calldata_of_client_invoke_tx(&mut client_invoke_tx1, tx_hash1);
+    fix_calldata_of_client_invoke_tx(&mut client_invoke_tx2, tx_hash2);
+    let client_tx1 = ClientTransaction::Invoke(client_invoke_tx1);
+    let client_tx2 = ClientTransaction::Invoke(client_invoke_tx2);
+
+    let pending_data = get_test_pending_data();
+    *pending_data.write().await = PendingData {
+        block: PendingBlock {
+            eth_l1_gas_price: *GAS_PRICE,
+            sequencer_address: *SEQUENCER_ADDRESS,
+            timestamp: *BLOCK_TIMESTAMP,
+            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            transactions: vec![client_tx1, client_tx2],
+            transaction_receipts: vec![
+                ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(0),
+                    transaction_hash: tx_hash1,
+                    ..Default::default()
+                },
+                ClientTransactionReceipt {
+                    transaction_index: TransactionOffsetInBlock(0),
+                    transaction_hash: tx_hash2,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        },
+        state_update: PendingStateUpdate {
+            old_root: Default::default(),
+            state_diff: ClientStateDiff {
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                ..Default::default()
+            },
+        },
+    };
+
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data), None, None);
+
+    prepare_storage_for_execution(storage_writer);
+
+    let validate_result = |res| {
+        assert_matches!(
+            &res,
+            TransactionTrace::Invoke(invoke_trace)
+            if matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_))
+        );
+    };
+
+    validate_result(
+        module
+            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+            .await
+            .unwrap(),
+    );
+
+    validate_result(
+        module
+            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+            .await
+            .unwrap(),
+    );
+
+    let res = module
+        .call::<_, Vec<TransactionTraceWithHash>>(
+            "starknet_V0_4_traceBlockTransactions",
+            [BlockId::Tag(Tag::Pending)],
+        )
+        .await
+        .unwrap();
+    validate_result(res[0].trace_root.clone());
+    validate_result(res[1].trace_root.clone());
+}
+
 #[test]
 fn broadcasted_to_executable_declare_v1() {
     let mut rng = get_rng();
@@ -840,6 +1151,86 @@ auto_impl_get_test_instance! {
         pub transaction_hash: TransactionHash,
         pub trace_root: TransactionTrace,
     }
+}
+
+/// Get calldata for invoking the function `test_execution_info` in the contract located in
+/// `casm.json`. The function `test_execution_info` receives the expected block context and
+/// transaction context and validates first the block context and then the transaction context. The
+/// returned calldata will also contain the contract address, entry point selector and calldata
+/// length so that it can be used from an account contract. If you want to call the function
+/// directly, remove the first 3 arguments of the calldata.
+fn get_calldata_for_test_execution_info(
+    expected_block_number: BlockNumber,
+    expected_block_timestamp: BlockTimestamp,
+    expected_sequencer_address: ContractAddress,
+    invoke_tx: &InvokeTransactionV1,
+    tx_hash: TransactionHash,
+    override_tx_version: Option<StarkFelt>,
+) -> Calldata {
+    let entry_point_selector = selector_from_name("test_get_execution_info");
+    let expected_block_number = stark_felt!(expected_block_number.0);
+    let expected_block_timestamp = stark_felt!(expected_block_timestamp.0);
+    let expected_sequencer_address = *(expected_sequencer_address.0.key());
+    let expected_caller_address = *(invoke_tx.sender_address.0.key());
+    let expected_contract_address = *CONTRACT_ADDRESS.0.key();
+    let expected_transaction_version = override_tx_version.unwrap_or(StarkFelt::ONE);
+    let expected_signature = invoke_tx.signature.0.clone();
+    let expected_transaction_hash = tx_hash.0;
+    let expected_chain_id = stark_felt!(&*(get_test_rpc_config().chain_id.as_hex()));
+    let expected_nonce = invoke_tx.nonce.0;
+    let expected_max_fee = stark_felt!(invoke_tx.max_fee.0);
+    let expected_resource_bounds_length = StarkFelt::ZERO;
+    let expected_tip = StarkFelt::ZERO;
+    let expected_paymaster_data = StarkFelt::ZERO;
+    let expected_nonce_da = StarkFelt::ZERO;
+    let expected_fee_da = StarkFelt::ZERO;
+    let expected_account_data = StarkFelt::ZERO;
+
+    let calldata = [
+        vec![
+            expected_block_number,
+            expected_block_timestamp,
+            expected_sequencer_address,
+            expected_transaction_version,
+            expected_caller_address,
+            expected_max_fee,
+            stark_felt!(expected_signature.len() as u64),
+        ],
+        expected_signature,
+        vec![
+            expected_transaction_hash,
+            expected_chain_id,
+            expected_nonce,
+            expected_resource_bounds_length,
+            expected_tip,
+            expected_paymaster_data,
+            expected_nonce_da,
+            expected_fee_da,
+            expected_account_data,
+            expected_caller_address,
+            expected_contract_address,
+            stark_felt!(entry_point_selector.0),
+        ],
+    ]
+    .iter()
+    .flatten()
+    .cloned()
+    .collect::<Vec<_>>();
+
+    Calldata(Arc::new(
+        [
+            vec![
+                *CONTRACT_ADDRESS.0.key(),
+                entry_point_selector.0,
+                stark_felt!(calldata.len() as u64),
+            ],
+            calldata,
+        ]
+        .iter()
+        .flatten()
+        .cloned()
+        .collect::<Vec<_>>(),
+    ))
 }
 
 // Write into the pending block the first block that the function `prepare_storage_for_execution`
