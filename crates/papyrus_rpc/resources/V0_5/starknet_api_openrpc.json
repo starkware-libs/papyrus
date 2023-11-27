@@ -2691,7 +2691,10 @@
                         "title": "Pending Deploy account transaction receipt",
                         "$ref": "#/components/schemas/PENDING_DEPLOY_ACCOUNT_TXN_RECEIPT"
                     }
-                ]
+                ],
+                "not": {
+                    "$ref": "#/components/schemas/TXN_RECEIPT"
+                }
             },
             "PENDING_COMMON_RECEIPT_PROPERTIES": {
                 "title": "Pending common receipt properties",
@@ -2707,10 +2710,6 @@
                         "title": "Actual fee",
                         "$ref": "#/components/schemas/FELT",
                         "description": "The fee that was charged by the sequencer"
-                    },
-                    "type": {
-                        "title": "Transaction type",
-                        "$ref": "#/components/schemas/TXN_TYPE"
                     },
                     "messages_sent": {
                         "type": "array",
@@ -2754,14 +2753,12 @@
                 "required": [
                     "transaction_hash",
                     "actual_fee",
-                    "type",
                     "messages_sent",
                     "events",
                     "finality_status",
                     "execution_status",
                     "execution_resources"
-                ],
-                "additionalProperties": false
+                ]
             },
             "MSG_TO_L1": {
                 "title": "Message to L1",
