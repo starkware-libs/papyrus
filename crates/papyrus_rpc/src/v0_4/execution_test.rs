@@ -648,7 +648,7 @@ async fn trace_block_transactions_regular_and_pending() {
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
             "starknet_V0_4_traceBlockTransactions",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
+            [BlockId::Tag(Tag::Latest)],
         )
         .await
         .unwrap();

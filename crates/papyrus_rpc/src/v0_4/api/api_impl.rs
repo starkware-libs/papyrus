@@ -51,6 +51,7 @@ use tracing::{debug, instrument, trace, warn};
 
 use super::super::block::{
     get_accepted_block_number,
+    get_accepted_block_number_for_execution,
     get_block_header_by_number,
     Block,
     BlockHeader,
@@ -844,7 +845,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         } else {
             None
         };
-        let block_number = get_accepted_block_number(
+        let block_number = get_accepted_block_number_for_execution(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
@@ -956,7 +957,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
-        let block_number = get_accepted_block_number(
+        let block_number = get_accepted_block_number_for_execution(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
@@ -1015,7 +1016,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             None
         };
 
-        let block_number = get_accepted_block_number(
+        let block_number = get_accepted_block_number_for_execution(
             &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
             block_id,
         )?;
@@ -1223,7 +1224,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         };
 
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_number = get_accepted_block_number_for_execution(&storage_txn, block_id)?;
 
         let (maybe_pending_data, block_transactions, transaction_hashes, state_number) =
             match maybe_client_pending_data {
