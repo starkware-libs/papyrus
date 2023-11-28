@@ -621,7 +621,7 @@
             },
             "errors": [
                 {
-                    "$ref": "#/components/errors/CONTRACT_ERROR"
+                    "$ref": "#/components/errors/TRANSACTION_EXECUTION_ERROR"
                 },
                 {
                     "$ref": "#/components/errors/BLOCK_NOT_FOUND"

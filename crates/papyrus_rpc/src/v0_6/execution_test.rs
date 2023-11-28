@@ -71,7 +71,7 @@ use super::broadcasted_transaction::{
     BroadcastedDeclareV1Transaction,
     BroadcastedTransaction,
 };
-use super::error::{BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
+use super::error::{TransactionExecutionError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
 use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::test_utils::{
@@ -259,6 +259,40 @@ async fn call_estimate_fee() {
         .await
         .unwrap();
     assert_ne!(res, expected_fee_estimate);
+
+    // Test that reverted transaction fails the fee estimation.
+    let non_existent_entry_point =
+        BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
+            max_fee: Fee(1000000 * GAS_PRICE.0),
+            version: TransactionVersion::ONE,
+            sender_address: account_address,
+            calldata: calldata![
+                *DEPRECATED_CONTRACT_ADDRESS.0.key(),    // Contract address.
+                selector_from_name("non_existent_ep").0, // EP selector.
+                stark_felt!(1_u8),                       // Calldata length.
+                stark_felt!(2_u8)                        // Calldata: num.
+            ],
+            ..Default::default()
+        }));
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_6_estimateFee",
+            (
+                vec![non_existent_entry_point],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+            ),
+        )
+        .await
+        .expect_err("Expecting error");
+    let Error::Call(err) = res else {
+        panic!("Expecting error");
+    };
+    assert_eq!(err.code(), 41);
+    let Some(data) = err.data() else {
+        panic!("Expecting error data");
+    };
+    let tx_execution_error: TransactionExecutionError = serde_json::from_str(data.get()).unwrap();
+    assert_eq!(tx_execution_error.transaction_index, 0);
 }
 
 #[tokio::test]
