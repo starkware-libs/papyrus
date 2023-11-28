@@ -58,7 +58,7 @@ pub mod api_impl;
 #[cfg(test)]
 mod test;
 
-#[versioned_rpc("V0_5")]
+#[versioned_rpc("V0_6")]
 #[async_trait]
 pub trait JsonRpc {
     /// Returns the version of the Starknet JSON-RPC specification being used

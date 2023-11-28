@@ -116,7 +116,7 @@ use super::{
     EventsChunk,
     FeeEstimate,
     GatewayContractClass,
-    JsonRpcV0_5Server as JsonRpcServer,
+    JsonRpcV0_6Server as JsonRpcServer,
     SimulatedTransaction,
     SimulationFlag,
     TransactionTraceWithHash,
@@ -124,7 +124,7 @@ use super::{
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
-use crate::version_config::VERSION_0_5 as VERSION;
+use crate::version_config::VERSION_0_6 as VERSION;
 use crate::{
     get_block_status,
     get_latest_block_number,
@@ -139,7 +139,7 @@ lazy_static! {
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_5Impl {
+pub struct JsonRpcServerV0_6Impl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -153,7 +153,7 @@ pub struct JsonRpcServerV0_5Impl {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerV0_5Impl {
+impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn spec_version(&self) -> RpcResult<String> {
         Ok(format!("{VERSION}"))
@@ -1432,7 +1432,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_5Impl {
+impl JsonRpcServerImpl for JsonRpcServerV0_6Impl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,

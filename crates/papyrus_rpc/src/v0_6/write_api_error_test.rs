@@ -11,7 +11,7 @@ use super::{
     starknet_error_to_invoke_error,
 };
 use crate::test_utils::{get_starknet_spec_api_schema_for_method_errors, SpecFile};
-use crate::version_config::VERSION_0_5 as Version;
+use crate::version_config::VERSION_0_6 as Version;
 
 const MESSAGE: &str = "message";
 const UNKNOWN_CODE: &str = "code";

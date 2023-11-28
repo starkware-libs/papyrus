@@ -24,6 +24,7 @@ use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
 use starknet_client::writer::objects::transaction as client_transaction;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
+use super::super::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 use super::{
     DeployAccountTransaction,
     DeployAccountTransactionV1,
@@ -57,7 +58,6 @@ lazy_static::lazy_static! {
 // The msg hash of the L1Handler transaction.
 const MSG_HASH: &str = "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2";
 
-use crate::v0_5::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
         Version1(DeployAccountTransactionV1) = 0,
