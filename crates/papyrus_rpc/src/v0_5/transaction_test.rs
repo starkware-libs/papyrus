@@ -9,7 +9,8 @@ use papyrus_storage::body::events::{
     ThinTransactionOutput,
 };
 use pretty_assertions::assert_eq;
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
@@ -19,14 +20,9 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
 use starknet_client::writer::objects::transaction as client_transaction;
-use test_utils::{
-    auto_impl_get_test_instance,
-    get_number_of_variants,
-    get_rng,
-    read_json_file,
-    GetTestInstance,
-};
+use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::{
     DeployAccountTransaction,
@@ -36,6 +32,31 @@ use super::{
     InvokeTransactionV1,
     TransactionOutput,
 };
+
+lazy_static::lazy_static! {
+    // A transaction from GOERLI with tx hash 0x7c9660754689dee9c6de773f1c4c9d94269ed678e7199298a9e1a19cda415ab.
+    static ref L1_HANDLER_TX: L1HandlerTransaction = L1HandlerTransaction {
+        version: TransactionVersion::ZERO,
+        nonce: Nonce(stark_felt!("0xc01b3")),
+        contract_address: contract_address!(
+            "0x55350a859da02cb244c8c09f29bc38047cef93d38b72033a0e8be03d24c5756"
+        ),
+        entry_point_selector: EntryPointSelector(stark_felt!(
+            "0x3fa70707d0e831418fb142ca8fb7483611b84e89c0c42bf1fc2a7a5c40890ad"
+        )),
+        calldata: calldata![
+            stark_felt!("0x18e4a8e2badb5f5950758f46f8108e2c5d357b07"),
+            stark_felt!("0x10ae809a95d34dd22538e6c30bec2e11"),
+            stark_felt!("0x8eacfcd7b4046547e3cbe5ff4f08c1f9"),
+            stark_felt!("0x99c3dd"),
+            stark_felt!("0x0")
+        ],
+    };
+}
+
+// The msg hash of the L1Handler transaction.
+const MSG_HASH: &str = "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2";
+
 use crate::v0_5::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
@@ -161,19 +182,15 @@ fn test_invoke_transaction_to_client_transaction() {
 
 #[test]
 fn l1handler_msg_hash() {
-    let tx = serde_json::from_value::<L1HandlerTransaction>(read_json_file("l1handler_tx.json"))
-        .unwrap();
-    let msg_hash = format!("{}", tx.calc_msg_hash());
-    assert_eq!(msg_hash, "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2");
+    let msg_hash = format!("{}", L1_HANDLER_TX.calc_msg_hash());
+    assert_eq!(msg_hash, MSG_HASH);
 }
 
 #[test]
 fn l1handler_msg_hash_serde() {
-    let tx = serde_json::from_value::<L1HandlerTransaction>(read_json_file("l1handler_tx.json"))
-        .unwrap();
-    let message_hash = tx.calc_msg_hash();
-    let ser = serde_json::to_string(&message_hash).unwrap();
+    let ser = serde_json::to_string(MSG_HASH).unwrap();
     assert_eq!(ser, "\"0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2\"");
     let des = serde_json::from_str::<L1L2MsgHash>(&ser).unwrap();
-    assert_eq!(des, message_hash);
+    let expected_hash = L1_HANDLER_TX.calc_msg_hash();
+    assert_eq!(des, expected_hash);
 }
