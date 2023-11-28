@@ -1,5 +1,5 @@
 ---
-source: crates/papyrus_rpc/src/v0_5/write_api_error_test.rs
+source: crates/papyrus_rpc/src/v0_6/write_api_error_test.rs
 expression: get_conversion_snapshot(starknet_error_to_invoke_error)
 ---
 {
