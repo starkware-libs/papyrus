@@ -65,8 +65,10 @@ use super::super::broadcasted_transaction::{
 };
 use super::super::error::{
     contract_error,
+    transaction_execution_error,
     ContractError,
     JsonRpcError,
+    TransactionExecutionError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
     CONTRACT_NOT_FOUND,
@@ -1039,11 +1041,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
                 .collect()),
-            Ok(Err(reverted_tx)) => Err(contract_error(ContractError {
-                revert_error: format!(
-                    "Transaction {} reverted: {}",
-                    reverted_tx.index, reverted_tx.revert_reason,
-                ),
+            Ok(Err(reverted_tx)) => Err(transaction_execution_error(TransactionExecutionError {
+                transaction_index: reverted_tx.index,
+                execution_error: reverted_tx.revert_reason,
             })
             .into()),
             Err(err) => Err(internal_server_error(err)),

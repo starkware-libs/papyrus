@@ -58,6 +58,22 @@ pub fn contract_error(contract_error: ContractError) -> JsonRpcError<ContractErr
     JsonRpcError { code: 40, message: "Contract error", data: Some(contract_error) }
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub struct TransactionExecutionError {
+    pub transaction_index: usize,
+    pub execution_error: String,
+}
+
+pub fn transaction_execution_error(
+    tx_execution_error: TransactionExecutionError,
+) -> JsonRpcError<TransactionExecutionError> {
+    JsonRpcError {
+        code: 41,
+        message: "Transaction execution error",
+        data: Some(tx_execution_error),
+    }
+}
+
 pub const CLASS_ALREADY_DECLARED: JsonRpcError<String> =
     JsonRpcError { code: 51, message: "Class already declared", data: None };
 
