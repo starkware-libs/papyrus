@@ -15,6 +15,7 @@ use tokio::sync::RwLock;
 use crate::v0_3::api::api_impl::JsonRpcServerV0_3Impl;
 use crate::v0_4::api::api_impl::JsonRpcServerV0_4Impl;
 use crate::v0_5::api::api_impl::JsonRpcServerV0_5Impl;
+use crate::v0_6::api::api_impl::JsonRpcServerV0_6Impl;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -86,6 +87,9 @@ pub fn get_methods_from_supported_apis(
                         }
                         version_config::VERSION_0_5 => {
                             server_gen.clone().generator::<JsonRpcServerV0_5Impl>()
+                        }
+                        version_config::VERSION_0_6 => {
+                            server_gen.clone().generator::<JsonRpcServerV0_6Impl>()
                         }
                         // TODO(yair): remove this once the version is an enum instead of a string.
                         _ => unreachable!("Unrecognized RPC spec version: {}", version),
