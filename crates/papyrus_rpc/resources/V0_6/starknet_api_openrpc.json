@@ -1,7 +1,7 @@
 {
     "openrpc": "1.0.0-rc1",
     "info": {
-        "version": "0.5.1",
+        "version": "0.6.0",
         "title": "StarkNet Node API",
         "license": {}
     },
@@ -582,7 +582,7 @@
         {
             "name": "starknet_estimateFee",
             "summary": "estimate the fee for of StarkNet transactions",
-            "description": "estimates the resources required by transactions when applyed on a given state",
+            "description": "Estimates the resources required by a given sequence of transactions when applied on a given state. If one of the transactions reverts or fails due to any reason (e.g. validation failure or an internal error), a TRANSACTION_EXECUTION_ERROR is returned. For v0-2 transactions the estimate is given in wei, and for v3 transactions it is given in fri.",
             "params": [
                 {
                     "name": "request",
@@ -620,9 +620,6 @@
                 }
             },
             "errors": [
-                {
-                    "$ref": "#/components/errors/CONTRACT_NOT_FOUND"
-                },
                 {
                     "$ref": "#/components/errors/CONTRACT_ERROR"
                 },
@@ -662,9 +659,6 @@
                 }
             },
             "errors": [
-                {
-                    "$ref": "#/components/errors/CONTRACT_NOT_FOUND"
-                },
                 {
                     "$ref": "#/components/errors/CONTRACT_ERROR"
                 },
@@ -1104,6 +1098,18 @@
                 "type": "string",
                 "pattern": "^0x[a-fA-F0-9]+$"
             },
+            "u64": {
+                "type": "string",
+                "title": "u64",
+                "description": "64 bit integers, represented by hex string of length at most 16",
+                "pattern": "^0x(0|[a-fA-F1-9]{1}[a-fA-F0-9]{0,15})$"
+            },
+            "u128": {
+                "type": "string",
+                "title": "u128",
+                "description": "64 bit integers, represented by hex string of length at most 32",
+                "pattern": "^0x(0|[a-fA-F1-9]{1}[a-fA-F0-9]{0,31})$"
+            },
             "CHAIN_ID": {
                 "title": "Chain id",
                 "description": "StarkNet chain id, given in hex representation.",
@@ -1449,7 +1455,13 @@
                     "l1_gas_price",
                     "starknet_version"
                 ],
-                "additionalProperties": false
+                "not": {
+                    "required": [
+                        "block_hash",
+                        "block_number",
+                        "new_root"
+                    ]
+                }
             },
             "BLOCK_WITH_TX_HASHES": {
                 "title": "Block with transaction hashes",
@@ -1515,37 +1527,7 @@
                     },
                     {
                         "title": "Pending block header",
-                        "type": "object",
-                        "properties": {
-                            "timestamp": {
-                                "title": "Timestamp",
-                                "description": "The time in which the block was created, encoded in Unix time",
-                                "type": "integer",
-                                "minimum": 0
-                            },
-                            "sequencer_address": {
-                                "title": "Sequencer address",
-                                "description": "The StarkNet identity of the sequencer submitting this block",
-                                "$ref": "#/components/schemas/FELT"
-                            },
-                            "parent_hash": {
-                                "title": "Parent hash",
-                                "description": "The hash of this block's parent",
-                                "$ref": "#/components/schemas/BLOCK_HASH"
-                            }
-                        },
-                        "required": [
-                            "parent_hash",
-                            "timestamp",
-                            "sequencer_address"
-                        ],
-                        "not": {
-                            "required": [
-                                "block_hash",
-                                "block_number",
-                                "new_root"
-                            ]
-                        }
+                        "$ref": "#/components/schemas/PENDING_BLOCK_HEADER"
                     }
                 ]
             },
@@ -1558,38 +1540,8 @@
                         "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
                     },
                     {
-                        "type": "object",
-                        "title": "Block Info",
-                        "properties": {
-                            "timestamp": {
-                                "title": "Timestamp",
-                                "description": "The time in which the block was created, encoded in Unix time",
-                                "type": "integer",
-                                "minimum": 0
-                            },
-                            "sequencer_address": {
-                                "title": "Sequencer address",
-                                "description": "The StarkNet identity of the sequencer submitting this block",
-                                "$ref": "#/components/schemas/FELT"
-                            },
-                            "parent_hash": {
-                                "title": "Parent hash",
-                                "description": "The hash of this block's parent",
-                                "$ref": "#/components/schemas/BLOCK_HASH"
-                            }
-                        },
-                        "required": [
-                            "parent_hash",
-                            "timestamp",
-                            "sequencer_address"
-                        ],
-                        "not": {
-                            "required": [
-                                "block_hash",
-                                "block_number",
-                                "new_root"
-                            ]
-                        }
+                        "title": "Pending block header",
+                        "$ref": "#/components/schemas/PENDING_BLOCK_HEADER"
                     }
                 ]
             },
@@ -2118,7 +2070,7 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "$ref": "#/components/schemas/FELT"
                             },
                             "type": {
                                 "title": "Deploy",
@@ -2293,7 +2245,7 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "$ref": "#/components/schemas/FELT"
                             },
                             "type": {
                                 "title": "type",
@@ -3252,6 +3204,21 @@
                     "type"
                 ]
             },
+            "SIMULATION_FLAG_FOR_ESTIMATE_FEE": {
+                "type": "string",
+                "enum": [
+                    "SKIP_VALIDATE"
+                ],
+                "description": "Flags that indicate how to simulate a given transaction. By default, the sequencer behavior is replicated locally"
+            },
+            "PRICE_UNIT": {
+                "title": "price unit",
+                "type": "string",
+                "enum": [
+                    "WEI",
+                    "FRI"
+                ]
+            },
             "FEE_ESTIMATE": {
                 "title": "Fee estimation",
                 "type": "object",
@@ -3259,17 +3226,17 @@
                     "gas_consumed": {
                         "title": "Gas consumed",
                         "description": "The Ethereum gas cost of the transaction (see https://docs.starknet.io/docs/Fees/fee-mechanism for more info)",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "gas_price": {
                         "title": "Gas price",
-                        "description": "The gas price (in gwei) that was used in the cost estimation",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "description": "The gas price (in gwei or fri, depending on the tx version) that was used in the cost estimation",
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "overall_fee": {
                         "title": "Overall fee",
-                        "description": "The estimated fee for the transaction (in gwei), product of gas_consumed and gas_price",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "description": "The estimated fee for the transaction (in gwei or fri, depending on the tx version), product of gas_consumed and gas_price",
+                        "$ref": "#/components/schemas/FELT"
                     }
                 },
                 "required": [
@@ -3278,18 +3245,86 @@
                     "overall_fee"
                 ]
             },
+            "FEE_PAYMENT": {
+                "title": "Fee Payment",
+                "description": "fee payment info as it appears in receipts",
+                "type": "object",
+                "properties": {
+                    "amount": {
+                        "title": "Amunt",
+                        "description": "amount paid",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "unit": {
+                        "title": "Fee unit",
+                        "description": "units in which the fee is given",
+                        "$ref": "#/components/schemas/PRICE_UNIT"
+                    }
+                },
+                "required": [
+                    "amount",
+                    "unit"
+                ]
+            },
+            "DA_MODE": {
+                "title": "DA mode",
+                "type": "string",
+                "description": "Specifies a storage domain in Starknet. Each domain has different gurantess regarding availability",
+                "enum": [
+                    "L1",
+                    "L2"
+                ]
+            },
+            "RESOURCE_BOUNDS_MAPPING": {
+                "type": "object",
+                "properties": {
+                    "l1_gas": {
+                        "title": "L1 Gas",
+                        "description": "The max amount and max price per unit of L1 gas used in this tx",
+                        "$ref": "#/components/schemas/RESOURCE_BOUNDS"
+                    },
+                    "l2_gas": {
+                        "title": "L2 Gas",
+                        "description": "The max amount and max price per unit of L2 gas used in this tx",
+                        "$ref": "#/components/schemas/RESOURCE_BOUNDS"
+                    }
+                },
+                "required": [
+                    "l1_gas",
+                    "l2_gas"
+                ]
+            },
+            "RESOURCE_BOUNDS": {
+                "type": "object",
+                "properties": {
+                    "max_amount": {
+                        "title": "max amount",
+                        "description": "the max amount of the resource that can be used in the tx",
+                        "$ref": "#/components/schemas/u64"
+                    },
+                    "max_price_per_unit": {
+                        "title": "max price",
+                        "description": "the max price per unit of this resource for this tx",
+                        "$ref": "#/components/schemas/u128"
+                    }
+                },
+                "required": [
+                    "max_amount",
+                    "max_price_per_unit"
+                ]
+            },
             "RESOURCE_PRICE": {
                 "type": "object",
                 "properties": {
                     "price_in_strk": {
-                        "title": "price in strk",
-                        "description": "the price of one unit of the given resource, denominated in strk",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "title": "price in fri",
+                        "description": "the price of one unit of the given resource, denominated in fri (10^-18 strk)",
+                        "$ref": "#/components/schemas/FELT"
                     },
                     "price_in_wei": {
                         "title": "price in wei",
                         "description": "the price of one unit of the given resource, denominated in wei",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "$ref": "#/components/schemas/FELT"
                     }
                 },
                 "required": [
@@ -3298,7 +3333,7 @@
             },
             "EXECUTION_RESOURCES": {
                 "title": "Execution resources",
-                "description": "The resources consumed by the transaction",
+                "description": "The resources consumed by the VM",
                 "type": "object",
                 "properties": {
                     "steps": {
@@ -3347,8 +3382,8 @@
                         "$ref": "#/components/schemas/NUM_AS_HEX"
                     },
                     "segment_arena_builtin_applications": {
-                        "title": "Keccak applications",
-                        "description": "The number of KECCAK builtin instances",
+                        "title": "Segment arena",
+                        "description": "The number of accesses to the segment arena",
                         "$ref": "#/components/schemas/NUM_AS_HEX"
                     }
                 },
@@ -3420,6 +3455,30 @@
                         }
                     },
                     "required": "revert_error"
+                }
+            },
+            "TRANSACTION_EXECUTION_ERROR": {
+                "code": 41,
+                "message": "Transaction execution error",
+                "data": {
+                    "type": "object",
+                    "description": "More data about the execution failure",
+                    "properties": {
+                        "transaction_index": {
+                            "title": "Transaction index",
+                            "description": "The index of the first transaction failing in a sequence of given transactions",
+                            "type": "integer"
+                        },
+                        "execution_error": {
+                            "title": "revert error",
+                            "description": "a string encoding the execution trace up to the point of failure",
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "transaction_index",
+                        "execution_error"
+                    ]
                 }
             }
         }
