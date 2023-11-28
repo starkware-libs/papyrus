@@ -64,6 +64,8 @@ use super::super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::super::error::{
+    contract_error,
+    ContractError,
     JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
@@ -84,6 +86,7 @@ use super::super::transaction::{
     Event,
     GeneralTransactionReceipt,
     InvokeTransactionV1,
+    L1HandlerMsgHash,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -121,7 +124,6 @@ use super::{
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
-use crate::v0_5::transaction::L1HandlerMsgHash;
 use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{
     get_block_status,
@@ -923,7 +925,10 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         match call_result {
             Ok(res) => Ok(res.retdata.0),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
-            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+            Err(ExecutionError::ContractNotFound { .. }) => Err(CONTRACT_NOT_FOUND.into()),
+            Err(err) => {
+                Err(contract_error(ContractError { revert_error: format!("{}", err) }).into())
+            }
         }
     }
 
@@ -1030,12 +1035,18 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .map_err(internal_server_error)?;
 
         match estimate_fee_result {
-            Ok(fees) => Ok(fees
+            Ok(Ok(fees)) => Ok(fees
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
                 .collect()),
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
-            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+            Ok(Err(reverted_tx)) => Err(contract_error(ContractError {
+                revert_error: format!(
+                    "Transaction {} reverted: {}",
+                    reverted_tx.index, reverted_tx.revert_reason,
+                ),
+            })
+            .into()),
+            Err(err) => Err(internal_server_error(err)),
         }
     }
 

@@ -9,7 +9,7 @@ use indexmap::indexmap;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockNumber, GasPrice};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -54,6 +54,8 @@ use crate::{
     ExecutableTransactionInput,
     ExecutionConfigByBlock,
     ExecutionError,
+    FeeEstimationResult,
+    RevertedTransaction,
 };
 
 // Test calling entry points of a deprecated class.
@@ -165,7 +167,7 @@ fn estimate_fee_invoke() {
     let tx = TxsScenarioBuilder::default()
         .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
         .collect();
-    let fees = estimate_fees(tx);
+    let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
         assert_eq!(fee.0, *GAS_PRICE);
@@ -176,7 +178,7 @@ fn estimate_fee_invoke() {
 fn estimate_fee_declare_deprecated_class() {
     let tx = TxsScenarioBuilder::default().declare_deprecated_class(*ACCOUNT_ADDRESS).collect();
 
-    let fees = estimate_fees(tx);
+    let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
         assert_eq!(fee.0, *GAS_PRICE);
@@ -187,7 +189,7 @@ fn estimate_fee_declare_deprecated_class() {
 fn estimate_fee_declare_class() {
     let tx = TxsScenarioBuilder::default().declare_class(*ACCOUNT_ADDRESS).collect();
 
-    let fees = estimate_fees(tx);
+    let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
         assert_eq!(fee.0, *GAS_PRICE);
@@ -198,7 +200,7 @@ fn estimate_fee_declare_class() {
 fn estimate_fee_deploy_account() {
     let tx = TxsScenarioBuilder::default().deploy_account().collect();
 
-    let fees = estimate_fees(tx);
+    let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
         assert_eq!(fee.0, *GAS_PRICE);
@@ -214,14 +216,26 @@ fn estimate_fee_combination() {
         .deploy_account()
         .collect();
 
-    let fees = estimate_fees(txs);
+    let fees = estimate_fees(txs).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
         assert_eq!(fee.0, *GAS_PRICE);
     }
 }
 
-fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> Vec<(GasPrice, Fee)> {
+#[test]
+fn estimate_fee_reverted() {
+    let non_existing_contract = contract_address!("0x987");
+    let txs = TxsScenarioBuilder::default()
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, non_existing_contract, None)
+        .collect();
+
+    let failed_estimation = estimate_fees(txs).expect_err("Fee estimation should fail.");
+    assert_matches!(failed_estimation, RevertedTransaction { index: 1, revert_reason: _ })
+}
+
+fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     prepare_storage(storage_writer);
 

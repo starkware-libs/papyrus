@@ -3259,7 +3259,7 @@ where
 
     async fn test_known_starknet_error(
         known_starknet_error_code: KnownStarknetErrorCode,
-        expected_error: JsonRpcError,
+        expected_error: JsonRpcError<String>,
     ) {
         let mut rng = get_rng();
         let tx = Self::Transaction::get_test_instance(&mut rng);

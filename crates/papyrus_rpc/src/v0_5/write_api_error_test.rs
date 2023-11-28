@@ -23,7 +23,7 @@ fn starknet_errors() -> impl Iterator<Item = StarknetError> {
         .map(|error_code| StarknetError { code: error_code, message: MESSAGE.to_owned() })
 }
 
-fn test_error_from_conversion_fits_rpc<F: Fn(StarknetError) -> JsonRpcError>(
+fn test_error_from_conversion_fits_rpc<F: Fn(StarknetError) -> JsonRpcError<String>>(
     f: F,
     spec_method: &str,
 ) {
@@ -64,7 +64,9 @@ fn starknet_error_to_deploy_account_error_result_fits_specs() {
     );
 }
 
-fn get_conversion_snapshot<F: Fn(StarknetError) -> JsonRpcError>(f: F) -> serde_json::Value {
+fn get_conversion_snapshot<F: Fn(StarknetError) -> JsonRpcError<String>>(
+    f: F,
+) -> serde_json::Value {
     // Using BTreeMap to keep the keys sorted.
     let mut rpc_error_code_to_errors = BTreeMap::new();
     for starknet_error in starknet_errors() {
