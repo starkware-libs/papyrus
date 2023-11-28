@@ -39,7 +39,7 @@
         },
         {
             "name": "starknet_simulateTransactions",
-            "summary": "simulate a given sequence of transactions on the requested state, and generate the execution traces. If one of the transactions is reverted, raises CONTRACT_ERROR.",
+            "summary": "Simulate a given sequence of transactions on the requested state, and generate the execution traces. Note that some of the transactions may revert, in which case no error is thrown, but revert details can be seen on the returned trace object. . Note that some of the transactions may revert, this will be reflected by the revert_error property in the trace. Other types of failures (e.g. unexpected error or failure in the validation phase) will result in TRANSACTION_EXECUTION_ERROR.",
             "params": [
                 {
                     "name": "block_id",
@@ -97,13 +97,10 @@
             },
             "errors": [
                 {
-                    "$ref": "#/components/errors/CONTRACT_NOT_FOUND"
+                    "$ref": "#/components/errors/BLOCK_NOT_FOUND"
                 },
                 {
                     "$ref": "#/components/errors/CONTRACT_ERROR"
-                },
-                {
-                    "$ref": "#/components/errors/BLOCK_NOT_FOUND"
                 }
             ]
         },
@@ -200,8 +197,7 @@
                         "required": [
                             "type",
                             "execute_invocation"
-                        ],
-                        "additionalProperties": false
+                        ]
                     },
                     {
                         "name": "DECLARE_TXN_TRACE",
@@ -229,8 +225,7 @@
                         },
                         "required": [
                             "type"
-                        ],
-                        "additionalProperties": false
+                        ]
                     },
                     {
                         "name": "DEPLOY_ACCOUNT_TXN_TRACE",
@@ -263,8 +258,7 @@
                         "required": [
                             "type",
                             "constructor_invocation"
-                        ],
-                        "additionalProperties": false
+                        ]
                     },
                     {
                         "name": "L1_HANDLER_TXN_TRACE",
@@ -291,8 +285,7 @@
                         "required": [
                             "type",
                             "function_invocation"
-                        ],
-                        "additionalProperties": false
+                        ]
                     }
                 ]
             },
@@ -388,9 +381,9 @@
             "CALL_TYPE": {
                 "type": "string",
                 "enum": [
-                    "DELEGATE",
                     "LIBRARY_CALL",
-                    "CALL"
+                    "CALL",
+                    "DELEGATE"
                 ]
             },
             "ORDERED_EVENT": {
@@ -404,7 +397,7 @@
                             "order": {
                                 "title": "order",
                                 "description": "the order of the event within the transaction",
-                                "type": "number"
+                                "type": "integer"
                             }
                         }
                     },
@@ -424,7 +417,7 @@
                             "order": {
                                 "title": "order",
                                 "description": "the order of the message within the transaction",
-                                "type": "number"
+                                "type": "integer"
                             }
                         }
                     },
@@ -459,6 +452,9 @@
             },
             "STATE_DIFF": {
                 "$ref": "./api/starknet_api_openrpc.json#/components/schemas/STATE_DIFF"
+            },
+            "EXECUTION_RESOURCES": {
+                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/EXECUTION_RESOURCES"
             }
         },
         "errors": {
