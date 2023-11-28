@@ -28,6 +28,7 @@ use test_utils::{
     GetTestInstance,
 };
 
+use super::super::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 use super::{
     DeployAccountTransaction,
     DeployAccountTransactionV1,
@@ -36,7 +37,6 @@ use super::{
     InvokeTransactionV1,
     TransactionOutput,
 };
-use crate::v0_5::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
         Version1(DeployAccountTransactionV1) = 0,
