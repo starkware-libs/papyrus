@@ -137,6 +137,13 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
             .try_into()
             .unwrap();
 
+    let inner_transaction =
+        starknet_api::transaction::DeclareTransactionV3::get_test_instance(&mut rng);
+    let _transaction: super::Transaction =
+        Transaction::Declare(starknet_api::transaction::DeclareTransaction::V3(inner_transaction))
+            .try_into()
+            .unwrap();
+
     let inner_transaction = starknet_api::transaction::DeclareTransactionV2::default();
     let _transaction: super::Transaction =
         Transaction::Declare(starknet_api::transaction::DeclareTransaction::V2(inner_transaction))

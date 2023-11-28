@@ -440,6 +440,10 @@ impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
                 // TODO(yair): We need a way to get the casm of a declare V2 transaction.
                 Err(internal_server_error("Declare V2 is not supported yet in execution."))
             }
+            BroadcastedDeclareTransaction::V3(_) => {
+                // TODO(yair): We need a way to get the casm of a declare V3 transaction.
+                Err(internal_server_error("Declare V3 is not supported yet in execution."))
+            }
         }
     }
 }

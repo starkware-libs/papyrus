@@ -13,12 +13,20 @@ mod broadcasted_transaction_test;
 use papyrus_storage::db::serialization::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};
+use starknet_api::data_availability::DataAvailabilityMode;
+use starknet_api::transaction::{
+    AccountDeploymentData,
+    Fee,
+    PaymasterData,
+    Tip,
+    TransactionSignature,
+    TransactionVersion,
+};
 use starknet_client::writer::objects::transaction as client_transaction;
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 
 use super::state::ContractClass;
-use super::transaction::{DeployAccountTransaction, InvokeTransaction};
+use super::transaction::{DeployAccountTransaction, InvokeTransaction, ResourceBoundsMapping};
 use crate::compression_utils::compress_and_encode;
 
 /// Transactions that are ready to be broadcasted to the network and are not included in a block.
@@ -48,6 +56,8 @@ pub enum BroadcastedDeclareTransaction {
     V1(BroadcastedDeclareV1Transaction),
     #[serde(rename = "0x2")]
     V2(BroadcastedDeclareV2Transaction),
+    #[serde(rename = "0x3")]
+    V3(BroadcastedDeclareV3Transaction),
 }
 
 /// A broadcasted declare transaction of a Cairo-v0 contract.
@@ -85,6 +95,23 @@ pub struct BroadcastedDeclareV2Transaction {
     pub nonce: Nonce,
     pub max_fee: Fee,
     pub signature: TransactionSignature,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct BroadcastedDeclareV3Transaction {
+    pub r#type: DeclareType,
+    pub sender_address: ContractAddress,
+    pub compiled_class_hash: CompiledClassHash,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub contract_class: ContractClass,
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
 }
 
 /// The type field of a declare transaction. This enum serializes/deserializes into a constant
@@ -132,6 +159,35 @@ impl TryFrom<BroadcastedDeclareTransaction> for client_transaction::DeclareTrans
                     signature: declare_v2.signature,
                     version: TransactionVersion::TWO,
                     r#type: client_transaction::DeclareType::default(),
+                }))
+            }
+            BroadcastedDeclareTransaction::V3(declare_v3) => {
+                Ok(Self::DeclareV3(client_transaction::DeclareV3Transaction {
+                    contract_class: client_transaction::ContractClass {
+                        compressed_sierra_program: compress_and_encode(serde_json::to_value(
+                            &declare_v3.contract_class.sierra_program,
+                        )?)?,
+                        contract_class_version: declare_v3.contract_class.contract_class_version,
+                        entry_points_by_type: declare_v3
+                            .contract_class
+                            .entry_points_by_type
+                            .to_hash_map(),
+                        abi: declare_v3.contract_class.abi,
+                    },
+                    resource_bounds: declare_v3.resource_bounds.into(),
+                    tip: declare_v3.tip,
+                    signature: declare_v3.signature,
+                    nonce: declare_v3.nonce,
+                    compiled_class_hash: declare_v3.compiled_class_hash,
+                    sender_address: declare_v3.sender_address,
+                    nonce_data_availability_mode:
+                        client_transaction::ReservedDataAvailabilityMode::Reserved,
+                    fee_data_availability_mode:
+                        client_transaction::ReservedDataAvailabilityMode::Reserved,
+                    paymaster_data: declare_v3.paymaster_data,
+                    account_deployment_data: declare_v3.account_deployment_data,
+                    version: TransactionVersion::THREE,
+                    r#type: client_transaction::DeclareType::Declare,
                 }))
             }
         }

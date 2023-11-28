@@ -22,9 +22,11 @@ use starknet_api::core::{
     EntryPointSelector,
     Nonce,
 };
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Builtin,
     Calldata,
     ContractAddressSalt,
@@ -32,7 +34,10 @@ use starknet_api::transaction::{
     Fee,
     L1HandlerTransaction,
     MessageToL1,
+    PaymasterData,
     Resource,
+    ResourceBounds,
+    Tip,
     TransactionExecutionStatus,
     TransactionHash,
     TransactionSignature,
@@ -47,6 +52,7 @@ lazy_static! {
     static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
     static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
     static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
+    static ref TX_V3: TransactionVersion = TransactionVersion::THREE;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -91,6 +97,63 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
     }
 }
 
+// The serialization of the struct in SN_API is in capital letters, not following the spec.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ResourceBoundsMapping {
+    pub l1_gas: ResourceBounds,
+    pub l2_gas: ResourceBounds,
+}
+
+impl From<ResourceBoundsMapping> for starknet_api::transaction::ResourceBoundsMapping {
+    fn from(value: ResourceBoundsMapping) -> Self {
+        Self([(Resource::L1Gas, value.l1_gas), (Resource::L2Gas, value.l2_gas)].into())
+    }
+}
+
+impl From<starknet_api::transaction::ResourceBoundsMapping> for ResourceBoundsMapping {
+    fn from(value: starknet_api::transaction::ResourceBoundsMapping) -> Self {
+        Self {
+            l1_gas: value.0.get(&Resource::L1Gas).cloned().unwrap_or_default(),
+            l2_gas: value.0.get(&Resource::L2Gas).cloned().unwrap_or_default(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeclareTransactionV3 {
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub version: TransactionVersion,
+}
+
+impl From<starknet_api::transaction::DeclareTransactionV3> for DeclareTransactionV3 {
+    fn from(tx: starknet_api::transaction::DeclareTransactionV3) -> Self {
+        Self {
+            resource_bounds: tx.resource_bounds.into(),
+            tip: tx.tip,
+            signature: tx.signature,
+            nonce: tx.nonce,
+            class_hash: tx.class_hash,
+            compiled_class_hash: tx.compiled_class_hash,
+            sender_address: tx.sender_address,
+            nonce_data_availability_mode: tx.nonce_data_availability_mode,
+            fee_data_availability_mode: tx.fee_data_availability_mode,
+            paymaster_data: tx.paymaster_data,
+            account_deployment_data: tx.account_deployment_data,
+            version: *TX_V3,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeclareTransaction {
@@ -98,6 +161,7 @@ pub enum DeclareTransaction {
     Version0(DeclareTransactionV0V1),
     Version1(DeclareTransactionV0V1),
     Version2(DeclareTransactionV2),
+    Version3(DeclareTransactionV3),
 }
 
 fn declare_v0_deserialize<'de, D>(deserializer: D) -> Result<DeclareTransactionV0V1, D::Error>
@@ -363,20 +427,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                     Ok(Self::Declare(DeclareTransaction::Version2(tx.into())))
                 }
                 starknet_api::transaction::DeclareTransaction::V3(tx) => {
-                    let l1_gas_bounds = tx.resource_bounds.0.get(&Resource::L1Gas).ok_or(
-                        internal_server_error("Got a v3 transaction with no L1 gas bounds."),
-                    )?;
-                    Ok(Self::Declare(DeclareTransaction::Version2(DeclareTransactionV2 {
-                        class_hash: tx.class_hash,
-                        compiled_class_hash: tx.compiled_class_hash,
-                        sender_address: tx.sender_address,
-                        nonce: tx.nonce,
-                        max_fee: Fee(
-                            l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
-                        ),
-                        version: *TX_V2,
-                        signature: tx.signature,
-                    })))
+                    Ok(Self::Declare(DeclareTransaction::Version3(tx.into())))
                 }
             },
             starknet_api::transaction::Transaction::Deploy(deploy_tx) => {

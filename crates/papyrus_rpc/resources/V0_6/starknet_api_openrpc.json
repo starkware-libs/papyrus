@@ -1649,6 +1649,10 @@
                     {
                         "title": "Declare transaction V2",
                         "$ref": "#/components/schemas/DECLARE_TXN_V2"
+                    },
+                    {
+                        "title": "Declare transaction V3",
+                        "$ref": "#/components/schemas/DECLARE_TXN_V3"
                     }
                 ]
             },
@@ -1830,6 +1834,107 @@
                     }
                 ]
             },
+            "DECLARE_TXN_V3": {
+                "title": "Declare Transaction V3",
+                "description": "Declare Contract Transaction V3",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v3",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            },
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "compiled_class_hash": {
+                                "title": "Compiled class hash",
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x3"
+                                ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "class_hash": {
+                                "title": "Class hash",
+                                "description": "The hash of the declared class",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "resource_bounds": {
+                                "title": "Resource bounds",
+                                "description": "resource bounds for the transaction execution",
+                                "$ref": "#/components/schemas/RESOURCE_BOUNDS_MAPPING"
+                            },
+                            "tip": {
+                                "title": "Tip",
+                                "$ref": "#/components/schemas/u64",
+                                "description": "the tip for the transaction"
+                            },
+                            "paymaster_data": {
+                                "title": "Paymaster data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to allow the paymaster to pay for the transaction in native tokens"
+                            },
+                            "account_deployment_data": {
+                                "title": "Account deployment data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to deploy the account contract from which this tx will be initiated"
+                            },
+                            "nonce_data_availability_mode": {
+                                "title": "Nonce DA mode",
+                                "description": "The storage domain of the account's nonce (an account has a nonce per DA mode)",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            },
+                            "fee_data_availability_mode": {
+                                "title": "Fee DA mode",
+                                "description": "The storage domain of the account's balance from which fee will be charged",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "compiled_class_hash",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "class_hash",
+                            "resource_bounds",
+                            "tip",
+                            "paymaster_data",
+                            "account_deployment_data",
+                            "nonce_data_availability_mode",
+                            "fee_data_availability_mode"
+                        ]
+                    }
+                ]
+            },
             "BROADCASTED_TXN": {
                 "oneOf": [
                     {
@@ -1870,6 +1975,10 @@
                     {
                         "title": "Broadcasted declare transaction V2",
                         "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V2"
+                    },
+                    {
+                        "title": "Broadcasted declare transaction V3",
+                        "$ref": "#/components/schemas/BROADCASTED_DECLARE_TXN_V3"
                     }
                 ]
             },
@@ -1986,6 +2095,107 @@
                             "signature",
                             "nonce",
                             "contract_class"
+                        ]
+                    }
+                ]
+            },
+            "BROADCASTED_DECLARE_TXN_V3": {
+                "title": "Broadcasted declare Transaction V3",
+                "description": "Broadcasted declare Contract Transaction V3",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "title": "Declare txn v3",
+                        "properties": {
+                            "type": {
+                                "title": "Declare",
+                                "type": "string",
+                                "enum": [
+                                    "DECLARE"
+                                ]
+                            },
+                            "sender_address": {
+                                "title": "Sender address",
+                                "description": "The address of the account contract sending the declaration transaction",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "compiled_class_hash": {
+                                "title": "Compiled class hash",
+                                "description": "The hash of the Cairo assembly resulting from the Sierra compilation",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x3"
+                                ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "contract_class": {
+                                "title": "Contract class",
+                                "description": "The class to be declared",
+                                "$ref": "#/components/schemas/CONTRACT_CLASS"
+                            },
+                            "resource_bounds": {
+                                "title": "Resource bounds",
+                                "description": "resource bounds for the transaction execution",
+                                "$ref": "#/components/schemas/RESOURCE_BOUNDS_MAPPING"
+                            },
+                            "tip": {
+                                "title": "Tip",
+                                "$ref": "#/components/schemas/u64",
+                                "description": "the tip for the transaction"
+                            },
+                            "paymaster_data": {
+                                "title": "Paymaster data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to allow the paymaster to pay for the transaction in native tokens"
+                            },
+                            "account_deployment_data": {
+                                "title": "Account deployment data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to deploy the account contract from which this tx will be initiated"
+                            },
+                            "nonce_data_availability_mode": {
+                                "title": "Nonce DA mode",
+                                "description": "The storage domain of the account's nonce (an account has a nonce per DA mode)",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            },
+                            "fee_data_availability_mode": {
+                                "title": "Fee DA mode",
+                                "description": "The storage domain of the account's balance from which fee will be charged",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "compiled_class_hash",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "contract_class",
+                            "resource_bounds",
+                            "tip",
+                            "paymaster_data",
+                            "account_deployment_data",
+                            "nonce_data_availability_mode",
+                            "fee_data_availability_mode"
                         ]
                     }
                 ]
