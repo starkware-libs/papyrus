@@ -47,6 +47,7 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     TransactionStatus,
     TransactionWithHash,
 };
@@ -188,7 +189,7 @@ pub trait JsonRpc {
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: InvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
@@ -536,6 +537,30 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
                 nonce,
                 sender_address,
                 calldata,
+            }),
+            InvokeTransaction::Version3(InvokeTransactionV3 {
+                sender_address,
+                calldata,
+                version: _,
+                signature,
+                nonce,
+                resource_bounds,
+                tip,
+                paymaster_data,
+                account_deployment_data,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+            }) => Self::V3(starknet_api::transaction::InvokeTransactionV3 {
+                resource_bounds: resource_bounds.into(),
+                tip,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                paymaster_data,
+                account_deployment_data,
             }),
         }
     }

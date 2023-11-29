@@ -86,7 +86,7 @@ use super::super::transaction::{
     DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
-    InvokeTransactionV1,
+    InvokeTransaction,
     L1HandlerMsgHash,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
@@ -936,9 +936,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: InvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult> {
-        let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
+        let result =
+            self.writer_client.add_invoke_transaction(&invoke_transaction.try_into()?).await;
         match result {
             Ok(res) => Ok(res.into()),
             Err(WriterClientError::ClientError(ClientError::StarknetError(starknet_error))) => {
