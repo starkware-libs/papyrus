@@ -188,9 +188,25 @@ pub struct DeployAccountTransactionV1 {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DeployAccountTransactionV3 {
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub class_hash: ClassHash,
+    pub contract_address_salt: ContractAddressSalt,
+    pub constructor_calldata: Calldata,
+    pub version: TransactionVersion,
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub paymaster_data: PaymasterData,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeployAccountTransaction {
     Version1(DeployAccountTransactionV1),
+    Version3(DeployAccountTransactionV3),
 }
 
 impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAccountTransaction {
@@ -226,25 +242,24 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                     class_hash,
                     contract_address_salt,
                     constructor_calldata,
-                    ..
+                    tip,
+                    nonce_data_availability_mode,
+                    fee_data_availability_mode,
+                    paymaster_data,
                 },
-            ) => {
-                let l1_gas_bounds = resource_bounds
-                    .0
-                    .get(&Resource::L1Gas)
-                    .ok_or(internal_server_error("Got a v3 transaction with no L1 gas bounds."))?;
-                Ok(Self::Version1(DeployAccountTransactionV1 {
-                    max_fee: Fee(
-                        l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
-                    ),
-                    signature,
-                    nonce,
-                    class_hash,
-                    contract_address_salt,
-                    constructor_calldata,
-                    version: *TX_V1,
-                }))
-            }
+            ) => Ok(Self::Version3(DeployAccountTransactionV3 {
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                version: *TX_V3,
+                resource_bounds: resource_bounds.into(),
+                tip,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                paymaster_data,
+            })),
         }
     }
 }
@@ -261,7 +276,25 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
                     max_fee: deploy_account_tx.max_fee,
                     signature: deploy_account_tx.signature,
                     version: deploy_account_tx.version,
-                    r#type: client_transaction::DeployAccountType::default(),
+                    r#type: client_transaction::DeployAccountType::DeployAccount,
+                })
+            }
+            DeployAccountTransaction::Version3(deploy_account_tx) => {
+                Self::DeployAccountV3(client_transaction::DeployAccountV3Transaction {
+                    contract_address_salt: deploy_account_tx.contract_address_salt,
+                    class_hash: deploy_account_tx.class_hash,
+                    constructor_calldata: deploy_account_tx.constructor_calldata,
+                    nonce: deploy_account_tx.nonce,
+                    signature: deploy_account_tx.signature,
+                    version: deploy_account_tx.version,
+                    resource_bounds: deploy_account_tx.resource_bounds.into(),
+                    tip: deploy_account_tx.tip,
+                    nonce_data_availability_mode:
+                        client_transaction::ReservedDataAvailabilityMode::Reserved,
+                    fee_data_availability_mode:
+                        client_transaction::ReservedDataAvailabilityMode::Reserved,
+                    paymaster_data: deploy_account_tx.paymaster_data,
+                    r#type: client_transaction::DeployAccountType::DeployAccount,
                 })
             }
         }
