@@ -16,9 +16,9 @@ use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
 use papyrus_common::state::{DeployedContract, StorageEntry};
 use papyrus_storage::compiled_class::CasmStorageReader;
-use papyrus_storage::db::RO;
+use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageReader, StorageResult, StorageTxn};
+use papyrus_storage::{StorageError, StorageResult, StorageTxn};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
@@ -144,8 +144,8 @@ pub fn induced_state_diff(
 /// storage diffs, apply them on top of the given state.
 // TODO(shahak) If the structure of storage diffs changes, remove this function and move its code
 // into papyrus_rpc.
-pub fn get_storage_at(
-    storage_reader: &StorageReader,
+pub fn get_storage_at<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
     state_number: StateNumber,
     pending_storage_diffs: Option<&IndexMap<ContractAddress, Vec<StorageEntry>>>,
     contract_address: ContractAddress,
@@ -161,17 +161,13 @@ pub fn get_storage_at(
             }
         }
     }
-    storage_reader.begin_ro_txn()?.get_state_reader()?.get_storage_at(
-        state_number,
-        &contract_address,
-        &key,
-    )
+    txn.get_state_reader()?.get_storage_at(state_number, &contract_address, &key)
 }
 
 /// Get the nonce at the given contract in the given state. If there's a given pending nonces
 /// update, apply them on top of the given state.
-pub fn get_nonce_at(
-    storage_reader: &StorageReader,
+pub fn get_nonce_at<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
     state_number: StateNumber,
     pending_nonces: Option<&IndexMap<ContractAddress, Nonce>>,
     contract_address: ContractAddress,
@@ -182,13 +178,13 @@ pub fn get_nonce_at(
         }
     }
 
-    storage_reader.begin_ro_txn()?.get_state_reader()?.get_nonce_at(state_number, &contract_address)
+    txn.get_state_reader()?.get_nonce_at(state_number, &contract_address)
 }
 
 /// Get the class hash of the contract at the given address, if it exists. If there's a given
 /// pending deployed contracts, search in them as well.
-pub fn get_class_hash_at(
-    storage_reader: &StorageReader,
+pub fn get_class_hash_at<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
     state_number: StateNumber,
     pending_deployed_contracts: Option<&Vec<DeployedContract>>,
     contract_address: ContractAddress,
@@ -200,8 +196,5 @@ pub fn get_class_hash_at(
             }
         }
     }
-    storage_reader
-        .begin_ro_txn()?
-        .get_state_reader()?
-        .get_class_hash_at(state_number, &contract_address)
+    txn.get_state_reader()?.get_class_hash_at(state_number, &contract_address)
 }

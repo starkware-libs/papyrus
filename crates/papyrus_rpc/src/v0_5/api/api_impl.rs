@@ -300,7 +300,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
         let res = execution_utils::get_storage_at(
-            &self.storage_reader,
+            &txn,
             state_number,
             maybe_pending_storage_diffs.as_ref(),
             contract_address,
@@ -645,7 +645,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
         execution_utils::get_class_hash_at(
-            &self.storage_reader,
+            &txn,
             state_number,
             maybe_pending_deployed_contracts.as_ref(),
             contract_address,
@@ -678,7 +678,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
         execution_utils::get_nonce_at(
-            &self.storage_reader,
+            &txn,
             state_number,
             maybe_pending_nonces.as_ref(),
             contract_address,

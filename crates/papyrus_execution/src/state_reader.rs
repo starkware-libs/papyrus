@@ -35,7 +35,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         key: StorageKey,
     ) -> StateResult<StarkFelt> {
         execution_utils::get_storage_at(
-            &self.storage_reader,
+            &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,
             self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.storage_diffs),
             contract_address,
@@ -47,7 +47,7 @@ impl BlockifierStateReader for ExecutionStateReader {
     // Returns the default value if the contract address is not found.
     fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
         Ok(execution_utils::get_nonce_at(
-            &self.storage_reader,
+            &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,
             self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.nonces),
             contract_address,
@@ -59,7 +59,7 @@ impl BlockifierStateReader for ExecutionStateReader {
     // Returns the default value if the contract address is not found.
     fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> StateResult<ClassHash> {
         Ok(execution_utils::get_class_hash_at(
-            &self.storage_reader,
+            &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,
             self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.deployed_contracts),
             contract_address,

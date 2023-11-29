@@ -262,7 +262,7 @@ fn verify_contract_exists(
     maybe_pending_data: Option<&PendingData>,
 ) -> ExecutionResult<()> {
     execution_utils::get_class_hash_at(
-        storage_reader,
+        &storage_reader.begin_ro_txn()?,
         state_number,
         maybe_pending_data.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
         contract_address,
