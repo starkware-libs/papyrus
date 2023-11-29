@@ -1,8 +1,9 @@
+use assert_matches::assert_matches;
 use libmdbx::PageSize;
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 
-use crate::db::{get_page_size, open_env, DbIter, DbReader, DbResult, DbWriter};
+use crate::db::{get_page_size, open_env, DbError, DbIter, DbReader, DbResult, DbWriter};
 use crate::test_utils::get_test_config;
 
 fn get_test_env() -> ((DbReader, DbWriter), TempDir) {
@@ -13,6 +14,50 @@ fn get_test_env() -> ((DbReader, DbWriter), TempDir) {
 #[test]
 fn open_env_scenario() {
     get_test_env();
+}
+
+#[test]
+fn open_env_with_enforce_file_exists() {
+    let (config, _temp_dir) = get_test_config(None);
+    let mut db_config = config.db_config;
+    db_config.enforce_file_exists = true;
+
+    // First call to `open_env` with `enforce_file_exists` set to `true` should fail because
+    // the file does not exist yet. This equals to starting a new chain, where this flag must be
+    // off.
+    let result = open_env(&db_config);
+    assert_matches!(result, Err(DbError::FileDoesNotExist(_)));
+
+    // Make sure that file in the expected file indeed does not exist.
+    let mut mdbx_file_exists = db_config.path().join("mdbx.dat").exists();
+    assert_eq!(mdbx_file_exists, false);
+
+    // Set `enforce_file_exists` to `false` and try again.
+    // This equals to opening a new chain, where this flag is off.
+    db_config.enforce_file_exists = false;
+
+    // Second call to `open_env` should succeed and create the mdbx.dat file in the new env.
+    // Called inside a block to drop the db handlers before the next call.
+    {
+        let result: DbResult<(DbReader, DbWriter)> = open_env(&db_config);
+        assert_matches!(result, Ok(_));
+    }
+
+    // Ensure that mdbx.dat file exists in the expected location.
+    // Third call with `enforce_file_exists` flag set to `true` should succeed.
+    mdbx_file_exists = db_config.path().join("mdbx.dat").exists();
+    assert_eq!(mdbx_file_exists, true);
+
+    db_config.enforce_file_exists = true;
+    let result: DbResult<(DbReader, DbWriter)> = open_env(&db_config);
+    assert_matches!(result, Ok(_));
+
+    // Add some charachter to the path to make it invalid.
+    // Fourth and final call to `open_env` with path enforcement should fail because the path is
+    // invalid.
+    db_config.path_prefix = db_config.path_prefix.join("2");
+    let result = open_env(&db_config);
+    assert_matches!(result, Err(DbError::FileDoesNotExist(_)));
 }
 
 #[test]

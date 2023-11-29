@@ -58,6 +58,9 @@ pub struct DbConfig {
     /// The [chain id](https://docs.rs/starknet_api/latest/starknet_api/core/struct.ChainId.html) of the Starknet network.
     #[validate(custom = "validate_ascii")]
     pub chain_id: ChainId,
+    /// Whether to enforce that the path exists. If true, `open_env` fails when the mdbx.dat file
+    /// does not exist.
+    pub enforce_file_exists: bool,
     /// The minimum size of the database.
     pub min_size: usize,
     /// The maximum size of the database.
@@ -71,6 +74,7 @@ impl Default for DbConfig {
         DbConfig {
             path_prefix: PathBuf::from("./data"),
             chain_id: ChainId("SN_MAIN".to_string()),
+            enforce_file_exists: false,
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 40,    // 1TB
             growth_step: 1 << 32, // 4GB
@@ -92,6 +96,13 @@ impl SerializeConfig for DbConfig {
                 "chain_id",
                 &self.chain_id,
                 "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "enforce_file_exists",
+                &self.enforce_file_exists,
+                "Whether to enforce that the path exists. If true, `open_env` fails when the \
+                mdbx.dat file does not exist.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
@@ -142,6 +153,9 @@ pub enum DbError {
     /// An error that occurred during serialization.
     #[error("Serialization failed.")]
     Serialization,
+    /// An error that occured when trying to open a db file that does not exist.
+    #[error("The file '{0}' does not exist.")]
+    FileDoesNotExist(PathBuf),
 }
 
 type DbResult<V> = result::Result<V, DbError>;
@@ -168,6 +182,11 @@ impl KeyAlreadyExistsError {
 /// There is a single non clonable writer instance, to make sure there is only one write transaction
 ///  at any given moment.
 pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
+    let db_file_path = config.path().join("mdbx.dat");
+    // Checks if path exists if enforce_file_exists is true.
+    if config.enforce_file_exists && !db_file_path.exists() {
+        return Err(DbError::FileDoesNotExist(db_file_path));
+    }
     const MAX_READERS: u32 = 1 << 13; // 8K readers
     let env = Arc::new(
         Environment::new()
@@ -199,11 +218,12 @@ fn get_page_size(os_page_size: usize) -> PageSize {
     PageSize::Set(page_size)
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct DbReader {
     env: Arc<Environment>,
 }
 
+#[derive(Debug)]
 pub(crate) struct DbWriter {
     env: Arc<Environment>,
 }
