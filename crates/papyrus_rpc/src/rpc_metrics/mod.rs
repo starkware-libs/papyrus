@@ -105,13 +105,13 @@ impl Logger for MetricLogger {
 }
 
 // Given method_name returns (method, version).
-// Example: method_name: starknet_V0_3_0_blockNumber; output: (blockNumber, V0_3_0).
+// Example: method_name: starknet_V0_6_0_blockNumber; output: (blockNumber, V0_6_0).
 fn get_method_and_version(method_name: &str) -> (String, String) {
-    // The structure of method_name is in the following format: "starknet_V0_3_0_blockNumber".
+    // The structure of method_name is in the following format: "starknet_V0_6_0_blockNumber".
     // Only method in this format will arrive to this point in the code.
     let last_underscore_index = method_name
         .rfind('_')
-        .expect("method_name should be in the following format: starknet_V0_3_0_blockNumber");
+        .expect("method_name should be in the following format: starknet_V0_6_0_blockNumber");
 
     (
         method_name[last_underscore_index + 1..].to_string(),
