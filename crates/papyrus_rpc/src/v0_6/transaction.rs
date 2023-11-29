@@ -311,6 +311,20 @@ pub struct InvokeTransactionV0 {
     pub calldata: Calldata,
 }
 
+impl From<InvokeTransactionV0> for client_transaction::InvokeTransaction {
+    fn from(tx: InvokeTransactionV0) -> Self {
+        Self::InvokeV0(client_transaction::InvokeV0Transaction {
+            max_fee: tx.max_fee,
+            version: tx.version,
+            signature: tx.signature,
+            contract_address: tx.contract_address,
+            entry_point_selector: tx.entry_point_selector,
+            calldata: tx.calldata,
+            r#type: client_transaction::InvokeType::Invoke,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
     pub max_fee: Fee,
@@ -330,8 +344,53 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
             nonce: tx.nonce,
             sender_address: tx.sender_address,
             calldata: tx.calldata,
-            r#type: client_transaction::InvokeType::default(),
+            r#type: client_transaction::InvokeType::Invoke,
         })
+    }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct InvokeTransactionV3 {
+    pub sender_address: ContractAddress,
+    pub calldata: Calldata,
+    pub version: TransactionVersion,
+    pub signature: TransactionSignature,
+    pub nonce: Nonce,
+    pub resource_bounds: ResourceBoundsMapping,
+    pub tip: Tip,
+    pub paymaster_data: PaymasterData,
+    pub account_deployment_data: AccountDeploymentData,
+    pub nonce_data_availability_mode: DataAvailabilityMode,
+    pub fee_data_availability_mode: DataAvailabilityMode,
+}
+
+impl From<InvokeTransactionV3> for client_transaction::InvokeTransaction {
+    fn from(tx: InvokeTransactionV3) -> Self {
+        Self::InvokeV3(client_transaction::InvokeV3Transaction {
+            sender_address: tx.sender_address,
+            calldata: tx.calldata,
+            version: tx.version,
+            signature: tx.signature,
+            nonce: tx.nonce,
+            resource_bounds: tx.resource_bounds.into(),
+            tip: tx.tip,
+            nonce_data_availability_mode:
+                client_transaction::ReservedDataAvailabilityMode::Reserved,
+            fee_data_availability_mode: client_transaction::ReservedDataAvailabilityMode::Reserved,
+            paymaster_data: tx.paymaster_data,
+            account_deployment_data: tx.account_deployment_data,
+            r#type: client_transaction::InvokeType::Invoke,
+        })
+    }
+}
+
+impl From<InvokeTransaction> for client_transaction::InvokeTransaction {
+    fn from(tx: InvokeTransaction) -> Self {
+        match tx {
+            InvokeTransaction::Version0(invoke_tx) => invoke_tx.into(),
+            InvokeTransaction::Version1(invoke_tx) => invoke_tx.into(),
+            InvokeTransaction::Version3(invoke_tx) => invoke_tx.into(),
+        }
     }
 }
 
@@ -340,6 +399,7 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
 pub enum InvokeTransaction {
     Version0(InvokeTransactionV0),
     Version1(InvokeTransactionV1),
+    Version3(InvokeTransactionV3),
 }
 
 impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction {
@@ -382,28 +442,29 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
             starknet_api::transaction::InvokeTransaction::V3(
                 starknet_api::transaction::InvokeTransactionV3 {
                     resource_bounds,
+                    tip,
                     signature,
                     nonce,
                     sender_address,
                     calldata,
-                    ..
+                    nonce_data_availability_mode,
+                    fee_data_availability_mode,
+                    paymaster_data,
+                    account_deployment_data,
                 },
-            ) => {
-                let l1_gas_bounds = resource_bounds
-                    .0
-                    .get(&Resource::L1Gas)
-                    .ok_or(internal_server_error("Got a v3 transaction with no L1 gas bounds."))?;
-                Ok(Self::Version1(InvokeTransactionV1 {
-                    max_fee: Fee(
-                        l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
-                    ),
-                    version: *TX_V1,
-                    signature,
-                    nonce,
-                    sender_address,
-                    calldata,
-                }))
-            }
+            ) => Ok(Self::Version3(InvokeTransactionV3 {
+                sender_address,
+                calldata,
+                version: *TX_V3,
+                signature,
+                nonce,
+                resource_bounds: resource_bounds.into(),
+                tip,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                paymaster_data,
+                account_deployment_data,
+            })),
         }
     }
 }
@@ -469,13 +530,9 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
                 Ok(Self::DeployAccount(deploy_account_tx.try_into()?))
             }
-            starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
-                starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a invoke of version 3, which is not supported \
-                     on v0.5.1.",
-                )),
-                _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
-            },
+            starknet_api::transaction::Transaction::Invoke(invoke_tx) => {
+                Ok(Self::Invoke(invoke_tx.try_into()?))
+            }
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Ok(Transaction::L1Handler(l1_handler_tx))
             }

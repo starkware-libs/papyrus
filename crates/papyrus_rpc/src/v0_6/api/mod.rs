@@ -47,6 +47,7 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     TransactionStatus,
     TransactionWithHash,
 };
@@ -188,7 +189,7 @@ pub trait JsonRpc {
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: InvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
@@ -362,26 +363,24 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::DeclareV2(value, casm))
         }
         starknet_api::transaction::Transaction::Declare(
-            starknet_api::transaction::DeclareTransaction::V3(_),
-        ) => Err(internal_server_error(
-            "The requested transaction is a declare of version 3, which is not supported on \
-             v0.5.1.",
-        )),
+            starknet_api::transaction::DeclareTransaction::V3(value),
+        ) => {
+            let casm = storage_txn
+                .get_casm(&value.class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(format!(
+                        "Missing casm of class hash {}.",
+                        value.class_hash
+                    ))
+                })?;
+            Ok(ExecutableTransactionInput::DeclareV3(value, casm))
+        }
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
         starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
-            match deploy_account_tx {
-                starknet_api::transaction::DeployAccountTransaction::V1(_) => {
-                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx))
-                }
-                starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                    Err(internal_server_error(
-                        "The requested transaction is a deploy account of version 3, which is not \
-                         supported on v0.5.1.",
-                    ))
-                }
-            }
+            Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx))
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value))
@@ -536,6 +535,30 @@ impl From<InvokeTransaction> for starknet_api::transaction::InvokeTransaction {
                 nonce,
                 sender_address,
                 calldata,
+            }),
+            InvokeTransaction::Version3(InvokeTransactionV3 {
+                sender_address,
+                calldata,
+                version: _,
+                signature,
+                nonce,
+                resource_bounds,
+                tip,
+                paymaster_data,
+                account_deployment_data,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+            }) => Self::V3(starknet_api::transaction::InvokeTransactionV3 {
+                resource_bounds: resource_bounds.into(),
+                tip,
+                signature,
+                nonce,
+                sender_address,
+                calldata,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                paymaster_data,
+                account_deployment_data,
             }),
         }
     }
