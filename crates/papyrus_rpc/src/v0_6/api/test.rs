@@ -132,6 +132,7 @@ use super::super::transaction::{
     Event,
     GeneralTransactionReceipt,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     L1HandlerMsgHash,
     L1L2MsgHash,
     PendingTransactionFinalityStatus,
@@ -3324,9 +3325,31 @@ where
     }
 }
 
-struct AddInvokeTest {}
-impl AddTransactionTest for AddInvokeTest {
+struct AddInvokeV1Test {}
+impl AddTransactionTest for AddInvokeV1Test {
     type Transaction = InvokeTransactionV1;
+    type ClientTransaction = ClientInvokeTransaction;
+    type Response = AddInvokeOkResult;
+    type ClientResponse = InvokeResponse;
+
+    const METHOD_NAME: &'static str = "starknet_V0_6_addInvokeTransaction";
+
+    fn expect_add_transaction(
+        client_mock: &mut MockStarknetWriter,
+        client_tx: Self::ClientTransaction,
+        client_result: WriterClientResult<Self::ClientResponse>,
+    ) {
+        client_mock
+            .expect_add_invoke_transaction()
+            .times(1)
+            .with(eq(client_tx))
+            .return_once(move |_| client_result);
+    }
+}
+
+struct AddInvokeV3Test {}
+impl AddTransactionTest for AddInvokeV3Test {
+    type Transaction = InvokeTransactionV3;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
@@ -3393,18 +3416,18 @@ impl AddTransactionTest for AddDeclareTest {
 // TODO(shahak): Test starknet error.
 
 #[tokio::test]
-async fn add_invoke_positive_flow() {
-    AddInvokeTest::test_positive_flow().await;
+async fn add_invoke_v1_positive_flow() {
+    AddInvokeV1Test::test_positive_flow().await;
 }
 
 #[tokio::test]
-async fn add_invoke_internal_error() {
-    AddInvokeTest::test_internal_error().await;
+async fn add_invoke_v1_internal_error() {
+    AddInvokeV1Test::test_internal_error().await;
 }
 
 #[tokio::test]
-async fn add_invoke_known_starknet_error() {
-    AddInvokeTest::test_known_starknet_error(
+async fn add_invoke_v1_known_starknet_error() {
+    AddInvokeV1Test::test_known_starknet_error(
         KnownStarknetErrorCode::DuplicatedTransaction,
         DUPLICATE_TX,
     )
@@ -3412,11 +3435,38 @@ async fn add_invoke_known_starknet_error() {
 }
 
 #[tokio::test]
-async fn add_invoke_unexpected_error() {
+async fn add_invoke_v3_positive_flow() {
+    AddInvokeV3Test::test_positive_flow().await;
+}
+
+#[tokio::test]
+async fn add_invoke_v3_internal_error() {
+    AddInvokeV3Test::test_internal_error().await;
+}
+
+#[tokio::test]
+async fn add_invoke_v3_known_starknet_error() {
+    AddInvokeV3Test::test_known_starknet_error(
+        KnownStarknetErrorCode::DuplicatedTransaction,
+        DUPLICATE_TX,
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn add_invoke_v1_unexpected_error() {
     // Choosing error codes that map under the other transaction types into an expected error in
     // order to check that we call invoke's error conversion.
-    AddInvokeTest::test_unexpected_error(KnownStarknetErrorCode::CompilationFailed).await;
-    AddInvokeTest::test_unexpected_error(KnownStarknetErrorCode::UndeclaredClass).await;
+    AddInvokeV1Test::test_unexpected_error(KnownStarknetErrorCode::CompilationFailed).await;
+    AddInvokeV1Test::test_unexpected_error(KnownStarknetErrorCode::UndeclaredClass).await;
+}
+
+#[tokio::test]
+async fn add_invoke_v3_unexpected_error() {
+    // Choosing error codes that map under the other transaction types into an expected error in
+    // order to check that we call invoke's error conversion.
+    AddInvokeV3Test::test_unexpected_error(KnownStarknetErrorCode::CompilationFailed).await;
+    AddInvokeV3Test::test_unexpected_error(KnownStarknetErrorCode::UndeclaredClass).await;
 }
 
 #[tokio::test]

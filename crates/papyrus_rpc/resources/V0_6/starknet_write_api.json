@@ -228,6 +228,9 @@
             "DECLARE_TXN": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/DECLARE_TXN"
             },
+            "BROADCASTED_DECLARE_TXN": {
+                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_DECLARE_TXN"
+            },
             "BROADCASTED_DEPLOY_ACCOUNT_TXN": {
                 "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
             },
