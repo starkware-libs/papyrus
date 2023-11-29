@@ -2207,6 +2207,10 @@
                     {
                         "title": "Deploy account V1",
                         "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_V1"
+                    },
+                    {
+                        "title": "Deploy account V3",
+                        "$ref": "#/components/schemas/DEPLOY_ACCOUNT_TXN_V3"
                     }
                 ]
             },
@@ -2267,6 +2271,95 @@
                     "contract_address_salt",
                     "constructor_calldata",
                     "class_hash"
+                ]
+            },
+            "DEPLOY_ACCOUNT_TXN_V3": {
+                "title": "Deploy account transaction",
+                "description": "Deploys an account contract, charges fee from the pre-funded account addresses",
+                "properties": {
+                    "type": {
+                        "title": "Deploy account",
+                        "type": "string",
+                        "enum": [
+                            "DEPLOY_ACCOUNT"
+                        ]
+                    },
+                    "version": {
+                        "title": "Version",
+                        "description": "Version of the transaction scheme",
+                        "type": "string",
+                        "enum": [
+                            "0x3"
+                        ]
+                    },
+                    "signature": {
+                        "title": "Signature",
+                        "$ref": "#/components/schemas/SIGNATURE"
+                    },
+                    "nonce": {
+                        "title": "Nonce",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "contract_address_salt": {
+                        "title": "Contract address salt",
+                        "description": "The salt for the address of the deployed contract",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "constructor_calldata": {
+                        "type": "array",
+                        "description": "The parameters passed to the constructor",
+                        "title": "Constructor calldata",
+                        "items": {
+                            "$ref": "#/components/schemas/FELT"
+                        }
+                    },
+                    "class_hash": {
+                        "title": "Class hash",
+                        "description": "The hash of the deployed contract's class",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "resource_bounds": {
+                        "title": "Resource bounds",
+                        "description": "resource bounds for the transaction execution",
+                        "$ref": "#/components/schemas/RESOURCE_BOUNDS_MAPPING"
+                    },
+                    "tip": {
+                        "title": "Tip",
+                        "$ref": "#/components/schemas/u64",
+                        "description": "the tip for the transaction"
+                    },
+                    "paymaster_data": {
+                        "title": "Paymaster data",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/FELT"
+                        },
+                        "description": "data needed to allow the paymaster to pay for the transaction in native tokens"
+                    },
+                    "nonce_data_availability_mode": {
+                        "title": "Nonce DA mode",
+                        "description": "The storage domain of the account's nonce (an account has a nonce per DA mode)",
+                        "$ref": "#/components/schemas/DA_MODE"
+                    },
+                    "fee_data_availability_mode": {
+                        "title": "Fee DA mode",
+                        "description": "The storage domain of the account's balance from which fee will be charged",
+                        "$ref": "#/components/schemas/DA_MODE"
+                    }
+                },
+                "required": [
+                    "version",
+                    "signature",
+                    "nonce",
+                    "type",
+                    "contract_address_salt",
+                    "constructor_calldata",
+                    "class_hash",
+                    "resource_bounds",
+                    "tip",
+                    "paymaster_data",
+                    "nonce_data_availability_mode",
+                    "fee_data_availability_mode"
                 ]
             },
             "DEPLOY_TXN": {

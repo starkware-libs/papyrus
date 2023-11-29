@@ -10,12 +10,15 @@ use papyrus_storage::body::events::{
 };
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     Fee,
     L1HandlerTransaction,
+    PaymasterData,
+    Tip,
     Transaction,
     TransactionSignature,
     TransactionVersion,
@@ -28,9 +31,11 @@ use super::super::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 use super::{
     DeployAccountTransaction,
     DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    ResourceBoundsMapping,
     TransactionOutput,
 };
 
@@ -61,6 +66,7 @@ const MSG_HASH: &str = "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc4215
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
         Version1(DeployAccountTransactionV1) = 0,
+        Version3(DeployAccountTransactionV3) = 1,
     }
     pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
@@ -70,6 +76,19 @@ auto_impl_get_test_instance! {
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
         pub version: TransactionVersion,
+    }
+    pub struct DeployAccountTransactionV3 {
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub version: TransactionVersion,
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub paymaster_data: PaymasterData,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
     }
     pub enum InvokeTransaction {
         Version0(InvokeTransactionV0) = 0,
@@ -176,6 +195,14 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
         starknet_api::transaction::DeployAccountTransactionV1::get_test_instance(&mut rng);
     let _transaction: super::Transaction = Transaction::DeployAccount(
         starknet_api::transaction::DeployAccountTransaction::V1(inner_transaction),
+    )
+    .try_into()
+    .unwrap();
+
+    let inner_transaction =
+        starknet_api::transaction::DeployAccountTransactionV3::get_test_instance(&mut rng);
+    let _transaction: super::Transaction = Transaction::DeployAccount(
+        starknet_api::transaction::DeployAccountTransaction::V3(inner_transaction),
     )
     .try_into()
     .unwrap();
