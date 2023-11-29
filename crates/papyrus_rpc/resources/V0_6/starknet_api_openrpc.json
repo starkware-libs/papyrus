@@ -1950,16 +1950,7 @@
             },
             "BROADCASTED_INVOKE_TXN": {
                 "title": "Broadcasted invoke transaction",
-                "oneOf": [
-                    {
-                        "title": "Broadcasted invoke transaction V0",
-                        "$ref": "#/components/schemas/INVOKE_TXN_V0"
-                    },
-                    {
-                        "title": "Broadcasted invoke transaction V1",
-                        "$ref": "#/components/schemas/INVOKE_TXN_V1"
-                    }
-                ]
+                "$ref": "#/components/schemas/INVOKE_TXN"
             },
             "BROADCASTED_DEPLOY_ACCOUNT_TXN": {
                 "title": "Broadcasted deploy account transaction",
@@ -2500,7 +2491,10 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2523,6 +2517,102 @@
                     }
                 ]
             },
+            "INVOKE_TXN_V3": {
+                "title": "Invoke transaction V3",
+                "description": "initiates a transaction from a given account",
+                "allOf": [
+                    {
+                        "type": "object",
+                        "properties": {
+                            "type": {
+                                "title": "Type",
+                                "type": "string",
+                                "enum": [
+                                    "INVOKE"
+                                ]
+                            },
+                            "sender_address": {
+                                "title": "sender address",
+                                "$ref": "#/components/schemas/ADDRESS"
+                            },
+                            "calldata": {
+                                "type": "array",
+                                "title": "calldata",
+                                "description": "The data expected by the account's `execute` function (in most usecases, this includes the called contract address and a function selector)",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                }
+                            },
+                            "version": {
+                                "title": "Version",
+                                "description": "Version of the transaction scheme",
+                                "type": "string",
+                                "enum": [
+                                    "0x3"
+                                ]
+                            },
+                            "signature": {
+                                "title": "Signature",
+                                "$ref": "#/components/schemas/SIGNATURE"
+                            },
+                            "nonce": {
+                                "title": "Nonce",
+                                "$ref": "#/components/schemas/FELT"
+                            },
+                            "resource_bounds": {
+                                "title": "Resource bounds",
+                                "description": "resource bounds for the transaction execution",
+                                "$ref": "#/components/schemas/RESOURCE_BOUNDS_MAPPING"
+                            },
+                            "tip": {
+                                "title": "Tip",
+                                "$ref": "#/components/schemas/u64",
+                                "description": "the tip for the transaction"
+                            },
+                            "paymaster_data": {
+                                "title": "Paymaster data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to allow the paymaster to pay for the transaction in native tokens"
+                            },
+                            "account_deployment_data": {
+                                "title": "Account deployment data",
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/FELT"
+                                },
+                                "description": "data needed to deploy the account contract from which this tx will be initiated"
+                            },
+                            "nonce_data_availability_mode": {
+                                "title": "Nonce DA mode",
+                                "description": "The storage domain of the account's nonce (an account has a nonce per DA mode)",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            },
+                            "fee_data_availability_mode": {
+                                "title": "Fee DA mode",
+                                "description": "The storage domain of the account's balance from which fee will be charged",
+                                "$ref": "#/components/schemas/DA_MODE"
+                            }
+                        },
+                        "required": [
+                            "type",
+                            "sender_address",
+                            "calldata",
+                            "version",
+                            "signature",
+                            "nonce",
+                            "resource_bounds",
+                            "tip",
+                            "paymaster_data",
+                            "account_deployment_data",
+                            "nonce_data_availability_mode",
+                            "fee_data_availability_mode"
+                        ]
+                    }
+                ]
+            },
             "INVOKE_TXN": {
                 "title": "Invoke transaction",
                 "description": "Initiate a transaction from an account",
@@ -2534,6 +2624,10 @@
                     {
                         "title": "Invoke transaction V1",
                         "$ref": "#/components/schemas/INVOKE_TXN_V1"
+                    },
+                    {
+                        "title": "Invoke transaction V3",
+                        "$ref": "#/components/schemas/INVOKE_TXN_V3"
                     }
                 ]
             },

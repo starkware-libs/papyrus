@@ -131,7 +131,7 @@ use super::super::transaction::{
     DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
-    InvokeTransactionV1,
+    InvokeTransaction,
     L1HandlerMsgHash,
     L1L2MsgHash,
     PendingTransactionFinalityStatus,
@@ -3189,8 +3189,8 @@ where
     // https://github.com/rust-lang/rfcs/blob/master/text/2289-associated-type-bounds.md
     <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
 {
-    type Transaction: GetTestInstance + Serialize + Clone + Send;
-    type ClientTransaction: TryFrom<Self::Transaction> + Send;
+    type Transaction: GetTestInstance + Serialize + Clone + Send + Debug;
+    type ClientTransaction: TryFrom<Self::Transaction> + Send + Debug;
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
@@ -3329,7 +3329,7 @@ where
 
 struct AddInvokeTest {}
 impl AddTransactionTest for AddInvokeTest {
-    type Transaction = InvokeTransactionV1;
+    type Transaction = InvokeTransaction;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;

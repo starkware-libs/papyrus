@@ -14,7 +14,13 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::core::{
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    Nonce,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -94,7 +100,7 @@ pub struct DeployAccountV1Transaction {
 /// A deploy account transaction that can be added to Starknet through the Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
-// TODO(Shahak, 01/11/2023): Add tests for deploy account v3.
+// TODO(Shahak): Add tests for deploy account v3.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeployAccountV3Transaction {
@@ -121,6 +127,24 @@ pub enum DeployAccountTransaction {
     DeployAccountV1(DeployAccountV1Transaction),
     DeployAccountV3(DeployAccountV3Transaction),
 }
+
+/// An invoke account transaction that can be added to Starknet through the Starknet gateway.
+/// The invoke is a V0 transaction.
+/// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
+/// HTTP method.
+// TODO(Shahak): Add tests for invoke v0.
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct InvokeV0Transaction {
+    pub calldata: Calldata,
+    pub contract_address: ContractAddress,
+    pub max_fee: Fee,
+    pub signature: TransactionSignature,
+    pub version: TransactionVersion,
+    pub r#type: InvokeType,
+    pub entry_point_selector: EntryPointSelector,
+}
+
 /// An invoke account transaction that can be added to Starknet through the Starknet gateway.
 /// The invoke is a V1 transaction.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
@@ -141,7 +165,7 @@ pub struct InvokeV1Transaction {
 /// The invoke is a V3 transaction.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
-// TODO(Shahak, 01/11/2023): Add tests for invoke v3.
+// TODO(Shahak): Add tests for invoke v3.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct InvokeV3Transaction {
@@ -165,6 +189,7 @@ pub struct InvokeV3Transaction {
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum InvokeTransaction {
+    InvokeV0(InvokeV0Transaction),
     InvokeV1(InvokeV1Transaction),
     InvokeV3(InvokeV3Transaction),
 }
@@ -205,7 +230,7 @@ pub struct DeclareV2Transaction {
 /// Starknet gateway.
 /// It has a serialization format that the Starknet gateway accepts in the `add_transaction`
 /// HTTP method.
-// TODO(shahak, 01/11/2023): Add tests for declare v3.
+// TODO(shahak): Add tests for declare v3.
 #[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeclareV3Transaction {
