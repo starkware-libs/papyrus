@@ -31,6 +31,7 @@ use tracing::{debug, info, instrument};
 use validator::Validate;
 
 const MONITORING_PREFIX: &str = "monitoring";
+const PROCESS_METRICS_PREFIX: &str = "papyrus_";
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Validate)]
 pub struct MonitoringGatewayConfig {
@@ -268,7 +269,7 @@ async fn node_config_by_secret(
 async fn metrics(prometheus_handle: Option<PrometheusHandle>) -> Response {
     match prometheus_handle {
         Some(handle) => {
-            Collector::default().collect();
+            Collector::default().prefix(PROCESS_METRICS_PREFIX).collect();
             handle.render().into_response()
         }
         None => StatusCode::METHOD_NOT_ALLOWED.into_response(),
