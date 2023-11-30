@@ -5,7 +5,7 @@
 #[cfg(test)]
 mod gateway_test;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Display;
 use std::net::SocketAddr;
 use std::str::FromStr;
@@ -18,6 +18,7 @@ use axum::routing::get;
 use axum::{Json, Router};
 use metrics_exporter_prometheus::{BuildError, PrometheusBuilder, PrometheusHandle};
 use metrics_process::Collector;
+use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{ser_generated_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use papyrus_storage::{DbStats, StorageError, StorageReader};
@@ -37,6 +38,8 @@ const PROCESS_METRICS_PREFIX: &str = "papyrus_";
 pub struct MonitoringGatewayConfig {
     pub server_address: String,
     pub collect_metrics: bool,
+    #[serde(deserialize_with = "deserialize_optional_map")]
+    pub metric_labels: Option<HashMap<String, String>>,
     #[validate(length(min = 1))]
     #[serde(default = "random_secret")]
     pub present_full_config_secret: String,
@@ -54,6 +57,7 @@ impl Default for MonitoringGatewayConfig {
         MonitoringGatewayConfig {
             server_address: String::from("0.0.0.0:8081"),
             collect_metrics: false,
+            metric_labels: None,
             // A constant value for testing purposes.
             present_full_config_secret: String::from("qwerty"),
             starknet_url: String::from("https://alpha-mainnet.starknet.io/"),
@@ -76,11 +80,23 @@ impl SerializeConfig for MonitoringGatewayConfig {
                 "If true, collect and return metrics in the monitoring gateway.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "metric_labels",
+                &serialize_optional_map(&self.metric_labels),
+                "'label1:value1 label2:value2 ...' additional labels for metrics.",
+                ParamPrivacyInput::Public,
+            ),
             ser_generated_param(
                 "present_full_config_secret",
                 SerializationType::String,
                 "A secret for presenting the full general config.",
                 ParamPrivacyInput::Private,
+            ),
+            ser_param(
+                "starknet_url",
+                &self.starknet_url,
+                "The URL of a centralized Starknet gateway.",
+                ParamPrivacyInput::Public,
             ),
         ])
     }
@@ -113,7 +129,13 @@ impl MonitoringServer {
         version: &'static str,
     ) -> Result<Self, BuildError> {
         let prometheus_handle = if config.collect_metrics {
-            Some(PrometheusBuilder::new().install_recorder()?)
+            let mut builder = PrometheusBuilder::new();
+            if let Some(metric_labels) = &config.metric_labels {
+                for (label, value) in metric_labels {
+                    builder = builder.add_global_label(label, value);
+                }
+            }
+            Some(builder.install_recorder()?)
         } else {
             None
         };

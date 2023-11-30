@@ -69,15 +69,15 @@
     "privacy": "TemporaryValue",
     "value": false
   },
-  "starknet_url": {
-    "description": "URL for the Starknet feeder-gateway and for communicating with Starknet in write_api methods.",
-    "privacy": "TemporaryValue",
-    "value": "https://alpha-mainnet.starknet.io/"
-  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "pointer_target": "collect_metrics",
     "privacy": "Public"
+  },
+  "monitoring_gateway.metric_labels": {
+    "description": "'label1:value1 label2:value2 ...' additional labels for metrics.",
+    "privacy": "Public",
+    "value": ""
   },
   "monitoring_gateway.present_full_config_secret": {
     "description": "A secret for presenting the full general config. If no value is provided, the system will generate one.",
@@ -90,7 +90,7 @@
     "value": "0.0.0.0:8081"
   },
   "monitoring_gateway.starknet_url": {
-    "description": "URL for the Starknet gateway and the Starknet feeder gateway.",
+    "description": "The URL of a centralized Starknet gateway.",
     "pointer_target": "starknet_url",
     "privacy": "Public"
   },
@@ -143,6 +143,11 @@
     "description": "URL for communicating with Starknet in write_api methods.",
     "pointer_target": "starknet_url",
     "privacy": "Public"
+  },
+  "starknet_url": {
+    "description": "The URL of a centralized Starknet gateway.",
+    "privacy": "TemporaryValue",
+    "value": "https://alpha-mainnet.starknet.io/"
   },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
