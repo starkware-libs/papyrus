@@ -19,15 +19,15 @@ lazy_static! {
             &ChainId("SN_MAIN".to_string()),
             "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
         ),
-        vec!["storage.db_config.chain_id".to_owned(), "rpc.chain_id".to_owned(), "monitoring_gateway.starknet_url".to_owned()],
+        vec!["storage.db_config.chain_id".to_owned(), "rpc.chain_id".to_owned()],
     ),
     (
         ser_pointer_target_param(
             "starknet_url",
             &"https://alpha-mainnet.starknet.io/".to_string(),
-            "The url for the gateway and the feeder gateway.",
+            "The URL of a centralized Starknet gateway.",
         ),
-        vec!["rpc.starknet_url".to_owned(), "central.url".to_owned()],
+        vec!["rpc.starknet_url".to_owned(), "central.url".to_owned(), "monitoring_gateway.starknet_url".to_owned()],
     ),
     (
         ser_pointer_target_param(

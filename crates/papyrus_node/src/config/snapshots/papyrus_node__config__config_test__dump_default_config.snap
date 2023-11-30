@@ -84,6 +84,11 @@ expression: dumped_default_config
     "value": false,
     "privacy": "Public"
   },
+  "monitoring_gateway.metric_labels": {
+    "description": "'label1:value1 label2:value2 ...' additional labels for metrics.",
+    "value": "",
+    "privacy": "Public"
+  },
   "monitoring_gateway.present_full_config_secret": {
     "description": "A secret for presenting the full general config. If no value is provided, the system will generate one.",
     "param_type": "String",
@@ -92,6 +97,11 @@ expression: dumped_default_config
   "monitoring_gateway.server_address": {
     "description": "node's monitoring server.",
     "value": "0.0.0.0:8081",
+    "privacy": "Public"
+  },
+  "monitoring_gateway.starknet_url": {
+    "description": "The URL of a centralized Starknet gateway.",
+    "value": "https://alpha-mainnet.starknet.io/",
     "privacy": "Public"
   },
   "rpc.chain_id": {
