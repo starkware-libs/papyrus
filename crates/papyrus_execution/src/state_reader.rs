@@ -61,7 +61,9 @@ impl BlockifierStateReader for ExecutionStateReader {
         Ok(execution_utils::get_class_hash_at(
             &self.storage_reader,
             self.state_number,
-            self.maybe_pending_data.as_ref().map(|pending_data| &pending_data.deployed_contracts),
+            self.maybe_pending_data.as_ref().map(|pending_data| {
+                (&pending_data.deployed_contracts, &pending_data.replaced_classes)
+            }),
             contract_address,
         )
         .map_err(storage_err_to_state_err)?

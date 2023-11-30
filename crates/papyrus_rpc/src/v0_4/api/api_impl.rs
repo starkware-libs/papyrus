@@ -583,17 +583,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<ClassHash> {
-        let maybe_pending_deployed_contracts = if let BlockId::Tag(Tag::Pending) = block_id {
-            Some(
-                read_pending_data(&self.pending_data, &self.storage_reader)
-                    .await?
-                    .state_update
-                    .state_diff
-                    .deployed_contracts,
-            )
-        } else {
-            None
-        };
+        let maybe_pending_deployed_contracts_and_replaced_classes =
+            if let BlockId::Tag(Tag::Pending) = block_id {
+                let pending_state_diff =
+                    read_pending_data(&self.pending_data, &self.storage_reader)
+                        .await?
+                        .state_update
+                        .state_diff;
+                Some((pending_state_diff.deployed_contracts, pending_state_diff.replaced_classes))
+            } else {
+                None
+            };
 
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
@@ -602,7 +602,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         execution_utils::get_class_hash_at(
             &self.storage_reader,
             state_number,
-            maybe_pending_deployed_contracts.as_ref(),
+            // This map converts &(T, S) to (&T, &S).
+            maybe_pending_deployed_contracts_and_replaced_classes.as_ref().map(|(x, y)| (x, y)),
             contract_address,
         )
         .map_err(internal_server_error)?

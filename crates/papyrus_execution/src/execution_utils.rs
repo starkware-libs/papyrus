@@ -14,7 +14,7 @@ use blockifier::state::state_api::{State, StateReader};
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
-use papyrus_common::state::{DeployedContract, StorageEntry};
+use papyrus_common::state::{DeployedContract, ReplacedClass, StorageEntry};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
@@ -190,10 +190,22 @@ pub fn get_nonce_at(
 pub fn get_class_hash_at(
     storage_reader: &StorageReader,
     state_number: StateNumber,
-    pending_deployed_contracts: Option<&Vec<DeployedContract>>,
+    pending_deployed_contracts_and_replaced_classes: Option<(
+        &Vec<DeployedContract>,
+        &Vec<ReplacedClass>,
+    )>,
     contract_address: ContractAddress,
 ) -> StorageResult<Option<ClassHash>> {
-    if let Some(pending_deployed_contracts) = pending_deployed_contracts {
+    if let Some((pending_deployed_contracts, pending_replaced_classes)) =
+        pending_deployed_contracts_and_replaced_classes
+    {
+        // Searching first in the replaced classes because if the contract was deployed and
+        // replaced, the replaced class is the contract's class.
+        for ReplacedClass { address, class_hash } in pending_replaced_classes {
+            if *address == contract_address {
+                return Ok(Some(*class_hash));
+            }
+        }
         for DeployedContract { address, class_hash } in pending_deployed_contracts {
             if *address == contract_address {
                 return Ok(Some(*class_hash));

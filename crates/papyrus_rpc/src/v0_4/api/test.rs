@@ -1238,6 +1238,25 @@ async fn get_class_hash_at() {
         .unwrap();
     assert_eq!(res, pending_class_hash);
 
+    // Get class hash of pending block when it's replaced.
+    let replaced_class_hash = ClassHash(random::<u64>().into());
+    pending_data.write().await.state_update.state_diff.replaced_classes.append(&mut vec![
+        ClientReplacedClass { address: *address, class_hash: replaced_class_hash },
+        ClientReplacedClass { address: pending_address, class_hash: replaced_class_hash },
+    ]);
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), *address))
+        .await
+        .unwrap();
+    assert_eq!(res, replaced_class_hash);
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), pending_address))
+        .await
+        .unwrap();
+    assert_eq!(res, replaced_class_hash);
+
     // Get class hash of pending block when it's not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
     call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
