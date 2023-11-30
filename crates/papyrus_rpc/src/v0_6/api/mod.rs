@@ -36,7 +36,14 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use super::error::{JsonRpcError, BLOCK_NOT_FOUND, INVALID_CONTINUATION_TOKEN};
+use super::error::{
+    ContractError,
+    JsonRpcError,
+    TransactionExecutionError,
+    BLOCK_NOT_FOUND,
+    CONTRACT_NOT_FOUND,
+    INVALID_CONTINUATION_TOKEN,
+};
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
@@ -576,13 +583,22 @@ impl TryFrom<ApiContractClass> for GatewayContractClass {
     }
 }
 
-impl TryFrom<ExecutionError> for JsonRpcError<String> {
-    type Error = ErrorObjectOwned;
-    fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
-        match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
-            _ => Err(internal_server_error(value)),
+pub(crate) fn execution_error_to_error_object_owned(err: ExecutionError) -> ErrorObjectOwned {
+    match err {
+        ExecutionError::NotSynced { .. } => BLOCK_NOT_FOUND.into(),
+        ExecutionError::TransactionExecutionError { transaction_index, execution_error } => {
+            let tx_execution_error =
+                TransactionExecutionError { transaction_index, execution_error };
+            let rpc_err: JsonRpcError<TransactionExecutionError> = tx_execution_error.into();
+            rpc_err.into()
         }
+        ExecutionError::ContractError(blockifier_err) => {
+            let contract_err = ContractError { revert_error: blockifier_err.to_string() };
+            let rpc_err: JsonRpcError<ContractError> = contract_err.into();
+            rpc_err.into()
+        }
+        ExecutionError::ContractNotFound { .. } => CONTRACT_NOT_FOUND.into(),
+        _ => internal_server_error(err),
     }
 }
 
