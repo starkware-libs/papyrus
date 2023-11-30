@@ -41,6 +41,7 @@ use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
     DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     Event,
     GeneralTransactionReceipt,
     InvokeTransaction,
@@ -476,6 +477,30 @@ impl From<DeployAccountTransaction> for starknet_api::transaction::DeployAccount
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
+            }),
+            DeployAccountTransaction::Version3(DeployAccountTransactionV3 {
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                version: _,
+                resource_bounds,
+                tip,
+                paymaster_data,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+            }) => Self::V3(starknet_api::transaction::DeployAccountTransactionV3 {
+                resource_bounds: resource_bounds.into(),
+                tip,
+                signature,
+                nonce,
+                class_hash,
+                contract_address_salt,
+                constructor_calldata,
+                nonce_data_availability_mode,
+                fee_data_availability_mode,
+                paymaster_data,
             }),
         }
     }
