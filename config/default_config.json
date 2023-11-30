@@ -154,6 +154,11 @@
     "pointer_target": "chain_id",
     "privacy": "Public"
   },
+  "storage.db_config.enforce_file_exists": {
+    "description": "Whether to enforce that the path exists. If true, `open_env` fails when the mdbx.dat file does not exist.",
+    "value": false,
+    "privacy": "Public"
+  },
   "storage.db_config.growth_step": {
     "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
     "privacy": "Public",

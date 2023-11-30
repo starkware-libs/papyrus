@@ -30,6 +30,7 @@
 //! let db_config = DbConfig {
 //!     path_prefix: dir,
 //!     chain_id: ChainId("SN_MAIN".to_owned()),
+//!     enforce_file_exists: false,
 //!     min_size: 1 << 20,    // 1MB
 //!     max_size: 1 << 35,    // 32GB
 //!     growth_step: 1 << 26, // 64MB
