@@ -26,7 +26,13 @@ use thiserror::Error;
 
 use crate::objects::TransactionTrace;
 use crate::state_reader::ExecutionStateReader;
-use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError, ExecutionResult};
+use crate::{
+    BlockifierError,
+    ExecutableTransactionInput,
+    ExecutionConfigByBlock,
+    ExecutionError,
+    ExecutionResult,
+};
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -122,7 +128,8 @@ pub fn induced_state_diff(
     let mut replaced_classes = IndexMap::new();
     let default_class_hash = ClassHash::default();
     for (address, class_hash) in blockifier_state_diff.address_to_class_hash.iter() {
-        let prev_class_hash = transactional_state.state.get_class_hash_at(*address)?;
+        let prev_class_hash =
+            transactional_state.state.get_class_hash_at(*address).map_err(BlockifierError::new)?;
         if prev_class_hash == default_class_hash {
             deployed_contracts.insert(*address, *class_hash);
         } else {
