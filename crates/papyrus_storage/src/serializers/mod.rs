@@ -1,6 +1,7 @@
 #[cfg(test)]
 #[path = "serializers_test.rs"]
 mod serializers_test;
+mod versioned;
 
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;

@@ -27,7 +27,7 @@ use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
-use crate::db::serialization::{StorageSerde, StorageSerdeEx};
+use crate::db::serialization::{StorageSerde, TableVersion, VersionedStorageSerde};
 use crate::db::{TransactionKind, RO, RW};
 
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
@@ -103,7 +103,11 @@ pub enum MMapFileError {
 }
 
 /// A trait for writing to a memory mapped file.
-pub trait Writer<V: StorageSerde> {
+pub(crate) trait Writer<V, TK>
+where
+    V: VersionedStorageSerde<TK>,
+    TK: TableVersion,
+{
     /// Inserts an object to the file, returns the [`LocationInFile`] of the object.
     fn append(&mut self, val: &V) -> LocationInFile;
 
@@ -112,7 +116,11 @@ pub trait Writer<V: StorageSerde> {
 }
 
 /// A trait for reading from a memory mapped file.
-pub trait Reader<V: StorageSerde> {
+pub(crate) trait Reader<V, TK>
+where
+    V: VersionedStorageSerde<TK>,
+    TK: TableVersion,
+{
     /// Returns an object from the file.
     fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>>;
 }
@@ -135,7 +143,7 @@ impl LocationInFile {
 
 /// Represents a memory mapped append only file.
 #[derive(Debug)]
-struct MMapFile<V: StorageSerde> {
+struct MMapFile<V: VersionedStorageSerde<TK>, TK: TableVersion> {
     config: MmapFileConfig,
     file: File,
     size: usize,
@@ -143,9 +151,10 @@ struct MMapFile<V: StorageSerde> {
     offset: usize,
     should_flush: bool,
     _value_type: PhantomData<V>,
+    _table_version: PhantomData<TK>,
 }
 
-impl<V: StorageSerde> MMapFile<V> {
+impl<V: VersionedStorageSerde<TK>, TK: TableVersion> MMapFile<V, TK> {
     /// Grows the file by the growth step.
     fn grow(&mut self) {
         self.flush();
@@ -165,11 +174,16 @@ impl<V: StorageSerde> MMapFile<V> {
 
 /// Open a memory mapped file, create it if it doesn't exist.
 #[instrument(level = "debug", err)]
-pub(crate) fn open_file<V: StorageSerde>(
+#[allow(clippy::type_complexity)]
+pub(crate) fn open_file<V, TK>(
     config: MmapFileConfig,
     path: PathBuf,
     offset: usize,
-) -> MmapFileResult<(FileHandler<V, RW>, FileHandler<V, RO>)> {
+) -> MmapFileResult<(FileHandler<V, TK, RW>, FileHandler<V, TK, RO>)>
+where
+    V: VersionedStorageSerde<TK>,
+    TK: TableVersion,
+{
     let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };
@@ -182,17 +196,18 @@ pub(crate) fn open_file<V: StorageSerde>(
         offset,
         should_flush: false,
         _value_type: PhantomData {},
+        _table_version: PhantomData {},
     };
     let shared_mmap_file = Arc::new(Mutex::new(mmap_file));
 
-    let mut write_file_handler: FileHandler<V, RW> = FileHandler {
+    let mut write_file_handler: FileHandler<V, TK, RW> = FileHandler {
         memory_ptr: mmap_ptr,
         mmap_file: shared_mmap_file.clone(),
         _mode: PhantomData,
     };
     write_file_handler.grow_file_if_needed(0);
 
-    let read_file_handler: FileHandler<V, RO> =
+    let read_file_handler: FileHandler<V, TK, RO> =
         FileHandler { memory_ptr: mmap_ptr, mmap_file: shared_mmap_file, _mode: PhantomData };
 
     Ok((write_file_handler, read_file_handler))
@@ -200,16 +215,27 @@ pub(crate) fn open_file<V: StorageSerde>(
 
 /// A wrapper around `MMapFile` that provides both write and read interfaces.
 #[derive(Clone, Debug)]
-pub(crate) struct FileHandler<V: StorageSerde, Mode: TransactionKind> {
+pub(crate) struct FileHandler<V, TK, Mode>
+where
+    V: VersionedStorageSerde<TK>,
+    TK: TableVersion,
+    Mode: TransactionKind,
+{
     memory_ptr: *const u8,
-    mmap_file: Arc<Mutex<MMapFile<V>>>,
+    mmap_file: Arc<Mutex<MMapFile<V, TK>>>,
     _mode: PhantomData<Mode>,
 }
 
-unsafe impl<V: StorageSerde, Mode: TransactionKind> Send for FileHandler<V, Mode> {}
-unsafe impl<V: StorageSerde, Mode: TransactionKind> Sync for FileHandler<V, Mode> {}
+unsafe impl<V: VersionedStorageSerde<TK>, TK: TableVersion, Mode: TransactionKind> Send
+    for FileHandler<V, TK, Mode>
+{
+}
+unsafe impl<V: VersionedStorageSerde<TK>, TK: TableVersion, Mode: TransactionKind> Sync
+    for FileHandler<V, TK, Mode>
+{
+}
 
-impl<V: StorageSerde> FileHandler<V, RW> {
+impl<V: VersionedStorageSerde<TK>, TK: TableVersion> FileHandler<V, TK, RW> {
     fn grow_file_if_needed(&mut self, offset: usize) {
         let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
         if mmap_file.size < offset + mmap_file.config.max_object_size {
@@ -222,18 +248,30 @@ impl<V: StorageSerde> FileHandler<V, RW> {
     }
 }
 
-impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
+impl<V: VersionedStorageSerde<TK> + Debug, TK: TableVersion> Writer<V, TK>
+    for FileHandler<V, TK, RW>
+{
     fn append(&mut self, val: &V) -> LocationInFile {
         trace!("Inserting object: {:?}", val);
         // TODO(dan): change serialize_into to return serialization size.
-        let len = val.serialize().expect("Should be able to serialize").len();
+        let serialized = val.serialize().expect("Should be able to serialize");
+        let len = serialized.len();
         let offset;
         {
             let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
             offset = mmap_file.offset;
             debug!("Inserting object at offset: {}", offset);
-            let mut mmap_slice = &mut mmap_file.mmap[offset..];
-            let _ = val.serialize_into(&mut mmap_slice);
+            let mmap_slice = &mut mmap_file.mmap[offset..];
+            mmap_slice[..len].copy_from_slice(&serialized);
+            // match TK::VERSION {
+            //     Some(version) => {
+            //         val.versioned_serialize_into(version, &mut mmap_slice)
+            //             .expect("Failed to serialize into mmap");
+            //     }
+            //     None => {
+            //         val.serialize_into(&mut mmap_slice).expect("Failed to serialize into mmap");
+            //     }
+            // }
             mmap_file
                 .mmap
                 .flush_async_range(offset, len)
@@ -254,7 +292,9 @@ impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
     }
 }
 
-impl<V: StorageSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
+impl<V: VersionedStorageSerde<TK>, TK: TableVersion, Mode: TransactionKind> Reader<V, TK>
+    for FileHandler<V, TK, Mode>
+{
     /// Returns an object from the file.
     fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
         debug!("Reading object at location: {:?}", location);

@@ -6,6 +6,7 @@ use tempfile::tempdir;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
+use crate::db::serialization::UnVersioned;
 use crate::test_utils::get_mmap_file_test_config;
 
 #[test]
@@ -124,7 +125,7 @@ fn concurrent_reads_single_write() {
 #[test]
 fn grow_file() {
     let data: Vec<u8> = vec![1, 2];
-    let serialization_size = StorageSerdeEx::serialize(&data).unwrap().len();
+    let serialization_size = VersionedStorageSerde::serialize(&data).unwrap().len();
     let dir = tempdir().unwrap();
     let config = MmapFileConfig {
         max_size: 10 * serialization_size,
@@ -174,7 +175,7 @@ fn grow_file() {
     let file =
         OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
-    let _ = open_file::<Vec<u8>>(config.clone(), file_path, offset).unwrap();
+    let _ = open_file::<Vec<u8>, UnVersioned>(config.clone(), file_path, offset).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
 
     dir.close().unwrap();
@@ -199,7 +200,7 @@ async fn write_read_different_locations() {
     let lock = Arc::new(RwLock::new(0));
 
     async fn reader_task(
-        reader: FileHandler<Vec<u8>, RO>,
+        reader: FileHandler<Vec<u8>, UnVersioned, RO>,
         lock: Arc<RwLock<usize>>,
         barrier: Arc<Barrier>,
     ) {

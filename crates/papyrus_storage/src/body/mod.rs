@@ -59,19 +59,22 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{TableVersion, UnVersioned, Version0, VersionedStorageSerde};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
-type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
-type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction, Version0>;
+type TransactionOutputsTable<'env> =
+    TableHandle<'env, TransactionIndex, ThinTransactionOutput, Version0>;
+type TransactionHashToIdxTable<'env> =
+    TableHandle<'env, TransactionHash, TransactionIndex, UnVersioned>;
+type TransactionIdxToHashTable<'env> =
+    TableHandle<'env, TransactionIndex, TransactionHash, UnVersioned>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent, UnVersioned>;
 
 /// The index of a transaction in a block.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, Ord, PartialOrd)]
 #[cfg_attr(any(test, feature = "testing"), derive(Hash))]
 pub struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
 
@@ -249,11 +252,14 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     // Helper function to get from 'table' all the values of entries with transaction index in
     // 'block_number'. The returned values are ordered by the transaction offset in block in
     // ascending order.
-    fn get_transactions_in_block<V: StorageSerde + Debug>(
+    fn get_transactions_in_block<V, TK: TableVersion>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, V>,
-    ) -> StorageResult<Option<Vec<V>>> {
+        table: TableHandle<'env, TransactionIndex, V, TK>,
+    ) -> StorageResult<Option<Vec<V>>>
+    where
+        V: VersionedStorageSerde<TK> + Debug,
+    {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
         }

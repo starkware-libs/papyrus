@@ -76,7 +76,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::StorageSerde;
+use db::serialization::{Key, TableVersion, UnVersioned, Version0, VersionedStorageSerde};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -121,18 +121,19 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage state code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION_STATE: Version = Version(9);
+pub const STORAGE_VERSION_STATE: Version = Version(10);
 /// The current version of the storage blocks code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(9);
+pub const STORAGE_VERSION_BLOCKS: Version = Version(10);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
     storage_config: StorageConfig,
 ) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(&storage_config.db_config)?;
+    let file_offsets = db_writer.create_table("file_offsets")?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
         casms: db_writer.create_table("casms")?,
@@ -145,7 +146,7 @@ pub fn open_storage(
         headers: db_writer.create_table("headers")?,
         markers: db_writer.create_table("markers")?,
         nonces: db_writer.create_table("nonces")?,
-        file_offsets: db_writer.create_table("file_offsets")?,
+        file_offsets,
         state_diffs: db_writer.create_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
         transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
@@ -396,10 +397,15 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn open_table<K, V, TK>(
         &self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> StorageResult<TableHandle<'_, K, V>> {
+        table_id: &TableIdentifier<K, V, TK>,
+    ) -> StorageResult<TableHandle<'_, K, V, TK>>
+    where
+        K: Key + Debug,
+        TK: TableVersion,
+        V: VersionedStorageSerde<TK> + Debug,
+    {
         if self.scope == StorageScope::StateOnly {
             let unused_tables = [
                 self.tables.events.name,
@@ -426,27 +432,27 @@ pub fn table_names() -> &'static [&'static str] {
 
 struct_field_names! {
     struct Tables {
-        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, LocationInFile>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
-        declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        file_offsets: TableIdentifier<OffsetKind, usize>,
-        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
-        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber, UnVersioned>,
+        casms: TableIdentifier<ClassHash, LocationInFile, UnVersioned>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt, UnVersioned>,
+        declared_classes: TableIdentifier<ClassHash, LocationInFile, UnVersioned>,
+        declared_classes_block: TableIdentifier<ClassHash, BlockNumber, UnVersioned>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass, UnVersioned>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, UnVersioned>,
+        events: TableIdentifier<(ContractAddress, EventIndex), EventContent, UnVersioned>,
+        headers: TableIdentifier<BlockNumber, BlockHeader, Version0>,
+        markers: TableIdentifier<MarkerKind, BlockNumber, UnVersioned>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, UnVersioned>,
+        file_offsets: TableIdentifier<OffsetKind, usize, UnVersioned>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile, UnVersioned>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex, UnVersioned>,
+        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash, UnVersioned>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput, Version0>,
+        transactions: TableIdentifier<TransactionIndex, Transaction, Version0>,
 
         // Version tables
-        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        starknet_version: TableIdentifier<BlockNumber, StarknetVersion, UnVersioned>,
+        storage_version: TableIdentifier<String, Version, UnVersioned>
     }
 }
 
@@ -543,7 +549,7 @@ pub struct DbStats {
     pub tables_stats: BTreeMap<String, DbTableStats>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
 // A marker is the first block number for which the corresponding data doesn't exist yet.
 // Invariants:
 // - CompiledClass <= State <= Header
@@ -557,14 +563,14 @@ pub(crate) enum MarkerKind {
     BaseLayerBlock,
 }
 
-pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber, UnVersioned>;
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
-    thin_state_diff: FileHandler<ThinStateDiff, Mode>,
-    contract_class: FileHandler<ContractClass, Mode>,
-    casm: FileHandler<CasmContractClass, Mode>,
-    deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
+    thin_state_diff: FileHandler<ThinStateDiff, Version0, Mode>,
+    contract_class: FileHandler<ContractClass, Version0, Mode>,
+    casm: FileHandler<CasmContractClass, Version0, Mode>,
+    deprecated_contract_class: FileHandler<DeprecatedContractClass, Version0, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -644,7 +650,7 @@ fn open_storage_files(
     db_config: &DbConfig,
     mmap_file_config: MmapFileConfig,
     db_reader: DbReader,
-    file_offsets_table: &TableIdentifier<OffsetKind, usize>,
+    file_offsets_table: &TableIdentifier<OffsetKind, usize, UnVersioned>,
 ) -> StorageResult<(FileHandlers<RW>, FileHandlers<RO>)> {
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
@@ -694,7 +700,7 @@ fn open_storage_files(
 }
 
 /// Represents a kind of mmap file.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
 pub enum OffsetKind {
     /// A thin state diff file.
     ThinStateDiff,

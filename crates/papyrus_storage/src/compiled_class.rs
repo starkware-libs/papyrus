@@ -104,7 +104,12 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
 fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
+    state_diffs_table: &'env TableHandle<
+        '_,
+        BlockNumber,
+        LocationInFile,
+        crate::db::serialization::UnVersioned,
+    >,
     file_handlers: FileHandlers<RW>,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {

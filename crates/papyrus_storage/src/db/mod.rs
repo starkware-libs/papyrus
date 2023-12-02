@@ -36,7 +36,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use validator::Validate;
 
-use crate::db::serialization::{StorageSerde, StorageSerdeEx};
+use self::serialization::TableVersion;
+use crate::db::serialization::{Key, VersionedStorageSerde};
 
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 19;
@@ -221,14 +222,23 @@ impl DbWriter {
         Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
     }
 
-    pub(crate) fn create_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn create_table<K, V, TK: TableVersion>(
         &mut self,
         name: &'static str,
-    ) -> DbResult<TableIdentifier<K, V>> {
+    ) -> DbResult<TableIdentifier<K, V, TK>>
+    where
+        K: Key + Debug,
+        V: VersionedStorageSerde<TK> + Debug,
+    {
         let txn = self.env.begin_rw_txn()?;
         txn.create_table(Some(name), TableFlags::empty())?;
         txn.commit()?;
-        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
+        Ok(TableIdentifier {
+            name,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+            _table_type: PhantomData {},
+        })
     }
 }
 
@@ -252,39 +262,65 @@ pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub fn open_table<'env, K, V, TK: TableVersion>(
         &'env self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> DbResult<TableHandle<'env, K, V>> {
+        table_id: &TableIdentifier<K, V, TK>,
+    ) -> DbResult<TableHandle<'env, K, V, TK>>
+    where
+        K: Key + Debug,
+        V: VersionedStorageSerde<TK> + Debug,
+    {
         let database = self.txn.open_table(Some(table_id.name))?;
         Ok(TableHandle {
             database,
             name: table_id.name,
             _key_type: PhantomData {},
             _value_type: PhantomData {},
+            _table_type: PhantomData {},
         })
     }
 }
-pub(crate) struct TableIdentifier<K: StorageSerde + Debug, V: StorageSerde + Debug> {
+pub(crate) struct TableIdentifier<K, V, TK>
+where
+    TK: TableVersion,
+    K: Key + Debug,
+    V: VersionedStorageSerde<TK> + Debug,
+{
     pub(crate) name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<TK>,
 }
 
-pub(crate) struct TableHandle<'env, K: StorageSerde + Debug, V: StorageSerde + Debug> {
+pub(crate) struct TableHandle<'env, K, V, TK>
+where
+    TK: TableVersion,
+    K: Key + Debug,
+    V: VersionedStorageSerde<TK> + Debug,
+{
     database: libmdbx::Table<'env>,
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<TK>,
 }
 
-impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'env, K, V> {
+impl<'env, 'txn, K, V, TK: TableVersion> TableHandle<'env, K, V, TK>
+where
+    K: Key + Debug,
+    V: VersionedStorageSerde<TK> + Debug,
+{
     pub(crate) fn cursor<Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
-    ) -> DbResult<DbCursor<'txn, Mode, K, V>> {
+    ) -> DbResult<DbCursor<'txn, Mode, K, V, TK>> {
         let cursor = txn.txn.cursor(&self.database)?;
-        Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
+        Ok(DbCursor {
+            cursor,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+            _table_type: PhantomData {},
+        })
     }
 
     pub(crate) fn get<Mode: TransactionKind>(
@@ -340,13 +376,26 @@ impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'
     }
 }
 
-pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
+pub(crate) struct DbCursor<'txn, Mode, K, V, TK>
+where
+    Mode: TransactionKind,
+    K: Key,
+    TK: TableVersion,
+    V: VersionedStorageSerde<TK>,
+{
     cursor: Cursor<'txn, Mode::Internal>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<TK>,
 }
 
-impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'txn, Mode, K, V> {
+impl<'txn, Mode, K, V, TK> DbCursor<'txn, Mode, K, V, TK>
+where
+    Mode: TransactionKind,
+    K: Key,
+    TK: TableVersion,
+    V: VersionedStorageSerde<TK>,
+{
     pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
@@ -395,23 +444,37 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
 }
 
 /// Iterator for iterating over a DB table
-pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
-    cursor: &'cursor mut DbCursor<'txn, Mode, K, V>,
+pub(crate) struct DbIter<'cursor, 'txn, Mode, K, V, TK>
+where
+    Mode: TransactionKind,
+    K: Key,
+    TK: TableVersion,
+    V: VersionedStorageSerde<TK>,
+{
+    cursor: &'cursor mut DbCursor<'txn, Mode, K, V, TK>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
-    DbIter<'cursor, 'txn, Mode, K, V>
+impl<'cursor, 'txn, Mode, K, V, TK> DbIter<'cursor, 'txn, Mode, K, V, TK>
+where
+    Mode: TransactionKind,
+    K: Key,
+    TK: TableVersion,
+    V: VersionedStorageSerde<TK>,
 {
     #[allow(dead_code)]
-    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V>) -> Self {
+    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V, TK>) -> Self {
         Self { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} }
     }
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Iterator
-    for DbIter<'cursor, 'txn, Mode, K, V>
+impl<'cursor, 'txn, Mode, K, V, TK> Iterator for DbIter<'cursor, 'txn, Mode, K, V, TK>
+where
+    Mode: TransactionKind,
+    K: Key,
+    TK: TableVersion,
+    V: VersionedStorageSerde<TK>,
 {
     type Item = DbResult<(K, V)>;
 

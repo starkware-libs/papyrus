@@ -86,6 +86,7 @@ fn hint_modified() {
 // Tests the persistent encoding of the hints of an ERC20 contract.
 // Each snapshot filename contains the hint's index in the origin casm file, so that a failure in
 // the assertion of a file can lead to the hint that caused it.
+// ignore
 #[test]
 fn hints_regression() {
     let casm = serde_json::from_value::<CasmContractClass>(read_json_file(
