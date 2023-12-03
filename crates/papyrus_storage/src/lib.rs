@@ -442,7 +442,7 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
+        transaction_outputs: TableIdentifier<TransactionIndex, LocationInFile>,
         transactions: TableIdentifier<TransactionIndex, LocationInFile>,
 
         // Version tables
@@ -567,6 +567,7 @@ struct FileHandlers<Mode: TransactionKind> {
     casm: FileHandler<CasmContractClass, Mode>,
     deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
     transaction: FileHandler<Transaction, Mode>,
+    transaction_output: FileHandler<ThinTransactionOutput, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -598,6 +599,14 @@ impl FileHandlers<RW> {
         self.clone().transaction.append(transaction)
     }
 
+    // Appends a transaction output to the corresponding file and returns its location.
+    fn append_transaction_output(
+        &self,
+        transaction_output: &ThinTransactionOutput,
+    ) -> LocationInFile {
+        self.clone().transaction_output.append(transaction_output)
+    }
+
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
     fn flush(&self) {
         self.thin_state_diff.flush();
@@ -605,6 +614,7 @@ impl FileHandlers<RW> {
         self.casm.flush();
         self.deprecated_contract_class.flush();
         self.transaction.flush();
+        self.transaction_output.flush();
     }
 }
 
@@ -653,6 +663,16 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             msg: format!("Transaction at location {:?} not found.", location),
         })
     }
+
+    // Returns the transaction output at the given location or an error in case it doesn't exist.
+    fn get_transaction_output_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<ThinTransactionOutput> {
+        self.transaction_output.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("Transaction output at location {:?} not found.", location),
+        })
+    }
 }
 
 fn open_storage_files(
@@ -694,8 +714,19 @@ fn open_storage_files(
 
     let transaction_offset =
         table.get(&db_transaction, &OffsetKind::Transaction)?.unwrap_or_default();
-    let (transaction_writer, transaction_reader) =
-        open_file(mmap_file_config, db_config.path().join("transaction.dat"), transaction_offset)?;
+    let (transaction_writer, transaction_reader) = open_file(
+        mmap_file_config.clone(),
+        db_config.path().join("transaction.dat"),
+        transaction_offset,
+    )?;
+
+    let transaction_output_offset =
+        table.get(&db_transaction, &OffsetKind::TransactionOutput)?.unwrap_or_default();
+    let (transaction_output_writer, transaction_output_reader) = open_file(
+        mmap_file_config,
+        db_config.path().join("transaction_output.dat"),
+        transaction_output_offset,
+    )?;
 
     Ok((
         FileHandlers {
@@ -704,6 +735,7 @@ fn open_storage_files(
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
             transaction: transaction_writer,
+            transaction_output: transaction_output_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
@@ -711,6 +743,7 @@ fn open_storage_files(
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
             transaction: transaction_reader,
+            transaction_output: transaction_output_reader,
         },
     ))
 }
@@ -728,4 +761,6 @@ pub enum OffsetKind {
     DeprecatedContractClass,
     /// A transaction class file.
     Transaction,
+    /// A transaction output file.
+    TransactionOutput,
 }

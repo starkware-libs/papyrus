@@ -63,7 +63,8 @@ use starknet_api::transaction::{
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
 use crate::db::{DbCursor, DbTransaction, RO};
-use crate::{StorageResult, StorageTxn};
+use crate::mmap_file::LocationInFile;
+use crate::{FileHandlers, StorageResult, StorageTxn};
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
@@ -162,6 +163,7 @@ pub struct EventIterByEventIndex<'txn, 'env> {
     events_table: EventsTable<'env>,
     event_index_in_tx_current: EventIndexInTransactionOutput,
     to_block_number: BlockNumber,
+    file_handlers: &'txn FileHandlers<RO>,
 }
 
 impl EventIterByEventIndex<'_, '_> {
@@ -170,9 +172,13 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
+        let Some((tx_index, tx_output_location)) = &self.tx_current else { return Ok(None) };
+        let binding = self
+            .file_handlers
+            // TODO: consider passing location as a reference..
+            .get_transaction_output_unchecked(*tx_output_location)?;
         let Some(address) =
-            tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
+            binding.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
         else {
             return Ok(None);
         };
@@ -191,13 +197,18 @@ impl EventIterByEventIndex<'_, '_> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn find_next_event_by_event_index(&mut self) -> StorageResult<()> {
-        while let Some((tx_index, tx_output)) = &self.tx_current {
+        while let Some((tx_index, tx_output_location)) = &self.tx_current {
             if tx_index.0 > self.to_block_number {
                 self.tx_current = None;
                 break;
             }
             // Checks if there's an event in the current event index.
-            if tx_output.events_contract_addresses_as_ref().len() > self.event_index_in_tx_current.0
+            if self
+                .file_handlers
+                .get_transaction_output_unchecked(*tx_output_location)?
+                .events_contract_addresses_as_ref()
+                .len()
+                > self.event_index_in_tx_current.0
             {
                 break;
             }
@@ -256,6 +267,7 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
             events_table,
             event_index_in_tx_current: event_index.1,
             to_block_number,
+            file_handlers: &self.file_handlers,
         };
         it.find_next_event_by_event_index()?;
         Ok(it)
@@ -460,7 +472,6 @@ type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
 /// A key-value pair of the transaction outputs table.
-type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
+type TransactionOutputsKeyValue = (TransactionIndex, LocationInFile);
 /// A cursor of the transaction outputs table.
-type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
+type TransactionOutputsTableCursor<'txn> = DbCursor<'txn, RO, TransactionIndex, LocationInFile>;

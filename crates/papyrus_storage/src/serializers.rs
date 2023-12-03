@@ -294,6 +294,7 @@ auto_storage_serde! {
         Casm = 2,
         DeprecatedContractClass = 3,
         Transaction = 4,
+        TransactionOutput = 5,
     }
     pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
