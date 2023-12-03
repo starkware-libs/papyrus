@@ -210,6 +210,7 @@ pub trait JsonRpc {
         &self,
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
+        simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<FeeEstimate>>;
 
     /// Simulates execution of a series of transactions.

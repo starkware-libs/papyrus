@@ -452,6 +452,7 @@ pub fn estimate_fee(
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
+    validate: bool,
 ) -> ExecutionResult<FeeEstimationResult> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -463,7 +464,7 @@ pub fn estimate_fee(
         block_context_block_number,
         execution_config,
         false,
-        false,
+        validate,
     )?;
     Ok(txs_execution_info
         .into_iter()
