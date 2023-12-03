@@ -62,14 +62,25 @@ use tracing::debug;
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
+use crate::mmap_file::LocationInFile;
+use crate::{
+    FileHandlers,
+    MarkerKind,
+    MarkersTable,
+    OffsetKind,
+    StorageError,
+    StorageResult,
+    StorageScope,
+    StorageTxn,
+};
 
-type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, LocationInFile>;
 type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
 type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
 type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type FileOffsetTable<'env> = TableHandle<'env, OffsetKind, usize>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
@@ -163,8 +174,14 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>> {
         let transactions_table = self.open_table(&self.tables.transactions)?;
-        let transaction = transactions_table.get(&self.txn, &transaction_index)?;
-        Ok(transaction)
+        let location_in_file = transactions_table.get(&self.txn, &transaction_index)?;
+        match location_in_file {
+            None => Ok(None),
+            Some(location_in_file) => {
+                let transaction = self.file_handlers.get_transaction_unchecked(location_in_file)?;
+                Ok(Some(transaction))
+            }
+        }
     }
 
     fn get_transaction_output(
@@ -225,7 +242,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<Transaction>>> {
         let transactions_table = self.open_table(&self.tables.transactions)?;
-        self.get_transactions_in_block(block_number, transactions_table)
+        self.get_transactions_in_block_indirect(block_number, transactions_table)
     }
 
     fn get_block_transaction_hashes(
@@ -271,6 +288,31 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
         }
         Ok(Some(res))
     }
+
+    // Helper function to get from 'table' all the values of entries with transaction index in
+    // 'block_number'. The returned values are ordered by the transaction offset in block in
+    // ascending order.
+    fn get_transactions_in_block_indirect(
+        &self,
+        block_number: BlockNumber,
+        table: TableHandle<'env, TransactionIndex, LocationInFile>,
+    ) -> StorageResult<Option<Vec<Transaction>>> {
+        if self.get_body_marker()? <= block_number {
+            return Ok(None);
+        }
+        let mut cursor = table.cursor(&self.txn)?;
+        let mut current =
+            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
+        let mut res = Vec::new();
+        while let Some((TransactionIndex(current_block_number, _), location_in_file)) = current {
+            if current_block_number != block_number {
+                break;
+            }
+            res.push(self.file_handlers.get_transaction_unchecked(location_in_file)?);
+            current = cursor.next()?;
+        }
+        Ok(Some(res))
+    }
 }
 
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
@@ -287,6 +329,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
                 self.open_table(&self.tables.transaction_hash_to_idx)?;
             let transaction_idx_to_hash_table =
                 self.open_table(&self.tables.transaction_idx_to_hash)?;
+            let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
             write_transactions(
                 &block_body,
@@ -295,6 +338,8 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
                 &transaction_hash_to_idx_table,
                 &transaction_idx_to_hash_table,
                 block_number,
+                &self.file_handlers,
+                &file_offset_table,
             )?;
             write_transaction_outputs(
                 block_body,
@@ -379,6 +424,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn write_transactions<'env>(
     block_body: &BlockBody,
     txn: &DbTransaction<'env, RW>,
@@ -386,6 +432,8 @@ fn write_transactions<'env>(
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
     block_number: BlockNumber,
+    file_handlers: &FileHandlers<RW>,
+    file_offset_table: &'env FileOffsetTable<'env>,
 ) -> StorageResult<()> {
     for (index, (tx, tx_hash)) in
         block_body.transactions.iter().zip(block_body.transaction_hashes.iter()).enumerate()
@@ -399,7 +447,9 @@ fn write_transactions<'env>(
             tx_hash,
             transaction_index,
         )?;
-        transactions_table.insert(txn, &transaction_index, tx)?;
+        let location = file_handlers.append_transaction(tx);
+        transactions_table.insert(txn, &transaction_index, &location)?;
+        file_offset_table.upsert(txn, &OffsetKind::Transaction, &location.next_offset())?;
     }
     Ok(())
 }

@@ -47,6 +47,7 @@ auto_impl_get_test_instance! {
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
+        Transaction = 4,
     }
     pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {

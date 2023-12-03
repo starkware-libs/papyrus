@@ -443,7 +443,7 @@ struct_field_names! {
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
         transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        transactions: TableIdentifier<TransactionIndex, LocationInFile>,
 
         // Version tables
         starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
@@ -566,6 +566,7 @@ struct FileHandlers<Mode: TransactionKind> {
     contract_class: FileHandler<ContractClass, Mode>,
     casm: FileHandler<CasmContractClass, Mode>,
     deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
+    transaction: FileHandler<Transaction, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -592,12 +593,18 @@ impl FileHandlers<RW> {
         self.clone().deprecated_contract_class.append(deprecated_contract_class)
     }
 
+    // Appends a transaction to the corresponding file and returns its location.
+    fn append_transaction(&self, transaction: &Transaction) -> LocationInFile {
+        self.clone().transaction.append(transaction)
+    }
+
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
     fn flush(&self) {
         self.thin_state_diff.flush();
         self.contract_class.flush();
         self.casm.flush();
         self.deprecated_contract_class.flush();
+        self.transaction.flush();
     }
 }
 
@@ -639,6 +646,13 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             msg: format!("DeprecatedContractClass at location {:?} not found.", location),
         })
     }
+
+    // Returns the transaction at the given location or an error in case it doesn't exist.
+    fn get_transaction_unchecked(&self, location: LocationInFile) -> StorageResult<Transaction> {
+        self.transaction.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("Transaction at location {:?} not found.", location),
+        })
+    }
 }
 
 fn open_storage_files(
@@ -673,10 +687,15 @@ fn open_storage_files(
     let deprecated_contract_class_offset =
         table.get(&db_transaction, &OffsetKind::DeprecatedContractClass)?.unwrap_or_default();
     let (deprecated_contract_class_writer, deprecated_contract_class_reader) = open_file(
-        mmap_file_config,
+        mmap_file_config.clone(),
         db_config.path().join("deprecated_contract_class.dat"),
         deprecated_contract_class_offset,
     )?;
+
+    let transaction_offset =
+        table.get(&db_transaction, &OffsetKind::Transaction)?.unwrap_or_default();
+    let (transaction_writer, transaction_reader) =
+        open_file(mmap_file_config, db_config.path().join("transaction.dat"), transaction_offset)?;
 
     Ok((
         FileHandlers {
@@ -684,12 +703,14 @@ fn open_storage_files(
             contract_class: contract_class_writer,
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
+            transaction: transaction_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
+            transaction: transaction_reader,
         },
     ))
 }
@@ -705,4 +726,6 @@ pub enum OffsetKind {
     Casm,
     /// A deprecated contract class file.
     DeprecatedContractClass,
+    /// A transaction class file.
+    Transaction,
 }
