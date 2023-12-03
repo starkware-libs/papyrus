@@ -643,38 +643,30 @@ pub struct L1HandlerTransactionOutput {
 // Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ExecutionResources {
-    pub steps: StarkFelt,
+    pub steps: u64,
     #[serde(flatten)]
-    pub builtin_instance_counter: HashMap<Builtin, StarkFelt>,
-    pub memory_holes: StarkFelt,
+    pub builtin_instance_counter: HashMap<Builtin, u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memory_holes: Option<u64>,
 }
 
 impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources {
     fn from(value: starknet_api::transaction::ExecutionResources) -> Self {
-        let mut res = Self {
-            steps: value.steps.into(),
+        Self {
+            steps: value.steps,
             builtin_instance_counter: value
                 .builtin_instance_counter
                 .into_iter()
-                .map(|(k, v)| (k, v.into()))
+                .filter_map(|(k, v)| match v {
+                    0 => None,
+                    _ => Some((k, v)),
+                })
                 .collect(),
-            memory_holes: value.memory_holes.into(),
-        };
-
-        // In RPC 0.5 all builtins are required to be present in the serialization.
-        for builtin in [
-            Builtin::RangeCheck,
-            Builtin::Pedersen,
-            Builtin::Poseidon,
-            Builtin::EcOp,
-            Builtin::Ecdsa,
-            Builtin::Bitwise,
-            Builtin::Keccak,
-            Builtin::SegmentArena,
-        ] {
-            res.builtin_instance_counter.entry(builtin).or_default();
+            memory_holes: match value.memory_holes {
+                0 => None,
+                _ => Some(value.memory_holes),
+            },
         }
-        res
     }
 }
 

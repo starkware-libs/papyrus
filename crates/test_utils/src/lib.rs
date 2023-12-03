@@ -299,16 +299,30 @@ fn get_rand_test_body_with_events(
 }
 
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
+    let execution_resources = ExecutionResources { steps: 1, ..Default::default() };
     match transaction {
-        Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput::default()),
-        Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput::default()),
+        Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput {
+            execution_resources,
+            ..Default::default()
+        }),
+        Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput {
+            execution_resources,
+            ..Default::default()
+        }),
         Transaction::DeployAccount(_) => {
-            TransactionOutput::DeployAccount(DeployAccountTransactionOutput::default())
+            TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
+                execution_resources,
+                ..Default::default()
+            })
         }
-        Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput::default()),
-        Transaction::L1Handler(_) => {
-            TransactionOutput::L1Handler(L1HandlerTransactionOutput::default())
-        }
+        Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput {
+            execution_resources,
+            ..Default::default()
+        }),
+        Transaction::L1Handler(_) => TransactionOutput::L1Handler(L1HandlerTransactionOutput {
+            execution_resources,
+            ..Default::default()
+        }),
     }
 }
 

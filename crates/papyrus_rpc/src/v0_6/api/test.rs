@@ -1795,6 +1795,9 @@ fn generate_client_transaction_client_receipt_and_rpc_receipt(
     let pending_transaction_hash = TransactionHash(StarkHash::from(rng.next_u64()));
     let mut client_transaction_receipt = ClientTransactionReceipt::get_test_instance(rng);
     client_transaction_receipt.transaction_hash = pending_transaction_hash;
+    client_transaction_receipt.execution_resources.n_memory_holes = 1;
+    client_transaction_receipt.execution_resources.n_steps = 1;
+    client_transaction_receipt.execution_resources.builtin_instance_counter.retain(|_, v| *v > 0);
     // Generating a transaction until we receive a transaction that can have pending output (i.e a
     // non-deploy transaction).
     let (mut client_transaction, output) = loop {
