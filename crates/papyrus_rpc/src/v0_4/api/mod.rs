@@ -308,8 +308,8 @@ impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
         match value {
             BroadcastedTransaction::Declare(tx) => Ok(tx.try_into()?),
-            BroadcastedTransaction::DeployAccount(tx) => Ok(Self::DeployAccount(tx.into())),
-            BroadcastedTransaction::Invoke(tx) => Ok(Self::Invoke(tx.into())),
+            BroadcastedTransaction::DeployAccount(tx) => Ok(Self::DeployAccount(tx.into(), false)),
+            BroadcastedTransaction::Invoke(tx) => Ok(Self::Invoke(tx.into(), false)),
         }
     }
 }
@@ -328,6 +328,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::DeclareV0(
                 value,
                 get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
+                false,
             ))
         }
         starknet_api::transaction::Transaction::Declare(
@@ -338,6 +339,7 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::DeclareV1(
                 value,
                 get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
+                false,
             ))
         }
         starknet_api::transaction::Transaction::Declare(
@@ -352,7 +354,7 @@ pub(crate) fn stored_txn_to_executable_txn(
                         value.class_hash
                     ))
                 })?;
-            Ok(ExecutableTransactionInput::DeclareV2(value, casm))
+            Ok(ExecutableTransactionInput::DeclareV2(value, casm, false))
         }
         starknet_api::transaction::Transaction::Declare(
             starknet_api::transaction::DeclareTransaction::V3(_),
@@ -366,7 +368,7 @@ pub(crate) fn stored_txn_to_executable_txn(
         starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
             match deploy_account_tx {
                 starknet_api::transaction::DeployAccountTransaction::V1(_) => {
-                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx))
+                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx, false))
                 }
                 starknet_api::transaction::DeployAccountTransaction::V3(_) => {
                     Err(internal_server_error(
@@ -377,13 +379,13 @@ pub(crate) fn stored_txn_to_executable_txn(
             }
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
-            Ok(ExecutableTransactionInput::Invoke(value))
+            Ok(ExecutableTransactionInput::Invoke(value, false))
         }
         starknet_api::transaction::Transaction::L1Handler(value) => {
             // todo(yair): This is a temporary solution until we have a better way to get the l1
             // fee.
             let paid_fee_on_l1 = Fee(1);
-            Ok(ExecutableTransactionInput::L1Handler(value, paid_fee_on_l1))
+            Ok(ExecutableTransactionInput::L1Handler(value, paid_fee_on_l1, false))
         }
     }
 }
@@ -429,6 +431,7 @@ impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
                     sender_address,
                 },
                 user_deprecated_contract_class_to_sn_api(contract_class)?,
+                false,
             )),
             BroadcastedDeclareTransaction::V2(_) => {
                 // TODO(yair): We need a way to get the casm of a declare V2 transaction.
