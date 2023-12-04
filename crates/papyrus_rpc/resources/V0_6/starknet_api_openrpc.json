@@ -598,6 +598,17 @@
                     "required": true
                 },
                 {
+                    "name": "simulation_flags",
+                    "description": "describes what parts of the transaction should be executed",
+                    "required": true,
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/SIMULATION_FLAG_FOR_ESTIMATE_FEE"
+                        }
+                    }
+                },
+                {
                     "name": "block_id",
                     "description": "The hash of the requested block, or number (height) of the requested block, or a block tag, for the block referencing the state or call the transaction on.",
                     "required": true,

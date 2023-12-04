@@ -234,6 +234,7 @@ async fn call_estimate_fee() {
             (
                 vec![invoke.clone()],
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+                Vec::<SimulationFlag>::new(),
             ),
         )
         .await
@@ -254,11 +255,32 @@ async fn call_estimate_fee() {
     let res = module
         .call::<_, Vec<FeeEstimate>>(
             "starknet_V0_6_estimateFee",
-            (vec![invoke], BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))),
+            (
+                vec![invoke.clone()],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1))),
+                Vec::<SimulationFlag>::new(),
+            ),
         )
         .await
         .unwrap();
     assert_ne!(res, expected_fee_estimate);
+
+    // Test that calling the same transaction with skip_validate produces a lower gas consumed.
+    // TODO(yair): test with an account contract which has a lengthy validate function.
+    let res = module
+        .call::<_, Vec<FeeEstimate>>(
+            "starknet_V0_6_estimateFee",
+            (
+                vec![invoke],
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+                Vec::<SimulationFlag>::from([SimulationFlag::SkipValidate]),
+            ),
+        )
+        .await
+        .unwrap();
+    assert!(
+        res.first().unwrap().gas_consumed <= expected_fee_estimate.first().unwrap().gas_consumed
+    );
 
     // Test that reverted transaction fails the fee estimation.
     let non_existent_entry_point =
@@ -280,6 +302,7 @@ async fn call_estimate_fee() {
             (
                 vec![non_existent_entry_point],
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+                Vec::<SimulationFlag>::new(),
             ),
         )
         .await
@@ -325,7 +348,7 @@ async fn pending_call_estimate_fee() {
     let res = module
         .call::<_, Vec<FeeEstimate>>(
             "starknet_V0_6_estimateFee",
-            (vec![invoke.clone()], BlockId::Tag(Tag::Pending)),
+            (vec![invoke.clone()], BlockId::Tag(Tag::Pending), Vec::<SimulationFlag>::new()),
         )
         .await
         .unwrap();
