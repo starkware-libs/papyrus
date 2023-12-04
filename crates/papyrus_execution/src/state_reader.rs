@@ -26,6 +26,9 @@ pub struct ExecutionStateReader {
     pub storage_reader: StorageReader,
     pub state_number: StateNumber,
     pub maybe_pending_data: Option<PendingData>,
+    // We want to return a custom error when missing a compiled class, but we need to return
+    // Blockifier's error, so we store the missing class's hash in case of error.
+    pub missing_compiled_class: Option<ClassHash>,
 }
 
 impl BlockifierStateReader for ExecutionStateReader {
@@ -99,6 +102,7 @@ impl BlockifierStateReader for ExecutionStateReader {
             Ok(Some(contract_class)) => Ok(contract_class),
             Ok(None) => Err(StateError::UndeclaredClassHash(*class_hash)),
             Err(ExecutionUtilsError::CasmTableNotSynced) => {
+                self.missing_compiled_class = Some(*class_hash);
                 Err(StateError::StateReadError("Casm table not fully synced".to_string()))
             }
             Err(ExecutionUtilsError::ProgramError(err)) => Err(StateError::ProgramError(err)),

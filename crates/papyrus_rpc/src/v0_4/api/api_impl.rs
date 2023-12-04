@@ -17,7 +17,6 @@ use papyrus_execution::{
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
-use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
@@ -48,7 +47,7 @@ use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
 use tokio::sync::RwLock;
-use tracing::{debug, instrument, trace, warn};
+use tracing::{instrument, trace, warn};
 
 use super::super::block::{
     get_accepted_block_number,
@@ -68,7 +67,6 @@ use super::super::error::{
     CLASS_HASH_NOT_FOUND,
     CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
-    INVALID_BLOCK_HASH,
     INVALID_TRANSACTION_HASH,
     INVALID_TRANSACTION_INDEX,
     NO_BLOCKS,
@@ -1115,19 +1113,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .map_err(internal_server_error)?
                 .ok_or(INVALID_TRANSACTION_HASH)?;
 
-            let casm_marker =
-                storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
-            if casm_marker <= block_number {
-                debug!(
-                    ?transaction_hash,
-                    ?block_number,
-                    ?casm_marker,
-                    "Transaction is in the storage, but the compiled classes are not fully synced \
-                     up to its block.",
-                );
-                return Err(INVALID_TRANSACTION_HASH.into());
-            }
-
             let block_transactions = storage_txn
                 .get_block_transactions(block_number)
                 .map_err(internal_server_error)?
@@ -1259,16 +1244,6 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                     StateNumber::right_before_block(block_number),
                 ),
             };
-
-        let casm_marker = storage_txn.get_compiled_class_marker().map_err(internal_server_error)?;
-        if casm_marker <= block_number {
-            debug!(
-                ?block_id,
-                ?casm_marker,
-                "Block is in the storage, but the compiled classes are not fully synced.",
-            );
-            return Err(INVALID_BLOCK_HASH.into());
-        }
 
         let executable_txns = block_transactions
             .into_iter()
