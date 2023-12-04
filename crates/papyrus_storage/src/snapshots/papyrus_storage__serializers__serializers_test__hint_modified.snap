@@ -513,7 +513,7 @@ definitions:
               dst:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
-      - description: "Provides the inverse of b (represented by 2 128-bit limbs) modulo n (represented by 2 128-bit limbs), or a proof that b has no inverse.\n\nIn case b has an inverse: Returns `r` and `k` such that: * `r = 1 / b (mod n)` * `k = (r * b - 1) / n` * `g0_or_no_inv = 0`\n\nIn case b has no inverse: Returns `g`, `s`, and `t`, such that: `g > 1` `g == 2 || g % 2 == 1` (in particular, `g0_or_no_inv = g0 != 0`) `g * s = b` `g * t = n`\n\nIn all cases - `name`0 is the least significant limb."
+      - description: "Provides the inverse of b (represented by 2 128-bit limbs) modulo n (represented by 2 128-bit limbs), or a proof that b has no inverse.\n\nIn case b has an inverse: Returns `r` and `k` such that: * `r = 1 / b (mod n)` * `k = (r * b - 1) / n` * `g0_or_no_inv = 0`\n\nIn case b has no inverse: Returns `g`, `s`, and `t`, such that: `g > 1` `g == 2 || g % 2 == 1` (in particular, `g0_or_no_inv = g0 != 0`) `g * s = b` `g * t = n`\n\nThe case `n == 1` is considered \"no-inverse\" (special case). In this case: Returns `g == 1`, `s == b` and `t == 1`. All no-inverse requirements are satisfied, except for `g > 1`.\n\nIn all cases - `name`0 is the least significant limb."
         type: object
         required:
           - U256InvModN
