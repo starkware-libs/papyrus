@@ -13,7 +13,7 @@ use syn::{parse_macro_input, ExprLit, ItemFn, ItemTrait, LitStr, Meta, TraitItem
 ///
 /// Given this code:
 /// ```rust,ignore
-/// #[versioned_rpc("V0_3_0")]
+/// #[versioned_rpc("V0_6_0")]
 /// pub trait JsonRpc {
 ///     #[method(name = "blockNumber")]
 ///     fn block_number(&self) -> Result<BlockNumber, Error>;
@@ -23,8 +23,8 @@ use syn::{parse_macro_input, ExprLit, ItemFn, ItemTrait, LitStr, Meta, TraitItem
 /// The macro will generate this code:
 /// ```rust,ignore
 /// #[rpc(server, client, namespace = "starknet")]
-/// pub trait JsonRpcV0_3_0 {
-///     #[method(name = "V0_3_0_blockNumber")]
+/// pub trait JsonRpcV0_6_0 {
+///     #[method(name = "V0_6_0_blockNumber")]
 ///     fn block_number(&self) -> Result<BlockNumber, Error>;
 /// }
 /// ```

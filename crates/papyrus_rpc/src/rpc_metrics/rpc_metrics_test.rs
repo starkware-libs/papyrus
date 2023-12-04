@@ -19,15 +19,15 @@ use crate::rpc_metrics::{
 
 #[test]
 fn get_method_and_version_test() {
-    let method_name = "starknet_V0_3_0_blockNumber";
+    let method_name = "starknet_V0_6_0_blockNumber";
     let (method, version) = get_method_and_version(method_name);
     assert_eq!(method, "blockNumber");
-    assert_eq!(version, "V0_3_0");
+    assert_eq!(version, "V0_6_0");
 }
 
 #[test]
 fn logger_test() {
-    let full_method_name = "starknet_V0_3_0_blockNumber";
+    let full_method_name = "starknet_V0_6_0_blockNumber";
     let (method, version) = get_method_and_version(full_method_name);
     let labels = vec![(METHOD_LABEL, method.as_str()), (VERSION_LABEL, version.as_str())];
     let illegal_method_label = vec![(METHOD_LABEL, ILLEGAL_METHOD)];
@@ -88,7 +88,7 @@ fn logger_test() {
     );
 
     // Illegal method.
-    let bad_method_name = "starknet_V0_3_0_illegal_method";
+    let bad_method_name = "starknet_V0_6_0_illegal_method";
     let (method, version) = get_method_and_version(bad_method_name);
     let bad_labels = vec![(METHOD_LABEL, method.as_str()), (VERSION_LABEL, version.as_str())];
     logger.on_result(bad_method_name, false, Instant::now(), TransportProtocol::Http);
