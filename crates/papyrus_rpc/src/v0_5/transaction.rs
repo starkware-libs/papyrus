@@ -385,27 +385,9 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
             starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
                 Ok(Self::DeployAccount(deploy_account_tx.try_into()?))
             }
-<<<<<<< v0_5
-            starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
-                starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a invoke of version 3, which is not supported \
-                     on v0.5.1.",
-                )),
-                _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
-            },
-||||||| v0_4_old
-            starknet_api::transaction::Transaction::Invoke(invoke_tx) => match invoke_tx {
-                starknet_api::transaction::InvokeTransaction::V3(_) => Err(internal_server_error(
-                    "The requested transaction is a invoke of version 3, which is not supported \
-                     on v0.4.0.",
-                )),
-                _ => Ok(Self::Invoke(invoke_tx.try_into()?)),
-            },
-=======
             starknet_api::transaction::Transaction::Invoke(invoke_tx) => {
                 Ok(Self::Invoke(invoke_tx.try_into()?))
             }
->>>>>>> v0_4_new
             starknet_api::transaction::Transaction::L1Handler(l1_handler_tx) => {
                 Ok(Transaction::L1Handler(l1_handler_tx))
             }

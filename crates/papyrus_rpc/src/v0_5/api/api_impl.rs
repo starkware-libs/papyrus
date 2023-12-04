@@ -18,12 +18,8 @@ use papyrus_execution::{
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::compiled_class::CasmStorageReader;
-<<<<<<< v0_5
-use papyrus_storage::header::StarknetVersion;
-||||||| v0_4_old
-=======
 use papyrus_storage::db::TransactionKind;
->>>>>>> v0_4_new
+use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
@@ -74,7 +70,6 @@ use super::super::error::{
     JsonRpcError,
     BLOCK_NOT_FOUND,
     CLASS_HASH_NOT_FOUND,
-    CONTRACT_ERROR,
     CONTRACT_NOT_FOUND,
     INVALID_BLOCK_HASH,
     INVALID_TRANSACTION_HASH,
@@ -1029,7 +1024,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .into_iter()
                 .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
                 .collect()),
-<<<<<<< v0_5
             Ok(Err(reverted_tx)) => Err(contract_error(ContractError {
                 revert_error: format!(
                     "Transaction {} reverted: {}",
@@ -1038,13 +1032,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             })
             .into()),
             Err(err) => Err(internal_server_error(err)),
-||||||| v0_4_old
-            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
-            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
-=======
-            Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
-            Err(err) => Err(internal_server_error(err)),
->>>>>>> v0_4_new
         }
     }
 
@@ -1390,10 +1377,8 @@ async fn read_pending_data<Mode: TransactionKind>(
     pending_data: &Arc<RwLock<PendingData>>,
     txn: &StorageTxn<'_, Mode>,
 ) -> RpcResult<PendingData> {
-<<<<<<< v0_5
-    let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-    let (latest_header, starknet_version) = match get_latest_block_number(&txn)? {
-        Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
+    let (latest_header, starknet_version) = match get_latest_block_number(txn)? {
+        Some(latest_block_number) => get_block_header_by_number(txn, latest_block_number)?,
         None => (
             starknet_api::block::BlockHeader {
                 parent_hash: BlockHash(
@@ -1403,26 +1388,6 @@ async fn read_pending_data<Mode: TransactionKind>(
             },
             StarknetVersion::default(),
         ),
-||||||| v0_4_old
-    let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-    let latest_header: starknet_api::block::BlockHeader = match get_latest_block_number(&txn)? {
-        Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
-        None => starknet_api::block::BlockHeader {
-            parent_hash: BlockHash(
-                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
-            ),
-            ..Default::default()
-        },
-=======
-    let latest_header: starknet_api::block::BlockHeader = match get_latest_block_number(txn)? {
-        Some(latest_block_number) => get_block_header_by_number(txn, latest_block_number)?,
-        None => starknet_api::block::BlockHeader {
-            parent_hash: BlockHash(
-                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
-            ),
-            ..Default::default()
-        },
->>>>>>> v0_4_new
     };
     let pending_data = &pending_data.read().await;
     if pending_data.block.parent_block_hash == latest_header.block_hash {

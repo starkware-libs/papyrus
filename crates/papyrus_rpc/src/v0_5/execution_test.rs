@@ -18,6 +18,7 @@ use papyrus_execution::objects::{
     FunctionInvocationResult,
     InvokeTransactionTrace,
     L1HandlerTransactionTrace,
+    RevertReason,
     TransactionTrace,
 };
 use papyrus_execution::testing_instances::get_storage_var_address;
@@ -172,13 +173,8 @@ async fn execution_call() {
         .await
         .unwrap_err();
 
-<<<<<<< v0_5
     const CONTRACT_ERROR_CODE: i32 = 40;
     assert_matches!(err, Error::Call(err) if err.code() == CONTRACT_ERROR_CODE);
-||||||| v0_4_old
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
-=======
-    assert_matches!(err, Error::Call(err) if err == CONTRACT_ERROR.into());
 
     // Test that the block context is passed correctly to blockifier.
     let mut calldata = get_calldata_for_test_execution_info(
@@ -196,7 +192,7 @@ async fn execution_call() {
 
     module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
+            "starknet_V0_5_call",
             (
                 contract_address,
                 entry_point_selector,
@@ -206,7 +202,6 @@ async fn execution_call() {
         )
         .await
         .unwrap();
->>>>>>> v0_4_new
 }
 
 #[tokio::test]
@@ -256,7 +251,7 @@ async fn pending_execution_call() {
 
     module
         .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
+            "starknet_V0_5_call",
             (contract_address, entry_point_selector, calldata, BlockId::Tag(Tag::Pending)),
         )
         .await
@@ -376,114 +371,12 @@ async fn call_simulate() {
 
     prepare_storage_for_execution(storage_writer);
 
-<<<<<<< v0_5
-    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
-        sender_address: *ACCOUNT_ADDRESS,
-        calldata: calldata![
-            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-            selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
-        ],
-        ..Default::default()
-    }));
-
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                Vec::<SimulationFlag>::new(),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res.len(), 1);
-
-    let simulated_tx = res.pop().unwrap();
-
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
-
-    assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
-
-    let TransactionTrace::Invoke(invoke_trace) = simulated_tx.transaction_trace else {
-        unreachable!();
-    };
-
-    assert_matches!(invoke_trace.validate_invocation, Some(_));
-    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
-    assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
-||||||| v0_4_old
-    let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
-        sender_address: *ACCOUNT_ADDRESS,
-        calldata: calldata![
-            *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
-            selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
-        ],
-        ..Default::default()
-    }));
-
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                Vec::<SimulationFlag>::new(),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res.len(), 1);
-
-    let simulated_tx = res.pop().unwrap();
-
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
-
-    assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
-
-    let TransactionTrace::Invoke(invoke_trace) = simulated_tx.transaction_trace else {
-        unreachable!();
-    };
-
-    assert_matches!(invoke_trace.validate_invocation, Some(_));
-    assert_matches!(invoke_trace.execute_invocation, FunctionInvocationResult::Ok(_));
-    assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
-=======
     test_call_simulate(
         &module,
         BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
         BlockNumber(0),
     )
     .await;
->>>>>>> v0_4_new
 }
 
 #[tokio::test]
@@ -504,7 +397,7 @@ async fn pending_call_simulate() {
 // Test call_simulate. Assumes that the given block is equal to block number 0 that is returned
 // from the function `prepare_storage_for_execution`.
 async fn test_call_simulate(
-    module: &RpcModule<JsonRpcServerV0_4Impl>,
+    module: &RpcModule<JsonRpcServerImpl>,
     block_id: BlockId,
     block_context_number: BlockNumber,
 ) {
@@ -524,16 +417,8 @@ async fn test_call_simulate(
 
     let mut res = module
         .call::<_, Vec<SimulatedTransaction>>(
-<<<<<<< v0_5
             "starknet_V0_5_simulateTransactions",
-            (BlockId::Tag(Tag::Pending), vec![invoke], Vec::<SimulationFlag>::new()),
-||||||| v0_4_old
-            "starknet_V0_4_simulateTransactions",
-            (BlockId::Tag(Tag::Pending), vec![invoke], Vec::<SimulationFlag>::new()),
-=======
-            "starknet_V0_4_simulateTransactions",
             (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
->>>>>>> v0_4_new
         )
         .await
         .unwrap();
@@ -581,7 +466,7 @@ async fn test_call_simulate(
 
     let res = module
         .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
+            "starknet_V0_5_simulateTransactions",
             (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
         )
         .await
@@ -940,8 +825,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         starknet_api::transaction::InvokeTransaction::V1(invoke_tx2),
     );
 
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
@@ -994,21 +878,21 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
 
     validate_result(
         module
-            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+            .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash1])
             .await
             .unwrap(),
     );
 
     validate_result(
         module
-            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+            .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash2])
             .await
             .unwrap(),
     );
 
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_4_traceBlockTransactions",
+            "starknet_V0_5_traceBlockTransactions",
             [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
         )
         .await
@@ -1097,7 +981,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
     };
 
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data), None, None);
 
     prepare_storage_for_execution(storage_writer);
@@ -1112,21 +996,21 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
 
     validate_result(
         module
-            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
+            .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash1])
             .await
             .unwrap(),
     );
 
     validate_result(
         module
-            .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash2])
+            .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash2])
             .await
             .unwrap(),
     );
 
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_4_traceBlockTransactions",
+            "starknet_V0_5_traceBlockTransactions",
             [BlockId::Tag(Tag::Pending)],
         )
         .await
