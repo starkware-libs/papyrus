@@ -48,13 +48,11 @@ use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::TransactionTrace;
 use papyrus_common::transaction_hash::get_transaction_hash;
-use papyrus_storage::compiled_class::CasmStorageReader;
-use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::{StorageError, StorageReader, StorageTxn};
+use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
@@ -149,11 +147,6 @@ pub enum ExecutionError {
     EntryPointExecutionError(#[from] EntryPointExecutionError),
     #[error(transparent)]
     StorageError(#[from] StorageError),
-    #[error(
-        "The node is not synced. state_number: {state_number:?}, compiled_class_marker: \
-         {compiled_class_marker:?}"
-    )]
-    NotSynced { state_number: StateNumber, compiled_class_marker: BlockNumber },
     #[error(transparent)]
     StateError(#[from] StateError),
     #[error("Failed to calculate transaction hash.")]
@@ -174,6 +167,8 @@ pub enum ExecutionError {
     ConfigSerdeError(#[from] serde_json::Error),
     #[error("Missing class hash in call info")]
     MissingClassHash,
+    #[error("Missing compiled class with hash {class_hash} (The CASM table isn't synced)")]
+    MissingCompiledClass { class_hash: ClassHash },
 }
 
 /// Whether the only-query bit of the transaction version is on.
@@ -192,7 +187,6 @@ pub fn execute_call(
     calldata: Calldata,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<CallExecution> {
-    verify_node_synced(&storage_reader.begin_ro_txn()?, block_context_number, state_number)?;
     verify_contract_exists(
         *contract_address,
         &storage_reader,
@@ -225,6 +219,7 @@ pub fn execute_call(
         storage_reader,
         state_number,
         maybe_pending_data,
+        missing_compiled_class: None,
     });
     let mut context = EntryPointExecutionContext::new_invoke(
         &block_context,
@@ -233,29 +228,17 @@ pub fn execute_call(
         true, // limit_steps_by_resources
     )?;
 
-    let res = call_entry_point.execute(
-        &mut cached_state,
-        &mut ExecutionResources::default(),
-        &mut context,
-    )?;
+    let res = call_entry_point
+        .execute(&mut cached_state, &mut ExecutionResources::default(), &mut context)
+        .map_err(|error| {
+            if let Some(class_hash) = cached_state.state.missing_compiled_class {
+                ExecutionError::MissingCompiledClass { class_hash }
+            } else {
+                error.into()
+            }
+        })?;
 
     Ok(res.execution)
-}
-
-fn verify_node_synced(
-    txn: &StorageTxn<'_, RO>,
-    block_context_number: BlockNumber,
-    state_number: StateNumber,
-) -> ExecutionResult<()> {
-    let compiled_class_marker = txn.get_compiled_class_marker()?;
-    if block_context_number >= compiled_class_marker || state_number.is_after(compiled_class_marker)
-    {
-        return Err(ExecutionError::NotSynced {
-            state_number: StateNumber::right_after_block(block_context_number),
-            compiled_class_marker,
-        });
-    }
-    Ok(())
 }
 
 fn verify_contract_exists(
@@ -503,11 +486,6 @@ fn execute_transactions(
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<(TransactionExecutionInfo, ThinStateDiff)>, BlockContext)> {
-    {
-        let storage_txn = storage_reader.begin_ro_txn()?;
-        verify_node_synced(&storage_txn, block_context_block_number, state_number)?;
-    }
-
     let block_context = create_block_context(
         block_context_block_number,
         chain_id.clone(),
@@ -521,6 +499,7 @@ fn execute_transactions(
         storage_reader,
         state_number,
         maybe_pending_data,
+        missing_compiled_class: None,
     });
 
     // TODO(yair): this is a temporary bug fix, delete once the blockifier is fixed and add a test.
@@ -552,15 +531,18 @@ fn execute_transactions(
             _ => None,
         };
         let blockifier_tx = to_blockifier_tx(tx, tx_hash)?;
-        let tx_execution_info = blockifier_tx.execute(
-            &mut transactional_state,
-            &block_context,
-            charge_fee,
-            validate,
-        )?;
+        let tx_execution_info_result =
+            blockifier_tx.execute(&mut transactional_state, &block_context, charge_fee, validate);
         let state_diff =
             induced_state_diff(&mut transactional_state, deprecated_declared_class_hash)?;
         transactional_state.commit();
+        let tx_execution_info = tx_execution_info_result.map_err(|error| {
+            if let Some(class_hash) = cached_state.state.missing_compiled_class {
+                ExecutionError::MissingCompiledClass { class_hash }
+            } else {
+                error.into()
+            }
+        })?;
         res.push((tx_execution_info, state_diff));
     }
 
