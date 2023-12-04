@@ -978,15 +978,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         simulation_flags: Vec<SimulationFlag>,
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
-<<<<<<< v0_6
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
-||||||| v0_5_old
-
-=======
 
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
->>>>>>> v0_5_new
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
                 read_pending_data(&self.pending_data, &storage_txn).await?,
@@ -1021,12 +1016,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 state_number,
                 block_number,
                 &block_execution_config,
-<<<<<<< v0_6
                 validate,
-||||||| v0_5_old
-=======
-                false,
->>>>>>> v0_5_new
             )
         })
         .await
