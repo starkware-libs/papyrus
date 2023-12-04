@@ -531,7 +531,7 @@ impl TryFrom<ExecutionError> for JsonRpcError<String> {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::MissingCompiledClass { .. } => Ok(BLOCK_NOT_FOUND),
             _ => Err(internal_server_error(value)),
         }
     }

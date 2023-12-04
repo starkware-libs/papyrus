@@ -525,7 +525,7 @@ impl TryFrom<ExecutionError> for JsonRpcError {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::MissingCompiledClass { .. } => Ok(BLOCK_NOT_FOUND),
             ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
             // All other execution errors are considered contract errors.
             _ => Ok(CONTRACT_ERROR),
