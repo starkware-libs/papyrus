@@ -159,7 +159,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "papyrus_header_latency{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_header_latency{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -225,7 +225,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -295,7 +295,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_base_layer_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_base_layer_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -393,7 +393,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} - papyrus_base_layer_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_base_layer_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -459,7 +459,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -528,7 +528,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -597,7 +597,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -666,7 +666,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "format": "table",
           "hide": false,
           "instant": true,
@@ -764,7 +764,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} - papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -859,7 +859,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} - papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -954,7 +954,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} - papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1049,7 +1049,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} - papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1145,7 +1145,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "floor(papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} * 10^4) / 10^4",
+          "expr": "floor(papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1241,7 +1241,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "floor(papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} * 10^4) / 10^4",
+          "expr": "floor(papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1337,7 +1337,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "floor(papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} * 10^4) / 10^4",
+          "expr": "floor(papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1433,7 +1433,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "floor(papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=\"$pod\"} * 10^4) / 10^4",
+          "expr": "floor(papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
           "refId": "Head / Central"
         }
@@ -1557,7 +1557,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=\"$pod\", container!=\"\"}[1m])",
+          "expr": "rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}[1m])",
           "interval": "",
           "legendFormat": "{{container}}",
           "range": true,
@@ -1666,7 +1666,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=\"$pod\", container!=\"\"}) by (container, pod)",
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}) by (container, pod)",
           "legendFormat": "{{container}}",
           "range": true,
           "refId": "A"
@@ -1900,7 +1900,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "- sum(rate(container_network_transmit_bytes_total{image!=\"\", namespace=\"$namespace\", pod=\"$pod\"}[1m])) by (container, pod)",
+          "expr": "- sum(rate(container_network_transmit_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
           "hide": false,
           "legendFormat": "Tx",
           "range": true,
@@ -1912,7 +1912,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(container_network_receive_bytes_total{image!=\"\", namespace=\"$namespace\", pod=\"$pod\"}[1m])) by (container, pod)",
+          "expr": "sum(rate(container_network_receive_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
           "hide": false,
           "legendFormat": "Rx",
           "range": true,
@@ -1989,7 +1989,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockNumber\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -2052,7 +2052,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockNumber\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -2116,7 +2116,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockNumber\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -2206,7 +2206,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockNumber\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -2270,7 +2270,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getNonce\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -2333,7 +2333,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getNonce\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -2397,7 +2397,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getNonce\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -2487,7 +2487,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getNonce\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -2551,7 +2551,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -2614,7 +2614,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -2678,7 +2678,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStateUpdate\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -2768,7 +2768,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -2832,7 +2832,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -2895,7 +2895,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -2959,7 +2959,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByHash\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -3049,7 +3049,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -3113,7 +3113,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClass\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -3176,7 +3176,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClass\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -3240,7 +3240,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClass\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -3330,7 +3330,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClass\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -3394,7 +3394,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getEvents\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -3457,7 +3457,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getEvents\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -3521,7 +3521,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getEvents\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -3611,7 +3611,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getNonce\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -3674,7 +3674,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassAt\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -3736,7 +3736,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassAt\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -3799,7 +3799,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassAt\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -3888,7 +3888,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassAt\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -3951,7 +3951,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -4013,7 +4013,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -4076,7 +4076,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassHashAt\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -4165,7 +4165,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -4228,7 +4228,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -4290,7 +4290,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -4353,7 +4353,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxs\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -4442,7 +4442,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -4505,7 +4505,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -4567,7 +4567,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -4630,7 +4630,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStorageAt\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -4719,7 +4719,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -4782,7 +4782,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -4844,7 +4844,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -4907,7 +4907,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -4996,7 +4996,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -5059,7 +5059,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -5121,7 +5121,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -5184,7 +5184,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionReceipt\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -5273,7 +5273,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -5336,7 +5336,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -5398,7 +5398,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -5461,7 +5461,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -5550,7 +5550,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -5613,7 +5613,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -5675,7 +5675,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -5738,7 +5738,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -5827,7 +5827,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -5890,7 +5890,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -5952,7 +5952,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -6015,7 +6015,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"addInvokeTransaction\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -6104,7 +6104,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -6167,7 +6167,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -6229,7 +6229,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -6292,7 +6292,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockHashAndNumber\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -6381,7 +6381,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -6444,7 +6444,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"chainId\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -6506,7 +6506,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"chainId\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -6569,7 +6569,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"chainId\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -6658,7 +6658,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"chainId\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -6721,7 +6721,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"syncing\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -6783,7 +6783,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"syncing\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -6846,7 +6846,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"syncing\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -6935,7 +6935,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"syncing\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -6998,7 +6998,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"call\",version=\"$version\"}",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
           "legendFormat": "Incoming requests",
           "range": true,
           "refId": "A"
@@ -7060,7 +7060,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"call\",version=\"$version\"}",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "Failed requests",
           "range": true,
@@ -7123,7 +7123,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"call\",version=\"$version\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\",quantile=\"0.95\"}",
           "hide": false,
           "legendFormat": "Latency",
           "range": true,
@@ -7212,7 +7212,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=\"$pod\", method=\"call\",version=\"$version\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
           "hide": false,
           "legendFormat": "{{quantile}}",
           "range": true,
@@ -7259,15 +7259,15 @@
         },
         "definition": "label_values(papyrus_header_marker{kubernetes_namespace=\"$namespace\"}, pod)",
         "hide": 0,
-        "includeAll": false,
-        "multi": false,
+        "includeAll": true,
+        "multi": true,
         "name": "pod",
         "options": [],
         "query": {
           "query": "label_values(papyrus_header_marker{kubernetes_namespace=\"$namespace\"}, pod)",
           "refId": "StandardVariableQuery"
         },
-        "refresh": 1,
+        "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
         "sort": 0,
