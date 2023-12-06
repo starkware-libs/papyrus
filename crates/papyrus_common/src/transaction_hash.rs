@@ -65,7 +65,12 @@ lazy_static! {
 pub fn get_transaction_hash(
     transaction: &Transaction,
     chain_id: &ChainId,
+    only_query: bool,
 ) -> Result<TransactionHash, StarknetApiError> {
+    if only_query {
+        // TODO(yair): Implement.
+        todo!("Calculating tx hash with only_query bit not supported yet.");
+    }
     match transaction {
         Transaction::Declare(declare) => match declare {
             DeclareTransaction::V0(declare_v0) => {
@@ -145,10 +150,11 @@ pub fn validate_transaction_hash(
     block_number: &BlockNumber,
     chain_id: &ChainId,
     expected_hash: TransactionHash,
+    only_query: bool,
 ) -> Result<bool, StarknetApiError> {
     let mut possible_hashes =
         get_deprecated_transaction_hashes(chain_id, block_number, transaction)?;
-    possible_hashes.push(get_transaction_hash(transaction, chain_id)?);
+    possible_hashes.push(get_transaction_hash(transaction, chain_id, only_query)?);
     Ok(possible_hashes.contains(&expected_hash))
 }
 

@@ -102,6 +102,7 @@ async fn test_gw_integration_testnet() {
     let hash = get_transaction_hash(
         &Transaction::Invoke(InvokeTransactionRPC0_4::Version1(invoke_tx.clone()).into()),
         &ChainId("SN_GOERLI".to_string()),
+        false,
     )
     .unwrap();
     let signature = ecdsa_sign(

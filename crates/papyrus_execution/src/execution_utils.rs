@@ -83,25 +83,25 @@ pub fn get_trace_constructor(
     tx: &ExecutableTransactionInput,
 ) -> fn(TransactionExecutionInfo) -> ExecutionResult<TransactionTrace> {
     match tx {
-        ExecutableTransactionInput::Invoke(_) => {
+        ExecutableTransactionInput::Invoke(..) => {
             |execution_info| Ok(TransactionTrace::Invoke(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::DeclareV0(_, _) => {
+        ExecutableTransactionInput::DeclareV0(..) => {
             |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::DeclareV1(_, _) => {
+        ExecutableTransactionInput::DeclareV1(..) => {
             |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::DeclareV2(_, _) => {
+        ExecutableTransactionInput::DeclareV2(..) => {
             |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::DeclareV3(_, _) => {
+        ExecutableTransactionInput::DeclareV3(..) => {
             |execution_info| Ok(TransactionTrace::Declare(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::DeployAccount(_) => {
+        ExecutableTransactionInput::DeployAccount(..) => {
             |execution_info| Ok(TransactionTrace::DeployAccount(execution_info.try_into()?))
         }
-        ExecutableTransactionInput::L1Handler(_, _) => {
+        ExecutableTransactionInput::L1Handler(..) => {
             |execution_info| Ok(TransactionTrace::L1Handler(execution_info.try_into()?))
         }
     }

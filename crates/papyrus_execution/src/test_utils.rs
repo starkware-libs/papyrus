@@ -46,7 +46,7 @@ use test_utils::read_json_file;
 use crate::execution_utils::selector_from_name;
 use crate::objects::{PendingData, TransactionTrace};
 use crate::testing_instances::test_block_execution_config;
-use crate::{simulate_transactions, ExecutableTransactionInput};
+use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery};
 
 lazy_static! {
     pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));
@@ -223,6 +223,7 @@ impl TxsScenarioBuilder {
         sender_address: ContractAddress,
         contract_address: ContractAddress,
         nonce: Option<Nonce>,
+        only_query: OnlyQuery,
     ) -> Self {
         let calldata = calldata![
             *contract_address.0.key(),             // Contract address.
@@ -239,13 +240,16 @@ impl TxsScenarioBuilder {
                 nonce
             }
         };
-        let tx = ExecutableTransactionInput::Invoke(InvokeTransaction::V1(InvokeTransactionV1 {
-            calldata,
-            max_fee: *MAX_FEE,
-            sender_address,
-            nonce,
-            ..Default::default()
-        }));
+        let tx = ExecutableTransactionInput::Invoke(
+            InvokeTransaction::V1(InvokeTransactionV1 {
+                calldata,
+                max_fee: *MAX_FEE,
+                sender_address,
+                nonce,
+                ..Default::default()
+            }),
+            only_query,
+        );
         self.txs.push(tx);
         self
     }
@@ -260,6 +264,7 @@ impl TxsScenarioBuilder {
                 ..Default::default()
             },
             get_test_deprecated_contract_class(),
+            false,
         );
         self.txs.push(tx);
         self
@@ -275,20 +280,22 @@ impl TxsScenarioBuilder {
                 ..Default::default()
             },
             get_test_casm(),
+            false,
         );
         self.txs.push(tx);
         self
     }
 
     pub fn deploy_account(mut self) -> TxsScenarioBuilder {
-        let tx = ExecutableTransactionInput::DeployAccount(DeployAccountTransaction::V1(
-            DeployAccountTransactionV1 {
+        let tx = ExecutableTransactionInput::DeployAccount(
+            DeployAccountTransaction::V1(DeployAccountTransactionV1 {
                 max_fee: *MAX_FEE,
                 nonce: Nonce(stark_felt!(0_u128)),
                 class_hash: *ACCOUNT_CLASS_HASH,
                 ..Default::default()
-            },
-        ));
+            }),
+            false,
+        );
         self.txs.push(tx);
         self
     }
