@@ -13,3 +13,14 @@ pub struct BlockHashAndNumber {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
 }
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+#[derive(Default)]
+pub struct TransactionOptions {
+    /// Transaction that shouldn't be broadcasted to StarkNet. For example, users that want to
+    /// test the execution of a transaction without revealing the signature.
+    /// Using this flag will modify the transaction version by setting the 128th bit to 1.
+    pub only_query: bool,
+}
+
+
