@@ -7235,14 +7235,14 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(kube_pod_info{namespace=~\".*papyrus.*\"}, namespace)",
+        "definition": "label_values(papyrus_header_marker, kubernetes_namespace)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "namespace",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{namespace=~\".*papyrus.*\"}, namespace)",
+          "query": "label_values(papyrus_header_marker, kubernetes_namespace)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -7257,14 +7257,14 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(kube_pod_info{namespace=\"$namespace\"}, pod)",
+        "definition": "label_values(papyrus_header_marker{kubernetes_namespace=\"$namespace\"}, pod)",
         "hide": 0,
         "includeAll": false,
         "multi": false,
         "name": "pod",
         "options": [],
         "query": {
-          "query": "label_values(kube_pod_info{namespace=\"$namespace\"}, pod)",
+          "query": "label_values(papyrus_header_marker{kubernetes_namespace=\"$namespace\"}, pod)",
           "refId": "StandardVariableQuery"
         },
         "refresh": 1,
@@ -7286,16 +7286,16 @@
         "options": [
           {
             "selected": false,
-            "text": "V0_3",
-            "value": "V0_3"
+            "text": "V0_4",
+            "value": "V0_4"
           },
           {
             "selected": false,
-            "text": "V0_4",
-            "value": "V0_4"
+            "text": "V0_5",
+            "value": "V0_5"
           }
         ],
-        "query": "V0_3,V0_4",
+        "query": "V0_4,V0_5",
         "queryValue": "None",
         "skipUrlSync": false,
         "type": "custom"
