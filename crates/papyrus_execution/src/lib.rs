@@ -48,6 +48,7 @@ use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::TransactionTrace;
 use papyrus_common::transaction_hash::get_transaction_hash;
+use papyrus_common::TransactionOptions;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::RO;
 use papyrus_storage::header::HeaderStorageReader;
@@ -345,9 +346,9 @@ pub enum ExecutableTransactionInput {
 
 impl ExecutableTransactionInput {
     fn calc_tx_hash(self, chain_id: &ChainId) -> ExecutionResult<(Self, TransactionHash)> {
-        match self
-            .apply_on_transaction(|tx, only_query| get_transaction_hash(tx, chain_id, only_query))
-        {
+        match self.apply_on_transaction(|tx, only_query| {
+            get_transaction_hash(tx, chain_id, &TransactionOptions { only_query })
+        }) {
             (original_tx, Ok(tx_hash)) => Ok((original_tx, tx_hash)),
             (_, Err(err)) => Err(ExecutionError::TransactionHashCalculationFailed(err)),
         }
