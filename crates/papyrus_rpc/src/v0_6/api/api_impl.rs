@@ -18,9 +18,10 @@ use papyrus_execution::{
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::compiled_class::CasmStorageReader;
+use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageReader};
+use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ChainId,
@@ -180,8 +181,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
         verify_storage_scope(&self.storage_reader)?;
 
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
+            let block = read_pending_data(&self.pending_data, &txn).await?.block;
             let pending_block_header = PendingBlockHeader {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
@@ -202,7 +204,6 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             });
         }
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
@@ -220,8 +221,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
         verify_storage_scope(&self.storage_reader)?;
 
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
+            let block = read_pending_data(&self.pending_data, &txn).await?.block;
             let pending_block_header = PendingBlockHeader {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
@@ -251,7 +253,6 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             });
         }
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let status = get_block_status(&txn, block_number)?;
         let header =
@@ -283,9 +284,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         key: StorageKey,
         block_id: BlockId,
     ) -> RpcResult<StarkFelt> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_storage_diffs = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(
-                read_pending_data(&self.pending_data, &self.storage_reader)
+                read_pending_data(&self.pending_data, &txn)
                     .await?
                     .state_update
                     .state_diff
@@ -294,8 +296,6 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         } else {
             None
         };
-
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
@@ -345,7 +345,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         } else {
             // The transaction is not in any non-pending block. Search for it in the pending block
             // and if it's not found, return error.
-            let client_transaction = read_pending_data(&self.pending_data, &self.storage_reader)
+            let client_transaction = read_pending_data(&self.pending_data, &txn)
                 .await?
                 .block
                 .transactions
@@ -371,33 +371,32 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     ) -> RpcResult<TransactionWithHash> {
         verify_storage_scope(&self.storage_reader)?;
 
-        let (starknet_api_transaction, transaction_hash) = if let BlockId::Tag(Tag::Pending) =
-            block_id
-        {
-            let client_transaction = read_pending_data(&self.pending_data, &self.storage_reader)
-                .await?
-                .block
-                .transactions
-                .get(index.0)
-                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
-                .clone();
-            let transaction_hash = client_transaction.transaction_hash();
-            (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
-        } else {
-            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-            let block_number = get_accepted_block_number(&txn, block_id)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let (starknet_api_transaction, transaction_hash) =
+            if let BlockId::Tag(Tag::Pending) = block_id {
+                let client_transaction = read_pending_data(&self.pending_data, &txn)
+                    .await?
+                    .block
+                    .transactions
+                    .get(index.0)
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
+                    .clone();
+                let transaction_hash = client_transaction.transaction_hash();
+                (client_transaction.try_into().map_err(internal_server_error)?, transaction_hash)
+            } else {
+                let block_number = get_accepted_block_number(&txn, block_id)?;
 
-            let tx_index = TransactionIndex(block_number, index);
-            let transaction = txn
-                .get_transaction(tx_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
-            let transaction_hash = txn
-                .get_transaction_hash_by_idx(&tx_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
-            (transaction, transaction_hash)
-        };
+                let tx_index = TransactionIndex(block_number, index);
+                let transaction = txn
+                    .get_transaction(tx_index)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+                let transaction_hash = txn
+                    .get_transaction_hash_by_idx(&tx_index)
+                    .map_err(internal_server_error)?
+                    .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?;
+                (transaction, transaction_hash)
+            };
 
         Ok(TransactionWithHash {
             transaction: starknet_api_transaction.try_into()?,
@@ -408,16 +407,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_transaction_count(&self, block_id: BlockId) -> RpcResult<usize> {
         verify_storage_scope(&self.storage_reader)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let transactions_len = read_pending_data(&self.pending_data, &self.storage_reader)
-                .await?
-                .block
-                .transactions
-                .len();
+            let transactions_len =
+                read_pending_data(&self.pending_data, &txn).await?.block.transactions.len();
             Ok(transactions_len)
         } else {
-            let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
             let block_number = get_accepted_block_number(&txn, block_id)?;
             let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
             Ok(transactions.len())
@@ -426,15 +422,14 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_state_update(&self, block_id: BlockId) -> RpcResult<StateUpdate> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         if let BlockId::Tag(Tag::Pending) = block_id {
-            let state_update =
-                read_pending_data(&self.pending_data, &self.storage_reader).await?.state_update;
+            let state_update = read_pending_data(&self.pending_data, &txn).await?.state_update;
             return Ok(StateUpdate::PendingStateUpdate(PendingStateUpdate {
                 old_root: state_update.old_root,
                 state_diff: state_update.state_diff.into(),
             }));
         }
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Get the block header for the block hash and state root.
         let block_number = get_accepted_block_number(&txn, block_id)?;
@@ -539,8 +534,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
             // TODO(shahak): Consider cloning the transactions and the receipts in order to free
             // the lock sooner (Check which is better).
-            let pending_block =
-                read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
+            let pending_block = read_pending_data(&self.pending_data, &txn).await?.block;
 
             let client_transaction_receipt = pending_block
                 .transaction_receipts
@@ -629,9 +623,11 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<ClassHash> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
         let maybe_pending_deployed_contracts = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(
-                read_pending_data(&self.pending_data, &self.storage_reader)
+                read_pending_data(&self.pending_data, &txn)
                     .await?
                     .state_update
                     .state_diff
@@ -640,8 +636,6 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         } else {
             None
         };
-
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let state_number = StateNumber::right_after_block(block_number);
@@ -661,19 +655,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         block_id: BlockId,
         contract_address: ContractAddress,
     ) -> RpcResult<Nonce> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
         let maybe_pending_nonces = if let BlockId::Tag(Tag::Pending) = block_id {
-            Some(
-                read_pending_data(&self.pending_data, &self.storage_reader)
-                    .await?
-                    .state_update
-                    .state_diff
-                    .nonces,
-            )
+            Some(read_pending_data(&self.pending_data, &txn).await?.state_update.state_diff.nonces)
         } else {
             None
         };
-
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
@@ -801,10 +789,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         if include_pending_block {
             let pending_transaction_receipts =
-                read_pending_data(&self.pending_data, &self.storage_reader)
-                    .await?
-                    .block
-                    .transaction_receipts;
+                read_pending_data(&self.pending_data, &txn).await?.block.transaction_receipts;
             // Extract the first transaction offset and event offset from the starting EventIndex.
             let (transaction_start, event_start) = if start_event_index.0.0 > latest_block_number {
                 (start_event_index.0.1.0, start_event_index.1.0)
@@ -883,18 +868,17 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         calldata: Calldata,
         block_id: BlockId,
     ) -> RpcResult<Vec<StarkFelt>> {
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
-                read_pending_data(&self.pending_data, &self.storage_reader).await?,
+                read_pending_data(&self.pending_data, &txn).await?,
                 self.pending_classes.read().await.clone(),
             ))
         } else {
             None
         };
-        let block_number = get_accepted_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
-            block_id,
-        )?;
+        let block_number = get_accepted_block_number(&txn, block_id)?;
+        drop(txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
@@ -995,9 +979,12 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
+
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
-                read_pending_data(&self.pending_data, &self.storage_reader).await?,
+                read_pending_data(&self.pending_data, &storage_txn).await?,
                 self.pending_classes.read().await.clone(),
             ))
         } else {
@@ -1007,10 +994,8 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
-        let block_number = get_accepted_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
-            block_id,
-        )?;
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
@@ -1065,19 +1050,19 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         let executable_txns =
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
-                read_pending_data(&self.pending_data, &self.storage_reader).await?,
+                read_pending_data(&self.pending_data, &storage_txn).await?,
                 self.pending_classes.read().await.clone(),
             ))
         } else {
             None
         };
 
-        let block_number = get_accepted_block_number(
-            &self.storage_reader.begin_ro_txn().map_err(internal_server_error)?,
-            block_id,
-        )?;
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
             .execution_config
@@ -1127,9 +1112,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         &self,
         transaction_hash: TransactionHash,
     ) -> RpcResult<TransactionTrace> {
-        let pending_block =
-            read_pending_data(&self.pending_data, &self.storage_reader).await?.block;
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
+        let pending_block = read_pending_data(&self.pending_data, &storage_txn).await?.block;
         // Search for the transaction inside the pending block.
         let (
             maybe_pending_data,
@@ -1273,13 +1258,14 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+
         let maybe_client_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
-            Some(read_pending_data(&self.pending_data, &self.storage_reader).await?)
+            Some(read_pending_data(&self.pending_data, &storage_txn).await?)
         } else {
             None
         };
 
-        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
 
         let (maybe_pending_data, block_transactions, transaction_hashes, state_number) =
@@ -1391,13 +1377,12 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     }
 }
 
-async fn read_pending_data(
+async fn read_pending_data<Mode: TransactionKind>(
     pending_data: &Arc<RwLock<PendingData>>,
-    storage_reader: &StorageReader,
+    txn: &StorageTxn<'_, Mode>,
 ) -> RpcResult<PendingData> {
-    let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-    let (latest_header, starknet_version) = match get_latest_block_number(&txn)? {
-        Some(latest_block_number) => get_block_header_by_number(&txn, latest_block_number)?,
+    let (latest_header, starknet_version) = match get_latest_block_number(txn)? {
+        Some(latest_block_number) => get_block_header_by_number(txn, latest_block_number)?,
         None => (
             starknet_api::block::BlockHeader {
                 parent_hash: BlockHash(
