@@ -4,6 +4,7 @@ use jsonrpsee::core::client::ClientT;
 use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
+use papyrus_common::TransactionOptions;
 use papyrus_rpc::{AddInvokeOkResultRPC0_4, InvokeTransactionRPC0_4, InvokeTransactionV1RPC0_4};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -102,7 +103,7 @@ async fn test_gw_integration_testnet() {
     let hash = get_transaction_hash(
         &Transaction::Invoke(InvokeTransactionRPC0_4::Version1(invoke_tx.clone()).into()),
         &ChainId("SN_GOERLI".to_string()),
-        false,
+        &TransactionOptions::default(),
     )
     .unwrap();
     let signature = ecdsa_sign(

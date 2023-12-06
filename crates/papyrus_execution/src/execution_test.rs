@@ -861,14 +861,25 @@ fn execute_call_checks_if_node_is_synced() {
 }
 
 #[test]
-#[should_panic(expected = "Calculating tx hash with only_query bit not supported yet.")]
 fn simulate_with_query_bit() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     prepare_storage(storage_writer);
 
+    // A tx with only_query=true.
     let tx = TxsScenarioBuilder::default()
         .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, true)
         .collect();
 
-    execute_simulate_transactions(storage_reader.clone(), None, tx, None, false, false);
+    let res_only_query =
+        execute_simulate_transactions(storage_reader.clone(), None, tx, None, false, false);
+
+    // A tx with only_query=false.
+    let tx = TxsScenarioBuilder::default()
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
+        .collect();
+
+    let res_regular =
+        execute_simulate_transactions(storage_reader.clone(), None, tx, None, false, false);
+
+    assert_eq!(res_only_query, res_regular);
 }
