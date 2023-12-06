@@ -36,7 +36,7 @@ use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageReader, StorageScope, StorageTxn};
 use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
@@ -175,10 +175,11 @@ fn verify_storage_scope(storage_reader: &StorageReader) -> RpcResult<()> {
     }
 }
 
+/// Get the latest block that we've downloaded and that we've downloaded its state diff.
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
-    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
+    Ok(txn.get_state_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_status<Mode: TransactionKind>(
