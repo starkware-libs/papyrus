@@ -5,6 +5,7 @@ use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
 use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::execution::call_info::Retdata;
+use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use indexmap::indexmap;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
@@ -871,4 +872,43 @@ fn simulate_with_query_bit() {
         .collect();
 
     execute_simulate_transactions(storage_reader.clone(), None, tx, None, false, false);
+}
+
+// Test that we provide the correct messages for different blockifier error variants.
+// TODO(yair): remove once blockifier arranges the errors.
+#[test]
+fn blockifier_error_mapping() {
+    let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
+    let expected = format!("Contract constructor execution has failed. {child}");
+    let blockifier_err =
+        BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(child);
+    let err = ExecutionError::from((0, blockifier_err));
+    let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
+    else {
+        panic!("unexpected variant")
+    };
+    assert_eq!(execution_error, expected);
+    assert_eq!(transaction_index, 0);
+
+    let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
+    let expected = format!("Transaction execution has failed. {child}");
+    let blockifier_err = BlockifierTransactionExecutionError::ExecutionError(child);
+    let err = ExecutionError::from((0, blockifier_err));
+    let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
+    else {
+        panic!("unexpected variant")
+    };
+    assert_eq!(execution_error, expected);
+    assert_eq!(transaction_index, 0);
+
+    let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
+    let expected = format!("Transaction validation has failed. {child}");
+    let blockifier_err = BlockifierTransactionExecutionError::ValidateTransactionError(child);
+    let err = ExecutionError::from((0, blockifier_err));
+    let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
+    else {
+        panic!("unexpected variant")
+    };
+    assert_eq!(execution_error, expected);
+    assert_eq!(transaction_index, 0);
 }
