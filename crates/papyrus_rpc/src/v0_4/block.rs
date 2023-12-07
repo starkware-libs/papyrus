@@ -74,18 +74,29 @@ pub fn get_block_header_by_number<
 }
 
 /// Return the closest block number that corresponds to the given block id and is accepted (i.e not
-/// pending)
+/// pending). Latest block means the most advanced block that we've downloaded and that we've
+/// downloaded its state diff.
 pub(crate) fn get_accepted_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     block_id: BlockId,
 ) -> Result<BlockNumber, ErrorObjectOwned> {
     Ok(match block_id {
-        BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => txn
-            .get_block_number_by_hash(&block_hash)
-            .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?,
+        BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)) => {
+            let block_number = txn
+                .get_block_number_by_hash(&block_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+
+            // Check that the block has state diff.
+            let last_block_number = get_latest_block_number(txn)?
+                .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+            if block_number > last_block_number {
+                return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND));
+            }
+            block_number
+        }
         BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number)) => {
-            // Check that the block exists.
+            // Check that the block exists and has state diff.
             let last_block_number = get_latest_block_number(txn)?
                 .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
             if block_number > last_block_number {
