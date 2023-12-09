@@ -44,10 +44,11 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
-use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::tables::Simple;
+use crate::db::{DbTransaction, Table, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
-type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber>;
+type BlockHashToNumberTable<'env> = TableHandle<'env, BlockHash, BlockNumber, Simple>;
 
 /// Interface for reading data related to the block headers.
 pub trait HeaderStorageReader {

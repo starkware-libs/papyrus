@@ -41,7 +41,7 @@ mod base_layer_test;
 
 use starknet_api::block::BlockNumber;
 
-use crate::db::{TransactionKind, RW};
+use crate::db::{Table, TransactionKind, RW};
 use crate::{MarkerKind, StorageResult, StorageTxn};
 
 /// Interface for reading data related to the base layer.

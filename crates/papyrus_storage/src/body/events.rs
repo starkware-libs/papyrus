@@ -62,7 +62,7 @@ use starknet_api::transaction::{
 };
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
-use crate::db::{DbCursor, DbTransaction, RO};
+use crate::db::{DbCursor, DbTransaction, Table, RO};
 use crate::{StorageResult, StorageTxn};
 
 /// An identifier of an event.

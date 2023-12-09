@@ -78,6 +78,8 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
+use db::tables::Simple;
+use db::Table;
 use mmap_file::{
     open_file,
     FileHandler,
@@ -135,27 +137,28 @@ pub fn open_storage(
 ) -> StorageResult<(StorageReader, StorageWriter)> {
     let (db_reader, mut db_writer) = open_env(&storage_config.db_config)?;
     let tables = Arc::new(Tables {
-        block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
-        casms: db_writer.create_table("casms")?,
-        contract_storage: db_writer.create_table("contract_storage")?,
-        declared_classes: db_writer.create_table("declared_classes")?,
-        declared_classes_block: db_writer.create_table("declared_classes_block")?,
-        deprecated_declared_classes: db_writer.create_table("deprecated_declared_classes")?,
-        deployed_contracts: db_writer.create_table("deployed_contracts")?,
-        events: db_writer.create_table("events")?,
-        headers: db_writer.create_table("headers")?,
-        markers: db_writer.create_table("markers")?,
-        nonces: db_writer.create_table("nonces")?,
-        file_offsets: db_writer.create_table("file_offsets")?,
-        state_diffs: db_writer.create_table("state_diffs")?,
-        transaction_hash_to_idx: db_writer.create_table("transaction_hash_to_idx")?,
-        transaction_idx_to_hash: db_writer.create_table("transaction_idx_to_hash")?,
-        transaction_outputs: db_writer.create_table("transaction_outputs")?,
-        transactions: db_writer.create_table("transactions")?,
+        block_hash_to_number: db_writer.create_simple_table("block_hash_to_number")?,
+        casms: db_writer.create_simple_table("casms")?,
+        contract_storage: db_writer.create_simple_table("contract_storage")?,
+        declared_classes: db_writer.create_simple_table("declared_classes")?,
+        declared_classes_block: db_writer.create_simple_table("declared_classes_block")?,
+        deprecated_declared_classes: db_writer
+            .create_simple_table("deprecated_declared_classes")?,
+        deployed_contracts: db_writer.create_simple_table("deployed_contracts")?,
+        events: db_writer.create_simple_table("events")?,
+        headers: db_writer.create_simple_table("headers")?,
+        markers: db_writer.create_simple_table("markers")?,
+        nonces: db_writer.create_simple_table("nonces")?,
+        file_offsets: db_writer.create_simple_table("file_offsets")?,
+        state_diffs: db_writer.create_simple_table("state_diffs")?,
+        transaction_hash_to_idx: db_writer.create_simple_table("transaction_hash_to_idx")?,
+        transaction_idx_to_hash: db_writer.create_simple_table("transaction_idx_to_hash")?,
+        transaction_outputs: db_writer.create_simple_table("transaction_outputs")?,
+        transactions: db_writer.create_simple_table("transactions")?,
 
         // Version tables
-        starknet_version: db_writer.create_table("starknet_version")?,
-        storage_version: db_writer.create_table("storage_version")?,
+        starknet_version: db_writer.create_simple_table("starknet_version")?,
+        storage_version: db_writer.create_simple_table("storage_version")?,
     });
     let (file_writers, file_readers) = open_storage_files(
         &storage_config.db_config,
@@ -397,10 +400,10 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug, T: Debug>(
         &self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> StorageResult<TableHandle<'_, K, V>> {
+        table_id: &TableIdentifier<K, V, T>,
+    ) -> StorageResult<TableHandle<'_, K, V, T>> {
         if self.scope == StorageScope::StateOnly {
             let unused_tables = [
                 self.tables.events.name,
@@ -427,27 +430,27 @@ pub fn table_names() -> &'static [&'static str] {
 
 struct_field_names! {
     struct Tables {
-        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, LocationInFile>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
-        declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        file_offsets: TableIdentifier<OffsetKind, usize>,
-        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
-        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber, Simple>,
+        casms: TableIdentifier<ClassHash, LocationInFile, Simple>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt, Simple>,
+        declared_classes: TableIdentifier<ClassHash, LocationInFile, Simple>,
+        declared_classes_block: TableIdentifier<ClassHash, BlockNumber, Simple>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass, Simple>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, Simple>,
+        events: TableIdentifier<(ContractAddress, EventIndex), EventContent, Simple>,
+        headers: TableIdentifier<BlockNumber, BlockHeader, Simple>,
+        markers: TableIdentifier<MarkerKind, BlockNumber, Simple>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, Simple>,
+        file_offsets: TableIdentifier<OffsetKind, usize, Simple>,
+        state_diffs: TableIdentifier<BlockNumber, LocationInFile, Simple>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex, Simple>,
+        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash, Simple>,
+        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput, Simple>,
+        transactions: TableIdentifier<TransactionIndex, Transaction, Simple>,
 
         // Version tables
-        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        starknet_version: TableIdentifier<BlockNumber, StarknetVersion, Simple>,
+        storage_version: TableIdentifier<String, Version, Simple>
     }
 }
 
@@ -558,7 +561,7 @@ pub(crate) enum MarkerKind {
     BaseLayerBlock,
 }
 
-pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber, Simple>;
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
@@ -645,7 +648,7 @@ fn open_storage_files(
     db_config: &DbConfig,
     mmap_file_config: MmapFileConfig,
     db_reader: DbReader,
-    file_offsets_table: &TableIdentifier<OffsetKind, usize>,
+    file_offsets_table: &TableIdentifier<OffsetKind, usize, Simple>,
 ) -> StorageResult<(FileHandlers<RW>, FileHandlers<RO>)> {
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;

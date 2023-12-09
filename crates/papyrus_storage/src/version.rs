@@ -4,7 +4,7 @@ mod version_test;
 
 use std::fmt::Display;
 
-use crate::db::{TransactionKind, RW};
+use crate::db::{Table, TransactionKind, RW};
 use crate::{StorageError, StorageResult, StorageTxn};
 
 const VERSION_STATE_KEY: &str = "storage_version_state";

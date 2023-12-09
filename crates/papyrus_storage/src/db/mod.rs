@@ -19,6 +19,8 @@ pub mod db_stats;
 // TODO(yair): Make the serialization module pub(crate).
 #[doc(hidden)]
 pub mod serialization;
+/// Database tables types.
+pub mod tables;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -28,7 +30,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, Geometry, PageSize, TableFlags, WriteFlags, WriteMap};
+use libmdbx::{Cursor, Geometry, PageSize, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::{validate_ascii, validate_path_exists};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -240,16 +242,6 @@ impl DbWriter {
     pub(crate) fn begin_rw_txn(&mut self) -> DbResult<DbWriteTransaction<'_>> {
         Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
     }
-
-    pub(crate) fn create_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
-        &mut self,
-        name: &'static str,
-    ) -> DbResult<TableIdentifier<K, V>> {
-        let txn = self.env.begin_rw_txn()?;
-        txn.create_table(Some(name), TableFlags::empty())?;
-        txn.commit()?;
-        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
 }
 
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
@@ -272,92 +264,53 @@ pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub fn open_table<'env, K: StorageSerde + Debug, V: StorageSerde + Debug, T: Debug>(
         &'env self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> DbResult<TableHandle<'env, K, V>> {
+        table_id: &TableIdentifier<K, V, T>,
+    ) -> DbResult<TableHandle<'env, K, V, T>> {
         let database = self.txn.open_table(Some(table_id.name))?;
         Ok(TableHandle {
             database,
             name: table_id.name,
             _key_type: PhantomData {},
             _value_type: PhantomData {},
+            _table_type: PhantomData {},
         })
     }
 }
-pub(crate) struct TableIdentifier<K: StorageSerde + Debug, V: StorageSerde + Debug> {
+
+pub(crate) struct TableIdentifier<K: StorageSerde + Debug, V: StorageSerde + Debug, T: Debug> {
     pub(crate) name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<T>,
 }
 
-pub(crate) struct TableHandle<'env, K: StorageSerde + Debug, V: StorageSerde + Debug> {
+pub(crate) struct TableHandle<'env, K: StorageSerde + Debug, V: StorageSerde + Debug, T: Debug> {
     database: libmdbx::Table<'env>,
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<T>,
 }
 
-impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'env, K, V> {
-    pub(crate) fn cursor<Mode: TransactionKind>(
+pub(crate) trait Table<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> {
+    fn cursor<Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
-    ) -> DbResult<DbCursor<'txn, Mode, K, V>> {
-        let cursor = txn.txn.cursor(&self.database)?;
-        Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
+    ) -> DbResult<DbCursor<'txn, Mode, K, V>>;
 
-    pub(crate) fn get<Mode: TransactionKind>(
+    fn get<Mode: TransactionKind>(
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
         key: &K,
-    ) -> DbResult<Option<V>> {
-        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
-        let bin_key = key.serialize()?;
-        let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
-            return Ok(None);
-        };
-        let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-        Ok(Some(value))
-    }
+    ) -> DbResult<Option<V>>;
 
-    pub(crate) fn upsert(
-        &'env self,
-        txn: &DbTransaction<'env, RW>,
-        key: &K,
-        value: &V,
-    ) -> DbResult<()> {
-        let data = value.serialize()?;
-        let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
-        Ok(())
-    }
+    fn upsert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> DbResult<()>;
 
-    pub(crate) fn insert(
-        &'env self,
-        txn: &DbTransaction<'env, RW>,
-        key: &K,
-        value: &V,
-    ) -> DbResult<()> {
-        let data = value.serialize()?;
-        let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE).map_err(|err| {
-            match err {
-                libmdbx::Error::KeyExist => {
-                    DbError::KeyAlreadyExists(KeyAlreadyExistsError::new(self.name, key, value))
-                }
-                _ => err.into(),
-            }
-        })?;
-        Ok(())
-    }
+    fn insert(&'env self, txn: &DbTransaction<'env, RW>, key: &K, value: &V) -> DbResult<()>;
 
-    #[allow(dead_code)]
-    pub(crate) fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()> {
-        let bin_key = key.serialize()?;
-        txn.txn.del(&self.database, bin_key, None)?;
-        Ok(())
-    }
+    fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()>;
 }
 
 pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {

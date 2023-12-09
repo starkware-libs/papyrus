@@ -61,15 +61,17 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
-use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::tables::Simple;
+use crate::db::{DbTransaction, Table, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
-type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
-type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction, Simple>;
+type TransactionOutputsTable<'env> =
+    TableHandle<'env, TransactionIndex, ThinTransactionOutput, Simple>;
+type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex, Simple>;
+type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash, Simple>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent, Simple>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
@@ -250,10 +252,11 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     // Helper function to get from 'table' all the values of entries with transaction index in
     // 'block_number'. The returned values are ordered by the transaction offset in block in
     // ascending order.
+    // TODO(dvir): make this function generic on table types (not only for Simple).
     fn get_transactions_in_block<V: StorageSerde + Debug>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, V>,
+        table: TableHandle<'env, TransactionIndex, V, Simple>,
     ) -> StorageResult<Option<Vec<V>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
@@ -280,7 +283,8 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         update_marker(&self.txn, &markers_table, block_number)?;
 
         if self.scope != StorageScope::StateOnly {
-            let transactions_table = self.open_table(&self.tables.transactions)?;
+            let transactions_table: TableHandle<'_, TransactionIndex, Transaction, _> =
+                self.open_table(&self.tables.transactions)?;
             let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
             let events_table = self.open_table(&self.tables.events)?;
             let transaction_hash_to_idx_table =
