@@ -9,7 +9,12 @@ use blockifier::state::state_api::StateReader;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
-use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
+use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StorageEntry,
+};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -223,6 +228,16 @@ fn read_state() {
         state_reader2.get_compiled_contract_class(&class_hash4).unwrap(),
         BlockifierContractClass::V0(ContractClassV0::try_from(class1).unwrap())
     );
+
+    // Test get_class_hash_at when the class is replaced.
+    if let Some(pending_data) = &mut state_reader2.maybe_pending_data {
+        pending_data.replaced_classes = vec![
+            ReplacedClass { address: address0, class_hash: class_hash3 },
+            ReplacedClass { address: address2, class_hash: class_hash3 },
+        ];
+    }
+    assert_eq!(state_reader2.get_class_hash_at(address0).unwrap(), class_hash3);
+    assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash3);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.

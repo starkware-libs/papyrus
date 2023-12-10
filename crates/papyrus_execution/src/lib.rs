@@ -245,7 +245,9 @@ fn verify_contract_exists(
     execution_utils::get_class_hash_at(
         &storage_reader.begin_ro_txn()?,
         state_number,
-        maybe_pending_data.map(|pending_state_diff| &pending_state_diff.deployed_contracts),
+        maybe_pending_data.map(|pending_state_diff| {
+            (&pending_state_diff.deployed_contracts, &pending_state_diff.replaced_classes)
+        }),
         contract_address,
     )?
     .ok_or(ExecutionError::ContractNotFound { contract_address, state_number })?;
