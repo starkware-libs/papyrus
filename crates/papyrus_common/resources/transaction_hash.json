@@ -19,6 +19,7 @@
       }
     },
     "transaction_hash": "0xd74a7310e8739a8586b851b928bcc32c955009e3a49057e986d0f2c0a06f16",
+    "only_query_transaction_hash": "0x76088854557ecc268f646950351ebe6845e0aa1ffc9a5be2458abb5716beca1",
     "chain_id": "SN_GOERLI",
     "block_number": 385429
   },
@@ -38,6 +39,7 @@
       }
     },
     "transaction_hash": "0x39017e29a3e0f7f01478ef718096ba4529eabe7e554614f26ff4d0000e2c248",
+    "only_query_transaction_hash": "0x356ced65ceadff1ffa0b4dddd91b36429369bc4800d38f3b5f250416a29384d",
     "chain_id": "SN_GOERLI",
     "block_number": 385429
   },
@@ -68,6 +70,7 @@
       }
     },
     "transaction_hash": "0x2a50202d4c6936c70f3c604c0f8059f17eab30329b662436b02069a7dd27cc9",
+    "only_query_transaction_hash": "0x113a83ac6d72e748f5d1e483f39d6f8b20c1e6a63f253d96997008d40b995d1",
     "chain_id": "SN_GOERLI",
     "block_number": 330291
   },
@@ -103,6 +106,7 @@
       }
     },
     "transaction_hash": "0x5a5e819664c7550d60d9e4bce8da3478a133602b81e4d0bfdbbc4bb30125a96",
+    "only_query_transaction_hash": "0x251e5a341f5074650cfb075aa173f8c3001f5dd7d34f705809f26845ac6366e",
     "chain_id": "SN_GOERLI",
     "block_number": 248971
   },
@@ -122,6 +126,7 @@
       }
     },
     "transaction_hash": "0x64b91efce5648a65b950d3aa560b4e265eedd9b49b232a85170510c4c77e9bc",
+    "only_query_transaction_hash": "0x52d8e3c33d68ac7f56e8055c11b72de076f0cccfc22713eac2d3c9d6aeeed96",
     "chain_id": "SN_GOERLI",
     "block_number": 330039
   },
@@ -142,6 +147,7 @@
       }
     },
     "transaction_hash": "0x29410c3ab8d8a7d593e915f3051b9c71e48626cf688c7c8c526f400648cf24c",
+    "only_query_transaction_hash": "0x34b5dd13359699589e42b107394d8c1f08977797244491cd2cfc70115824b79",
     "chain_id": "SN_GOERLI",
     "block_number": 789048
   },
@@ -170,6 +176,7 @@
       }
     },
     "transaction_hash": "0x23a8b9fb4e1648dad90077fcc862addb720ce9bdc3e028ea5a71fe3cbda8242",
+    "only_query_transaction_hash": "0x6d580295d737ff5ce30c216c7f0cb26ba3d8fbaeef259d23f631588b5d6352b",
     "chain_id": "SN_MAIN",
     "block_number": 100000
   },
@@ -177,7 +184,10 @@
     "transaction": {
       "Declare": {
         "V3": {
-          "signature": ["0x3", "0x4"],
+          "signature": [
+            "0x3",
+            "0x4"
+          ],
           "nonce": "0x0",
           "sender_address": "0x12fd538",
           "nonce_data_availability_mode": "L1",
@@ -205,6 +215,7 @@
       }
     },
     "transaction_hash": "0x6819909698b213a42e90751f85e6c6be877a679503e1a50921b1efc7ea997e",
+    "only_query_transaction_hash": "0x6c51a3a39c4d52a9de0fddaf2bfc38965f3f19021b96153a35d79e4344ff67a",
     "chain_id": "3",
     "block_number": 0
   },
@@ -212,10 +223,16 @@
     "transaction": {
       "DeployAccount": {
         "V3": {
-          "signature": ["0x3", "0x4"],
+          "signature": [
+            "0x3",
+            "0x4"
+          ],
           "nonce": "0x0",
           "sender_address": "0x219bea54dc352c0d6853de34019644758620fa6298c4608829228c3f5f8db33",
-          "constructor_calldata": ["0x21b", "0x151"],
+          "constructor_calldata": [
+            "0x21b",
+            "0x151"
+          ],
           "contract_address_salt": "0x12fd537",
           "nonce_data_availability_mode": "L1",
           "fee_data_availability_mode": "L1",
@@ -236,6 +253,7 @@
       }
     },
     "transaction_hash": "0x3877e0ffb3917187deb3321f6017f5339d22a3753d498df76203b6b8120dde5",
+    "only_query_transaction_hash": "0x2135e211a2b7f812479288ae0bcd89f0d3c96bf5626a0527588704cc73fc108",
     "chain_id": "2",
     "block_number": 0
   },
@@ -243,10 +261,16 @@
     "transaction": {
       "Invoke": {
         "V3": {
-          "signature": ["0x3", "0x4"],
+          "signature": [
+            "0x3",
+            "0x4"
+          ],
           "nonce": "0x9",
           "sender_address": "0x12fd538",
-          "constructor_calldata": ["0x21b", "0x151"],
+          "constructor_calldata": [
+            "0x21b",
+            "0x151"
+          ],
           "nonce_data_availability_mode": "L1",
           "fee_data_availability_mode": "L1",
           "resource_bounds": {
@@ -270,6 +294,7 @@
       }
     },
     "transaction_hash": "0x35591624e5ea7e612f7c65f7c5fcfa0d972365359cfb611aaf93a13a6026a13",
+    "only_query_transaction_hash": "0x56c02ab43d6ac92874f49bd27727cf1d0f3aa71bbe6c37056a3ed539be8746f",
     "chain_id": "1",
     "block_number": 0
   }

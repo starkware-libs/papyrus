@@ -1697,7 +1697,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x0"
+                                    "0x0",
+                                    "0x100000000000000000000000000000000"
                                 ]
                             },
                             "signature": {
@@ -1751,7 +1752,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x1"
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
                                 ]
                             },
                             "signature": {
@@ -1815,7 +1817,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x2"
+                                    "0x2",
+                                    "0x100000000000000000000000000000002"
                                 ]
                             },
                             "signature": {
@@ -1875,7 +1878,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
@@ -2011,7 +2015,11 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2072,7 +2080,11 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x2",
+                                    "0x100000000000000000000000000000002"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2131,7 +2143,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
@@ -2235,7 +2248,11 @@
                     "version": {
                         "title": "Version",
                         "description": "Version of the transaction scheme",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "type": "string",
+                        "enum": [
+                            "0x1",
+                            "0x100000000000000000000000000000001"
+                        ]
                     },
                     "signature": {
                         "title": "Signature",
@@ -2291,7 +2308,8 @@
                         "description": "Version of the transaction scheme",
                         "type": "string",
                         "enum": [
-                            "0x3"
+                            "0x3",
+                            "0x100000000000000000000000000000003"
                         ]
                     },
                     "signature": {
@@ -2434,7 +2452,8 @@
                         "description": "Version of the transaction scheme",
                         "type": "string",
                         "enum": [
-                            "0x0"
+                            "0x0",
+                            "0x100000000000000000000000000000000"
                         ]
                     },
                     "signature": {
@@ -2504,7 +2523,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x1"
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
                                 ]
                             },
                             "signature": {
@@ -2559,7 +2579,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
