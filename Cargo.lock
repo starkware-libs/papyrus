@@ -4353,6 +4353,7 @@ dependencies = [
 name = "papyrus_execution"
 version = "0.2.0-rc4"
 dependencies = [
+ "anyhow",
  "assert_matches",
  "blockifier",
  "cairo-lang-casm",

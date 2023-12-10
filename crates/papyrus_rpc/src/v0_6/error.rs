@@ -54,10 +54,11 @@ pub struct ContractError {
     pub revert_error: String,
 }
 
-pub fn contract_error(contract_error: ContractError) -> JsonRpcError<ContractError> {
-    JsonRpcError { code: 40, message: "Contract error", data: Some(contract_error) }
+impl From<ContractError> for JsonRpcError<ContractError> {
+    fn from(contract_error: ContractError) -> Self {
+        Self { code: 40, message: "Contract error", data: Some(contract_error) }
+    }
 }
-
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct TransactionExecutionError {
     pub transaction_index: usize,

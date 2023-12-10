@@ -31,11 +31,9 @@ use blockifier::execution::entry_point::{
     EntryPointExecutionContext,
     ExecutionResources,
 };
-use blockifier::execution::errors::{EntryPointExecutionError, PreExecutionError};
 use blockifier::state::cached_state::CachedState;
-use blockifier::state::errors::StateError;
 use blockifier::state::state_api::State;
-use blockifier::transaction::errors::TransactionExecutionError;
+use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
     AccountTransactionContext,
     DeprecatedAccountTransactionContext,
@@ -44,7 +42,6 @@ use blockifier::transaction::objects::{
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
-use cairo_vm::types::errors::program_errors::ProgramError;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::TransactionTrace;
 use papyrus_common::transaction_hash::get_transaction_hash;
@@ -137,36 +134,27 @@ impl ExecutionConfigByBlock {
 }
 
 #[allow(missing_docs)]
-// TODO(yair): arrange the errors into a normal error type.
 /// The error type for the execution module.
 #[derive(thiserror::Error, Debug)]
 pub enum ExecutionError {
+    #[error(transparent)]
+    ContractError(#[from] BlockifierError),
+    #[error(
+        "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
+    )]
+    TransactionExecutionError { transaction_index: usize, execution_error: String },
     #[error(
         "The contract at address {contract_address:?} is not found at state number \
          {state_number:?}."
     )]
     ContractNotFound { contract_address: ContractAddress, state_number: StateNumber },
-    #[error(transparent)]
-    EntryPointExecutionError(#[from] EntryPointExecutionError),
-    #[error(transparent)]
-    StorageError(#[from] StorageError),
     #[error(
         "The node is not synced. state_number: {state_number:?}, compiled_class_marker: \
          {compiled_class_marker:?}"
     )]
     NotSynced { state_number: StateNumber, compiled_class_marker: BlockNumber },
     #[error(transparent)]
-    StateError(#[from] StateError),
-    #[error("Failed to calculate transaction hash.")]
-    TransactionHashCalculationFailed(StarknetApiError),
-    #[error(transparent)]
-    PreExecutionError(#[from] PreExecutionError),
-    #[error(transparent)]
-    ProgramError(#[from] ProgramError),
-    #[error(transparent)]
-    TransactionExecutionError(#[from] TransactionExecutionError),
-    #[error("Charging fee is not supported yet in execution.")]
-    ChargeFeeNotSupported,
+    StorageError(#[from] StorageError),
     #[error("Execution config file does not contain a configuration for all blocks")]
     ConfigContentError,
     #[error(transparent)]
@@ -175,10 +163,15 @@ pub enum ExecutionError {
     ConfigSerdeError(#[from] serde_json::Error),
     #[error("Missing class hash in call info")]
     MissingClassHash,
+    #[error("Failed to calculate transaction hash.")]
+    TransactionHashCalculationFailed(StarknetApiError),
 }
 
 /// Whether the only-query bit of the transaction version is on.
 pub type OnlyQuery = bool;
+
+/// Gathers all the possible errors that can be returned from the blockifier.
+type BlockifierError = anyhow::Error;
 
 /// Executes a StarkNet call and returns the execution result.
 #[allow(clippy::too_many_arguments)]
@@ -232,13 +225,12 @@ pub fn execute_call(
         // TODO(yair): fix when supporting v3 transactions
         &AccountTransactionContext::Deprecated(DeprecatedAccountTransactionContext::default()),
         true, // limit_steps_by_resources
-    )?;
+    )
+    .map_err(|err| ExecutionError::ContractError(err.into()))?;
 
-    let res = call_entry_point.execute(
-        &mut cached_state,
-        &mut ExecutionResources::default(),
-        &mut context,
-    )?;
+    let res = call_entry_point
+        .execute(&mut cached_state, &mut ExecutionResources::default(), &mut context)
+        .map_err(|err| ExecutionError::ContractError(err.into()))?;
 
     Ok(res.execution)
 }
@@ -537,7 +529,8 @@ fn execute_transactions(
     };
 
     let mut res = vec![];
-    for (tx, tx_hash) in txs.into_iter().zip(tx_hashes.into_iter()) {
+    for (transaction_index, (tx, tx_hash)) in txs.into_iter().zip(tx_hashes.into_iter()).enumerate()
+    {
         let mut transactional_state = CachedState::create_transactional(&mut cached_state);
         let deprecated_declared_class_hash = match &tx {
             ExecutableTransactionInput::DeclareV0(
@@ -552,13 +545,10 @@ fn execute_transactions(
             ) => Some(*class_hash),
             _ => None,
         };
-        let blockifier_tx = to_blockifier_tx(tx, tx_hash)?;
-        let tx_execution_info = blockifier_tx.execute(
-            &mut transactional_state,
-            &block_context,
-            charge_fee,
-            validate,
-        )?;
+        let blockifier_tx = to_blockifier_tx(tx, tx_hash, transaction_index)?;
+        let tx_execution_info = blockifier_tx
+            .execute(&mut transactional_state, &block_context, charge_fee, validate)
+            .map_err(|err| ExecutionError::from((transaction_index, err)))?;
         let state_diff =
             induced_state_diff(&mut transactional_state, deprecated_declared_class_hash)?;
         transactional_state.commit();
@@ -566,6 +556,32 @@ fn execute_transactions(
     }
 
     Ok((res, block_context))
+}
+
+/// Converts a transaction index and [BlockifierTransactionExecutionError] to an [ExecutionError].
+// TODO(yair): Remove once blockifier arranges the errors hierarchy.
+impl From<(usize, BlockifierTransactionExecutionError)> for ExecutionError {
+    fn from(transaction_index_and_error: (usize, BlockifierTransactionExecutionError)) -> Self {
+        let (transaction_index, error) = transaction_index_and_error;
+        Self::TransactionExecutionError {
+            transaction_index,
+            execution_error: match &error {
+                // Some variants don't propagate their child's error so we do this manually
+                // until it is fixed in the blockifier. We have a test to
+                // ensure we don't miss fix.
+                BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(x) => {
+                    format!("{error} {x}")
+                }
+                BlockifierTransactionExecutionError::ExecutionError(x) => {
+                    format!("{error} {x}")
+                }
+                BlockifierTransactionExecutionError::ValidateTransactionError(x) => {
+                    format!("{error} {x}")
+                }
+                other => other.to_string(),
+            },
+        }
+    }
 }
 
 /// Sets the block hash contract (contract at address 1) with the block hash of the block 10 blocks
@@ -595,85 +611,106 @@ fn set_block_hash_contract(
 fn to_blockifier_tx(
     tx: ExecutableTransactionInput,
     tx_hash: TransactionHash,
+    transaction_index: usize,
 ) -> ExecutionResult<BlockifierTransaction> {
     // TODO(yair): support only_query version bit (enable in the RPC v0.6 and use the correct
     // value).
     match tx {
         ExecutableTransactionInput::Invoke(invoke_tx, only_query) => {
-            Ok(BlockifierTransaction::from_api(
+            BlockifierTransaction::from_api(
                 Transaction::Invoke(invoke_tx),
                 tx_hash,
                 None,
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
 
         ExecutableTransactionInput::DeployAccount(deploy_acc_tx, only_query) => {
-            Ok(BlockifierTransaction::from_api(
+            BlockifierTransaction::from_api(
                 Transaction::DeployAccount(deploy_acc_tx),
                 tx_hash,
                 None,
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
 
         ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class, only_query) => {
-            let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
-            Ok(BlockifierTransaction::from_api(
+            let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into().map_err(
+                |e: cairo_vm::types::errors::program_errors::ProgramError| {
+                    ExecutionError::TransactionExecutionError {
+                        transaction_index,
+                        execution_error: e.to_string(),
+                    }
+                },
+            )?);
+            BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V0(declare_tx)),
                 tx_hash,
                 Some(class_v0),
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
         ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class, only_query) => {
-            let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
-            Ok(BlockifierTransaction::from_api(
+            let class_v0 = BlockifierContractClass::V0(
+                deprecated_class.try_into().map_err(BlockifierError::new)?,
+            );
+            BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V1(declare_tx)),
                 tx_hash,
                 Some(class_v0),
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
         ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class, only_query) => {
-            let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
-            Ok(BlockifierTransaction::from_api(
+            let class_v1 = BlockifierContractClass::V1(
+                compiled_class.try_into().map_err(BlockifierError::new)?,
+            );
+            BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V2(declare_tx)),
                 tx_hash,
                 Some(class_v1),
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
         ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class, only_query) => {
-            let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
-            Ok(BlockifierTransaction::from_api(
+            let class_v1 = BlockifierContractClass::V1(
+                compiled_class.try_into().map_err(BlockifierError::new)?,
+            );
+            BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V3(declare_tx)),
                 tx_hash,
                 Some(class_v1),
                 None,
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
         ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee, only_query) => {
-            Ok(BlockifierTransaction::from_api(
+            BlockifierTransaction::from_api(
                 Transaction::L1Handler(l1_handler_tx),
                 tx_hash,
                 None,
                 Some(paid_fee),
                 None,
                 only_query,
-            )?)
+            )
+            .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
     }
 }
