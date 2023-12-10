@@ -17,17 +17,11 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
-use starknet_api::transaction::{
-    Calldata,
-    EventKey,
-    Fee,
-    TransactionHash,
-    TransactionOffsetInBlock,
-};
+use starknet_api::transaction::{EventKey, Fee, TransactionHash, TransactionOffsetInBlock};
 use tracing::debug;
 
 use super::block::Block;
@@ -51,7 +45,7 @@ use super::transaction::{
     TransactionWithHash,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
-use crate::api::BlockId;
+use crate::api::{BlockId, CallRequest};
 use crate::syncing_state::SyncingState;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
@@ -176,13 +170,7 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    async fn call(
-        &self,
-        contract_address: ContractAddress,
-        entry_point_selector: EntryPointSelector,
-        calldata: Calldata,
-        block_id: BlockId,
-    ) -> RpcResult<Vec<StarkFelt>>;
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>>;
 
     /// Submits a new invoke transaction to be added to the chain.
     #[method(name = "addInvokeTransaction")]
