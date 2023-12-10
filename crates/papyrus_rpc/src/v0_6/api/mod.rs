@@ -28,6 +28,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -39,7 +40,6 @@ use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::error::{
     ContractError,
     JsonRpcError,
-    TransactionExecutionError,
     BLOCK_NOT_FOUND,
     CONTRACT_NOT_FOUND,
     INVALID_CONTINUATION_TOKEN,
@@ -595,12 +595,12 @@ impl TryFrom<ApiContractClass> for GatewayContractClass {
 
 pub(crate) fn execution_error_to_error_object_owned(err: ExecutionError) -> ErrorObjectOwned {
     match err {
-        ExecutionError::NotSynced { .. } => BLOCK_NOT_FOUND.into(),
-        ExecutionError::TransactionExecutionError { transaction_index, execution_error } => {
-            let tx_execution_error =
-                TransactionExecutionError { transaction_index, execution_error };
-            let rpc_err: JsonRpcError<TransactionExecutionError> = tx_execution_error.into();
-            rpc_err.into()
+        ExecutionError::MissingCompiledClass { class_hash } => {
+            debug!(
+                "Execution failed because it required the compiled class with hash {class_hash} \
+                 and we didn't download it yet."
+            );
+            BLOCK_NOT_FOUND.into()
         }
         ExecutionError::ContractError(blockifier_err) => {
             let contract_err = ContractError { revert_error: blockifier_err.to_string() };

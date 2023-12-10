@@ -18,6 +18,8 @@ pub const CONTRACT_NOT_FOUND: JsonRpcError =
 pub const INVALID_TRANSACTION_HASH: JsonRpcError =
     JsonRpcError { code: 25, message: "Invalid transaction hash", data: None };
 
+// TODO(shahak): Remove allow(dead_code) once all errors are used.
+#[allow(dead_code)]
 pub const INVALID_BLOCK_HASH: JsonRpcError =
     JsonRpcError { code: 26, message: "Invalid block hash", data: None };
 

@@ -28,6 +28,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionOffsetInBlock,
 };
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -535,7 +536,13 @@ impl TryFrom<ExecutionError> for JsonRpcError<String> {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::MissingCompiledClass { class_hash } => {
+                debug!(
+                    "Execution failed because it required the compiled class with hash \
+                     {class_hash} and we didn't download it yet."
+                );
+                Ok(BLOCK_NOT_FOUND)
+            }
             _ => Err(internal_server_error(value)),
         }
     }
