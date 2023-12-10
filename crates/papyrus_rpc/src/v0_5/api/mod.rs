@@ -253,10 +253,14 @@ pub struct EventsChunk {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub to_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<ContinuationToken>,
     pub chunk_size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<ContractAddress>,
     #[serde(default)]
     pub keys: Vec<HashSet<EventKey>>,
