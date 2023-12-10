@@ -1046,7 +1046,7 @@ fn broadcasted_to_executable_declare_v1() {
         BroadcastedTransaction::Declare(BroadcastedDeclareTransaction::V1(tx));
     assert_matches!(
         broadcasted_declare_v1.try_into(),
-        Ok(ExecutableTransactionInput::DeclareV1(_tx, _class))
+        Ok(ExecutableTransactionInput::DeclareV1(_tx, _class, _only_query))
     );
 }
 
@@ -1111,7 +1111,7 @@ fn broadcasted_to_executable_deploy_account() {
     );
     assert_matches!(
         broadcasted_deploy_account.try_into(),
-        Ok(ExecutableTransactionInput::DeployAccount(_tx))
+        Ok(ExecutableTransactionInput::DeployAccount(_tx, _only_query))
     );
 }
 
@@ -1122,7 +1122,7 @@ fn broadcasted_to_executable_invoke() {
         BroadcastedTransaction::Invoke(InvokeTransaction::get_test_instance(&mut rng));
     assert_matches!(
         broadcasted_deploy_account.try_into(),
-        Ok(ExecutableTransactionInput::Invoke(_tx))
+        Ok(ExecutableTransactionInput::Invoke(_tx, _only_query))
     );
 }
 

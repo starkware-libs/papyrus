@@ -176,6 +176,9 @@ pub enum ExecutionError {
     MissingClassHash,
 }
 
+/// Whether the only-query bit of the transaction version is on.
+pub type OnlyQuery = bool;
+
 /// Executes a StarkNet call and returns the execution result.
 #[allow(clippy::too_many_arguments)]
 pub fn execute_call(
@@ -330,19 +333,21 @@ fn create_block_context(
 #[allow(missing_docs)]
 #[derive(Clone, Debug)]
 pub enum ExecutableTransactionInput {
-    Invoke(InvokeTransaction),
+    Invoke(InvokeTransaction, OnlyQuery),
     // todo(yair): Do we need to support V0?
-    DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass),
-    DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass),
-    DeclareV2(DeclareTransactionV2, CasmContractClass),
-    DeclareV3(DeclareTransactionV3, CasmContractClass),
-    DeployAccount(DeployAccountTransaction),
-    L1Handler(L1HandlerTransaction, Fee),
+    DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass, OnlyQuery),
+    DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass, OnlyQuery),
+    DeclareV2(DeclareTransactionV2, CasmContractClass, OnlyQuery),
+    DeclareV3(DeclareTransactionV3, CasmContractClass, OnlyQuery),
+    DeployAccount(DeployAccountTransaction, OnlyQuery),
+    L1Handler(L1HandlerTransaction, Fee, OnlyQuery),
 }
 
 impl ExecutableTransactionInput {
     fn calc_tx_hash(self, chain_id: &ChainId) -> ExecutionResult<(Self, TransactionHash)> {
-        match self.apply_on_transaction(|tx| get_transaction_hash(tx, chain_id)) {
+        match self
+            .apply_on_transaction(|tx, only_query| get_transaction_hash(tx, chain_id, only_query))
+        {
             (original_tx, Ok(tx_hash)) => Ok((original_tx, tx_hash)),
             (_, Err(err)) => Err(ExecutionError::TransactionHashCalculationFailed(err)),
         }
@@ -353,64 +358,64 @@ impl ExecutableTransactionInput {
     // TODO(yair): Refactor this.
     fn apply_on_transaction<F, T>(self, func: F) -> (Self, T)
     where
-        F: Fn(&Transaction) -> T,
+        F: Fn(&Transaction, OnlyQuery) -> T,
     {
         match self {
-            ExecutableTransactionInput::Invoke(tx) => {
+            ExecutableTransactionInput::Invoke(tx, only_query) => {
                 let as_transaction = Transaction::Invoke(tx);
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::Invoke(tx) = as_transaction else {
                     unreachable!("Should be invoke transaction.")
                 };
-                (Self::Invoke(tx), res)
+                (Self::Invoke(tx, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV0(tx, class) => {
+            ExecutableTransactionInput::DeclareV0(tx, class, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V0(tx));
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V0(tx)) = as_transaction else {
                     unreachable!("Should be declare v0 transaction.")
                 };
-                (Self::DeclareV0(tx, class), res)
+                (Self::DeclareV0(tx, class, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV1(tx, class) => {
+            ExecutableTransactionInput::DeclareV1(tx, class, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V1(tx));
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V1(tx)) = as_transaction else {
                     unreachable!("Should be declare v1 transaction.")
                 };
-                (Self::DeclareV1(tx, class), res)
+                (Self::DeclareV1(tx, class, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV2(tx, class) => {
+            ExecutableTransactionInput::DeclareV2(tx, class, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V2(tx));
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V2(tx)) = as_transaction else {
                     unreachable!("Should be declare v2 transaction.")
                 };
-                (Self::DeclareV2(tx, class), res)
+                (Self::DeclareV2(tx, class, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV3(tx, class) => {
+            ExecutableTransactionInput::DeclareV3(tx, class, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V3(tx));
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V3(tx)) = as_transaction else {
                     unreachable!("Should be declare v3 transaction.")
                 };
-                (Self::DeclareV3(tx, class), res)
+                (Self::DeclareV3(tx, class, only_query), res)
             }
-            ExecutableTransactionInput::DeployAccount(tx) => {
+            ExecutableTransactionInput::DeployAccount(tx, only_query) => {
                 let as_transaction = Transaction::DeployAccount(tx);
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::DeployAccount(tx) = as_transaction else {
                     unreachable!("Should be deploy account transaction.")
                 };
-                (Self::DeployAccount(tx), res)
+                (Self::DeployAccount(tx, only_query), res)
             }
-            ExecutableTransactionInput::L1Handler(tx, fee) => {
+            ExecutableTransactionInput::L1Handler(tx, fee, only_query) => {
                 let as_transaction = Transaction::L1Handler(tx);
-                let res = func(&as_transaction);
+                let res = func(&as_transaction, only_query);
                 let Transaction::L1Handler(tx) = as_transaction else {
                     unreachable!("Should be L1 handler transaction.")
                 };
-                (Self::L1Handler(tx, fee), res)
+                (Self::L1Handler(tx, fee, only_query), res)
             }
         }
     }
@@ -452,6 +457,7 @@ pub fn estimate_fee(
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
+    validate: bool,
 ) -> ExecutionResult<FeeEstimationResult> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -463,7 +469,7 @@ pub fn estimate_fee(
         block_context_block_number,
         execution_config,
         false,
-        false,
+        validate,
     )?;
     Ok(txs_execution_info
         .into_iter()
@@ -533,12 +539,16 @@ fn execute_transactions(
     for (tx, tx_hash) in txs.into_iter().zip(tx_hashes.into_iter()) {
         let mut transactional_state = CachedState::create_transactional(&mut cached_state);
         let deprecated_declared_class_hash = match &tx {
-            ExecutableTransactionInput::DeclareV0(DeclareTransactionV0V1 { class_hash, .. }, _) => {
-                Some(*class_hash)
-            }
-            ExecutableTransactionInput::DeclareV1(DeclareTransactionV0V1 { class_hash, .. }, _) => {
-                Some(*class_hash)
-            }
+            ExecutableTransactionInput::DeclareV0(
+                DeclareTransactionV0V1 { class_hash, .. },
+                _,
+                _,
+            ) => Some(*class_hash),
+            ExecutableTransactionInput::DeclareV1(
+                DeclareTransactionV0V1 { class_hash, .. },
+                _,
+                _,
+            ) => Some(*class_hash),
             _ => None,
         };
         let blockifier_tx = to_blockifier_tx(tx, tx_hash)?;
@@ -587,29 +597,30 @@ fn to_blockifier_tx(
 ) -> ExecutionResult<BlockifierTransaction> {
     // TODO(yair): support only_query version bit (enable in the RPC v0.6 and use the correct
     // value).
-    const ONLY_QUERY: bool = false;
     match tx {
-        ExecutableTransactionInput::Invoke(invoke_tx) => Ok(BlockifierTransaction::from_api(
-            Transaction::Invoke(invoke_tx),
-            tx_hash,
-            None,
-            None,
-            None,
-            ONLY_QUERY,
-        )?),
+        ExecutableTransactionInput::Invoke(invoke_tx, only_query) => {
+            Ok(BlockifierTransaction::from_api(
+                Transaction::Invoke(invoke_tx),
+                tx_hash,
+                None,
+                None,
+                None,
+                only_query,
+            )?)
+        }
 
-        ExecutableTransactionInput::DeployAccount(deploy_acc_tx) => {
+        ExecutableTransactionInput::DeployAccount(deploy_acc_tx, only_query) => {
             Ok(BlockifierTransaction::from_api(
                 Transaction::DeployAccount(deploy_acc_tx),
                 tx_hash,
                 None,
                 None,
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
 
-        ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class) => {
+        ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class, only_query) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V0(declare_tx)),
@@ -617,10 +628,10 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
-        ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class) => {
+        ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class, only_query) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V1(declare_tx)),
@@ -628,10 +639,10 @@ fn to_blockifier_tx(
                 Some(class_v0),
                 None,
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
-        ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class) => {
+        ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class, only_query) => {
             let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V2(declare_tx)),
@@ -639,10 +650,10 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
-        ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class) => {
+        ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class, only_query) => {
             let class_v1 = BlockifierContractClass::V1(compiled_class.try_into()?);
             Ok(BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V3(declare_tx)),
@@ -650,17 +661,17 @@ fn to_blockifier_tx(
                 Some(class_v1),
                 None,
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
-        ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee) => {
+        ExecutableTransactionInput::L1Handler(l1_handler_tx, paid_fee, only_query) => {
             Ok(BlockifierTransaction::from_api(
                 Transaction::L1Handler(l1_handler_tx),
                 tx_hash,
                 None,
                 Some(paid_fee),
                 None,
-                ONLY_QUERY,
+                only_query,
             )?)
         }
     }

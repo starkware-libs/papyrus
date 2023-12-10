@@ -228,7 +228,7 @@ async fn block_hash_and_number() {
     )
     .await;
 
-    // Add a block and check again.
+    // Add a block without state diff and check that there are still no blocks.
     let block = get_test_block(1, None, None, None);
     storage_writer
         .begin_rw_txn()
@@ -236,6 +236,27 @@ async fn block_hash_and_number() {
         .append_header(block.header.block_number, &block.header)
         .unwrap()
         .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
+        .unwrap()
+        .commit()
+        .unwrap();
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockHashAndNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION,
+        &NO_BLOCKS.into(),
+    )
+    .await;
+
+    // Add a state diff to the block and check that we get the block.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -269,13 +290,34 @@ async fn block_number() {
     )
     .await;
 
-    // Add a block and check again.
+    // Add a block without state diff and check that there are still no blocks.
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
         .unwrap()
         .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .unwrap()
+        .commit()
+        .unwrap();
+    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+        &module,
+        method_name,
+        &None::<()>,
+        &VERSION,
+        &expected_err,
+    )
+    .await;
+
+    // Add a state diff to the block and check that we get the block.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(
+            BlockNumber(0),
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -340,6 +382,12 @@ async fn get_block_transaction_count() {
         .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(block.header.block_number, block.body)
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -431,6 +479,12 @@ async fn get_block_w_full_transactions() {
         .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -593,6 +647,12 @@ async fn get_block_w_transaction_hashes() {
         .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -1959,6 +2019,12 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
+        .unwrap()
         .commit()
         .unwrap();
 
@@ -2385,6 +2451,12 @@ async fn test_get_events(
             .update_starknet_version(&block_number, &StarknetVersion::default())
             .unwrap()
             .append_body(block_number, block.body)
+            .unwrap()
+            .append_state_diff(
+                block.header.block_number,
+                starknet_api::state::StateDiff::default(),
+                IndexMap::new(),
+            )
             .unwrap();
     }
     rw_txn.commit().unwrap();
@@ -2905,6 +2977,12 @@ async fn get_events_invalid_ct() {
         .append_header(block.header.block_number, &block.header)
         .unwrap()
         .append_body(block.header.block_number, block.body)
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
         .unwrap()
         .commit()
         .unwrap();

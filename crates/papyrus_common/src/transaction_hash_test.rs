@@ -54,7 +54,8 @@ fn test_transaction_hash() {
                 &transaction_test_data.transaction,
                 &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
-                transaction_test_data.transaction_hash
+                transaction_test_data.transaction_hash,
+                false,
             )
             .unwrap(),
             "expected transaction hash {}",
@@ -63,6 +64,7 @@ fn test_transaction_hash() {
         let actual_transaction_hash = get_transaction_hash(
             &transaction_test_data.transaction,
             &transaction_test_data.chain_id,
+            false,
         )
         .unwrap();
         assert_eq!(
@@ -86,7 +88,8 @@ fn test_deprecated_transaction_hash() {
                 &transaction_test_data.transaction,
                 &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
-                transaction_test_data.transaction_hash
+                transaction_test_data.transaction_hash,
+                false,
             )
             .unwrap(),
             "expected_transaction_hash: {:?}",

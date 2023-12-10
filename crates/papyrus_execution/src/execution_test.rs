@@ -165,7 +165,7 @@ fn execute_call_cairo1() {
 #[test]
 fn estimate_fee_invoke() {
     let tx = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .collect();
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
@@ -210,7 +210,7 @@ fn estimate_fee_deploy_account() {
 #[test]
 fn estimate_fee_combination() {
     let txs = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .declare_class(*ACCOUNT_ADDRESS)
         .declare_deprecated_class(*ACCOUNT_ADDRESS)
         .deploy_account()
@@ -227,8 +227,8 @@ fn estimate_fee_combination() {
 fn estimate_fee_reverted() {
     let non_existing_contract = contract_address!("0x987");
     let txs = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
-        .invoke_deprecated(*ACCOUNT_ADDRESS, non_existing_contract, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, non_existing_contract, None, false)
         .collect();
 
     let failed_estimation = estimate_fees(txs).expect_err("Fee estimation should fail.");
@@ -247,6 +247,7 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
         StateNumber::right_after_block(BlockNumber(0)),
         BlockNumber(1),
         &test_block_execution_config(),
+        false,
     )
     .unwrap()
 }
@@ -266,7 +267,7 @@ fn simulate_invoke() {
     prepare_storage(storage_writer);
 
     let tx = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .collect();
     let exec_only_results =
         execute_simulate_transactions(storage_reader.clone(), None, tx.clone(), None, false, false);
@@ -540,7 +541,8 @@ fn simulate_invoke_from_new_account() {
             *NEW_ACCOUNT_ADDRESS,
             *DEPRECATED_CONTRACT_ADDRESS,
             // the deploy account make the next nonce be 1.
-            Some(Nonce(stark_felt!(1_u128)))
+            Some(Nonce(stark_felt!(1_u128))),
+            false,
         )
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
         .collect();
@@ -581,7 +583,8 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
             new_account_address,
             *DEPRECATED_CONTRACT_ADDRESS,
             // the deploy account make the next nonce be 1.
-            Some(Nonce(stark_felt!(1_u128)))
+            Some(Nonce(stark_felt!(1_u128))),
+            false,
         )
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
         .collect();
@@ -712,7 +715,7 @@ fn induced_state_diff() {
 
     // TODO(yair): Add a reverted transaction.
     let tx = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .declare_class(*ACCOUNT_ADDRESS)
         .declare_deprecated_class(*ACCOUNT_ADDRESS)
         .deploy_account()
@@ -855,4 +858,17 @@ fn execute_call_checks_if_node_is_synced() {
     )
     .unwrap_err();
     assert_matches!(err, ExecutionError::NotSynced { state_number: _, compiled_class_marker: _ });
+}
+
+#[test]
+#[should_panic(expected = "Calculating tx hash with only_query bit not supported yet.")]
+fn simulate_with_query_bit() {
+    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
+    prepare_storage(storage_writer);
+
+    let tx = TxsScenarioBuilder::default()
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, true)
+        .collect();
+
+    execute_simulate_transactions(storage_reader.clone(), None, tx, None, false, false);
 }

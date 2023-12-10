@@ -964,6 +964,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 state_number,
                 block_number,
                 &block_execution_config,
+                false,
             )
         })
         .await

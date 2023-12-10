@@ -12,7 +12,6 @@ use starknet_client::reader::PendingData;
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
-use crate::v0_3::api::api_impl::JsonRpcServerV0_3Impl;
 use crate::v0_4::api::api_impl::JsonRpcServerV0_4Impl;
 use crate::v0_5::api::api_impl::JsonRpcServerV0_5Impl;
 use crate::v0_6::api::api_impl::JsonRpcServerV0_6Impl;
@@ -79,9 +78,6 @@ pub fn get_methods_from_supported_apis(
                 version_config::VersionState::Deprecated => None,
                 version_config::VersionState::Supported => {
                     let methods = match *version {
-                        version_config::VERSION_0_3 => {
-                            server_gen.clone().generator::<JsonRpcServerV0_3Impl>()
-                        }
                         version_config::VERSION_0_4 => {
                             server_gen.clone().generator::<JsonRpcServerV0_4Impl>()
                         }
