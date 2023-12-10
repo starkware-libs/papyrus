@@ -29,7 +29,14 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
 };
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    Nonce,
+    PatriciaKey,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass,
     EntryPointType,
@@ -87,8 +94,9 @@ use super::execution::{
     TransactionTrace,
 };
 use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
-use crate::api::{BlockHashOrNumber, BlockId, Tag};
+use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
+    call_api_then_assert_and_validate_schema_for_result,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_pending_classes,
@@ -125,29 +133,36 @@ async fn execution_call() {
     let key = stark_felt!(1234_u16);
     let value = stark_felt!(18_u8);
 
-    let res = module
-        .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
-            (
-                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
-                selector_from_name("test_storage_read_write"),
-                calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res, vec![value]);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (CallRequest, BlockId),
+        Vec<StarkFelt>,
+    >(
+        &module,
+        "starknet_V0_4_call",
+        &Some((
+            CallRequest {
+                contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                entry_point_selector: selector_from_name("test_storage_read_write"),
+                calldata: calldata![key, value],
+            },
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+        )),
+        &VERSION_0_4,
+        &vec![value],
+    )
+    .await;
 
     // Calling a non-existent contract.
     let err = module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                ContractAddress(patricia_key!("0x1234")),
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: ContractAddress(patricia_key!("0x1234")),
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -161,9 +176,11 @@ async fn execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                ContractAddress(patricia_key!("0x1234")),
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: ContractAddress(patricia_key!("0x1234")),
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(7))),
             ),
         )
@@ -177,9 +194,11 @@ async fn execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                *DEPRECATED_CONTRACT_ADDRESS,
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -198,17 +217,15 @@ async fn execution_call() {
         Some(StarkFelt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
-    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                contract_address,
-                entry_point_selector,
-                calldata,
+                CallRequest { contract_address, entry_point_selector, calldata },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -235,9 +252,11 @@ async fn pending_execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
-                selector_from_name("test_storage_read_write"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                    entry_point_selector: selector_from_name("test_storage_read_write"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::Tag(Tag::Pending),
             ),
         )
@@ -257,14 +276,17 @@ async fn pending_execution_call() {
         Some(StarkFelt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
-    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
-            (contract_address, entry_point_selector, calldata, BlockId::Tag(Tag::Pending)),
+            (
+                CallRequest { contract_address, entry_point_selector, calldata },
+                BlockId::Tag(Tag::Pending),
+            ),
         )
         .await
         .unwrap();

@@ -21,18 +21,10 @@ use papyrus_storage::db::TransactionKind;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
-use starknet_api::core::{
-    ChainId,
-    ClassHash,
-    ContractAddress,
-    EntryPointSelector,
-    GlobalRoot,
-    Nonce,
-};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    Calldata,
     EventContent,
     EventIndexInTransactionOutput,
     Transaction as StarknetApiTransaction,
@@ -106,6 +98,7 @@ use super::{
     stored_txn_to_executable_txn,
     BlockHashAndNumber,
     BlockId,
+    CallRequest,
     ContinuationToken,
     EventFilter,
     EventsChunk,
@@ -810,13 +803,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    async fn call(
-        &self,
-        contract_address: ContractAddress,
-        entry_point_selector: EntryPointSelector,
-        calldata: Calldata,
-        block_id: BlockId,
-    ) -> RpcResult<Vec<StarkFelt>> {
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
@@ -838,7 +825,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             .clone();
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
-        let contract_address_copy = contract_address;
+        let contract_address_copy = request.contract_address;
 
         let call_result = tokio::task::spawn_blocking(move || {
             execute_call(
@@ -848,8 +835,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 state_number,
                 block_number,
                 &contract_address_copy,
-                entry_point_selector,
-                calldata,
+                request.entry_point_selector,
+                request.calldata,
                 &block_execution_config,
             )
         })

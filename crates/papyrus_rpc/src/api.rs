@@ -7,7 +7,8 @@ use papyrus_execution::ExecutionConfigByBlock;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ChainId;
+use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector};
+use starknet_api::transaction::Calldata;
 use starknet_client::reader::PendingData;
 use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
@@ -40,6 +41,14 @@ pub enum BlockHashOrNumber {
 pub enum BlockId {
     HashOrNumber(BlockHashOrNumber),
     Tag(Tag),
+}
+
+/// The parameters of a call.
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub struct CallRequest {
+    pub contract_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub calldata: Calldata,
 }
 
 /// Returns a `Methods` object with all the methods from the supported APIs.
