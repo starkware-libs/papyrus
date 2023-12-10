@@ -29,7 +29,14 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
 };
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    Nonce,
+    PatriciaKey,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass,
     EntryPointType,
@@ -89,6 +96,7 @@ use super::execution::{
 use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::test_utils::{
+    call_api_then_assert_and_validate_schema_for_result,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_pending_classes,
@@ -125,20 +133,23 @@ async fn execution_call() {
     let key = stark_felt!(1234_u16);
     let value = stark_felt!(18_u8);
 
-    let res = module
-        .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
-            (
-                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
-                selector_from_name("test_storage_read_write"),
-                calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res, vec![value]);
+    call_api_then_assert_and_validate_schema_for_result::<
+        _,
+        (ContractAddress, EntryPointSelector, Calldata, BlockId),
+        Vec<StarkFelt>,
+    >(
+        &module,
+        "starknet_V0_4_call",
+        &Some((
+            *DEPRECATED_CONTRACT_ADDRESS,
+            selector_from_name("test_storage_read_write"),
+            calldata![key, value],
+            BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
+        )),
+        &VERSION_0_4,
+        &vec![value],
+    )
+    .await;
 
     // Calling a non-existent contract.
     let err = module
