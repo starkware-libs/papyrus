@@ -356,14 +356,15 @@ pub async fn call_api_then_assert_and_validate_schema_for_err<
     method: &str,
     params: &Option<S>,
     version_id: &VersionId,
+    spec_file: SpecFile,
     expected_err: &ErrorObjectOwned,
 ) {
-    validate_schema_for_method_params(method, params, version_id);
+    validate_schema_for_method_params(method, params, version_id, spec_file);
     let (json_response, err) = raw_call::<_, S, T>(module, method, params).await;
     assert_eq!(err.unwrap_err(), *expected_err);
     assert!(validate_schema(
         &get_starknet_spec_api_schema_for_method_errors(
-            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
+            &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
             version_id,
         ),
         &json_response["error"],
@@ -380,14 +381,15 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
     method: &str,
     params: &Option<S>,
     version_id: &VersionId,
+    spec_file: SpecFile,
     expected_res: &T,
 ) {
-    validate_schema_for_method_params(method, params, version_id);
+    validate_schema_for_method_params(method, params, version_id, spec_file);
     let (json_response, res) = raw_call::<_, S, T>(module, method, params).await;
     assert_eq!(res.unwrap(), *expected_res);
     assert!(validate_schema(
         &get_starknet_spec_api_schema_for_method_results(
-            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
+            &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
             version_id,
         ),
         &json_response["result"],
@@ -415,21 +417,21 @@ fn validate_schema_for_method_params<S: Serialize>(
     method: &str,
     params: &Option<S>,
     version_id: &VersionId,
+    spec_file: SpecFile,
 ) {
     let Some(params) = params else {
         // TODO(shahak): Validate that the schema expect no params for this method.
         return;
     };
+    println!("{}", serde_json::to_string(&params).unwrap());
+    println!("type = {}", std::any::type_name::<S>());
     let params_value = serde_json::to_value(params).unwrap();
     match params_value {
         Value::Array(vec) => {
             for (i, param) in vec.iter().enumerate() {
                 assert!(validate_schema(
                     &get_starknet_spec_api_schema_for_method_param(
-                        &[(
-                            SpecFile::StarknetApiOpenrpc,
-                            &[(method_name_to_spec_method_name(method).as_str(), i)]
-                        )],
+                        &[(spec_file, &[(method_name_to_spec_method_name(method).as_str(), i)])],
                         version_id,
                     ),
                     param,
@@ -439,10 +441,7 @@ fn validate_schema_for_method_params<S: Serialize>(
         param => {
             assert!(validate_schema(
                 &get_starknet_spec_api_schema_for_method_param(
-                    &[(
-                        SpecFile::StarknetApiOpenrpc,
-                        &[(method_name_to_spec_method_name(method).as_str(), 0)]
-                    )],
+                    &[(spec_file, &[(method_name_to_spec_method_name(method).as_str(), 0)])],
                     version_id,
                 ),
                 &param,

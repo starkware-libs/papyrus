@@ -189,6 +189,7 @@ async fn spec_version() {
         "starknet_V0_6_specVersion",
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &format!("{VERSION}"),
     )
     .await;
@@ -207,6 +208,7 @@ async fn chain_id() {
         "starknet_V0_6_chainId",
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &String::from("0x534e5f474f45524c49"),
     )
     .await;
@@ -224,6 +226,7 @@ async fn block_hash_and_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &NO_BLOCKS.into(),
     )
     .await;
@@ -244,6 +247,7 @@ async fn block_hash_and_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &NO_BLOCKS.into(),
     )
     .await;
@@ -265,6 +269,7 @@ async fn block_hash_and_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BlockHashAndNumber {
             block_hash: block.header.block_hash,
             block_number: block.header.block_number,
@@ -286,6 +291,7 @@ async fn block_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_err,
     )
     .await;
@@ -305,6 +311,7 @@ async fn block_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_err,
     )
     .await;
@@ -326,6 +333,7 @@ async fn block_number() {
         method_name,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BlockNumber(0),
     )
     .await;
@@ -349,6 +357,7 @@ async fn syncing() {
         API_METHOD_NAME,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &false,
     )
     .await;
@@ -360,6 +369,7 @@ async fn syncing() {
         API_METHOD_NAME,
         &None::<()>,
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() },
     )
     .await;
@@ -398,6 +408,7 @@ async fn get_block_transaction_count() {
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &transaction_count,
     )
     .await;
@@ -439,6 +450,7 @@ async fn get_block_transaction_count() {
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -509,6 +521,7 @@ async fn get_block_w_full_transactions() {
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_block,
     )
     .await;
@@ -603,6 +616,7 @@ async fn get_block_w_full_transactions() {
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_pending_block,
     )
     .await;
@@ -673,6 +687,7 @@ async fn get_block_w_transaction_hashes() {
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_block,
     )
     .await;
@@ -716,6 +731,7 @@ async fn get_block_w_transaction_hashes() {
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -772,6 +788,7 @@ async fn get_block_w_transaction_hashes() {
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_pending_block,
     )
     .await;
@@ -841,6 +858,7 @@ async fn get_class() {
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_contract_class,
     )
     .await;
@@ -883,6 +901,7 @@ async fn get_class() {
             ClassHash(stark_felt!("0x7")),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CLASS_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -941,6 +960,7 @@ async fn get_class() {
             ClassHash(stark_felt!("0x7")),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1066,6 +1086,7 @@ async fn get_transaction_status() {
         method_name,
         &Some(TransactionHash(StarkHash::from(1_u8))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -1193,6 +1214,7 @@ async fn get_transaction_receipt() {
         method_name,
         &Some(TransactionHash(StarkHash::from(1_u8))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -1273,6 +1295,7 @@ async fn get_class_at() {
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_contract_class,
     )
     .await;
@@ -1328,6 +1351,7 @@ async fn get_class_at() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), pending_address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1346,6 +1370,7 @@ async fn get_class_at() {
             ContractAddress(patricia_key!("0x12")),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1378,6 +1403,7 @@ async fn get_class_at() {
             *address,
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1433,6 +1459,7 @@ async fn get_class_hash_at() {
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         expected_class_hash,
     )
     .await;
@@ -1474,6 +1501,7 @@ async fn get_class_hash_at() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), pending_address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1493,6 +1521,7 @@ async fn get_class_hash_at() {
             ContractAddress(patricia_key!("0x12")),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1508,6 +1537,7 @@ async fn get_class_hash_at() {
             *address,
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1552,6 +1582,7 @@ async fn get_nonce() {
         method_name,
         &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         expected_nonce,
     )
     .await;
@@ -1592,6 +1623,7 @@ async fn get_nonce() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &new_nonce,
     )
     .await;
@@ -1610,6 +1642,7 @@ async fn get_nonce() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1623,6 +1656,7 @@ async fn get_nonce() {
             ContractAddress(patricia_key!("0x31")),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1638,6 +1672,7 @@ async fn get_nonce() {
             *address,
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1687,6 +1722,7 @@ async fn get_storage_at() {
         method_name,
         &Some((*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         expected_value,
     )
     .await;
@@ -1782,6 +1818,7 @@ async fn get_storage_at() {
         method_name,
         &Some((contract_address, key, BlockId::Tag(Tag::Pending))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1814,6 +1851,7 @@ async fn get_storage_at() {
             BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
     )
     .await;
@@ -1834,6 +1872,7 @@ async fn get_storage_at() {
             )))),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -1943,6 +1982,7 @@ async fn get_transaction_by_hash() {
         method_name,
         &Some(block.body.transaction_hashes[0]),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_transaction,
     )
     .await;
@@ -1956,6 +1996,7 @@ async fn get_transaction_by_hash() {
         method_name,
         &Some(client_transaction.transaction_hash()),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_transaction_with_hash,
     )
     .await;
@@ -1967,6 +2008,7 @@ async fn get_transaction_by_hash() {
         method_name,
         &Some(client_transaction.transaction_hash()),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -1977,6 +2019,7 @@ async fn get_transaction_by_hash() {
         method_name,
         &Some(TransactionHash(StarkHash::from(1_u8))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
     )
     .await;
@@ -2046,6 +2089,7 @@ async fn get_transaction_by_block_id_and_index() {
             TransactionOffsetInBlock(0),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_transaction,
     )
     .await;
@@ -2080,6 +2124,7 @@ async fn get_transaction_by_block_id_and_index() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(1))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -2096,6 +2141,7 @@ async fn get_transaction_by_block_id_and_index() {
         method_name,
         &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(0))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -2115,6 +2161,7 @@ async fn get_transaction_by_block_id_and_index() {
             TransactionOffsetInBlock(0),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -2142,6 +2189,7 @@ async fn get_transaction_by_block_id_and_index() {
             TransactionOffsetInBlock(1),
         )),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
     )
     .await;
@@ -2199,6 +2247,7 @@ async fn get_state_update() {
         method_name,
         &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_update,
     )
     .await;
@@ -2268,6 +2317,7 @@ async fn get_state_update() {
         method_name,
         &Some(BlockId::Tag(Tag::Pending)),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &expected_pending_update,
     )
     .await;
@@ -2290,6 +2340,7 @@ async fn get_state_update() {
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
         ))))),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
     )
     .await;
@@ -2505,6 +2556,7 @@ async fn test_get_events(
             method_name,
             &Some(filter.clone()),
             &VERSION,
+            SpecFile::StarknetApiOpenrpc,
             &expected_result,
         )
         .await;
@@ -2934,6 +2986,7 @@ async fn get_events_page_size_too_big() {
         "starknet_V0_6_getEvents",
         &Some(filter),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &PAGE_SIZE_TOO_BIG.into(),
     )
     .await;
@@ -2961,6 +3014,7 @@ async fn get_events_too_many_keys() {
         "starknet_V0_6_getEvents",
         &Some(filter),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &TOO_MANY_KEYS_IN_FILTER.into(),
     )
     .await;
@@ -3002,6 +3056,7 @@ async fn get_events_invalid_ct() {
         "starknet_V0_6_getEvents",
         &Some(filter),
         &VERSION,
+        SpecFile::StarknetApiOpenrpc,
         &INVALID_CONTINUATION_TOKEN.into(),
     )
     .await;

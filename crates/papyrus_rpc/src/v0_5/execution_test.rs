@@ -136,6 +136,7 @@ async fn execution_call() {
             BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
         )),
         &VERSION_0_5,
+        SpecFile::StarknetApiOpenrpc,
         &vec![value],
     )
     .await;
