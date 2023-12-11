@@ -420,7 +420,17 @@ fn validate_schema_for_method_params<S: Serialize>(
     spec_file: SpecFile,
 ) {
     let Some(params) = params else {
-        // TODO(shahak): Validate that the schema expect no params for this method.
+        // We received no params. validate that the schema of the method has no params.
+        let spec: serde_json::Value =
+            read_spec(format!("./resources/{}/{spec_file}", version_id.name));
+        let method_index = get_method_index(&spec, &method_name_to_spec_method_name(method));
+
+        let method_spec_object = spec.as_object().unwrap()["methods"].as_array().unwrap()
+            [method_index]
+            .as_object()
+            .unwrap();
+        assert!(method_spec_object["params"].as_array().unwrap().is_empty());
+
         return;
     };
     println!("{}", serde_json::to_string(&params).unwrap());
