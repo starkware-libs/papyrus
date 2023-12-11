@@ -19,15 +19,15 @@ jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer" }
-papyrus_config = { path = "../papyrus_config", version = "0.2.0-rc4" }
-papyrus_common = { path = "../papyrus_common", version = "0.2.0-rc4" }
+papyrus_config = { path = "../papyrus_config", version = "0.2.1" }
+papyrus_common = { path = "../papyrus_common", version = "0.2.1" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
 papyrus_rpc = { path = "../papyrus_rpc" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.2.0-rc4" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.2.1" }
 papyrus_sync = { path = "../papyrus_sync" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, features = ["arbitrary_precision"]}
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 starknet_client = { path = "../starknet_client" }
 thiserror.workspace = true
