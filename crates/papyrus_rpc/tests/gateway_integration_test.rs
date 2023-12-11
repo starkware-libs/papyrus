@@ -38,9 +38,11 @@ async fn get_eth_balance(client: &HttpClient, account: ContractAddress) -> Stark
         .request::<Vec<StarkFelt>, _>(
             "starknet_call",
             rpc_params!(
-                L2_ETH_CONTRACT_ADDRESS,
-                EntryPointSelector(stark_felt!(BALANCE_OF_ENTRY_POINT_SELECTOR)),
-                calldata![*account.0.key()],
+                (
+                    L2_ETH_CONTRACT_ADDRESS,
+                    EntryPointSelector(stark_felt!(BALANCE_OF_ENTRY_POINT_SELECTOR)),
+                    calldata![*account.0.key()],
+                ),
                 "latest"
             ),
         )
