@@ -160,6 +160,8 @@ pub enum ExecutionError {
     TransactionHashCalculationFailed(StarknetApiError),
     #[error("Missing compiled class with hash {class_hash} (The CASM table isn't synced)")]
     MissingCompiledClass { class_hash: ClassHash },
+    #[error("Unknown builtin name: {builtin_name}")]
+    UnknownBuiltin { builtin_name: String },
 }
 
 /// Whether the only-query bit of the transaction version is on.
