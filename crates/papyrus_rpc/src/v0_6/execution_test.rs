@@ -109,6 +109,13 @@ lazy_static! {
     pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!("0x1010");
     pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
     pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
+    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
+    // call.
+    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x69e"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(169400000000000,),
+    };
 }
 
 #[tokio::test]
@@ -310,15 +317,7 @@ async fn call_estimate_fee() {
         .await
         .unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    }];
-
-    assert_eq!(res, expected_fee_estimate);
+    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // Test that calling the same transaction with a different block context with a different gas
     // price produces a different fee.
@@ -333,7 +332,7 @@ async fn call_estimate_fee() {
         )
         .await
         .unwrap();
-    assert_ne!(res, expected_fee_estimate);
+    assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // Test that calling the same transaction with skip_validate produces a lower gas consumed.
     // TODO(yair): test with an account contract which has a lengthy validate function.
@@ -348,9 +347,7 @@ async fn call_estimate_fee() {
         )
         .await
         .unwrap();
-    assert!(
-        res.first().unwrap().gas_consumed <= expected_fee_estimate.first().unwrap().gas_consumed
-    );
+    assert!(res.first().unwrap().gas_consumed <= EXPECTED_FEE_ESTIMATE.gas_consumed);
 
     // Test that reverted transaction fails the fee estimation.
     let non_existent_entry_point =
@@ -427,14 +424,7 @@ async fn pending_call_estimate_fee() {
         .await
         .unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    }];
-    assert_eq!(res, expected_fee_estimate);
+    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
     // the current contract is that the transaction hash appears in the calldata and thus it is
@@ -503,16 +493,7 @@ async fn test_call_simulate(
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 
@@ -596,16 +577,7 @@ async fn call_simulate_skip_validate() {
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 
@@ -653,16 +625,7 @@ async fn call_simulate_skip_fee_charge() {
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 

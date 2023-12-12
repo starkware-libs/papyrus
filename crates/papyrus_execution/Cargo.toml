@@ -17,9 +17,9 @@ cairo-vm.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.2.0-rc4" }
-papyrus_config = { path = "../papyrus_config", version = "0.2.0-rc4" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.2.0-rc4" }
+papyrus_common = { path = "../papyrus_common", version = "0.2.1" }
+papyrus_config = { path = "../papyrus_config", version = "0.2.1" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.2.1" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
