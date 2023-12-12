@@ -90,8 +90,9 @@ pub const INSUFFICIENT_ACCOUNT_BALANCE: JsonRpcError<String> = JsonRpcError {
     data: None,
 };
 
-pub const VALIDATION_FAILURE: JsonRpcError<String> =
-    JsonRpcError { code: 55, message: "Account validation failed", data: None };
+pub fn validation_failure(data: String) -> JsonRpcError<String> {
+    JsonRpcError { code: 55, message: "Account validation failed", data: Some(data) }
+}
 
 pub const COMPILATION_FAILED: JsonRpcError<String> =
     JsonRpcError { code: 56, message: "Compilation failed", data: None };

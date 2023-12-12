@@ -258,7 +258,8 @@
             },
             "VALIDATION_FAILURE": {
                 "code": 55,
-                "message": "Account validation failed"
+                "message": "Account validation failed",
+                "data": "string"
             },
             "COMPILATION_FAILED": {
                 "code": 56,
