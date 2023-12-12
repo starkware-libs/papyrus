@@ -1,41 +1,4 @@
 {
-  "__inputs": [
-    {
-      "name": "DS_PROMETHEUS",
-      "label": "Prometheus",
-      "description": "",
-      "type": "datasource",
-      "pluginId": "prometheus",
-      "pluginName": "Prometheus"
-    }
-  ],
-  "__elements": [],
-  "__requires": [
-    {
-      "type": "grafana",
-      "id": "grafana",
-      "name": "Grafana",
-      "version": "8.5.5"
-    },
-    {
-      "type": "datasource",
-      "id": "prometheus",
-      "name": "Prometheus",
-      "version": "1.0.0"
-    },
-    {
-      "type": "panel",
-      "id": "stat",
-      "name": "Stat",
-      "version": ""
-    },
-    {
-      "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
-      "version": ""
-    }
-  ],
   "annotations": {
     "list": [
       {
@@ -61,8 +24,8 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": null,
-  "iteration": 1697099323886,
+  "id": 927,
+  "iteration": 1702383440835,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -82,7 +45,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference, in seconds, between the time the node received the batch and the batch creation timestamp.",
       "fieldConfig": {
@@ -156,7 +119,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "papyrus_header_latency{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
@@ -171,7 +134,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The Current Starknet block number.",
       "fieldConfig": {
@@ -221,7 +184,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -240,7 +203,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The block number of the last Starknet block that was finalized on L1.",
       "fieldConfig": {
@@ -291,7 +254,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -310,7 +273,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference between Starknet Block Number and L1 Block Number.",
       "fieldConfig": {
@@ -391,7 +354,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_base_layer_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
@@ -405,7 +368,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The current block header marker.",
       "fieldConfig": {
@@ -455,7 +418,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -474,7 +437,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The current block body marker.",
       "fieldConfig": {
@@ -524,7 +487,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -543,7 +506,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The current state update marker.",
       "fieldConfig": {
@@ -593,7 +556,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -612,7 +575,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The current compiled class marker.",
       "fieldConfig": {
@@ -662,7 +625,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "exemplar": false,
@@ -681,7 +644,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference between the current Starknet block number and the current block header marker.",
       "fieldConfig": {
@@ -762,7 +725,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
@@ -776,7 +739,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference between the current Starknet block number and the current block body marker.",
       "fieldConfig": {
@@ -857,7 +820,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
@@ -871,7 +834,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference between the current Starknet block number and the current state update marker.",
       "fieldConfig": {
@@ -952,7 +915,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
@@ -966,7 +929,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The difference between the current Starknet block number and the current compiled class marker.",
       "fieldConfig": {
@@ -1047,7 +1010,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} - papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"}",
           "hide": false,
@@ -1061,7 +1024,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The percentage of the current block header marker from the current Starknet block number.",
       "fieldConfig": {
@@ -1143,7 +1106,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "floor(papyrus_header_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
@@ -1157,7 +1120,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The percentage of the current block body marker from the current Starknet block number.",
       "fieldConfig": {
@@ -1239,7 +1202,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "floor(papyrus_body_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
@@ -1253,7 +1216,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The percentage of the current state update marker from the current Starknet block number.",
       "fieldConfig": {
@@ -1335,7 +1298,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "floor(papyrus_state_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
@@ -1349,7 +1312,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The percentage of the current compiled class marker from the current Starknet block number.",
       "fieldConfig": {
@@ -1431,7 +1394,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "expr": "floor(papyrus_compiled_class_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} / papyrus_central_block_marker{kubernetes_namespace=\"$namespace\", pod=~\"$pod\"} * 10^4) / 10^4",
           "hide": false,
@@ -1443,7 +1406,7 @@
       "type": "stat"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
@@ -1451,476 +1414,477 @@
         "y": 34
       },
       "id": 34,
-      "panels": [],
-      "title": "Resources usage",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "CPU usage percentage.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "Percentage",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 100,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineStyle": {
-              "fill": "solid"
-            },
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "orange",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 0,
-        "y": 35
-      },
-      "id": 36,
-      "options": {
-        "legend": {
-          "calcs": [
-            "min",
-            "max",
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
+      "panels": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}[1m])",
-          "interval": "",
-          "legendFormat": "{{container}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "CPU usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Memory usage in bytes.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
+          "description": "CPU usage percentage.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Percentage",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 100,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineStyle": {
+                  "fill": "solid"
+                },
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "orange",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
-          "custom": {
-            "axisLabel": "Bytes",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 100,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 35
+          },
+          "id": 36,
+          "options": {
+            "legend": {
+              "calcs": [
+                "min",
+                "max",
+                "mean"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
             }
           },
-          "decimals": 4,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "bytes"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 10,
-        "w": 12,
-        "x": 12,
-        "y": 35
-      },
-      "id": 38,
-      "options": {
-        "legend": {
-          "calcs": [
-            "min",
-            "max",
-            "mean"
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "exemplar": false,
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}[1m])",
+              "interval": "",
+              "legendFormat": "{{container}}",
+              "range": true,
+              "refId": "A"
+            }
           ],
-          "displayMode": "table",
-          "placement": "bottom"
+          "title": "CPU usage",
+          "type": "timeseries"
         },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
-          "editorMode": "code",
-          "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}) by (container, pod)",
-          "legendFormat": "{{container}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Memory usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Storage usage in bytes.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
+          "description": "Memory usage in bytes.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Bytes",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 100,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 4,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "blue",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
           },
-          "custom": {
-            "axisLabel": "Bytes",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 100,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 35
+          },
+          "id": 38,
+          "options": {
+            "legend": {
+              "calcs": [
+                "min",
+                "max",
+                "mean"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
             }
           },
-          "decimals": 3,
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "sum(container_memory_working_set_bytes{namespace=\"$namespace\", pod=~\"$pod\", container!=\"\"}) by (container, pod)",
+              "legendFormat": "{{container}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Memory usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Storage usage in bytes.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Bytes",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 100,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "decimals": 3,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "bytes"
+            },
+            "overrides": [
               {
-                "color": "green",
-                "value": null
+                "matcher": {
+                  "id": "byName",
+                  "options": "Value"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "purple",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 45
+          },
+          "id": 40,
+          "options": {
+            "legend": {
+              "calcs": [
+                "min",
+                "max",
+                "mean"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\"} - kubelet_volume_stats_available_bytes{namespace=\"$namespace\"}",
+              "legendFormat": "{{namespace}}",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Storage usage",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Networking usage.\nTx - Transmitting.\nRx - Receiving.",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {
+                "axisLabel": "Bytes / Minute",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 100,
+                "gradientMode": "opacity",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
+                }
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              },
+              "unit": "Bps"
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Tx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "red",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
               },
               {
-                "color": "red",
-                "value": 80
+                "matcher": {
+                  "id": "byName",
+                  "options": "Rx"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "yellow",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
               }
             ]
           },
-          "unit": "bytes"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Value"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "purple",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 45
-      },
-      "id": 40,
-      "options": {
-        "legend": {
-          "calcs": [
-            "min",
-            "max",
-            "mean"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 45
           },
-          "editorMode": "code",
-          "expr": "kubelet_volume_stats_capacity_bytes{namespace=\"$namespace\"} - kubelet_volume_stats_available_bytes{namespace=\"$namespace\"}",
-          "legendFormat": "{{namespace}}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Storage usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "Networking usage.\nTx - Transmitting.\nRx - Receiving.",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "Bytes / Minute",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 100,
-            "gradientMode": "opacity",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
+          "id": 44,
+          "options": {
+            "legend": {
+              "calcs": [
+                "min",
+                "max",
+                "mean"
+              ],
+              "displayMode": "table",
+              "placement": "bottom"
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
             }
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "Bps"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Tx"
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "- sum(rate(container_network_transmit_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
+              "hide": false,
+              "legendFormat": "Tx",
+              "range": true,
+              "refId": "A"
             },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Rx"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 45
-      },
-      "id": 44,
-      "options": {
-        "legend": {
-          "calcs": [
-            "min",
-            "max",
-            "mean"
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "sum(rate(container_network_receive_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
+              "hide": false,
+              "legendFormat": "Rx",
+              "range": true,
+              "refId": "B"
+            }
           ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "- sum(rate(container_network_transmit_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
-          "hide": false,
-          "legendFormat": "Tx",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "expr": "sum(rate(container_network_receive_bytes_total{image!=\"\", namespace=\"$namespace\", pod=~\"$pod\"}[1m])) by (container, pod)",
-          "hide": false,
-          "legendFormat": "Rx",
-          "range": true,
-          "refId": "B"
+          "title": "Networking usage",
+          "type": "timeseries"
         }
       ],
-      "title": "Networking usage",
-      "type": "timeseries"
+      "title": "Resources usage",
+      "type": "row"
     },
     {
       "collapsed": false,
@@ -1928,7 +1892,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 35
       },
       "id": 32,
       "panels": [],
@@ -1938,7 +1902,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -1964,7 +1928,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 54
+        "y": 36
       },
       "id": 62,
       "options": {
@@ -1986,7 +1950,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
@@ -2001,7 +1965,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -2027,7 +1991,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 54
+        "y": 36
       },
       "id": 70,
       "options": {
@@ -2049,7 +2013,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
@@ -2065,7 +2029,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -2091,7 +2055,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 54
+        "y": 36
       },
       "id": 71,
       "options": {
@@ -2113,7 +2077,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\",quantile=\"0.95\"}",
@@ -2129,7 +2093,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -2184,7 +2148,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 54
+        "y": 36
       },
       "id": 72,
       "options": {
@@ -2203,7 +2167,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockNumber\",version=\"$version\"}",
@@ -2219,7 +2183,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -2245,7 +2209,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 61
+        "y": 43
       },
       "id": 73,
       "options": {
@@ -2267,7 +2231,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
@@ -2282,7 +2246,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -2308,7 +2272,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 61
+        "y": 43
       },
       "id": 74,
       "options": {
@@ -2330,7 +2294,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
@@ -2346,7 +2310,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -2372,7 +2336,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 61
+        "y": 43
       },
       "id": 75,
       "options": {
@@ -2394,7 +2358,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\",quantile=\"0.95\"}",
@@ -2410,7 +2374,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -2465,7 +2429,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 61
+        "y": 43
       },
       "id": 76,
       "options": {
@@ -2484,7 +2448,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
@@ -2500,7 +2464,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -2526,7 +2490,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 68
+        "y": 50
       },
       "id": 84,
       "options": {
@@ -2548,7 +2512,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
@@ -2563,7 +2527,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -2589,7 +2553,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 68
+        "y": 50
       },
       "id": 83,
       "options": {
@@ -2611,7 +2575,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
@@ -2627,7 +2591,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -2653,7 +2617,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 68
+        "y": 50
       },
       "id": 82,
       "options": {
@@ -2675,7 +2639,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\",quantile=\"0.95\"}",
@@ -2691,7 +2655,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -2746,7 +2710,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 68
+        "y": 50
       },
       "id": 80,
       "options": {
@@ -2765,7 +2729,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStateUpdate\",version=\"$version\"}",
@@ -2781,7 +2745,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -2807,7 +2771,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 75
+        "y": 57
       },
       "id": 77,
       "options": {
@@ -2829,7 +2793,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
@@ -2844,7 +2808,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -2870,7 +2834,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 75
+        "y": 57
       },
       "id": 101,
       "options": {
@@ -2892,7 +2856,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
@@ -2908,7 +2872,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -2934,7 +2898,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 75
+        "y": 57
       },
       "id": 79,
       "options": {
@@ -2956,7 +2920,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\",quantile=\"0.95\"}",
@@ -2972,7 +2936,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -3027,7 +2991,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 75
+        "y": 57
       },
       "id": 85,
       "options": {
@@ -3046,7 +3010,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByHash\",version=\"$version\"}",
@@ -3062,7 +3026,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -3088,7 +3052,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 82
+        "y": 64
       },
       "id": 103,
       "options": {
@@ -3110,7 +3074,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
@@ -3125,7 +3089,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -3151,7 +3115,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 82
+        "y": 64
       },
       "id": 104,
       "options": {
@@ -3173,7 +3137,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
@@ -3189,7 +3153,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -3215,7 +3179,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 82
+        "y": 64
       },
       "id": 105,
       "options": {
@@ -3237,7 +3201,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\",quantile=\"0.95\"}",
@@ -3253,7 +3217,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -3308,7 +3272,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 82
+        "y": 64
       },
       "id": 81,
       "options": {
@@ -3327,7 +3291,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClass\",version=\"$version\"}",
@@ -3343,7 +3307,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -3369,7 +3333,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 89
+        "y": 71
       },
       "id": 106,
       "options": {
@@ -3391,7 +3355,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\"}",
@@ -3406,7 +3370,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -3432,7 +3396,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 89
+        "y": 71
       },
       "id": 107,
       "options": {
@@ -3454,7 +3418,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\"}",
@@ -3470,7 +3434,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -3496,7 +3460,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 89
+        "y": 71
       },
       "id": 108,
       "options": {
@@ -3518,7 +3482,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getEvents\",version=\"$version\",quantile=\"0.95\"}",
@@ -3534,7 +3498,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -3589,7 +3553,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 89
+        "y": 71
       },
       "id": 86,
       "options": {
@@ -3608,7 +3572,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getNonce\",version=\"$version\"}",
@@ -3624,7 +3588,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -3637,7 +3601,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3649,7 +3614,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 96
+        "y": 78
       },
       "id": 109,
       "options": {
@@ -3671,7 +3636,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
@@ -3686,7 +3651,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -3699,7 +3664,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3711,7 +3677,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 96
+        "y": 78
       },
       "id": 110,
       "options": {
@@ -3733,7 +3699,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
@@ -3749,7 +3715,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -3762,7 +3728,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3774,7 +3741,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 96
+        "y": 78
       },
       "id": 102,
       "options": {
@@ -3796,7 +3763,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\",quantile=\"0.95\"}",
@@ -3812,7 +3779,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -3854,7 +3821,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3866,7 +3834,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 96
+        "y": 78
       },
       "id": 87,
       "options": {
@@ -3885,7 +3853,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassAt\",version=\"$version\"}",
@@ -3901,7 +3869,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -3914,7 +3882,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3926,7 +3895,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 103
+        "y": 85
       },
       "id": 112,
       "options": {
@@ -3948,7 +3917,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
@@ -3963,7 +3932,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -3976,7 +3945,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -3988,7 +3958,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 103
+        "y": 85
       },
       "id": 113,
       "options": {
@@ -4010,7 +3980,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
@@ -4026,7 +3996,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -4039,7 +4009,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4051,7 +4022,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 103
+        "y": 85
       },
       "id": 114,
       "options": {
@@ -4073,7 +4044,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\",quantile=\"0.95\"}",
@@ -4089,7 +4060,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -4131,7 +4102,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4143,7 +4115,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 103
+        "y": 85
       },
       "id": 88,
       "options": {
@@ -4162,7 +4134,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getClassHashAt\",version=\"$version\"}",
@@ -4178,7 +4150,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -4191,7 +4163,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4203,7 +4176,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 110
+        "y": 92
       },
       "id": 115,
       "options": {
@@ -4225,7 +4198,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
@@ -4240,7 +4213,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -4253,7 +4226,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4265,7 +4239,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 110
+        "y": 92
       },
       "id": 116,
       "options": {
@@ -4287,7 +4261,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
@@ -4303,7 +4277,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -4316,7 +4290,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4328,7 +4303,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 110
+        "y": 92
       },
       "id": 117,
       "options": {
@@ -4350,7 +4325,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\",quantile=\"0.95\"}",
@@ -4366,7 +4341,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -4408,7 +4383,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4420,7 +4396,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 110
+        "y": 92
       },
       "id": 89,
       "options": {
@@ -4439,7 +4415,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxs\",version=\"$version\"}",
@@ -4455,7 +4431,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -4468,7 +4444,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4480,7 +4457,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 117
+        "y": 99
       },
       "id": 118,
       "options": {
@@ -4502,7 +4479,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
@@ -4517,7 +4494,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -4530,7 +4507,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4542,7 +4520,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 117
+        "y": 99
       },
       "id": 78,
       "options": {
@@ -4564,7 +4542,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
@@ -4580,7 +4558,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -4593,7 +4571,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4605,7 +4584,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 117
+        "y": 99
       },
       "id": 111,
       "options": {
@@ -4627,7 +4606,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\",quantile=\"0.95\"}",
@@ -4643,7 +4622,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -4685,7 +4664,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4697,7 +4677,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 117
+        "y": 99
       },
       "id": 90,
       "options": {
@@ -4716,7 +4696,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getStorageAt\",version=\"$version\"}",
@@ -4732,7 +4712,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -4745,7 +4725,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4757,7 +4738,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 124
+        "y": 106
       },
       "id": 121,
       "options": {
@@ -4779,7 +4760,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
@@ -4794,7 +4775,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -4807,7 +4788,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4819,7 +4801,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 124
+        "y": 106
       },
       "id": 122,
       "options": {
@@ -4841,7 +4823,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
@@ -4857,7 +4839,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -4870,7 +4852,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4882,7 +4865,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 124
+        "y": 106
       },
       "id": 123,
       "options": {
@@ -4904,7 +4887,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\",quantile=\"0.95\"}",
@@ -4920,7 +4903,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -4962,7 +4945,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -4974,7 +4958,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 124
+        "y": 106
       },
       "id": 91,
       "options": {
@@ -4993,7 +4977,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockTransactionCount\",version=\"$version\"}",
@@ -5009,7 +4993,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -5022,7 +5006,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5034,7 +5019,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 131
+        "y": 113
       },
       "id": 124,
       "options": {
@@ -5056,7 +5041,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
@@ -5071,7 +5056,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -5084,7 +5069,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5096,7 +5082,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 131
+        "y": 113
       },
       "id": 125,
       "options": {
@@ -5118,7 +5104,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
@@ -5134,7 +5120,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -5147,7 +5133,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5159,7 +5146,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 131
+        "y": 113
       },
       "id": 126,
       "options": {
@@ -5181,7 +5168,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\",quantile=\"0.95\"}",
@@ -5197,7 +5184,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -5239,7 +5226,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5251,7 +5239,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 131
+        "y": 113
       },
       "id": 92,
       "options": {
@@ -5270,7 +5258,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionReceipt\",version=\"$version\"}",
@@ -5286,7 +5274,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -5299,7 +5287,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5311,7 +5300,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 138
+        "y": 120
       },
       "id": 127,
       "options": {
@@ -5333,7 +5322,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
@@ -5348,7 +5337,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -5361,7 +5350,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5373,7 +5363,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 138
+        "y": 120
       },
       "id": 128,
       "options": {
@@ -5395,7 +5385,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
@@ -5411,7 +5401,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -5424,7 +5414,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5436,7 +5427,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 138
+        "y": 120
       },
       "id": 129,
       "options": {
@@ -5458,7 +5449,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\",quantile=\"0.95\"}",
@@ -5474,7 +5465,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -5516,7 +5507,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5528,7 +5520,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 138
+        "y": 120
       },
       "id": 93,
       "options": {
@@ -5547,7 +5539,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getBlockWithTxHashes\",version=\"$version\"}",
@@ -5563,7 +5555,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -5576,7 +5568,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5588,7 +5581,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 145
+        "y": 127
       },
       "id": 130,
       "options": {
@@ -5610,7 +5603,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
@@ -5625,7 +5618,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -5638,7 +5631,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5650,7 +5644,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 145
+        "y": 127
       },
       "id": 131,
       "options": {
@@ -5672,7 +5666,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
@@ -5688,7 +5682,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -5701,7 +5695,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5713,7 +5708,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 145
+        "y": 127
       },
       "id": 132,
       "options": {
@@ -5735,7 +5730,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\",quantile=\"0.95\"}",
@@ -5751,7 +5746,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -5793,7 +5788,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5805,7 +5801,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 145
+        "y": 127
       },
       "id": 94,
       "options": {
@@ -5824,7 +5820,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"getTransactionByBlockIdAndIndex\",version=\"$version\"}",
@@ -5840,7 +5836,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -5853,7 +5849,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5865,7 +5862,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 152
+        "y": 134
       },
       "id": 133,
       "options": {
@@ -5887,7 +5884,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
@@ -5902,7 +5899,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -5915,7 +5912,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5927,7 +5925,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 152
+        "y": 134
       },
       "id": 134,
       "options": {
@@ -5949,7 +5947,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
@@ -5965,7 +5963,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -5978,7 +5976,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -5990,7 +5989,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 152
+        "y": 134
       },
       "id": 135,
       "options": {
@@ -6012,7 +6011,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\",quantile=\"0.95\"}",
@@ -6028,7 +6027,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -6070,7 +6069,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6082,7 +6082,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 152
+        "y": 134
       },
       "id": 95,
       "options": {
@@ -6101,7 +6101,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
@@ -6117,7 +6117,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -6130,7 +6130,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6142,7 +6143,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 159
+        "y": 141
       },
       "id": 136,
       "options": {
@@ -6164,7 +6165,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
@@ -6179,7 +6180,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -6192,7 +6193,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6204,7 +6206,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 159
+        "y": 141
       },
       "id": 137,
       "options": {
@@ -6226,7 +6228,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
@@ -6242,7 +6244,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -6255,7 +6257,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6267,7 +6270,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 159
+        "y": 141
       },
       "id": 138,
       "options": {
@@ -6289,7 +6292,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\",quantile=\"0.95\"}",
@@ -6305,7 +6308,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -6347,7 +6350,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6359,7 +6363,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 159
+        "y": 141
       },
       "id": 96,
       "options": {
@@ -6378,7 +6382,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"blockHashAndNumber\",version=\"$version\"}",
@@ -6394,7 +6398,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -6407,7 +6411,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6419,7 +6424,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 166
+        "y": 148
       },
       "id": 139,
       "options": {
@@ -6441,7 +6446,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
@@ -6456,7 +6461,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -6469,7 +6474,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6481,7 +6487,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 166
+        "y": 148
       },
       "id": 140,
       "options": {
@@ -6503,7 +6509,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
@@ -6519,7 +6525,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -6532,7 +6538,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6544,7 +6551,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 166
+        "y": 148
       },
       "id": 141,
       "options": {
@@ -6566,7 +6573,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\",quantile=\"0.95\"}",
@@ -6582,7 +6589,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -6624,7 +6631,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6636,7 +6644,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 166
+        "y": 148
       },
       "id": 97,
       "options": {
@@ -6655,7 +6663,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"chainId\",version=\"$version\"}",
@@ -6671,7 +6679,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -6684,7 +6692,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6696,7 +6705,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 173
+        "y": 155
       },
       "id": 142,
       "options": {
@@ -6718,7 +6727,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
@@ -6733,7 +6742,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -6746,7 +6755,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6758,7 +6768,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 173
+        "y": 155
       },
       "id": 143,
       "options": {
@@ -6780,7 +6790,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
@@ -6796,7 +6806,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -6809,7 +6819,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6821,7 +6832,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 173
+        "y": 155
       },
       "id": 144,
       "options": {
@@ -6843,7 +6854,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\",quantile=\"0.95\"}",
@@ -6859,7 +6870,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -6901,7 +6912,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6913,7 +6925,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 173
+        "y": 155
       },
       "id": 98,
       "options": {
@@ -6932,7 +6944,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"syncing\",version=\"$version\"}",
@@ -6948,7 +6960,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of incoming requests.",
       "fieldConfig": {
@@ -6961,7 +6973,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -6973,7 +6986,7 @@
         "h": 7,
         "w": 4,
         "x": 0,
-        "y": 180
+        "y": 162
       },
       "id": 100,
       "options": {
@@ -6995,7 +7008,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
@@ -7010,7 +7023,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "Number of failed requests.",
       "fieldConfig": {
@@ -7023,7 +7036,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -7035,7 +7049,7 @@
         "h": 7,
         "w": 4,
         "x": 4,
-        "y": 180
+        "y": 162
       },
       "id": 119,
       "options": {
@@ -7057,7 +7071,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
@@ -7073,7 +7087,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latency of the quickest 95% of the requests.",
       "fieldConfig": {
@@ -7086,7 +7100,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -7098,7 +7113,7 @@
         "h": 7,
         "w": 4,
         "x": 8,
-        "y": 180
+        "y": 162
       },
       "id": 120,
       "options": {
@@ -7120,7 +7135,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\",quantile=\"0.95\"}",
@@ -7136,7 +7151,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "PBFA97CFB590B2093"
       },
       "description": "The maximal latencies of different percentages of the quickest requests.",
       "fieldConfig": {
@@ -7178,7 +7193,8 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green"
+                "color": "green",
+                "value": null
               }
             ]
           },
@@ -7190,7 +7206,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 180
+        "y": 162
       },
       "id": 99,
       "options": {
@@ -7209,7 +7225,7 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
           "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"call\",version=\"$version\"}",
@@ -7221,19 +7237,1990 @@
       ],
       "title": "call Latencies",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 169
+      },
+      "id": 153,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"simulateTransactions\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "simulateTransactions Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 169
+      },
+      "id": 154,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"simulateTransactions\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "simulateTransactions Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 169
+      },
+      "id": 155,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"simulateTransactions\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "simulateTransactions Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 169
+      },
+      "id": 156,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"simulateTransactions\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "simulateTransactions Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 176
+      },
+      "id": 157,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"estimateFee\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "estimateFee Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 176
+      },
+      "id": 158,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"estimateFee\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "estimateFee Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 176
+      },
+      "id": 159,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"estimateFee\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "estimateFee Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 176
+      },
+      "id": 160,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"estimateFee\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "estimateFee Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 183
+      },
+      "id": 145,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceTransaction\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "traceTransaction Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 183
+      },
+      "id": 146,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "traceTransaction Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 183
+      },
+      "id": 147,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceTransaction\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "traceTransaction Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 183
+      },
+      "id": 148,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "traceTransaction Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 190
+      },
+      "id": 149,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceBlockTransactions\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "traceBlockTransactions Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 190
+      },
+      "id": 150,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceBlockTransactions\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "traceBlockTransactions Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 190
+      },
+      "id": 151,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceBlockTransactions\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "traceBlockTransactions Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 190
+      },
+      "id": 152,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"traceBlockTransactions\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "traceBlockTransactions Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 197
+      },
+      "id": 164,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "addInvokeTransaction Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 197
+      },
+      "id": 163,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "addInvokeTransaction Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 197
+      },
+      "id": 162,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addInvokeTransaction Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 197
+      },
+      "id": 161,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addInvokeTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addInvokeTransaction Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 204
+      },
+      "id": 172,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeployAccountTransaction\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "addDeployAccountTransaction Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 204
+      },
+      "id": 170,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeployAccountTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "addDeployAccountTransaction Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 204
+      },
+      "id": 167,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeployAccountTransaction\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addDeployAccountTransaction Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 204
+      },
+      "id": 166,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeployAccountTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addDeployAccountTransaction Latencies",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of incoming requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 0,
+        "y": 211
+      },
+      "id": 171,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_incoming_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeclareTransaction\",version=\"$version\"}",
+          "legendFormat": "Incoming requests",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "addDeclareTransaction Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "Number of failed requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 4,
+        "y": 211
+      },
+      "id": 169,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_failed_requests{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeclareTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "Failed requests",
+          "range": true,
+          "refId": "C"
+        }
+      ],
+      "title": "addDeclareTransaction Failed Requests",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latency of the quickest 95% of the requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 4,
+        "x": 8,
+        "y": 211
+      },
+      "id": 168,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeclareTransaction\",version=\"$version\",quantile=\"0.95\"}",
+          "hide": false,
+          "legendFormat": "Latency",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addDeclareTransaction Latency (0.95)",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "description": "The maximal latencies of different percentages of the quickest requests.",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "decimals": 10,
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "locale"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 12,
+        "y": 211
+      },
+      "id": 165,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "8.5.5",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"$namespace\", pod=~\"$pod\", method=\"addDeclareTransaction\",version=\"$version\"}",
+          "hide": false,
+          "legendFormat": "{{quantile}}",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "addDeclareTransaction Latencies",
+      "type": "timeseries"
     }
   ],
-  "refresh": false,
+  "refresh": "5s",
   "schemaVersion": 36,
   "style": "dark",
   "tags": [],
   "templating": {
     "list": [
       {
-        "current": {},
+        "current": {
+          "selected": true,
+          "text": "papyrus-mainnet-dan",
+          "value": "papyrus-mainnet-dan"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "PBFA97CFB590B2093"
         },
         "definition": "label_values(papyrus_header_marker, kubernetes_namespace)",
         "hide": 0,
@@ -7252,10 +9239,14 @@
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
-          "uid": "${DS_PROMETHEUS}"
+          "uid": "PBFA97CFB590B2093"
         },
         "definition": "label_values(papyrus_header_marker{kubernetes_namespace=\"$namespace\"}, pod)",
         "hide": 0,
@@ -7275,9 +9266,9 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "None",
-          "value": "None"
+          "selected": true,
+          "text": "V0_5",
+          "value": "V0_5"
         },
         "hide": 0,
         "includeAll": false,
@@ -7290,13 +9281,13 @@
             "value": "V0_4"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "V0_5",
             "value": "V0_5"
           }
         ],
         "query": "V0_4,V0_5",
-        "queryValue": "None",
+        "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"
       }
@@ -7308,8 +9299,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Papyrus-node-data",
-  "uid": "Tv-UWle4k",
-  "version": 60,
+  "title": "Papyrus-node-data-yair-trace",
+  "uid": "Tv-UWle4k-yair",
+  "version": 2,
   "weekStart": ""
 }
