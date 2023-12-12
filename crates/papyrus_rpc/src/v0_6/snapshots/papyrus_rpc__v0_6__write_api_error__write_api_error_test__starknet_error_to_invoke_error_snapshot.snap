@@ -44,6 +44,7 @@ expression: get_conversion_snapshot(starknet_error_to_invoke_error)
       "code": {
         "$serde_json::private::Number": "55"
       },
+      "data": "message",
       "message": "Account validation failed"
     },
     {
