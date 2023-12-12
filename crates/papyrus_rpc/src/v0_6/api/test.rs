@@ -184,10 +184,10 @@ const NODE_VERSION: &str = "NODE VERSION";
 async fn spec_version() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
-    call_api_then_assert_and_validate_schema_for_result::<_, _, String>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         "starknet_V0_6_specVersion",
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &format!("{VERSION}"),
@@ -203,10 +203,10 @@ async fn chain_id() {
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
     // taken from starknet documentation:
     // https://docs.starknet.io/documentation/develop/Blocks/transactions/#chain-id.
-    call_api_then_assert_and_validate_schema_for_result::<_, _, String>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         "starknet_V0_6_chainId",
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &String::from("0x534e5f474f45524c49"),
@@ -221,10 +221,10 @@ async fn block_hash_and_number() {
         get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // No blocks yet.
-    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockHashAndNumber>(
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockHashAndNumber>(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &NO_BLOCKS.into(),
@@ -242,10 +242,10 @@ async fn block_hash_and_number() {
         .unwrap()
         .commit()
         .unwrap();
-    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockHashAndNumber>(
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockHashAndNumber>(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &NO_BLOCKS.into(),
@@ -264,10 +264,10 @@ async fn block_hash_and_number() {
         .unwrap()
         .commit()
         .unwrap();
-    call_api_then_assert_and_validate_schema_for_result::<_, _, BlockHashAndNumber>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BlockHashAndNumber {
@@ -286,10 +286,10 @@ async fn block_number() {
 
     // No blocks yet.
     let expected_err = NO_BLOCKS.into();
-    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockNumber>(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_err,
@@ -306,10 +306,10 @@ async fn block_number() {
         .unwrap()
         .commit()
         .unwrap();
-    call_api_then_assert_and_validate_schema_for_err::<_, _, BlockNumber>(
+    call_api_then_assert_and_validate_schema_for_err::<_, BlockNumber>(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_err,
@@ -328,10 +328,10 @@ async fn block_number() {
         .unwrap()
         .commit()
         .unwrap();
-    call_api_then_assert_and_validate_schema_for_result::<_, _, BlockNumber>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BlockNumber(0),
@@ -352,10 +352,10 @@ async fn syncing() {
         None,
     );
 
-    call_api_then_assert_and_validate_schema_for_result::<_, _, bool>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         API_METHOD_NAME,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &false,
@@ -364,10 +364,10 @@ async fn syncing() {
 
     *shared_highest_block.write().await =
         Some(BlockHashAndNumber { block_number: BlockNumber(5), ..Default::default() });
-    call_api_then_assert_and_validate_schema_for_result::<_, _, SyncStatus>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         API_METHOD_NAME,
-        &None::<()>,
+        vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &SyncStatus { highest_block_num: BlockNumber(5), ..Default::default() },
@@ -403,10 +403,10 @@ async fn get_block_transaction_count() {
         .unwrap();
 
     // Get block by hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, usize>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &transaction_count,
@@ -443,12 +443,12 @@ async fn get_block_transaction_count() {
     assert_eq!(res, 0);
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, usize>(
+    call_api_then_assert_and_validate_schema_for_err::<_, usize>(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        ))))),
+        )))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -516,10 +516,12 @@ async fn get_block_w_full_transactions() {
     };
 
     // Get block by hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(
+            expected_block_header.block_hash,
+        )))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_block,
@@ -611,10 +613,10 @@ async fn get_block_w_full_transactions() {
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::Tag(Tag::Pending)),
+        vec![Box::new(BlockId::Tag(Tag::Pending))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_pending_block,
@@ -682,10 +684,12 @@ async fn get_block_w_transaction_hashes() {
     };
 
     // Get block by hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(expected_block_header.block_hash))),
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(
+            expected_block_header.block_hash,
+        )))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_block,
@@ -724,12 +728,12 @@ async fn get_block_w_transaction_hashes() {
     assert_eq!(block.status, Some(BlockStatus::AcceptedOnL1));
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, Block>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Block>(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        ))))),
+        )))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -783,10 +787,10 @@ async fn get_block_w_transaction_hashes() {
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, Block>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::Tag(Tag::Pending)),
+        vec![Box::new(BlockId::Tag(Tag::Pending))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_pending_block,
@@ -849,14 +853,13 @@ async fn get_class() {
     let expected_contract_class = contract_class.clone().try_into().unwrap();
 
     // Get class by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<
-        _,
-        (BlockId, ClassHash),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *class_hash)),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            Box::new(*class_hash),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_contract_class,
@@ -889,17 +892,13 @@ async fn get_class() {
     assert_eq!(res, pending_class.try_into().unwrap());
 
     // Ask for an invalid class hash.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, ClassHash),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, DeprecatedContractClass>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-            ClassHash(stark_felt!("0x7")),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            Box::new(ClassHash(stark_felt!("0x7"))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CLASS_HASH_NOT_FOUND.into(),
@@ -946,19 +945,15 @@ async fn get_class() {
     assert_matches!(err, Error::Call(err) if err == CLASS_HASH_NOT_FOUND.into());
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, ClassHash),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, DeprecatedContractClass>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-            ClassHash(stark_felt!("0x7")),
-        )),
+            ))))),
+            Box::new(ClassHash(stark_felt!("0x7"))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -1007,12 +1002,8 @@ async fn get_transaction_status() {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         execution_status: output.execution_status().clone(),
     };
-    let (json_response, res) = raw_call::<_, TransactionHash, TransactionStatus>(
-        &module,
-        method_name,
-        &Some(transaction_hash),
-    )
-    .await;
+    let (json_response, res) =
+        raw_call::<_, _, TransactionStatus>(&module, method_name, &[transaction_hash]).await;
     assert_eq!(res.unwrap(), expected_status);
     assert!(validate_schema(
         &get_starknet_spec_api_schema_for_method_results(
@@ -1051,10 +1042,10 @@ async fn get_transaction_status() {
         pending_block.transactions.push(client_transaction.clone());
         pending_block.transaction_receipts.push(client_transaction_receipt.clone());
     }
-    let (json_response, result) = raw_call::<_, TransactionHash, TransactionStatus>(
+    let (json_response, result) = raw_call::<_, _, TransactionStatus>(
         &module,
         method_name,
-        &Some(client_transaction_receipt.transaction_hash),
+        &[client_transaction_receipt.transaction_hash],
     )
     .await;
     assert_eq!(result.unwrap(), expected_status);
@@ -1072,19 +1063,19 @@ async fn get_transaction_status() {
 
     // Ask for transaction status when the pending block is not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
-    let (_, res) = raw_call::<_, TransactionHash, TransactionStatus>(
+    let (_, res) = raw_call::<_, _, TransactionStatus>(
         &module,
         method_name,
-        &Some(client_transaction_receipt.transaction_hash),
+        &[client_transaction_receipt.transaction_hash],
     )
     .await;
     assert_eq!(res.unwrap_err(), TRANSACTION_HASH_NOT_FOUND.into());
 
     // Ask for an invalid transaction.
-    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionStatus>(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionStatus>(
         &module,
         method_name,
-        &Some(TransactionHash(StarkHash::from(1_u8))),
+        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -1127,12 +1118,8 @@ async fn get_transaction_receipt() {
         block_number: block.header.block_number,
         output,
     };
-    let (json_response, res) = raw_call::<_, TransactionHash, TransactionReceipt>(
-        &module,
-        method_name,
-        &Some(transaction_hash),
-    )
-    .await;
+    let (json_response, res) =
+        raw_call::<_, _, TransactionReceipt>(&module, method_name, &[transaction_hash]).await;
     // The returned jsons of some transaction outputs are the same. When deserialized, the first
     // struct in the TransactionOutput enum that matches the json is chosen. To not depend here
     // on the order of structs we compare the serialized data.
@@ -1175,10 +1162,10 @@ async fn get_transaction_receipt() {
     }
 
     let expected_result = GeneralTransactionReceipt::PendingTransactionReceipt(expected_receipt);
-    let (json_response, result) = raw_call::<_, TransactionHash, PendingTransactionReceipt>(
+    let (json_response, result) = raw_call::<_, _, PendingTransactionReceipt>(
         &module,
         method_name,
-        &Some(client_transaction_receipt.transaction_hash),
+        &[client_transaction_receipt.transaction_hash],
     )
     .await;
     // See above for explanation why we compare the json strings.
@@ -1200,19 +1187,19 @@ async fn get_transaction_receipt() {
 
     // Ask for transaction receipt when the pending block is not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
-    let (_, res) = raw_call::<_, TransactionHash, TransactionReceipt>(
+    let (_, res) = raw_call::<_, _, TransactionReceipt>(
         &module,
         method_name,
-        &Some(client_transaction_receipt.transaction_hash),
+        &[client_transaction_receipt.transaction_hash],
     )
     .await;
     assert_eq!(res.unwrap_err(), TRANSACTION_HASH_NOT_FOUND.into());
 
     // Ask for an invalid transaction.
-    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionReceipt>(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionReceipt>(
         &module,
         method_name,
-        &Some(TransactionHash(StarkHash::from(1_u8))),
+        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -1286,14 +1273,13 @@ async fn get_class_at() {
     let address = diff.deployed_contracts.get_index(0).unwrap().0;
 
     // Get class by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<
-        _,
-        (BlockId, ContractAddress),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_contract_class,
@@ -1346,10 +1332,10 @@ async fn get_class_at() {
 
     // Get class hash of pending block when it's not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ContractClass>(
+    call_api_then_assert_and_validate_schema_for_err::<_, ContractClass>(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), pending_address)),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(pending_address)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1358,17 +1344,13 @@ async fn get_class_at() {
 
     // Invalid Call
     // Ask for an invalid contract.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, ContractAddress),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, DeprecatedContractClass>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-            ContractAddress(patricia_key!("0x12")),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            Box::new(ContractAddress(patricia_key!("0x12"))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1389,19 +1371,15 @@ async fn get_class_at() {
     assert_matches!(err, Error::Call(err) if err == CONTRACT_NOT_FOUND.into());
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, ContractAddress),
-        DeprecatedContractClass,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, DeprecatedContractClass>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-            *address,
-        )),
+            ))))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -1454,10 +1432,13 @@ async fn get_class_hash_at() {
     pending_data.write().await.block.parent_block_hash = header.block_hash;
 
     // Get class hash by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), ClassHash>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         expected_class_hash,
@@ -1496,10 +1477,10 @@ async fn get_class_hash_at() {
 
     // Get class hash of pending block when it's not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+    call_api_then_assert_and_validate_schema_for_err::<_, ClassHash>(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), pending_address)),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(pending_address)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1513,13 +1494,13 @@ async fn get_class_hash_at() {
     assert_eq!(res, *expected_class_hash);
 
     // Ask for an invalid contract.
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+    call_api_then_assert_and_validate_schema_for_err::<_, ClassHash>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-            ContractAddress(patricia_key!("0x12")),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            Box::new(ContractAddress(patricia_key!("0x12"))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1527,15 +1508,15 @@ async fn get_class_hash_at() {
     .await;
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), ClassHash>(
+    call_api_then_assert_and_validate_schema_for_err::<_, ClassHash>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-            *address,
-        )),
+            ))))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -1577,10 +1558,13 @@ async fn get_nonce() {
     let (address, expected_nonce) = diff.nonces.get_index(0).unwrap();
 
     // Get nonce by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), Nonce>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)), *address)),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         expected_nonce,
@@ -1618,10 +1602,10 @@ async fn get_nonce() {
         .state_diff
         .nonces
         .insert(new_pending_contract_address, new_nonce);
-    call_api_then_assert_and_validate_schema_for_result::<_, (BlockId, ContractAddress), StarkFelt>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(new_pending_contract_address)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &new_nonce,
@@ -1637,10 +1621,10 @@ async fn get_nonce() {
     // Ask for nonce in pending block where the contract is deployed in the pending block, and the
     // pending block is not up to date.
     // Expected outcome: Failure due to contract not found.
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), StarkFelt>(
+    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), new_pending_contract_address)),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(new_pending_contract_address)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1648,13 +1632,13 @@ async fn get_nonce() {
     .await;
 
     // Ask for an invalid contract.
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Nonce>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number)),
-            ContractAddress(patricia_key!("0x31")),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(header.block_number))),
+            Box::new(ContractAddress(patricia_key!("0x31"))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1662,15 +1646,15 @@ async fn get_nonce() {
     .await;
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, (BlockId, ContractAddress), Nonce>(
+    call_api_then_assert_and_validate_schema_for_err::<_, Nonce>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-            *address,
-        )),
+            ))))),
+            Box::new(*address),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -1713,14 +1697,14 @@ async fn get_storage_at() {
     let (key, expected_value) = storage_entries.get_index(0).unwrap();
 
     // Get storage by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<
-        _,
-        (ContractAddress, StorageKey, BlockId),
-        StarkFelt,
-    >(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((*address, *key, BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)))),
+        vec![
+            Box::new(*address),
+            Box::new(*key),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         expected_value,
@@ -1809,14 +1793,10 @@ async fn get_storage_at() {
         .state_diff
         .storage_diffs
         .insert(contract_address, vec![ClientStorageEntry { key, value: StarkFelt::default() }]);
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (ContractAddress, StorageKey, BlockId),
-        StarkFelt,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
         &module,
         method_name,
-        &Some((contract_address, key, BlockId::Tag(Tag::Pending))),
+        vec![Box::new(contract_address), Box::new(key), Box::new(BlockId::Tag(Tag::Pending))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1838,18 +1818,14 @@ async fn get_storage_at() {
     assert_eq!(res, StarkFelt::default());
 
     // Ask for an invalid contract.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (ContractAddress, StorageKey, BlockId),
-        StarkFelt,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
         &module,
         method_name,
-        &Some((
-            ContractAddress(patricia_key!("0x12")),
-            key,
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)),
-        )),
+        vec![
+            Box::new(ContractAddress(patricia_key!("0x12"))),
+            Box::new(key),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &CONTRACT_NOT_FOUND.into(),
@@ -1857,20 +1833,16 @@ async fn get_storage_at() {
     .await;
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (ContractAddress, StorageKey, BlockId),
-        StarkFelt,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, StarkFelt>(
         &module,
         method_name,
-        &Some((
-            *address,
-            key,
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(*address),
+            Box::new(key),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-        )),
+            ))))),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -1977,10 +1949,10 @@ async fn get_transaction_by_hash() {
         transaction: block.body.transactions[0].clone().try_into().unwrap(),
         transaction_hash: block.body.transaction_hashes[0],
     };
-    call_api_then_assert_and_validate_schema_for_result::<_, TransactionHash, TransactionWithHash>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(block.body.transaction_hashes[0]),
+        vec![Box::new(block.body.transaction_hashes[0])],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_transaction,
@@ -1991,10 +1963,10 @@ async fn get_transaction_by_hash() {
     let (client_transaction, expected_transaction_with_hash) =
         generate_client_transaction_and_rpc_transaction(&mut get_rng());
     pending_data.write().await.block.transactions.push(client_transaction.clone());
-    call_api_then_assert_and_validate_schema_for_result::<_, TransactionHash, TransactionWithHash>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(client_transaction.transaction_hash()),
+        vec![Box::new(client_transaction.transaction_hash())],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_transaction_with_hash,
@@ -2003,10 +1975,10 @@ async fn get_transaction_by_hash() {
 
     // Get pending block when it's not updated.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
-    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some(client_transaction.transaction_hash()),
+        vec![Box::new(client_transaction.transaction_hash())],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -2014,10 +1986,10 @@ async fn get_transaction_by_hash() {
     .await;
 
     // Ask for an invalid transaction.
-    call_api_then_assert_and_validate_schema_for_err::<_, TransactionHash, TransactionWithHash>(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some(TransactionHash(StarkHash::from(1_u8))),
+        vec![Box::new(TransactionHash(StarkHash::from(1_u8)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TRANSACTION_HASH_NOT_FOUND.into(),
@@ -2028,7 +2000,7 @@ async fn get_transaction_by_hash() {
 #[tokio::test]
 async fn get_transaction_by_hash_state_only() {
     let method_name = "starknet_V0_6_getTransactionByHash";
-    let params = Some(TransactionHash(StarkHash::from(1_u8)));
+    let params = [TransactionHash(StarkHash::from(1_u8))];
     let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         None,
@@ -2037,8 +2009,7 @@ async fn get_transaction_by_hash_state_only() {
         Some(StorageScope::StateOnly),
     );
 
-    let (_, err) =
-        raw_call::<_, TransactionHash, TransactionWithHash>(&module, method_name, &params).await;
+    let (_, err) = raw_call::<_, _, TransactionWithHash>(&module, method_name, &params).await;
     assert_eq!(
         err.unwrap_err(),
         internal_server_error_with_msg("Unsupported method in state-only scope.")
@@ -2077,17 +2048,13 @@ async fn get_transaction_by_block_id_and_index() {
     };
 
     // Get transaction by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<
-        _,
-        (BlockId, TransactionOffsetInBlock),
-        TransactionWithHash,
-    >(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
-            TransactionOffsetInBlock(0),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
+            Box::new(TransactionOffsetInBlock(0)),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_transaction,
@@ -2115,14 +2082,10 @@ async fn get_transaction_by_block_id_and_index() {
     assert_eq!(res, expected_transaction_with_hash);
 
     // Ask for an invalid transaction index in pending block.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, TransactionOffsetInBlock),
-        TransactionWithHash,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(1))),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(TransactionOffsetInBlock(1))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
@@ -2132,14 +2095,10 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction of pending block when the pending block is not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
 
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, TransactionOffsetInBlock),
-        TransactionWithHash,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some((BlockId::Tag(Tag::Pending), TransactionOffsetInBlock(0))),
+        vec![Box::new(BlockId::Tag(Tag::Pending)), Box::new(TransactionOffsetInBlock(0))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
@@ -2147,19 +2106,15 @@ async fn get_transaction_by_block_id_and_index() {
     .await;
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, TransactionOffsetInBlock),
-        TransactionWithHash,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
                 "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-            )))),
-            TransactionOffsetInBlock(0),
-        )),
+            ))))),
+            Box::new(TransactionOffsetInBlock(0)),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -2177,17 +2132,13 @@ async fn get_transaction_by_block_id_and_index() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 
     // Ask for an invalid transaction index.
-    call_api_then_assert_and_validate_schema_for_err::<
-        _,
-        (BlockId, TransactionOffsetInBlock),
-        TransactionWithHash,
-    >(
+    call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
-        &Some((
-            BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash)),
-            TransactionOffsetInBlock(1),
-        )),
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block.header.block_hash))),
+            Box::new(TransactionOffsetInBlock(1)),
+        ],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &INVALID_TRANSACTION_INDEX.into(),
@@ -2242,10 +2193,10 @@ async fn get_state_update() {
     });
 
     // Get state update by block hash.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, StateUpdate>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash))),
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(header.block_hash)))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_update,
@@ -2312,10 +2263,10 @@ async fn get_state_update() {
         },
     };
     // Validating schema because the state diff of pending block contains less fields.
-    call_api_then_assert_and_validate_schema_for_result::<_, BlockId, StateUpdate>(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
-        &Some(BlockId::Tag(Tag::Pending)),
+        vec![Box::new(BlockId::Tag(Tag::Pending))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &expected_pending_update,
@@ -2333,12 +2284,12 @@ async fn get_state_update() {
     assert_eq!(res, expected_pending_update);
 
     // Ask for an invalid block hash.
-    call_api_then_assert_and_validate_schema_for_err::<_, BlockId, StateUpdate>(
+    call_api_then_assert_and_validate_schema_for_err::<_, StateUpdate>(
         &module,
         method_name,
-        &Some(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
             "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
-        ))))),
+        )))))],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &BLOCK_NOT_FOUND.into(),
@@ -2551,10 +2502,10 @@ async fn test_get_events(
             continuation_token: expected_continuation_token
                 .map(|x| ContinuationToken::new(x).unwrap()),
         };
-        call_api_then_assert_and_validate_schema_for_result::<_, EventFilter, EventsChunk>(
+        call_api_then_assert_and_validate_schema_for_result(
             &module,
             method_name,
-            &Some(filter.clone()),
+            vec![Box::new(filter.clone())],
             &VERSION,
             SpecFile::StarknetApiOpenrpc,
             &expected_result,
@@ -2981,10 +2932,10 @@ async fn get_events_page_size_too_big() {
         keys: vec![],
     };
 
-    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+    call_api_then_assert_and_validate_schema_for_err::<_, EventsChunk>(
         &module,
         "starknet_V0_6_getEvents",
-        &Some(filter),
+        vec![Box::new(filter)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &PAGE_SIZE_TOO_BIG.into(),
@@ -3009,10 +2960,10 @@ async fn get_events_too_many_keys() {
         keys,
     };
 
-    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+    call_api_then_assert_and_validate_schema_for_err::<_, EventsChunk>(
         &module,
         "starknet_V0_6_getEvents",
-        &Some(filter),
+        vec![Box::new(filter)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &TOO_MANY_KEYS_IN_FILTER.into(),
@@ -3051,10 +3002,10 @@ async fn get_events_invalid_ct() {
         keys: vec![],
     };
 
-    call_api_then_assert_and_validate_schema_for_err::<_, EventFilter, EventsChunk>(
+    call_api_then_assert_and_validate_schema_for_err::<_, EventsChunk>(
         &module,
         "starknet_V0_6_getEvents",
-        &Some(filter),
+        vec![Box::new(filter)],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
         &INVALID_CONTINUATION_TOKEN.into(),
