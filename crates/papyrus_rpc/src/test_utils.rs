@@ -363,13 +363,24 @@ pub async fn call_api_then_assert_and_validate_schema_for_err<
     let params = params_vec_to_named_params(method, params, version_id, spec_file);
     let (json_response, err) = raw_call::<_, _, T>(module, method, &params).await;
     assert_eq!(err.unwrap_err(), *expected_err);
-    assert!(validate_schema(
-        &get_starknet_spec_api_schema_for_method_errors(
-            &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
-            version_id,
+    assert!(
+        validate_schema(
+            &get_starknet_spec_api_schema_for_method_errors(
+                &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
+                version_id,
+            ),
+            &json_response["error"],
         ),
-        &json_response["error"],
-    ));
+        "Error of method {} does not correspond to the specs.\nError serialization:\n{}\nError \
+         specs:\n{}",
+        method,
+        serde_json::to_string_pretty(&json_response).unwrap(),
+        // The arguments here are evaluated only when the assertion fails.
+        serde_json::to_string_pretty(
+            &get_method_spec_object(method, version_id, spec_file)["errors"]
+        )
+        .unwrap(),
+    );
 }
 
 #[allow(dead_code)]
@@ -388,13 +399,24 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
     let params = params_vec_to_named_params(method, params, version_id, spec_file);
     let (json_response, res) = raw_call::<_, _, T>(module, method, &params).await;
     assert_eq!(res.unwrap(), *expected_res);
-    assert!(validate_schema(
-        &get_starknet_spec_api_schema_for_method_results(
-            &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
-            version_id,
+    assert!(
+        validate_schema(
+            &get_starknet_spec_api_schema_for_method_results(
+                &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
+                version_id,
+            ),
+            &json_response["result"],
         ),
-        &json_response["result"],
-    ));
+        "Result of method {} does not correspond to the specs.\nResult serialization:\n{}\nResult \
+         specs:\n{}",
+        method,
+        serde_json::to_string_pretty(&json_response).unwrap(),
+        // The arguments here are evaluated only when the assertion fails.
+        serde_json::to_string_pretty(
+            &get_method_spec_object(method, version_id, spec_file)["result"]
+        )
+        .unwrap(),
+    );
 }
 
 pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
@@ -432,27 +454,34 @@ fn validate_schema_for_method_params(
     version_id: &VersionId,
     spec_file: SpecFile,
 ) {
+    let method_spec_object = get_method_spec_object(method, version_id, spec_file);
     if params.is_empty() {
-        let spec: serde_json::Value =
-            read_spec(format!("./resources/{}/{spec_file}", version_id.name));
-        let method_index = get_method_index(&spec, &method_name_to_spec_method_name(method));
-
-        let method_spec_object = spec.as_object().unwrap()["methods"].as_array().unwrap()
-            [method_index]
-            .as_object()
-            .unwrap();
-        assert!(method_spec_object["params"].as_array().unwrap().is_empty());
+        assert!(
+            method_spec_object["params"].as_array().unwrap().is_empty(),
+            "Got no params for method {} which expects the following params according to the \
+             specs:\n{}",
+            method,
+            serde_json::to_string_pretty(&method_spec_object["params"]).unwrap(),
+        );
 
         return;
     };
     for (i, param) in params.iter().enumerate() {
-        assert!(validate_schema(
-            &get_starknet_spec_api_schema_for_method_param(
-                &[(spec_file, &[(method_name_to_spec_method_name(method).as_str(), i)])],
-                version_id,
+        assert!(
+            validate_schema(
+                &get_starknet_spec_api_schema_for_method_param(
+                    &[(spec_file, &[(method_name_to_spec_method_name(method).as_str(), i)])],
+                    version_id,
+                ),
+                &param.to_json_value().unwrap(),
             ),
-            &param.to_json_value().unwrap(),
-        ));
+            "Param no. {} of method {} does not correspond to the specs.\nParam \
+             serialization:\n{}\nParam specs:\n{}",
+            i,
+            method,
+            serde_json::to_string_pretty(&param.to_json_value().unwrap()).unwrap(),
+            serde_json::to_string_pretty(&method_spec_object["params"][i]).unwrap(),
+        );
     }
 }
 
@@ -464,11 +493,7 @@ fn params_vec_to_named_params(
     version_id: &VersionId,
     spec_file: SpecFile,
 ) -> Value {
-    let spec: serde_json::Value = read_spec(format!("./resources/{}/{spec_file}", version_id.name));
-    let method_index = get_method_index(&spec, &method_name_to_spec_method_name(method));
-
-    let method_spec_object =
-        spec.as_object().unwrap()["methods"].as_array().unwrap()[method_index].as_object().unwrap();
+    let method_spec_object = get_method_spec_object(method, version_id, spec_file);
     let method_params_spec_array = method_spec_object["params"].as_array().unwrap();
     let method_names = method_params_spec_array.iter().map(|param_spec_object| {
         param_spec_object.as_object().unwrap()["name"].as_str().unwrap().to_owned()
@@ -479,4 +504,19 @@ fn params_vec_to_named_params(
     let serialized_params = params.into_iter().map(|param| param.to_json_value().unwrap());
 
     Value::Object(Map::from_iter(method_names.zip(serialized_params)))
+}
+
+// Read the spec file and return the json object specifying the given method.
+fn get_method_spec_object(
+    method: &str,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) -> Map<String, Value> {
+    let spec: serde_json::Value = read_spec(format!("./resources/{}/{spec_file}", version_id.name));
+    let method_index = get_method_index(&spec, &method_name_to_spec_method_name(method));
+
+    spec.as_object().unwrap()["methods"].as_array().unwrap()[method_index]
+        .as_object()
+        .unwrap()
+        .clone()
 }
