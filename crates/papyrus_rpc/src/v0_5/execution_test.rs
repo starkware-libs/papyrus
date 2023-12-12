@@ -120,21 +120,17 @@ async fn execution_call() {
     let key = stark_felt!(1234_u16);
     let value = stark_felt!(18_u8);
 
-    call_api_then_assert_and_validate_schema_for_result::<
-        _,
-        (CallRequest, BlockId),
-        Vec<StarkFelt>,
-    >(
+    call_api_then_assert_and_validate_schema_for_result(
         &module,
         "starknet_V0_5_call",
-        &Some((
-            CallRequest {
+        vec![
+            Box::new(CallRequest {
                 contract_address: *DEPRECATED_CONTRACT_ADDRESS,
                 entry_point_selector: selector_from_name("test_storage_read_write"),
                 calldata: calldata![key, value],
-            },
-            BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-        )),
+            }),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
         &VERSION_0_5,
         SpecFile::StarknetApiOpenrpc,
         &vec![value],
