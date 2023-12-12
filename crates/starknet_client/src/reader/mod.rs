@@ -135,9 +135,18 @@ impl StarknetUrls {
         let base_url = Url::parse(url_str)?;
         Ok(StarknetUrls {
             get_block: base_url.join(GET_BLOCK_URL)?,
-            get_contract_by_hash: base_url.join(GET_CONTRACT_BY_HASH_URL)?,
+            get_contract_by_hash: base_url
+                .join(GET_CONTRACT_BY_HASH_URL)?
+                .query_pairs_mut()
+                .append_pair(BLOCK_NUMBER_QUERY, PENDING_BLOCK_ID)
+                .finish()
+                .clone(),
             get_compiled_class_by_class_hash: base_url
-                .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?,
+                .join(GET_COMPILED_CLASS_BY_CLASS_HASH_URL)?
+                .query_pairs_mut()
+                .append_pair(BLOCK_NUMBER_QUERY, PENDING_BLOCK_ID)
+                .finish()
+                .clone(),
             get_state_update: base_url.join(GET_STATE_UPDATE_URL)?,
             get_pending_data: base_url
                 .join(GET_STATE_UPDATE_URL)?
