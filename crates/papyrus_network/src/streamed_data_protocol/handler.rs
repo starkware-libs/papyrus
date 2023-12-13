@@ -220,8 +220,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 }
                 Poll::Ready(None) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::OutboundSessionClosedByPeer {
-                            outbound_session_id: *outbound_session_id,
+                        ToBehaviourEvent::SessionClosedByPeer {
+                            session_id: SessionId::OutboundSessionId(*outbound_session_id),
                         },
                     ));
                     false
