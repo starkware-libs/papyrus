@@ -6,7 +6,7 @@ mod version_test;
 const VERSION_MAJOR: u32 = 0;
 
 /// Minor version component of the current release.
-const VERSION_MINOR: u32 = 2;
+const VERSION_MINOR: u32 = 3;
 
 /// Patch version component of the current release.
 const VERSION_PATCH: u32 = 0;
@@ -14,7 +14,7 @@ const VERSION_PATCH: u32 = 0;
 /// Version metadata to append to the version string.
 /// Expected values are `dev` and `stable`.
 #[allow(dead_code)]
-const VERSION_META: Metadata = Metadata::Stable;
+const VERSION_META: Metadata = Metadata::Dev;
 
 /// Textual version string.
 pub const VERSION: &str = version_str();
