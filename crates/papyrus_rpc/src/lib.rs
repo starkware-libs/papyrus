@@ -241,11 +241,11 @@ pub async fn run_server(
             .build(&config.server_address)
             .await?;
         addr = server.local_addr()?;
-        handle = server.start(methods)?;
+        handle = server.start(methods);
     } else {
         let server = server_builder.build(&config.server_address).await?;
         addr = server.local_addr()?;
-        handle = server.start(methods)?;
+        handle = server.start(methods);
     }
     info!(local_address = %addr, "JSON-RPC is running.");
     Ok((addr, handle))

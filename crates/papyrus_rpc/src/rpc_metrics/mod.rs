@@ -53,14 +53,14 @@ impl Logger for MetricLogger {
     fn on_result(
         &self,
         method_name: &str,
-        success: bool,
+        success_or_error: jsonrpsee::helpers::MethodResponseResult,
         started_at: Self::Instant,
         _transport: TransportProtocol,
     ) {
         // To prevent creating metrics for illegal methods.
         if self.methods_set.contains(method_name) {
             let (method, version) = get_method_and_version(method_name);
-            if !success {
+            if let jsonrpsee::helpers::MethodResponseResult::Failed(_) = success_or_error {
                 increment_counter!(FAILED_REQUESTS, METHOD_LABEL=> method.clone(), VERSION_LABEL=> version.clone());
             }
             increment_counter!(INCOMING_REQUEST, METHOD_LABEL=> method.clone(), VERSION_LABEL=> version.clone());
