@@ -1,5 +1,6 @@
 {
     "chain_id": "SN_SEPOLIA",
     "starknet_url": "https://alpha-sepolia.starknet.io/",
+    "rpc.execution_config": "config/execution_config/sepolia_testnet.json",
     "base_layer.starknet_contract_address": "0xe2bb56ee936fd6433dc0f6e7e3b8365c906aa057"
 }
