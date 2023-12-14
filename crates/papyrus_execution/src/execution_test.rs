@@ -623,15 +623,15 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 #[test]
 fn test_default_execution_config() {
     let mut vm_resource_fee_cost = HashMap::new();
-    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
-    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.16);
-    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 20.48);
-    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.64);
-    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("output_builtin".to_owned(), 1.0);
-    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 10.24);
-    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
+    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.005);
+    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.08);
+    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 10.24);
+    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("output_builtin".to_owned(), 0.5);
+    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 5.12);
+    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 10.24);
 
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     let block_execution_config = BlockExecutionConfig {
