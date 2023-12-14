@@ -7252,7 +7252,11 @@
         "type": "query"
       },
       {
-        "current": {},
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
         "datasource": {
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
@@ -7275,9 +7279,9 @@
       },
       {
         "current": {
-          "selected": false,
-          "text": "None",
-          "value": "None"
+          "selected": true,
+          "text": "V0_5",
+          "value": "V0_5"
         },
         "hide": 0,
         "includeAll": false,
