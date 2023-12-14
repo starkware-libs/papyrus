@@ -11,7 +11,8 @@ node:
 base_layer_node_url:
 
 starknet:
-  # possible values: "mainnet.json", "testnet1.json", "testnet2.json".
+  # possible values: "mainnet.json", "goerli_testnet.json", "goerli_integration.json",
+  # "sepolia_testnet" and "sepolia_integration".
   preset: mainnet.json
   additionalHeaders: # optional addtional headers for SN communication
 
