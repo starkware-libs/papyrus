@@ -116,7 +116,7 @@ expression: dumped_default_config
   },
   "rpc.execution_config": {
     "description": "Path to the execution configuration file.",
-    "value": "config/execution_config/mainnet.json",
+    "value": "config/execution/mainnet.json",
     "privacy": "Public"
   },
   "rpc.max_events_chunk_size": {
