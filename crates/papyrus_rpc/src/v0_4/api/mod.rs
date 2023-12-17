@@ -52,6 +52,7 @@ use super::transaction::{
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};
 use crate::syncing_state::SyncingState;
+use crate::v0_4::transaction::MessageFromL1;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
 pub mod api_impl;
@@ -194,6 +195,14 @@ pub trait JsonRpc {
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
