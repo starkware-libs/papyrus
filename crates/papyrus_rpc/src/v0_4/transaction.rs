@@ -2,6 +2,8 @@
 #[path = "transaction_test.rs"]
 mod transaction_test;
 
+use std::sync::Arc;
+
 use jsonrpsee::types::ErrorObjectOwned;
 use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
@@ -15,8 +17,10 @@ use starknet_api::core::{
     CompiledClassHash,
     ContractAddress,
     EntryPointSelector,
+    EthAddress,
     Nonce,
 };
+use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
@@ -713,4 +717,45 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
         .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
 
     Ok(transaction_hashes)
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct MessageFromL1 {
+    // TODO: fix serialization of EthAddress in SN_API to fit the spec.
+    #[serde(serialize_with = "serialize_eth_address")]
+    pub from_address: EthAddress,
+    pub to_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub payload: Calldata,
+}
+
+// Serialize EthAddress to a 40 character hex string with a 0x prefix.
+fn serialize_eth_address<S>(eth_address: &EthAddress, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let hex_string = hex::encode(eth_address.0.as_bytes());
+    let fixed_size_hex_string = format!("0x{:0<40}", hex_string);
+    serializer.serialize_str(fixed_size_hex_string.as_str())
+}
+
+impl From<MessageFromL1> for L1HandlerTransaction {
+    fn from(message: MessageFromL1) -> Self {
+        let sender_as_felt = eth_address_to_felt(message.from_address);
+        let mut calldata = vec![sender_as_felt];
+        calldata.extend_from_slice(&message.payload.0);
+        let calldata = Calldata(Arc::new(calldata));
+        Self {
+            version: TransactionVersion::ONE,
+            contract_address: message.to_address,
+            entry_point_selector: message.entry_point_selector,
+            calldata,
+            ..Default::default()
+        }
+    }
+}
+
+fn eth_address_to_felt(eth_address: EthAddress) -> StarkFelt {
+    let as_json = serde_json::to_value(eth_address).expect("Expecting valid eth address");
+    serde_json::from_value(as_json).expect("Expecting valid felt")
 }

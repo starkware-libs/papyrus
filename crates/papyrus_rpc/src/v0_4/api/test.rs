@@ -3404,8 +3404,7 @@ fn spec_api_methods_coverage() {
         .map(method_name_to_spec_method_name)
         .sorted()
         .collect::<Vec<_>>();
-    let non_implemented_apis =
-        ["starknet_estimateMessageFee".to_string(), "starknet_pendingTransactions".to_string()];
+    let non_implemented_apis = ["starknet_pendingTransactions".to_string()];
     let method_names_in_spec = get_method_names_from_spec(&VERSION_0_4)
         .iter()
         .filter_map(|method| {

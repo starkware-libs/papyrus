@@ -12,6 +12,7 @@ use papyrus_execution::{
     execute_call,
     execution_utils,
     simulate_transactions as exec_simulate_transactions,
+    ExecutableTransactionInput,
     ExecutionConfigByBlock,
     ExecutionError,
 };
@@ -27,6 +28,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventContent,
     EventIndexInTransactionOutput,
+    Fee,
     Transaction as StarknetApiTransaction,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -75,6 +77,7 @@ use super::super::transaction::{
     Event,
     GeneralTransactionReceipt,
     InvokeTransactionV1,
+    MessageFromL1,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -1276,6 +1279,74 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self, message), level = "debug", err)]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate> {
+        trace!("Estimating fee of message: {:#?}", message);
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &storage_txn).await?,
+                self.pending_classes.read().await.clone(),
+            ))
+        } else {
+            None
+        };
+        // Convert the message to an L1 handler transaction, and estimate the fee of the
+        // transaction.
+        // The fee param doesn't matter for the estimation, any value other then 0 is acceptable.
+        let executable_txns =
+            vec![ExecutableTransactionInput::L1Handler(message.into(), Fee(1), false)];
+
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        drop(storage_txn);
+        let state_number = StateNumber::right_after_block(block_number);
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
+
+        let estimate_fee_result = tokio::task::spawn_blocking(move || {
+            exec_estimate_fee(
+                executable_txns,
+                &chain_id,
+                reader,
+                maybe_pending_data,
+                state_number,
+                block_number,
+                &block_execution_config,
+                false,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        match estimate_fee_result {
+            Ok(Ok(fee_as_vec)) => {
+                if fee_as_vec.len() != 1 {
+                    return Err(internal_server_error(format!(
+                        "Expected a single fee, got {}",
+                        fee_as_vec.len()
+                    )));
+                }
+                let (gas_price, fee) = fee_as_vec.first().expect("No fee was returned");
+                Ok(FeeEstimate::from(*gas_price, *fee))
+            }
+            // Error in the execution of the contract.
+            Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
+            // Internal error during the execution.
+            Err(err) => Err(internal_server_error(err)),
         }
     }
 }
