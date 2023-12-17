@@ -2,6 +2,8 @@
 #[path = "transaction_test.rs"]
 mod transaction_test;
 
+use std::sync::Arc;
+
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
@@ -14,8 +16,10 @@ use starknet_api::core::{
     CompiledClassHash,
     ContractAddress,
     EntryPointSelector,
+    EthAddress,
     Nonce,
 };
+use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
@@ -768,4 +772,48 @@ impl From<TypedDeployAccountTransaction> for client_transaction::DeployAccountTr
         let TypedDeployAccountTransaction::DeployAccount(tx) = tx;
         tx.into()
     }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
+pub struct MessageFromL1 {
+    // TODO: fix serialization of EthAddress in SN_API to fit the spec.
+    #[serde(serialize_with = "serialize_eth_address")]
+    pub from_address: EthAddress,
+    pub to_address: ContractAddress,
+    pub entry_point_selector: EntryPointSelector,
+    pub payload: Calldata,
+}
+
+// Serialize EthAddress to a 40 character hex string with a 0x prefix.
+fn serialize_eth_address<S>(eth_address: &EthAddress, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    let hex_string = hex::encode(eth_address.0.as_bytes());
+    let fixed_size_hex_string = format!("0x{:0<40}", hex_string);
+    serializer.serialize_str(fixed_size_hex_string.as_str())
+}
+
+impl From<MessageFromL1> for L1HandlerTransaction {
+    fn from(message: MessageFromL1) -> Self {
+        let sender_as_felt = eth_address_to_felt(message.from_address);
+        let mut calldata = vec![sender_as_felt];
+        calldata.extend_from_slice(&message.payload.0);
+        let calldata = Calldata(Arc::new(calldata));
+        Self {
+            version: TransactionVersion::ONE,
+            contract_address: message.to_address,
+            entry_point_selector: message.entry_point_selector,
+            calldata,
+            ..Default::default()
+        }
+    }
+}
+
+// TODO(yair): move to SN_API and implement as From.
+fn eth_address_to_felt(eth_address: EthAddress) -> StarkFelt {
+    let eth_address_as_bytes = eth_address.0.to_fixed_bytes();
+    let mut bytes: [u8; 32] = [0; 32];
+    bytes[12..32].copy_from_slice(&eth_address_as_bytes);
+    StarkFelt::new(bytes).expect("Eth address should fit in Felt")
 }
