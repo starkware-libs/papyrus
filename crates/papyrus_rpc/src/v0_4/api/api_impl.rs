@@ -46,6 +46,7 @@ use super::super::block::{
     get_block_header_by_number,
     Block,
     BlockHeader,
+    BlockNotRevertedValidator,
     GeneralBlockHeader,
     PendingBlockHeader,
 };
@@ -814,6 +815,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             None
         };
         let block_number = get_accepted_block_number(&txn, block_id)?;
+        let block_not_reverted_validator = BlockNotRevertedValidator::new(block_number, &txn)?;
         drop(txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -842,6 +844,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         })
         .await
         .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match call_result {
             Ok(res) => Ok(res.retdata.0),
@@ -926,6 +930,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -952,6 +958,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         })
         .await
         .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
@@ -986,6 +994,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         };
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -1017,6 +1027,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         })
         .await
         .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
@@ -1126,6 +1138,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             (None, executable_transactions, transaction_hashes, block_number, state_number)
         };
 
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
+
         drop(storage_txn);
 
         let block_execution_config = self
@@ -1155,6 +1170,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match simulate_transactions_result {
             Ok(mut simulation_results) => Ok(simulation_results
                 .pop()
@@ -1180,6 +1197,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         };
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
 
         let (maybe_pending_data, block_transactions, transaction_hashes, state_number) =
             match maybe_client_pending_data {
@@ -1264,6 +1284,8 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         })
         .await
         .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
