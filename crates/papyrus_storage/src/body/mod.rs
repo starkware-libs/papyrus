@@ -61,15 +61,20 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
-use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::table_types::simple_table::SimpleTable;
+use crate::db::table_types::Table;
+use crate::db::{DbCursorTrait, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
-type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
-type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
+type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction, SimpleTable>;
+type TransactionOutputsTable<'env> =
+    TableHandle<'env, TransactionIndex, ThinTransactionOutput, SimpleTable>;
+type TransactionHashToIdxTable<'env> =
+    TableHandle<'env, TransactionHash, TransactionIndex, SimpleTable>;
+type TransactionIdxToHashTable<'env> =
+    TableHandle<'env, TransactionIndex, TransactionHash, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent, SimpleTable>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
@@ -253,7 +258,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     fn get_transactions_in_block<V: StorageSerde + Debug>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, V>,
+        table: TableHandle<'env, TransactionIndex, V, SimpleTable>,
     ) -> StorageResult<Option<Vec<V>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);

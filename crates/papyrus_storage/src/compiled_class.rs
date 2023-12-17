@@ -42,6 +42,8 @@ use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
+use crate::db::table_types::simple_table::SimpleTable;
+use crate::db::table_types::Table;
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::{FileHandlers, MarkerKind, MarkersTable, OffsetKind, StorageResult, StorageTxn};
@@ -105,7 +107,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
 fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
+    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile, SimpleTable>,
     file_handlers: FileHandlers<RW>,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {

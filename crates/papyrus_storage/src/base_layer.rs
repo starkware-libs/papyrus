@@ -41,6 +41,7 @@ mod base_layer_test;
 
 use starknet_api::block::BlockNumber;
 
+use crate::db::table_types::Table;
 use crate::db::{TransactionKind, RW};
 use crate::{MarkerKind, StorageResult, StorageTxn};
 
