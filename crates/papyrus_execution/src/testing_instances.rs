@@ -8,7 +8,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, MessageToL1};
 use starknet_api::{contract_address, patricia_key};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
@@ -109,6 +109,7 @@ impl GetTestInstance for FunctionInvocation {
             calls: Vec::new(),
             events: Vec::<OrderedEvent>::get_test_instance(rng),
             messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            execution_resources: ExecutionResources::get_test_instance(rng),
         }
     }
 }

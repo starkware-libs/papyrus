@@ -2,6 +2,7 @@
 #[cfg(test)]
 mod precision_test;
 
+use std::cmp::max;
 use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::fs::read_to_string;
@@ -30,7 +31,7 @@ use indexmap::IndexMap;
 use num_bigint::BigUint;
 use primitive_types::H160;
 use prometheus_parse::Value;
-use rand::{Rng, SeedableRng};
+use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -299,7 +300,8 @@ fn get_rand_test_body_with_events(
 }
 
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
-    let execution_resources = ExecutionResources { steps: 1, ..Default::default() };
+    let mut rng = get_rng();
+    let execution_resources = ExecutionResources::get_test_instance(&mut rng);
     match transaction {
         Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput {
             execution_resources,
@@ -550,11 +552,6 @@ auto_impl_get_test_instance! {
     pub struct EventData(pub Vec<StarkFelt>);
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
-    pub struct ExecutionResources {
-        pub steps: u64,
-        pub builtin_instance_counter: HashMap<Builtin, u64>,
-        pub memory_holes: u64,
-    }
     pub struct Fee(pub u128);
     pub struct FunctionAbiEntry {
         pub name: String,
@@ -911,5 +908,17 @@ impl GetTestInstance for Hint {
             }),
             dst: CellRef { register: Register::AP, offset: 0 },
         }))
+    }
+}
+
+impl GetTestInstance for ExecutionResources {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        let rand_not_zero = || max(1, get_rng().next_u64());
+        let builtin = Builtin::get_test_instance(rng);
+        Self {
+            steps: rand_not_zero(),
+            builtin_instance_counter: [(builtin, rand_not_zero())].into(),
+            memory_holes: rand_not_zero(),
+        }
     }
 }

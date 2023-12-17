@@ -355,6 +355,13 @@
                                 "items": {
                                     "$ref": "#/components/schemas/ORDERED_MESSAGE"
                                 }
+                            },
+                            "execution_resources": {
+                                "title": "Execution resources",
+                                "description": "Resources consumed by the internal call",
+                                "items": {
+                                    "$ref": "#/components/schemas/EXECUTION_RESOURCES"
+                                }
                             }
                         },
                         "required": [
@@ -365,7 +372,8 @@
                             "result",
                             "calls",
                             "events",
-                            "messages"
+                            "messages",
+                            "execution_resources"
                         ]
                     }
                 ]
