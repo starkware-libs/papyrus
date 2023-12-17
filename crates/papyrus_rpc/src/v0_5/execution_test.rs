@@ -42,6 +42,7 @@ use starknet_api::core::{
     CompiledClassHash,
     ContractAddress,
     EntryPointSelector,
+    EthAddress,
     Nonce,
     PatriciaKey,
 };
@@ -51,6 +52,7 @@ use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
     Calldata,
     Fee,
+    L1HandlerTransaction,
     TransactionHash,
     TransactionOffsetInBlock,
     TransactionVersion,
@@ -81,7 +83,12 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::error::{BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
-use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
+use super::transaction::{
+    DeployAccountTransaction,
+    InvokeTransaction,
+    InvokeTransactionV1,
+    MessageFromL1,
+};
 use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
     call_api_then_assert_and_validate_schema_for_result,
@@ -115,6 +122,20 @@ lazy_static! {
         gas_consumed: stark_felt!("0x689"),
         gas_price: *GAS_PRICE,
         overall_fee: Fee(167300000000000,),
+    };
+
+    // A message from L1 contract at address 0x987 to the contract at CONTRACT_ADDRESS that calls
+    // the entry point "l1_handle" with the value 0x123, the retdata should be 0x123.
+    pub static ref MESSAGE_FROM_L1: MessageFromL1 = MessageFromL1 {
+        from_address: EthAddress::try_from(stark_felt!(
+            "0x987"
+        ))
+        .unwrap(),
+        to_address: *CONTRACT_ADDRESS,
+        entry_point_selector: selector_from_name("l1_handle"),
+        payload: calldata![
+            stark_felt!("0x123")
+        ],
     };
 }
 
@@ -1000,6 +1021,46 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
         .unwrap();
     validate_result(res[0].trace_root.clone());
     validate_result(res[1].trace_root.clone());
+}
+
+#[test]
+fn message_from_l1_to_l1_handler_tx() {
+    let l1_handler_tx = L1HandlerTransaction::from(MESSAGE_FROM_L1.clone());
+    assert_eq!(l1_handler_tx.version, TransactionVersion::ONE);
+    assert_eq!(l1_handler_tx.contract_address, *CONTRACT_ADDRESS);
+    assert_eq!(l1_handler_tx.entry_point_selector, selector_from_name("l1_handle"));
+    // The first item of calldata is the from_address.
+    let from_address = EthAddress::try_from(*l1_handler_tx.calldata.0.get(0).unwrap()).unwrap();
+    assert_eq!(from_address, MESSAGE_FROM_L1.from_address);
+    let rest_of_calldata = &l1_handler_tx.calldata.0[1..];
+    assert_eq!(rest_of_calldata, MESSAGE_FROM_L1.payload.0.as_slice());
+}
+
+#[tokio::test]
+async fn call_estimate_message_fee() {
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
+    prepare_storage_for_execution(storage_writer);
+
+    // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
+    // is correct.
+    let expected_fee_estimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x0"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(0),
+    };
+
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        "starknet_V0_5_estimateMessageFee",
+        vec![
+            Box::new(MESSAGE_FROM_L1.clone()),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
+        &VERSION_0_5,
+        SpecFile::StarknetApiOpenrpc,
+        &expected_fee_estimate,
+    )
+    .await;
 }
 
 #[test]
