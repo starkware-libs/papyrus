@@ -135,31 +135,33 @@ impl ExecutionConfigByBlock {
 /// The error type for the execution module.
 #[derive(thiserror::Error, Debug)]
 pub enum ExecutionError {
-    #[error(transparent)]
-    ContractError(#[from] BlockifierError),
-    #[error(
-        "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
-    )]
-    TransactionExecutionError { transaction_index: usize, execution_error: String },
-    #[error(
-        "The contract at address {contract_address:?} is not found at state number \
-         {state_number:?}."
-    )]
-    ContractNotFound { contract_address: ContractAddress, state_number: StateNumber },
-    #[error(transparent)]
-    StorageError(#[from] StorageError),
     #[error("Execution config file does not contain a configuration for all blocks")]
     ConfigContentError,
     #[error(transparent)]
     ConfigFileError(#[from] std::io::Error),
     #[error(transparent)]
     ConfigSerdeError(#[from] serde_json::Error),
+    #[error(transparent)]
+    ContractError(#[from] BlockifierError),
+    #[error(
+        "The contract at address {contract_address:?} is not found at state number \
+         {state_number:?}."
+    )]
+    ContractNotFound { contract_address: ContractAddress, state_number: StateNumber },
     #[error("Missing class hash in call info")]
     MissingClassHash,
-    #[error("Failed to calculate transaction hash.")]
-    TransactionHashCalculationFailed(StarknetApiError),
     #[error("Missing compiled class with hash {class_hash} (The CASM table isn't synced)")]
     MissingCompiledClass { class_hash: ClassHash },
+    #[error(transparent)]
+    StorageError(#[from] StorageError),
+    #[error(
+        "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
+    )]
+    TransactionExecutionError { transaction_index: usize, execution_error: String },
+    #[error("Failed to calculate transaction hash.")]
+    TransactionHashCalculationFailed(StarknetApiError),
+    #[error("Unknown builtin name: {builtin_name}")]
+    UnknownBuiltin { builtin_name: String },
 }
 
 /// Whether the only-query bit of the transaction version is on.
