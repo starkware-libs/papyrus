@@ -423,7 +423,6 @@ async fn pending_call_estimate_fee() {
         )
         .await
         .unwrap();
-
     assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
