@@ -28,7 +28,7 @@ use starknet_api::core::{
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, ThinStateDiff};
+use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::transaction::{
     Calldata,
     DeclareTransactionV0V1,
@@ -44,7 +44,7 @@ use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_f
 use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
-use crate::objects::{PendingData, PriceUnit, TransactionTrace};
+use crate::objects::{PendingData, TransactionSimulationOutput};
 use crate::testing_instances::test_block_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery};
 
@@ -179,7 +179,7 @@ pub fn execute_simulate_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
     validate: bool,
-) -> Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee, PriceUnit)> {
+) -> Vec<TransactionSimulationOutput> {
     let chain_id = ChainId(CHAIN_ID.to_string());
 
     simulate_transactions(

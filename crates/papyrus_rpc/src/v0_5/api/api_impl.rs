@@ -6,7 +6,11 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
+use papyrus_execution::objects::{
+    PendingData as ExecutionPendingData,
+    TransactionSimulationOutput,
+    TransactionTrace,
+};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -1088,9 +1092,11 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|(transaction_trace, _, gas_price, fee, _)| SimulatedTransaction {
-                    transaction_trace,
-                    fee_estimation: FeeEstimate::from(gas_price, fee),
+                .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
+                    SimulatedTransaction {
+                        transaction_trace,
+                        fee_estimation: FeeEstimate::from(gas_price, fee),
+                    }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -1228,9 +1234,10 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match simulate_transactions_result {
-            Ok(mut simulation_results) => {
-                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
-            }
+            Ok(mut simulation_results) => Ok(simulation_results
+                .pop()
+                .expect("Should have transaction exeuction result")
+                .transaction_trace),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
@@ -1344,9 +1351,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(transaction_hashes)
-                .map(|((trace_root, _, _, _, _), transaction_hash)| TransactionTraceWithHash {
-                    transaction_hash,
-                    trace_root,
+                .map(|(TransactionSimulationOutput { transaction_trace, .. }, transaction_hash)| {
+                    TransactionTraceWithHash { transaction_hash, trace_root: transaction_trace }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
