@@ -27,7 +27,6 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::transaction::{
     AccountDeploymentData,
-    Builtin,
     Calldata,
     ContractAddressSalt,
     DeployTransaction,
@@ -697,6 +696,43 @@ pub struct L1HandlerTransactionOutput {
     pub message_hash: L1L2MsgHash,
 }
 
+// Note: This is not the same as the Builtins in starknet_api, the serialization of SegmentArena is
+// different. TODO(yair): remove this once a newer version of the API is published.
+#[derive(Hash, Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+pub enum Builtin {
+    #[serde(rename = "range_check_builtin_applications")]
+    RangeCheck,
+    #[serde(rename = "pedersen_builtin_applications")]
+    Pedersen,
+    #[serde(rename = "poseidon_builtin_applications")]
+    Poseidon,
+    #[serde(rename = "ec_op_builtin_applications")]
+    EcOp,
+    #[serde(rename = "ecdsa_builtin_applications")]
+    Ecdsa,
+    #[serde(rename = "bitwise_builtin_applications")]
+    Bitwise,
+    #[serde(rename = "keccak_builtin_applications")]
+    Keccak,
+    #[serde(rename = "segment_arena_builtin")]
+    SegmentArena,
+}
+
+impl From<starknet_api::transaction::Builtin> for Builtin {
+    fn from(builtin: starknet_api::transaction::Builtin) -> Self {
+        match builtin {
+            starknet_api::transaction::Builtin::RangeCheck => Builtin::RangeCheck,
+            starknet_api::transaction::Builtin::Pedersen => Builtin::Pedersen,
+            starknet_api::transaction::Builtin::Poseidon => Builtin::Poseidon,
+            starknet_api::transaction::Builtin::EcOp => Builtin::EcOp,
+            starknet_api::transaction::Builtin::Ecdsa => Builtin::Ecdsa,
+            starknet_api::transaction::Builtin::Bitwise => Builtin::Bitwise,
+            starknet_api::transaction::Builtin::Keccak => Builtin::Keccak,
+            starknet_api::transaction::Builtin::SegmentArena => Builtin::SegmentArena,
+        }
+    }
+}
+
 // Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ExecutionResources {
@@ -716,7 +752,7 @@ impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources 
                 .into_iter()
                 .filter_map(|(k, v)| match v {
                     0 => None,
-                    _ => Some((k, v)),
+                    _ => Some((k.into(), v)),
                 })
                 .collect(),
             memory_holes: match value.memory_holes {
