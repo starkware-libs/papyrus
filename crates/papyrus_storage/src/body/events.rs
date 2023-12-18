@@ -309,6 +309,16 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
         }
     }
+    /// Returns the actual fee.
+    pub fn actual_fee(&self) -> Fee {
+        match self {
+            ThinTransactionOutput::Declare(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::Deploy(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::DeployAccount(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::Invoke(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::L1Handler(tx_output) => tx_output.actual_fee,
+        }
+    }
 }
 /// A thin version of
 /// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the
