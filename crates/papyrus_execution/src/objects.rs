@@ -410,3 +410,14 @@ pub struct PendingData {
     /// The classes and casms that were declared in the pending block.
     pub classes: PendingClasses,
 }
+
+/// The unit of the fee.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PriceUnit {
+    /// Wei.
+    #[default]
+    Wei,
+    /// Fri.
+    Fri,
+}

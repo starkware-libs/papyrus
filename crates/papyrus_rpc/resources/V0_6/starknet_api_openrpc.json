@@ -2713,7 +2713,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "execution_status": {
@@ -3089,7 +3089,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "messages_sent": {

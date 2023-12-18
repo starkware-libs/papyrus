@@ -7,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::TransactionTrace;
+use papyrus_execution::objects::{PriceUnit, TransactionTrace};
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -285,15 +285,19 @@ pub struct FeeEstimate {
     pub gas_consumed: StarkFelt,
     pub gas_price: GasPrice,
     pub overall_fee: Fee,
+    pub unit: PriceUnit,
 }
 
 impl FeeEstimate {
-    pub fn from(gas_price: GasPrice, overall_fee: Fee) -> Self {
+    pub fn from(gas_price: GasPrice, overall_fee: Fee, unit: PriceUnit) -> Self {
         match gas_price {
             GasPrice(0) => Self::default(),
-            _ => {
-                Self { gas_consumed: (overall_fee.0 / gas_price.0).into(), gas_price, overall_fee }
-            }
+            _ => Self {
+                gas_consumed: (overall_fee.0 / gas_price.0).into(),
+                gas_price,
+                overall_fee,
+                unit,
+            },
         }
     }
 }
