@@ -50,7 +50,10 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
             sequencer_address: header.sequencer,
             new_root: header.state_root,
             timestamp: header.timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: header.eth_l1_gas_price },
+            l1_gas_price: ResourcePrice {
+                price_in_wei: header.eth_l1_gas_price,
+                price_in_fri: header.strk_l1_gas_price,
+            },
             starknet_version: starknet_version.0,
         }
     }
@@ -59,7 +62,7 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ResourcePrice {
     pub price_in_wei: GasPrice,
-    // TODO: Add price in strk.
+    pub price_in_fri: GasPrice,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]

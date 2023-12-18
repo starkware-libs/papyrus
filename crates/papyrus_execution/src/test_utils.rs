@@ -44,7 +44,7 @@ use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_f
 use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
-use crate::objects::{PendingData, TransactionTrace};
+use crate::objects::{PendingData, PriceUnit, TransactionTrace};
 use crate::testing_instances::test_block_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery};
 
@@ -179,7 +179,7 @@ pub fn execute_simulate_transactions(
     tx_hashes: Option<Vec<TransactionHash>>,
     charge_fee: bool,
     validate: bool,
-) -> Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee)> {
+) -> Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee, PriceUnit)> {
     let chain_id = ChainId(CHAIN_ID.to_string());
 
     simulate_transactions(

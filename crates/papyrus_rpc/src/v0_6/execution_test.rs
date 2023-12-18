@@ -18,6 +18,7 @@ use papyrus_execution::objects::{
     FunctionInvocationResult,
     InvokeTransactionTrace,
     L1HandlerTransactionTrace,
+    PriceUnit,
     RevertReason,
     TransactionTrace,
 };
@@ -115,6 +116,7 @@ lazy_static! {
         gas_consumed: stark_felt!("0x689"),
         gas_price: *GAS_PRICE,
         overall_fee: Fee(167300000000000,),
+        unit: PriceUnit::Wei,
     };
 }
 
@@ -1165,6 +1167,7 @@ auto_impl_get_test_instance! {
         pub gas_consumed: StarkFelt,
         pub gas_price: GasPrice,
         pub overall_fee: Fee,
+        pub unit: PriceUnit,
     }
 
     pub struct TransactionTraceWithHash {
