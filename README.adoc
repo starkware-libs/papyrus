@@ -24,6 +24,12 @@ image:https://codecov.io/gh/starkware-libs/papyrus/branch/main/graph/badge.svg?t
 
 Papyrus is a Starknet full node implemented in Rust. Papyrus tracks Starknet’s state as it evolves over time, and enables you to query this state and to execute transactions via Starknet’s JSON-RPC.
 
+=== Supported Starknet versions
+
+This Papyrus version supports the following starknet versions:
+
+* v0.13.0
+
 == Disclaimer
 
 Papyrus is a work in progress.
