@@ -133,9 +133,11 @@ macro_rules! gen_test_from_thin_transaction_output_macro {
         paste! {
             #[tokio::test]
             async fn [<from_thin_transaction_output_ $variant:lower>]() {
-                let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
-                let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![], None);
-                assert_matches!(output, TransactionOutput::$variant(_));
+                    for tx_version in [TransactionVersion::ZERO, TransactionVersion::ONE, TransactionVersion::THREE] {
+                    let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
+                    let output = TransactionOutput::from_thin_transaction_output(thin_output, tx_version, vec![], None);
+                    assert_matches!(output, TransactionOutput::$variant(_));
+                }
             }
         }
     };
@@ -150,8 +152,12 @@ gen_test_from_thin_transaction_output_macro!(Invoke);
 async fn from_thin_transaction_output_l1handler() {
     let thin_output = ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput::default());
     let msg_hash = L1L2MsgHash::default();
-    let output =
-        TransactionOutput::from_thin_transaction_output(thin_output, vec![], Some(msg_hash));
+    let output = TransactionOutput::from_thin_transaction_output(
+        thin_output,
+        TransactionVersion::ZERO,
+        vec![],
+        Some(msg_hash),
+    );
     assert_matches!(output, TransactionOutput::L1Handler(_));
 }
 

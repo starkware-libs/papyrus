@@ -31,6 +31,7 @@ use crate::objects::{
     DeployAccountTransactionTrace,
     FunctionInvocationResult,
     InvokeTransactionTrace,
+    PriceUnit,
     TransactionTrace,
 };
 use crate::test_utils::{
@@ -552,10 +553,10 @@ fn simulate_invoke_from_new_account() {
     let mut result = execute_simulate_transactions(storage_reader, None, txs, None, false, false);
     assert_eq!(result.len(), 2);
 
-    let Some((TransactionTrace::Invoke(invoke_trace), _, _, _)) = result.pop() else {
+    let Some((TransactionTrace::Invoke(invoke_trace), _, _, _, _)) = result.pop() else {
         panic!("Wrong trace type, expected InvokeTransactionTrace.")
     };
-    let Some((TransactionTrace::DeployAccount(deploy_account_trace), _, _, _)) = result.pop()
+    let Some((TransactionTrace::DeployAccount(deploy_account_trace), _, _, _, _)) = result.pop()
     else {
         panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
     };
@@ -594,12 +595,18 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     let mut result = execute_simulate_transactions(storage_reader, None, txs, None, true, true);
     assert_eq!(result.len(), 2);
 
-    let Some((TransactionTrace::Invoke(invoke_trace), _, _, invoke_fee_estimation)) = result.pop()
+    let Some((TransactionTrace::Invoke(invoke_trace), _, _, invoke_fee_estimation, invoke_unit)) =
+        result.pop()
     else {
         panic!("Wrong trace type, expected InvokeTransactionTrace.")
     };
-    let Some((TransactionTrace::DeployAccount(deploy_account_trace), _, _, deploy_fee_estimation)) =
-        result.pop()
+    let Some((
+        TransactionTrace::DeployAccount(deploy_account_trace),
+        _,
+        _,
+        deploy_fee_estimation,
+        deploy_unit,
+    )) = result.pop()
     else {
         panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
     };
@@ -614,8 +621,10 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 
     // Check that the fee was charged.
     assert_ne!(deploy_fee_estimation, Fee(0));
+    assert_eq!(invoke_unit, PriceUnit::Wei);
     assert_matches!(deploy_account_trace.fee_transfer_invocation, Some(_));
     assert_ne!(invoke_fee_estimation, Fee(0));
+    assert_eq!(deploy_unit, PriceUnit::Wei);
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 

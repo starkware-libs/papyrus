@@ -2713,7 +2713,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "execution_status": {
@@ -3089,7 +3089,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "messages_sent": {
@@ -3666,12 +3666,18 @@
                         "title": "Overall fee",
                         "description": "The estimated fee for the transaction (in gwei or fri, depending on the tx version), product of gas_consumed and gas_price",
                         "$ref": "#/components/schemas/FELT"
+                    },
+                    "unit": {
+                        "title": "Fee unit",
+                        "description": "units in which the fee is given",
+                        "$ref": "#/components/schemas/PRICE_UNIT"
                     }
                 },
                 "required": [
                     "gas_consumed",
                     "gas_price",
-                    "overall_fee"
+                    "overall_fee",
+                    "unit"
                 ]
             },
             "FEE_PAYMENT": {
@@ -3745,7 +3751,7 @@
             "RESOURCE_PRICE": {
                 "type": "object",
                 "properties": {
-                    "price_in_strk": {
+                    "price_in_fri": {
                         "title": "price in fri",
                         "description": "the price of one unit of the given resource, denominated in fri (10^-18 strk)",
                         "$ref": "#/components/schemas/FELT"
@@ -3757,7 +3763,8 @@
                     }
                 },
                 "required": [
-                    "price_in_wei"
+                    "price_in_wei",
+                    "price_in_fri"
                 ]
             },
             "EXECUTION_RESOURCES": {
