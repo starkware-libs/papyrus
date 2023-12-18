@@ -1,5 +1,5 @@
+use std::iter;
 use std::task::{Context, Poll};
-use std::{io, iter};
 
 use futures::future::BoxFuture;
 use futures::{AsyncRead, AsyncWrite, FutureExt};
@@ -12,9 +12,7 @@ use libp2p::swarm::{
     ConnectionHandlerEvent,
     ConnectionId,
     FromSwarm,
-    KeepAlive,
     NetworkBehaviour,
-    PollParameters,
     Stream,
     StreamProtocol,
     SubstreamProtocol,
@@ -51,7 +49,7 @@ impl NetworkBehaviour for Behaviour {
         Ok(Handler { request_outbound_session: true, stream: None })
     }
 
-    fn on_swarm_event(&mut self, _event: FromSwarm<'_, Self::ConnectionHandler>) {}
+    fn on_swarm_event(&mut self, _event: FromSwarm<'_>) {}
 
     fn on_connection_handler_event(
         &mut self,
@@ -65,7 +63,6 @@ impl NetworkBehaviour for Behaviour {
     fn poll(
         &mut self,
         _cx: &mut Context<'_>,
-        _params: &mut impl PollParameters,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
         if let Some(stream) = self.stream.take() {
@@ -83,7 +80,6 @@ pub(crate) struct Handler {
 impl ConnectionHandler for Handler {
     type FromBehaviour = ();
     type ToBehaviour = Stream;
-    type Error = io::Error;
     type InboundProtocol = Protocol;
     type OutboundProtocol = Protocol;
     type InboundOpenInfo = ();
@@ -93,20 +89,11 @@ impl ConnectionHandler for Handler {
         SubstreamProtocol::new(Protocol, ())
     }
 
-    fn connection_keep_alive(&self) -> KeepAlive {
-        KeepAlive::Yes
-    }
-
     fn poll(
         &mut self,
         _cx: &mut Context<'_>,
     ) -> Poll<
-        ConnectionHandlerEvent<
-            Self::OutboundProtocol,
-            Self::OutboundOpenInfo,
-            Self::ToBehaviour,
-            Self::Error,
-        >,
+        ConnectionHandlerEvent<Self::OutboundProtocol, Self::OutboundOpenInfo, Self::ToBehaviour>,
     > {
         if self.request_outbound_session {
             self.request_outbound_session = false;
