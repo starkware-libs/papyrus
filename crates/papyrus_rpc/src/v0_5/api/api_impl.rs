@@ -1013,7 +1013,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
                 .collect()),
             Ok(Err(reverted_tx)) => Err(contract_error(ContractError {
                 revert_error: format!(
@@ -1088,7 +1088,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
+                .map(|(transaction_trace, _, gas_price, fee, _)| SimulatedTransaction {
                     transaction_trace,
                     fee_estimation: FeeEstimate::from(gas_price, fee),
                 })
@@ -1344,7 +1344,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(transaction_hashes)
-                .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
+                .map(|((trace_root, _, _, _, _), transaction_hash)| TransactionTraceWithHash {
                     transaction_hash,
                     trace_root,
                 })

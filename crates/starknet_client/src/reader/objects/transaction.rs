@@ -119,6 +119,16 @@ impl Transaction {
             _ => None,
         }
     }
+
+    pub fn transaction_version(&self) -> TransactionVersion {
+        match self {
+            Transaction::Declare(tx) => tx.version,
+            Transaction::Deploy(tx) => tx.version,
+            Transaction::DeployAccount(tx) => tx.version,
+            Transaction::Invoke(tx) => tx.version,
+            Transaction::L1Handler(tx) => tx.version,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
