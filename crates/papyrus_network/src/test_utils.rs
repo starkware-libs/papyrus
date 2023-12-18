@@ -1,12 +1,12 @@
 mod get_stream;
 
-use libp2p::core::transport::memory::MemoryTransport;
-use libp2p::core::transport::Transport;
-use libp2p::core::{multiaddr, upgrade};
-use libp2p::identity::Keypair;
+use std::fmt::Debug;
+
+use libp2p::core::multiaddr;
 use libp2p::swarm::dial_opts::DialOpts;
-use libp2p::swarm::{NetworkBehaviour, SwarmBuilder, SwarmEvent};
-use libp2p::{noise, yamux, Multiaddr, Stream, Swarm};
+use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
+use libp2p::{Multiaddr, Stream};
+use libp2p_swarm_test::SwarmExt;
 use rand::random;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
@@ -15,24 +15,19 @@ use crate::messages::block::{BlockHeader, GetBlocksResponse};
 use crate::messages::common::{BlockId, Fin};
 use crate::messages::proto::p2p::proto::get_blocks_response::Response;
 
-pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour>(
+pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour + Send>(
     behaviour: BehaviourT,
-) -> (Swarm<BehaviourT>, Multiaddr) {
-    let key_pair = Keypair::generate_ed25519();
-    let public_key = key_pair.public();
-    let transport = MemoryTransport::default()
-        .upgrade(upgrade::Version::V1)
-        .authenticate(noise::Config::new(&key_pair).unwrap())
-        .multiplex(yamux::Config::default())
-        .boxed();
-
-    let peer_id = public_key.to_peer_id();
-    let mut swarm = SwarmBuilder::without_executor(transport, behaviour, peer_id).build();
+) -> (Swarm<BehaviourT>, Multiaddr)
+where
+    <BehaviourT as NetworkBehaviour>::ToSwarm: Debug,
+{
+    let mut swarm = Swarm::new_ephemeral(|_| behaviour);
 
     // Using a random address because if two different tests use the same address simultaneously
     // they will fail.
     let listen_address: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
     swarm.listen_on(listen_address.clone()).unwrap();
+    swarm.add_external_address(listen_address.clone());
     (swarm, listen_address)
 }
 

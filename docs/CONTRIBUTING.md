@@ -42,7 +42,7 @@ git clone https://github.com/starkware-libs/papyrus
 ```
 
 Then, you will need to install
-- [Rust](https://www.rust-lang.org/tools/install) (1.67 or higher)
+- [Rust](https://www.rust-lang.org/tools/install) (1.73 or higher)
 - [Rust nightly toolchain 2022-07-27](https://rust-lang.github.io/rustup/installation/index.html#installing-nightly)
 - [Ganache 7.4.3](https://www.npmjs.com/package/ganache)
   - You'll need to install 7.4.3 and not a version above it. We'll relax this in the future.

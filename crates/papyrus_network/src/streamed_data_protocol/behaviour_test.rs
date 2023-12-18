@@ -1,4 +1,3 @@
-use std::iter;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -7,24 +6,14 @@ use assert_matches::assert_matches;
 use futures::{FutureExt, Stream, StreamExt};
 use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, PollParameters, ToSwarm};
+use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
-use super::super::protocol::PROTOCOL_NAME;
 use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Behaviour, Event};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::test_utils::hardcoded_data;
-
-pub struct GetBlocksPollParameters {}
-
-impl PollParameters for GetBlocksPollParameters {
-    type SupportedProtocolsIter = iter::Once<Vec<u8>>;
-    fn supported_protocols(&self) -> Self::SupportedProtocolsIter {
-        iter::once(PROTOCOL_NAME.as_ref().as_bytes().to_vec())
-    }
-}
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
 
@@ -32,7 +21,7 @@ impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
     type Item = ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        match Pin::into_inner(self).poll(cx, &mut GetBlocksPollParameters {}) {
+        match Pin::into_inner(self).poll(cx) {
             Poll::Pending => Poll::Pending,
             Poll::Ready(event) => Poll::Ready(Some(event)),
         }
