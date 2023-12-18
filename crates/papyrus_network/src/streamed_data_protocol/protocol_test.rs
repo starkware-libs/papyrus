@@ -2,13 +2,13 @@ use std::io::ErrorKind;
 
 use assert_matches::assert_matches;
 use futures::AsyncWriteExt;
-use libp2p::core::upgrade::{write_varint, InboundUpgrade, OutboundUpgrade};
+use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
 use pretty_assertions::assert_eq;
 
 use super::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
-use crate::messages::{read_message, write_message};
+use crate::messages::{read_message, write_message, write_usize};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
 #[test]
@@ -64,7 +64,7 @@ async fn outbound_sends_invalid_request() {
         async move {
             // The first element is the length of the message, if we don't write that many bytes
             // after then the message will be invalid.
-            write_varint(&mut outbound_stream, 10).await.unwrap();
+            write_usize(&mut outbound_stream, 10).await.unwrap();
             outbound_stream.close().await.unwrap();
         },
     );

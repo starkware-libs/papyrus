@@ -19,7 +19,7 @@ use libp2p::swarm::handler::{
     FullyNegotiatedInbound,
     FullyNegotiatedOutbound,
 };
-use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, KeepAlive, SubstreamProtocol};
+use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, SubstreamProtocol};
 use libp2p::PeerId;
 use tracing::debug;
 
@@ -57,7 +57,6 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::OutboundProtocol,
     <H as ConnectionHandler>::OutboundOpenInfo,
     <H as ConnectionHandler>::ToBehaviour,
-    <H as ConnectionHandler>::Error,
 >;
 
 pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
@@ -139,7 +138,6 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
 impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Data> {
     type FromBehaviour = RequestFromBehaviourEvent<Query, Data>;
     type ToBehaviour = ToBehaviourEvent<Query, Data>;
-    type Error = RemoteDoesntSupportProtocolError;
     type InboundProtocol = InboundProtocol<Query>;
     type OutboundProtocol = OutboundProtocol<Query>;
     type InboundOpenInfo = InboundSessionId;
@@ -153,21 +151,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
         .with_timeout(self.substream_timeout)
     }
 
-    fn connection_keep_alive(&self) -> KeepAlive {
-        // TODO(shahak): Implement keep alive logic.
-        KeepAlive::Yes
-    }
-
     fn poll(
         &mut self,
         cx: &mut Context<'_>,
     ) -> Poll<
-        ConnectionHandlerEvent<
-            Self::OutboundProtocol,
-            Self::OutboundOpenInfo,
-            Self::ToBehaviour,
-            Self::Error,
-        >,
+        ConnectionHandlerEvent<Self::OutboundProtocol, Self::OutboundOpenInfo, Self::ToBehaviour>,
     > {
         // Handle inbound sessions.
         self.id_to_inbound_session.retain(|inbound_session_id, inbound_session| {
@@ -366,10 +354,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 // }
                 // self.outbound_session_id_to_data_receiver.remove(&outbound_session_id);
             }
-            ConnectionEvent::ListenUpgradeError(_)
-            | ConnectionEvent::AddressChange(_)
-            | ConnectionEvent::LocalProtocolsChange(_)
-            | ConnectionEvent::RemoteProtocolsChange(_) => {}
+            _ => {}
         }
     }
 }

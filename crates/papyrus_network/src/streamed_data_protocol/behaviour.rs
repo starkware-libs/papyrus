@@ -19,7 +19,6 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     NotifyHandler,
-    PollParameters,
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -200,7 +199,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
     }
 
-    fn on_swarm_event(&mut self, event: FromSwarm<'_, Self::ConnectionHandler>) {
+    fn on_swarm_event(&mut self, event: FromSwarm<'_>) {
         match event {
             FromSwarm::ConnectionEstablished(ConnectionEstablished {
                 peer_id,
@@ -252,7 +251,6 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
     fn poll(
         &mut self,
         _cx: &mut Context<'_>,
-        _params: &mut impl PollParameters,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
         if let Some(event) = self.pending_events.pop_front() {
