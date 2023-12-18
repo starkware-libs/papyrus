@@ -1105,9 +1105,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         Ok(simulation_results
             .into_iter()
-            .map(|(transaction_trace, _, gas_price, fee, unit)| SimulatedTransaction {
-                transaction_trace,
-                fee_estimation: FeeEstimate::from(gas_price, fee, unit),
+            .map(|simulation_output| SimulatedTransaction {
+                transaction_trace: simulation_output.transaction_trace,
+                fee_estimation: FeeEstimate::from(
+                    simulation_output.gas_price,
+                    simulation_output.fee,
+                    simulation_output.price_unit,
+                ),
             })
             .collect())
     }
@@ -1242,7 +1246,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
-        Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
+        Ok(simulation_results
+            .pop()
+            .expect("Should have transaction exeuction result")
+            .transaction_trace)
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -1353,9 +1360,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         Ok(simulation_results
             .into_iter()
             .zip(transaction_hashes)
-            .map(|((trace_root, _, _, _, _), transaction_hash)| TransactionTraceWithHash {
+            .map(|(simulation_output, transaction_hash)| TransactionTraceWithHash {
                 transaction_hash,
-                trace_root,
+                trace_root: simulation_output.transaction_trace,
             })
             .collect())
     }
