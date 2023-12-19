@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::AsyncWriteExt;
 use pretty_assertions::assert_eq;
 
-use super::block::GetBlocksResponse;
+use super::block::BlockHeadersResponse;
 use super::{read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
@@ -23,7 +23,7 @@ async fn read_write_positive_flow() {
 async fn read_message_returns_none_when_other_stream_is_closed() {
     let (mut stream1, mut stream2, _) = get_connected_streams().await;
     stream1.close().await.unwrap();
-    assert!(read_message::<GetBlocksResponse, _>(&mut stream2).await.unwrap().is_none());
+    assert!(read_message::<BlockHeadersResponse, _>(&mut stream2).await.unwrap().is_none());
 }
 
 #[tokio::test]
@@ -32,7 +32,7 @@ async fn read_message_is_pending_when_other_stream_didnt_send() {
     assert!(
         tokio::time::timeout(
             Duration::from_millis(10),
-            read_message::<GetBlocksResponse, _>(&mut stream2)
+            read_message::<BlockHeadersResponse, _>(&mut stream2)
         )
         .await
         .is_err()
