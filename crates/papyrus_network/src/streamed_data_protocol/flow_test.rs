@@ -9,10 +9,15 @@ use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event};
-use super::{Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
-use crate::messages::common::BlockId;
-use crate::messages::proto::p2p::proto::get_blocks_response::Response;
+use super::{InboundSessionId, OutboundSessionId, SessionId};
+use crate::messages::block::{
+    BlockHeader,
+    BlockHeadersRequest,
+    BlockHeadersResponse,
+    BlockHeadersResponsePart,
+};
+use crate::messages::common::Iteration;
+use crate::streamed_data_protocol::Config;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
 
 const NUM_PEERS: usize = 3;
@@ -59,7 +64,7 @@ fn perform_action_on_swarms<BehaviourTrait: NetworkBehaviour>(
 }
 
 fn send_query_and_update_map(
-    outbound_swarm: &mut Swarm<Behaviour<GetBlocks, GetBlocksResponse>>,
+    outbound_swarm: &mut Swarm<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
     inbound_peer_id: PeerId,
     outbound_session_id_to_peer_id: &mut HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) {
@@ -67,9 +72,11 @@ fn send_query_and_update_map(
     let outbound_session_id = outbound_swarm
         .behaviour_mut()
         .send_query(
-            GetBlocks {
-                step: get_number_for_query(outbound_peer_id, inbound_peer_id),
-                ..Default::default()
+            BlockHeadersRequest {
+                iteration: Some(Iteration {
+                    step: get_number_for_query(outbound_peer_id, inbound_peer_id),
+                    ..Default::default()
+                }),
             },
             inbound_peer_id,
         )
@@ -78,7 +85,7 @@ fn send_query_and_update_map(
 }
 
 fn send_data(
-    inbound_swarm: &mut Swarm<Behaviour<GetBlocks, GetBlocksResponse>>,
+    inbound_swarm: &mut Swarm<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
     outbound_peer_id: PeerId,
     inbound_session_ids: &HashMap<(PeerId, PeerId), InboundSessionId>,
 ) {
@@ -87,14 +94,13 @@ fn send_data(
         inbound_swarm
             .behaviour_mut()
             .send_data(
-                GetBlocksResponse {
-                    response: Some(Response::Header(BlockHeader {
-                        parent_block: Some(BlockId {
-                            hash: None,
-                            height: get_number_for_data(inbound_peer_id, outbound_peer_id, i),
-                        }),
-                        ..Default::default()
-                    })),
+                BlockHeadersResponse {
+                    part: vec![BlockHeadersResponsePart {
+                        header_message: Some(crate::messages::proto::p2p::proto::block_headers_response_part::HeaderMessage::Header(BlockHeader {
+                            number: get_number_for_data(inbound_peer_id, outbound_peer_id, i),
+                            ..Default::default()
+                        })),
+                    }],
                 },
                 inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
             )
@@ -103,7 +109,7 @@ fn send_data(
 }
 
 fn close_inbound_session(
-    inbound_swarm: &mut Swarm<Behaviour<GetBlocks, GetBlocksResponse>>,
+    inbound_swarm: &mut Swarm<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
     outbound_peer_id: PeerId,
     inbound_session_ids: &HashMap<(PeerId, PeerId), InboundSessionId>,
 ) {
@@ -118,7 +124,7 @@ fn close_inbound_session(
 
 fn check_new_inbound_session_event_and_return_id(
     inbound_peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<GetBlocks, GetBlocksResponse>>,
+    swarm_event: SwarmEventAlias<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
 ) -> Option<(PeerId, InboundSessionId)> {
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
@@ -127,13 +133,16 @@ fn check_new_inbound_session_event_and_return_id(
     else {
         panic!("Got unexpected event {:?} when expecting NewInboundSession", event);
     };
-    assert_eq!(query.step, get_number_for_query(outbound_peer_id, inbound_peer_id));
+    assert_eq!(
+        query.iteration.unwrap().step,
+        get_number_for_query(outbound_peer_id, inbound_peer_id)
+    );
     Some((outbound_peer_id, inbound_session_id))
 }
 
 fn check_received_data_event(
     outbound_peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<GetBlocks, GetBlocksResponse>>,
+    swarm_event: SwarmEventAlias<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
     current_message: &mut DefaultHashMap<(PeerId, PeerId), usize>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
@@ -144,22 +153,21 @@ fn check_received_data_event(
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
     let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
-    let GetBlocksResponse {
-        response:
-            Some(Response::Header(BlockHeader { parent_block: Some(BlockId { height, .. }), .. })),
-    } = data
+    let BlockHeadersResponsePart {
+            header_message: Some(crate::messages::proto::p2p::proto::block_headers_response_part::HeaderMessage::Header(BlockHeader { number, .. })),
+    } = data.part[0]
     else {
         panic!("Got unexpected data {:?}", data);
     };
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
-    assert_eq!(height, get_number_for_data(inbound_peer_id, outbound_peer_id, message_index));
+    assert_eq!(number, get_number_for_data(inbound_peer_id, outbound_peer_id, message_index));
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);
     Some((inbound_peer_id, ()))
 }
 
 fn check_outbound_session_closed_by_peer_event(
     peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<GetBlocks, GetBlocksResponse>>,
+    swarm_event: SwarmEventAlias<Behaviour<BlockHeadersRequest, BlockHeadersResponse>>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
     let SwarmEvent::Behaviour(Event::SessionClosedByPeer {
@@ -190,7 +198,7 @@ fn get_number_for_data(peer_id1: PeerId, peer_id2: PeerId, message_index: usize)
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::<GetBlocks, GetBlocksResponse>::new(Config {
+        Behaviour::<BlockHeadersRequest, BlockHeadersResponse>::new(Config {
             substream_timeout: Duration::from_secs(60),
             protocol_name: StreamProtocol::new("/"),
         })
