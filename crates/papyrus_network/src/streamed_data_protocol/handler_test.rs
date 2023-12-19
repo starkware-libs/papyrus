@@ -13,7 +13,7 @@ use libp2p::PeerId;
 
 use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
-use crate::messages::block::{GetBlocks, GetBlocksResponse};
+use crate::messages::block::{BlockHeadersRequest, BlockHeadersResponse};
 use crate::messages::{read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
@@ -168,14 +168,14 @@ async fn read_messages<Query: QueryBound, Data: DataBound>(
     handler: Handler<Query, Data>,
     stream: &mut Stream,
     num_messages: usize,
-) -> Vec<GetBlocksResponse> {
+) -> Vec<BlockHeadersResponse> {
     async fn read_messages_inner(
         stream: &mut Stream,
         num_messages: usize,
-    ) -> Vec<GetBlocksResponse> {
+    ) -> Vec<BlockHeadersResponse> {
         let mut result = Vec::new();
         for _ in 0..num_messages {
-            match read_message::<GetBlocksResponse, _>(&mut *stream).await.unwrap() {
+            match read_message::<BlockHeadersResponse, _>(&mut *stream).await.unwrap() {
                 Some(message) => result.push(message),
                 None => return result,
             }
@@ -192,7 +192,7 @@ async fn read_messages<Query: QueryBound, Data: DataBound>(
 
 #[tokio::test]
 async fn process_inbound_session() {
-    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+    let mut handler = Handler::<BlockHeadersRequest, BlockHeadersResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
         PeerId::random(),
@@ -201,7 +201,7 @@ async fn process_inbound_session() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = GetBlocks { limit: 10, ..Default::default() };
+    let query = BlockHeadersRequest { ..Default::default() };
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -223,7 +223,7 @@ async fn process_inbound_session() {
 
 #[tokio::test]
 async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
-    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+    let mut handler = Handler::<BlockHeadersRequest, BlockHeadersResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
         PeerId::random(),
@@ -232,7 +232,7 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = GetBlocks { limit: 10, ..Default::default() };
+    let query = BlockHeadersRequest { ..Default::default() };
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -271,7 +271,7 @@ fn listen_protocol_across_multiple_handlers() {
     let thread_handles = (0..NUM_HANDLERS).map(|_| {
         let next_inbound_session_id = next_inbound_session_id.clone();
         std::thread::spawn(|| {
-            let handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+            let handler = Handler::<BlockHeadersRequest, BlockHeadersResponse>::new(
                 SUBSTREAM_TIMEOUT,
                 next_inbound_session_id,
                 PeerId::random(),
@@ -291,7 +291,7 @@ fn listen_protocol_across_multiple_handlers() {
 
 #[tokio::test]
 async fn process_outbound_session() {
-    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+    let mut handler = Handler::<BlockHeadersRequest, BlockHeadersResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
         PeerId::random(),
@@ -300,7 +300,7 @@ async fn process_outbound_session() {
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
-    let query = GetBlocks { limit: 10, ..Default::default() };
+    let query = BlockHeadersRequest { ..Default::default() };
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     simulate_request_to_send_query_from_swarm(&mut handler, query.clone(), outbound_session_id);
@@ -334,7 +334,7 @@ async fn process_outbound_session() {
 
 #[tokio::test]
 async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
-    let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
+    let mut handler = Handler::<BlockHeadersRequest, BlockHeadersResponse>::new(
         SUBSTREAM_TIMEOUT,
         Arc::new(Default::default()),
         PeerId::random(),
