@@ -43,7 +43,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       - run: mkdir data
-      - run: sudo apt install -y protobuf-compiler || brew install protobuf
+
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
 
       - name: Build node
         run: cargo build -r
@@ -63,7 +70,15 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: npm install -g ganache@7.4.3
-      - run: sudo apt install -y protobuf-compiler || brew install protobuf
+      
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - run: |
           cargo test -r
         env:
@@ -102,7 +117,15 @@ jobs:
           components: rustfmt
           toolchain: nightly-2023-10-19
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt install -y protobuf-compiler
+      
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - run: cargo +nightly-2023-10-19 fmt --all -- --check
 
   udeps:
@@ -114,9 +137,17 @@ jobs:
         with:
           toolchain: nightly-2023-10-19
       - uses: Swatinem/rust-cache@v2
+
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - name: "Download and run cargo-udeps"
         run: |
-          sudo apt install -y protobuf-compiler
           wget -O - -c https://github.com/est31/cargo-udeps/releases/download/v0.1.35/cargo-udeps-v0.1.35-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           cargo-udeps-*/cargo-udeps udeps
         env:
@@ -130,7 +161,15 @@ jobs:
         with:
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt install -y protobuf-compiler
+      
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - run: >
           cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
           -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
@@ -143,7 +182,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt install -y protobuf-compiler
+      
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - run: cargo doc -r --document-private-items --no-deps
 
   check:
@@ -154,7 +201,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - run: sudo apt install -y protobuf-compiler
+      
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - run: cargo check -r --all-features
 
   codecov:
@@ -165,7 +220,16 @@ jobs:
       - name: Set-Up
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang llvm libudev-dev protobuf-compiler
+          sudo apt-get install -y clang llvm libudev-dev
+
+      - run: echo "PB_REL=https://github.com/protocolbuffers/protobuf/releases" >> $GITHUB_ENV 
+      - run: echo "PROTOC_VERSION=25.1" >> $GITHUB_ENV
+      - run: echo "OS=`[ "$(uname -s)" = "Darwin" ] && echo "osx" || (echo $(uname -s | tr '[:upper:]' '[:lower:]'))`" >> $GITHUB_ENV
+      - run: echo "ARCH=`[ "$(uname -m)" = "x86_64" ] && echo "x86_64" || ([ "$(uname -m)" = "arm64" ] && echo "aarch64")`" >> $GITHUB_ENV
+      - run: echo "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip"
+      - run: curl -L "$PB_REL/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$OS-$ARCH.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local && rm ./protoc.zip
+      - run: echo "PATH=$PATH:$HOME/.local/bin" >> $GITHUB_ENV
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
       - uses: Swatinem/rust-cache@v2
