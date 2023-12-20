@@ -107,15 +107,15 @@ fn simulate_session_closed_by_request_from_swarm<Query: QueryBound, Data: DataBo
     );
 }
 
-fn simulate_outbound_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
+fn simulate_session_closed_by_peer<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        ToBehaviourEvent::OutboundSessionClosedByPeer { outbound_session_id },
+        ToBehaviourEvent::SessionClosedByPeer { session_id },
     );
 }
 
@@ -225,19 +225,16 @@ async fn validate_session_closed_by_request_event<
     );
 }
 
-async fn validate_outbound_session_closed_by_peer_event<
-    Query: QueryBound,
-    Data: DataBound + PartialEq,
->(
+async fn validate_session_closed_by_peer_event<Query: QueryBound, Data: DataBound + PartialEq>(
     behaviour: &mut Behaviour<Query, Data>,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(Event::OutboundSessionClosedByPeer {
-            outbound_session_id: event_outbound_session_id
-        }) if event_outbound_session_id == outbound_session_id
+        ToSwarm::GenerateEvent(Event::SessionClosedByPeer {
+            session_id: event_session_id
+        }) if event_session_id == session_id
     );
 }
 
@@ -343,9 +340,17 @@ async fn outbound_session_closed_by_peer() {
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
-    simulate_outbound_session_closed_by_peer(&mut behaviour, peer_id, outbound_session_id);
+    simulate_session_closed_by_peer(
+        &mut behaviour,
+        peer_id,
+        SessionId::OutboundSessionId(outbound_session_id),
+    );
 
-    validate_outbound_session_closed_by_peer_event(&mut behaviour, outbound_session_id).await;
+    validate_session_closed_by_peer_event(
+        &mut behaviour,
+        SessionId::OutboundSessionId(outbound_session_id),
+    )
+    .await;
     validate_no_events(&mut behaviour);
 }
 
