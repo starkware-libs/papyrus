@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::task::Poll;
 
 use futures::Stream;
-use starknet_api::block::{Block, BlockHeader};
+use starknet_api::block::BlockHeader;
 
 use crate::messages::protobuf;
 use crate::BlockQuery;
@@ -21,28 +21,33 @@ pub(crate) trait DBExecutor: Stream<Item = (QueryId, Data)> + Unpin {
 }
 
 struct DummyDBExecutor {
-    data: Vec<protobuf::BlockHeadersResponse>,
+    _data: Vec<protobuf::BlockHeadersResponse>,
     query_id_to_query_and_status: HashMap<QueryId, (BlockQuery, u64)>,
     query_conter: usize,
 }
 
 impl DummyDBExecutor {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self {
-            data: DummyDBExecutor::generate_data(),
+            _data: DummyDBExecutor::generate_data(),
             query_conter: 0,
             query_id_to_query_and_status: HashMap::new(),
         }
     }
 
+    #[allow(dead_code)]
     fn generate_data() -> Vec<protobuf::BlockHeadersResponse> {
         let mut data = Vec::with_capacity(100);
         for i in 1..101 {
             data.push(protobuf::BlockHeadersResponse {
-                block_number: i,
-                header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
-                    protobuf::BlockHeader { number: i, ..Default::default() },
-                )),
+                part: vec![protobuf::BlockHeadersResponsePart {
+                    header_message: Some(
+                        protobuf::block_headers_response_part::HeaderMessage::Header(
+                            protobuf::BlockHeader { number: i, ..Default::default() },
+                        ),
+                    ),
+                }],
             })
         }
         data
@@ -59,20 +64,22 @@ impl Stream for DummyDBExecutor {
 
     fn poll_next(
         self: std::pin::Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
+        _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
         let unpinned_self = Pin::into_inner(self);
-        for (query_id, (query, status)) in unpinned_self.query_id_to_query_and_status.iter_mut() {
-            let data;
-            if *status < query.limit {
+        if let Some((query_id, (query, status))) =
+            unpinned_self.query_id_to_query_and_status.iter_mut().next()
+        {
+            let data = if *status < query.limit {
                 *status += 1;
-                data = Data::BlockHeader(BlockHeader::default());
+                Data::BlockHeader(BlockHeader::default())
             } else {
-                data = Data::Fin { block_number: 0 };
+                Data::Fin { block_number: 0 }
             };
-            return Poll::Ready(Some((*query_id, data)));
+            Poll::Ready(Some((*query_id, data)))
+        } else {
+            Poll::Pending
         }
-        Poll::Pending
     }
 }
 

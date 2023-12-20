@@ -14,6 +14,7 @@ use std::io;
 
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
+use prost_types::Timestamp;
 use unsigned_varint::encode::usize_buffer;
 
 pub use crate::messages::proto::p2p::proto as protobuf;
@@ -113,6 +114,62 @@ impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
             transactions: None,
             events: None,
             receipts: None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ProtobufConversionError {
+    UnexpectedEnumValue,
+    MissingField,
+    BytesDataLengthMismatch,
+}
+
+impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Felt252) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        felt.copy_from_slice(&value.elements);
+        if let Ok(stark_felt) = Self::new(felt) {
+            Ok(stark_felt)
+        } else {
+            Err(ProtobufConversionError::UnexpectedEnumValue)
+        }
+    }
+}
+
+impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkFelt {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        if value.elements.len() != 32 {
+            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+        }
+        felt.copy_from_slice(&value.elements);
+        if let Ok(stark_felt) = Self::new(felt) {
+            Ok(stark_felt)
+        } else {
+            Err(ProtobufConversionError::UnexpectedEnumValue)
+        }
+    }
+}
+
+impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Address) -> Result<Self, Self::Error> {
+        let mut felt = [0; 32];
+        if value.elements.len() != 32 {
+            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+        }
+        felt.copy_from_slice(&value.elements);
+        if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
+            if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
+                Ok(starknet_api::core::ContractAddress(stark_felt))
+            } else {
+                Err(ProtobufConversionError::UnexpectedEnumValue)
+            }
+        } else {
+            Err(ProtobufConversionError::UnexpectedEnumValue)
         }
     }
 }

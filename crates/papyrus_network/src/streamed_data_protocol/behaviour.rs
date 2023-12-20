@@ -35,6 +35,7 @@ pub(crate) enum SessionError {
     IOError(#[from] io::Error),
     // TODO(shahak) make PROTOCOL_NAME configurable.
     #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
+    #[allow(dead_code)] // until we use this error
     RemoteDoesntSupportProtocol,
 }
 
@@ -90,7 +91,6 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
-    next_outbound_session_id: OutboundSessionId,
 }
 
 #[allow(dead_code)]

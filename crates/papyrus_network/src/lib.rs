@@ -9,9 +9,8 @@ mod streamed_data_protocol;
 #[cfg(test)]
 mod test_utils;
 
-use messages::block::BlockHeadersRequest;
-use messages::common::ProtobufConversionError;
 use messages::proto::p2p::proto::ConsensusSignature;
+use messages::{protobuf, ProtobufConversionError};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkFelt;
@@ -30,19 +29,30 @@ pub struct BlockQuery {
     pub step: u64,
 }
 
-impl TryFrom<BlockHeadersRequest> for BlockQuery {
+impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     type Error = ProtobufConversionError;
-    fn try_from(value: BlockHeadersRequest) -> Result<Self, Self::Error> {
+    fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
         if let Some(value) = value.iteration {
-            let start_block = BlockNumber(value.start_block);
-            let direction = match value.direction {
-                0 => Direction::Forward,
-                1 => Direction::Backward,
-                _ => return Err(ProtobufConversionError::UnexpectedEnumValue),
-            };
-            let limit = value.limit;
-            let step = value.step;
-            Ok(Self { start_block, direction, limit, step })
+            if let Some(start) = value.start {
+                match start {
+                    protobuf::iteration::Start::BlockNumber(block_number) => {
+                        let start_block = BlockNumber(block_number);
+                        let direction = match value.direction {
+                            0 => Direction::Forward,
+                            1 => Direction::Backward,
+                            _ => return Err(ProtobufConversionError::UnexpectedEnumValue),
+                        };
+                        let limit = value.limit;
+                        let step = value.step;
+                        Ok(Self { start_block, direction, limit, step })
+                    }
+                    protobuf::iteration::Start::Header(_) => {
+                        unimplemented!("BlockHash is not supported yet")
+                    }
+                }
+            } else {
+                Err(ProtobufConversionError::MissingField)
+            }
         } else {
             Err(ProtobufConversionError::MissingField)
         }
@@ -86,12 +96,12 @@ impl TryFrom<ConsensusSignature> for Signature {
     }
 }
 
-impl TryFrom<messages::proto::p2p::proto::BlockHeader> for BlockHeader {
+impl TryFrom<protobuf::BlockHeader> for BlockHeader {
     type Error = ProtobufConversionError;
-    fn try_from(value: messages::proto::p2p::proto::BlockHeader) -> Result<Self, Self::Error> {
+    fn try_from(value: protobuf::BlockHeader) -> Result<Self, Self::Error> {
         let parent_header = match value.parent_header {
             Some(parent_header) => {
-                if let Ok(hash) = TryInto::<StarkFelt>::try_into(parent_header) {
+                if let Ok(hash) = parent_header.try_into() {
                     Ok(BlockHash(hash))
                 } else {
                     Err(ProtobufConversionError::MissingField)
