@@ -128,19 +128,16 @@ async fn validate_session_closed_by_request_event<
     );
 }
 
-async fn validate_outbound_session_closed_by_peer_event<
-    Query: QueryBound,
-    Data: DataBound + PartialEq,
->(
+async fn validate_session_closed_by_peer_event<Query: QueryBound, Data: DataBound + PartialEq>(
     handler: &mut Handler<Query, Data>,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::OutboundSessionClosedByPeer {
-            outbound_session_id: event_outbound_session_id
-        }) if event_outbound_session_id == outbound_session_id
+        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionClosedByPeer {
+            session_id: event_session_id
+        }) if event_session_id == session_id
     );
 }
 
@@ -329,7 +326,11 @@ async fn process_outbound_session() {
     validate_no_events(&mut handler);
 
     inbound_stream.close().await.unwrap();
-    validate_outbound_session_closed_by_peer_event(&mut handler, outbound_session_id).await;
+    validate_session_closed_by_peer_event(
+        &mut handler,
+        SessionId::OutboundSessionId(outbound_session_id),
+    )
+    .await;
 }
 
 #[tokio::test]
