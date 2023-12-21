@@ -74,11 +74,15 @@ use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
-    DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
+<<<<<<< v0_5
     InvokeTransactionV1,
     L1HandlerMsgHash,
+||||||| v0_4_old
+    InvokeTransactionV1,
+=======
+>>>>>>> v0_4_new
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -88,6 +92,8 @@ use super::super::transaction::{
     TransactionStatus,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_error::{
     starknet_error_to_declare_error,
@@ -906,7 +912,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: TypedInvokeTransactionV1,
     ) -> RpcResult<AddInvokeOkResult> {
         let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
         match result {
@@ -921,7 +927,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult> {
         let result = self
             .writer_client
