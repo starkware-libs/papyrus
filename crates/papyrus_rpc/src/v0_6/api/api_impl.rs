@@ -72,7 +72,6 @@ use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
-    DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
     InvokeTransaction,
@@ -86,6 +85,8 @@ use super::super::transaction::{
     TransactionStatus,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_error::{
     starknet_error_to_declare_error,
@@ -920,7 +921,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
+<<<<<<< v0_6
         invoke_transaction: InvokeTransaction,
+||||||| v0_5_old
+        invoke_transaction: InvokeTransactionV1,
+=======
+        invoke_transaction: TypedInvokeTransactionV1,
+>>>>>>> v0_5_new
     ) -> RpcResult<AddInvokeOkResult> {
         let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
         match result {
@@ -935,7 +942,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult> {
         let result = self
             .writer_client
@@ -1029,7 +1036,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
+<<<<<<< v0_6
                 .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
+||||||| v0_5_old
+                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+=======
+                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
+>>>>>>> v0_5_new
                 .collect()),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
@@ -1103,6 +1116,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
+<<<<<<< v0_6
         Ok(simulation_results
             .into_iter()
             .map(|(transaction_trace, _, gas_price, fee, unit)| SimulatedTransaction {
@@ -1110,6 +1124,31 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 fee_estimation: FeeEstimate::from(gas_price, fee, unit),
             })
             .collect())
+||||||| v0_5_old
+        match simulate_transactions_result {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
+                    transaction_trace,
+                    fee_estimation: FeeEstimate::from(gas_price, fee),
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+=======
+        match simulate_transactions_result {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .map(|(transaction_trace, _, gas_price, fee, _)| SimulatedTransaction {
+                    transaction_trace,
+                    fee_estimation: FeeEstimate::from(gas_price, fee),
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+>>>>>>> v0_5_new
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -1350,6 +1389,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
+<<<<<<< v0_6
         Ok(simulation_results
             .into_iter()
             .zip(transaction_hashes)
@@ -1358,6 +1398,33 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 trace_root,
             })
             .collect())
+||||||| v0_5_old
+        match simulate_transactions_result {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .zip(transaction_hashes)
+                .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
+                    transaction_hash,
+                    trace_root,
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+=======
+        match simulate_transactions_result {
+            Ok(simulation_results) => Ok(simulation_results
+                .into_iter()
+                .zip(transaction_hashes)
+                .map(|((trace_root, _, _, _, _), transaction_hash)| TransactionTraceWithHash {
+                    transaction_hash,
+                    trace_root,
+                })
+                .collect()),
+            Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
+            Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+>>>>>>> v0_5_new
     }
 }
 
