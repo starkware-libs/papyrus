@@ -9,7 +9,6 @@ use std::sync::Arc;
 use ethers::core::abi::{encode_packed, Token};
 use ethers::core::utils::keccak256;
 use jsonrpsee::types::ErrorObjectOwned;
-use lazy_static::lazy_static;
 use papyrus_execution::objects::PriceUnit;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
@@ -50,11 +49,40 @@ use starknet_client::writer::objects::transaction as client_transaction;
 use super::error::BLOCK_NOT_FOUND;
 use crate::internal_server_error;
 
-lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
-    static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
-    static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
-    static ref TX_V3: TransactionVersion = TransactionVersion::THREE;
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion0 {
+    #[serde(rename = "0x0")]
+    #[default]
+    Version0,
+}
+
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion1 {
+    #[serde(rename = "0x1")]
+    #[default]
+    Version1,
+}
+
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion2 {
+    #[serde(rename = "0x2")]
+    #[default]
+    Version2,
+}
+
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion3 {
+    #[serde(rename = "0x3")]
+    #[default]
+    Version3,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -66,12 +94,22 @@ pub enum Transactions {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
-pub struct DeclareTransactionV0V1 {
+pub struct DeclareTransactionV0 {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion0,
+    pub signature: TransactionSignature,
+}
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareTransactionV1 {
+    pub class_hash: ClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion1,
     pub signature: TransactionSignature,
 }
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -81,7 +119,7 @@ pub struct DeclareTransactionV2 {
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion2,
     pub signature: TransactionSignature,
 }
 
@@ -93,7 +131,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: *TX_V2,
+            version: TransactionVersion2::default(),
             signature: tx.signature,
         }
     }
@@ -134,7 +172,7 @@ pub struct DeclareTransactionV3 {
     pub fee_data_availability_mode: DataAvailabilityMode,
     pub paymaster_data: PaymasterData,
     pub account_deployment_data: AccountDeploymentData,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion3,
 }
 
 impl From<starknet_api::transaction::DeclareTransactionV3> for DeclareTransactionV3 {
@@ -151,7 +189,7 @@ impl From<starknet_api::transaction::DeclareTransactionV3> for DeclareTransactio
             fee_data_availability_mode: tx.fee_data_availability_mode,
             paymaster_data: tx.paymaster_data,
             account_deployment_data: tx.account_deployment_data,
-            version: *TX_V3,
+            version: TransactionVersion3::default(),
         }
     }
 }
@@ -159,23 +197,10 @@ impl From<starknet_api::transaction::DeclareTransactionV3> for DeclareTransactio
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeclareTransaction {
-    #[serde(deserialize_with = "declare_v0_deserialize")]
-    Version0(DeclareTransactionV0V1),
-    Version1(DeclareTransactionV0V1),
+    Version0(DeclareTransactionV0),
+    Version1(DeclareTransactionV1),
     Version2(DeclareTransactionV2),
     Version3(DeclareTransactionV3),
-}
-
-fn declare_v0_deserialize<'de, D>(deserializer: D) -> Result<DeclareTransactionV0V1, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == *TX_V0 {
-        Ok(v0v1)
-    } else {
-        Err(serde::de::Error::custom("Invalid version value"))
-    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -186,7 +211,7 @@ pub struct DeployAccountTransactionV1 {
     pub class_hash: ClassHash,
     pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: Calldata,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion1,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -196,7 +221,7 @@ pub struct DeployAccountTransactionV3 {
     pub class_hash: ClassHash,
     pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: Calldata,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion3,
     pub resource_bounds: ResourceBoundsMapping,
     pub tip: Tip,
     pub paymaster_data: PaymasterData,
@@ -234,7 +259,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: *TX_V1,
+                version: TransactionVersion1::default(),
             })),
             starknet_api::transaction::DeployAccountTransaction::V3(
                 starknet_api::transaction::DeployAccountTransactionV3 {
@@ -255,7 +280,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: *TX_V3,
+                version: TransactionVersion3::default(),
                 resource_bounds: resource_bounds.into(),
                 tip,
                 nonce_data_availability_mode,
@@ -277,7 +302,7 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
                     nonce: deploy_account_tx.nonce,
                     max_fee: deploy_account_tx.max_fee,
                     signature: deploy_account_tx.signature,
-                    version: deploy_account_tx.version,
+                    version: TransactionVersion::ONE,
                     r#type: client_transaction::DeployAccountType::DeployAccount,
                 })
             }
@@ -288,7 +313,7 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
                     constructor_calldata: deploy_account_tx.constructor_calldata,
                     nonce: deploy_account_tx.nonce,
                     signature: deploy_account_tx.signature,
-                    version: deploy_account_tx.version,
+                    version: TransactionVersion::THREE,
                     resource_bounds: deploy_account_tx.resource_bounds.into(),
                     tip: deploy_account_tx.tip,
                     nonce_data_availability_mode:
@@ -306,7 +331,7 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV0 {
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion0,
     pub signature: TransactionSignature,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
@@ -317,7 +342,7 @@ impl From<InvokeTransactionV0> for client_transaction::InvokeTransaction {
     fn from(tx: InvokeTransactionV0) -> Self {
         Self::InvokeV0(client_transaction::InvokeV0Transaction {
             max_fee: tx.max_fee,
-            version: tx.version,
+            version: TransactionVersion::ZERO,
             signature: tx.signature,
             contract_address: tx.contract_address,
             entry_point_selector: tx.entry_point_selector,
@@ -330,7 +355,7 @@ impl From<InvokeTransactionV0> for client_transaction::InvokeTransaction {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion1,
     pub signature: TransactionSignature,
     pub nonce: Nonce,
     pub sender_address: ContractAddress,
@@ -341,7 +366,7 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
     fn from(tx: InvokeTransactionV1) -> Self {
         Self::InvokeV1(client_transaction::InvokeV1Transaction {
             max_fee: tx.max_fee,
-            version: tx.version,
+            version: TransactionVersion::ONE,
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.sender_address,
@@ -355,7 +380,7 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
 pub struct InvokeTransactionV3 {
     pub sender_address: ContractAddress,
     pub calldata: Calldata,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion3,
     pub signature: TransactionSignature,
     pub nonce: Nonce,
     pub resource_bounds: ResourceBoundsMapping,
@@ -371,7 +396,7 @@ impl From<InvokeTransactionV3> for client_transaction::InvokeTransaction {
         Self::InvokeV3(client_transaction::InvokeV3Transaction {
             sender_address: tx.sender_address,
             calldata: tx.calldata,
-            version: tx.version,
+            version: TransactionVersion::THREE,
             signature: tx.signature,
             nonce: tx.nonce,
             resource_bounds: tx.resource_bounds.into(),
@@ -419,7 +444,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version0(InvokeTransactionV0 {
                 max_fee,
-                version: *TX_V0,
+                version: TransactionVersion0::default(),
                 signature,
                 contract_address,
                 entry_point_selector,
@@ -435,7 +460,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version1(InvokeTransactionV1 {
                 max_fee,
-                version: *TX_V1,
+                version: TransactionVersion1::default(),
                 signature,
                 nonce,
                 sender_address,
@@ -457,7 +482,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
             ) => Ok(Self::Version3(InvokeTransactionV3 {
                 sender_address,
                 calldata,
-                version: *TX_V3,
+                version: TransactionVersion3::default(),
                 signature,
                 nonce,
                 resource_bounds: resource_bounds.into(),
@@ -500,22 +525,22 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: *TX_V0,
+                        version: TransactionVersion0::default(),
                         signature: tx.signature,
                     })))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: *TX_V1,
+                        version: TransactionVersion1::default(),
                         signature: tx.signature,
                     })))
                 }
@@ -1149,4 +1174,40 @@ fn eth_address_to_felt(eth_address: EthAddress) -> StarkFelt {
     let mut bytes: [u8; 32] = [0; 32];
     bytes[12..32].copy_from_slice(&eth_address_as_bytes);
     StarkFelt::new(bytes).expect("Eth address should fit in Felt")
+}
+
+/// An InvokeTransactionV1 that has the type field. This enum can be used to serialize/deserialize
+/// invoke v1 transactions directly while `InvokeTransactionV1` can be serialized/deserialized only
+/// from the `Transaction` enum.
+/// This allows RPC methods to receive an invoke v1 transaction directly.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(tag = "type")]
+pub enum TypedInvokeTransaction {
+    #[serde(rename = "INVOKE")]
+    Invoke(InvokeTransaction),
+}
+
+impl From<TypedInvokeTransaction> for client_transaction::InvokeTransaction {
+    fn from(tx: TypedInvokeTransaction) -> Self {
+        let TypedInvokeTransaction::Invoke(tx) = tx;
+        tx.into()
+    }
+}
+
+/// A DeployAccountTransaction that has the type field. This enum can be used to
+/// serialize/deserialize deploy account transactions directly while `DeployAccountTransaction` can
+/// be serialized/deserialized only from the `Transaction` enum.
+/// This allows RPC methods to receive a deploy account transaction directly.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(tag = "type")]
+pub enum TypedDeployAccountTransaction {
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransaction),
+}
+
+impl From<TypedDeployAccountTransaction> for client_transaction::DeployAccountTransaction {
+    fn from(tx: TypedDeployAccountTransaction) -> Self {
+        let TypedDeployAccountTransaction::DeployAccount(tx) = tx;
+        tx.into()
+    }
 }
