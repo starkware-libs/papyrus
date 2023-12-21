@@ -3,12 +3,11 @@
 mod transaction_test;
 
 use jsonrpsee::types::ErrorObjectOwned;
-use lazy_static::lazy_static;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::StorageTxn;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ClassHash,
@@ -35,10 +34,31 @@ use starknet_client::writer::objects::transaction as client_transaction;
 use super::error::BLOCK_NOT_FOUND;
 use crate::internal_server_error;
 
-lazy_static! {
-    static ref TX_V0: TransactionVersion = TransactionVersion::ZERO;
-    static ref TX_V1: TransactionVersion = TransactionVersion::ONE;
-    static ref TX_V2: TransactionVersion = TransactionVersion::TWO;
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion0 {
+    #[serde(rename = "0x0")]
+    #[default]
+    Version0,
+}
+
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion1 {
+    #[serde(rename = "0x1")]
+    #[default]
+    Version1,
+}
+
+#[derive(
+    Debug, Deserialize, Serialize, Default, Clone, Copy, Eq, PartialEq, Hash, PartialOrd, Ord,
+)]
+pub enum TransactionVersion2 {
+    #[serde(rename = "0x2")]
+    #[default]
+    Version2,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -50,12 +70,22 @@ pub enum Transactions {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(deny_unknown_fields)]
-pub struct DeclareTransactionV0V1 {
+pub struct DeclareTransactionV0 {
     pub class_hash: ClassHash,
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion0,
+    pub signature: TransactionSignature,
+}
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(deny_unknown_fields)]
+pub struct DeclareTransactionV1 {
+    pub class_hash: ClassHash,
+    pub sender_address: ContractAddress,
+    pub nonce: Nonce,
+    pub max_fee: Fee,
+    pub version: TransactionVersion1,
     pub signature: TransactionSignature,
 }
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -65,7 +95,7 @@ pub struct DeclareTransactionV2 {
     pub sender_address: ContractAddress,
     pub nonce: Nonce,
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion2,
     pub signature: TransactionSignature,
 }
 
@@ -77,7 +107,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: *TX_V2,
+            version: TransactionVersion2::default(),
             signature: tx.signature,
         }
     }
@@ -86,22 +116,9 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum DeclareTransaction {
-    #[serde(deserialize_with = "declare_v0_deserialize")]
-    Version0(DeclareTransactionV0V1),
-    Version1(DeclareTransactionV0V1),
+    Version0(DeclareTransactionV0),
+    Version1(DeclareTransactionV1),
     Version2(DeclareTransactionV2),
-}
-
-fn declare_v0_deserialize<'de, D>(deserializer: D) -> Result<DeclareTransactionV0V1, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let v0v1: DeclareTransactionV0V1 = Deserialize::deserialize(deserializer)?;
-    if v0v1.version == *TX_V0 {
-        Ok(v0v1)
-    } else {
-        Err(serde::de::Error::custom("Invalid version value"))
-    }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -112,7 +129,7 @@ pub struct DeployAccountTransactionV1 {
     pub class_hash: ClassHash,
     pub contract_address_salt: ContractAddressSalt,
     pub constructor_calldata: Calldata,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion1,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -144,7 +161,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: *TX_V1,
+                version: TransactionVersion1::default(),
             })),
             starknet_api::transaction::DeployAccountTransaction::V3(
                 starknet_api::transaction::DeployAccountTransactionV3 {
@@ -170,7 +187,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                     class_hash,
                     contract_address_salt,
                     constructor_calldata,
-                    version: *TX_V1,
+                    version: TransactionVersion1::default(),
                 }))
             }
         }
@@ -188,7 +205,7 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
                     nonce: deploy_account_tx.nonce,
                     max_fee: deploy_account_tx.max_fee,
                     signature: deploy_account_tx.signature,
-                    version: deploy_account_tx.version,
+                    version: TransactionVersion::ONE,
                     r#type: client_transaction::DeployAccountType::default(),
                 })
             }
@@ -199,7 +216,7 @@ impl From<DeployAccountTransaction> for client_transaction::DeployAccountTransac
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV0 {
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion0,
     pub signature: TransactionSignature,
     pub contract_address: ContractAddress,
     pub entry_point_selector: EntryPointSelector,
@@ -209,7 +226,7 @@ pub struct InvokeTransactionV0 {
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionV1 {
     pub max_fee: Fee,
-    pub version: TransactionVersion,
+    pub version: TransactionVersion1,
     pub signature: TransactionSignature,
     pub nonce: Nonce,
     pub sender_address: ContractAddress,
@@ -220,7 +237,7 @@ impl From<InvokeTransactionV1> for client_transaction::InvokeTransaction {
     fn from(tx: InvokeTransactionV1) -> Self {
         Self::InvokeV1(client_transaction::InvokeV1Transaction {
             max_fee: tx.max_fee,
-            version: tx.version,
+            version: TransactionVersion::ONE,
             signature: tx.signature,
             nonce: tx.nonce,
             sender_address: tx.sender_address,
@@ -252,7 +269,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version0(InvokeTransactionV0 {
                 max_fee,
-                version: *TX_V0,
+                version: TransactionVersion0::default(),
                 signature,
                 contract_address,
                 entry_point_selector,
@@ -268,7 +285,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version1(InvokeTransactionV1 {
                 max_fee,
-                version: *TX_V1,
+                version: TransactionVersion1::default(),
                 signature,
                 nonce,
                 sender_address,
@@ -292,7 +309,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                     max_fee: Fee(
                         l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
                     ),
-                    version: *TX_V1,
+                    version: TransactionVersion1::default(),
                     signature,
                     nonce,
                     sender_address,
@@ -332,22 +349,22 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
         match tx {
             starknet_api::transaction::Transaction::Declare(declare_tx) => match declare_tx {
                 starknet_api::transaction::DeclareTransaction::V0(tx) => {
-                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version0(DeclareTransactionV0 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: *TX_V0,
+                        version: TransactionVersion0::default(),
                         signature: tx.signature,
                     })))
                 }
                 starknet_api::transaction::DeclareTransaction::V1(tx) => {
-                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV0V1 {
+                    Ok(Self::Declare(DeclareTransaction::Version1(DeclareTransactionV1 {
                         class_hash: tx.class_hash,
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: *TX_V1,
+                        version: TransactionVersion1::default(),
                         signature: tx.signature,
                     })))
                 }
@@ -366,7 +383,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         max_fee: Fee(
                             l1_gas_bounds.max_price_per_unit * u128::from(l1_gas_bounds.max_amount)
                         ),
-                        version: *TX_V2,
+                        version: TransactionVersion2::default(),
                         signature: tx.signature,
                     })))
                 }
