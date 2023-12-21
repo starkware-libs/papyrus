@@ -3109,14 +3109,15 @@ where
     // https://github.com/rust-lang/rfcs/blob/master/text/2289-associated-type-bounds.md
     <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
 {
-    type Transaction: GetTestInstance + Serialize + Clone + Send;
+    type Transaction: GetTestInstance + Serialize + Clone + Send + Sync + 'static;
     type ClientTransaction: TryFrom<Self::Transaction> + Send;
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
         + Debug
         + Clone
-        + Send;
+        + Send
+        + Sync;
     type ClientResponse: GetTestInstance + Clone + Send;
 
     const METHOD_NAME: &'static str;
@@ -3147,8 +3148,15 @@ where
             None,
             None,
         );
-        let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
-        assert_eq!(resp, expected_resp);
+        call_api_then_assert_and_validate_schema_for_result(
+            &module,
+            Self::METHOD_NAME,
+            vec![Box::new(tx)],
+            &VERSION_0_4,
+            SpecFile::WriteApi,
+            &expected_resp,
+        )
+        .await;
     }
 
     async fn test_internal_error() {
