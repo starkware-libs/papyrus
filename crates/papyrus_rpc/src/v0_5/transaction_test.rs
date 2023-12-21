@@ -18,6 +18,7 @@ use starknet_api::transaction::{
     L1HandlerTransaction,
     Transaction,
     TransactionSignature,
+    TransactionVersion,
 };
 use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
 use starknet_client::writer::objects::transaction as client_transaction;

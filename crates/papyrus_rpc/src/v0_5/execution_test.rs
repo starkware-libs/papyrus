@@ -80,39 +80,13 @@ use super::broadcasted_transaction::{
     BroadcastedDeclareV1Transaction,
     BroadcastedTransaction,
 };
-<<<<<<< v0_5
 use super::error::{BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
-use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
-||||||| v0_4_old
-use super::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
-use super::execution::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocation,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
-    TransactionTrace,
-};
-use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
-=======
-use super::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
-use super::execution::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocation,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
-    TransactionTrace,
-};
 use super::transaction::{
     DeployAccountTransaction,
     InvokeTransaction,
     InvokeTransactionV1,
     TransactionVersion1,
 };
->>>>>>> v0_4_new
 use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
     call_api_then_assert_and_validate_schema_for_result,
