@@ -2,6 +2,9 @@ pub mod behaviour;
 pub mod handler;
 pub mod protocol;
 
+#[cfg(test)]
+mod flow_test;
+
 use derive_more::Display;
 use libp2p::PeerId;
 use prost::Message;
