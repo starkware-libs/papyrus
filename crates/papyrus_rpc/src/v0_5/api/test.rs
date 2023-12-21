@@ -3334,7 +3334,7 @@ where
             &module,
             Self::METHOD_NAME,
             vec![Box::new(tx)],
-            &VERSION_0_4,
+            &VERSION,
             SpecFile::WriteApi,
             &expected_resp,
         )

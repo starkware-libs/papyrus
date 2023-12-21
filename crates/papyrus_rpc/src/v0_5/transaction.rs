@@ -12,13 +12,7 @@ use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::StorageTxn;
-<<<<<<< v0_5
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-||||||| v0_4_old
-use serde::{Deserialize, Deserializer, Serialize};
-=======
-use serde::{Deserialize, Serialize};
->>>>>>> v0_4_new
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
     ClassHash,
@@ -876,7 +870,6 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 
     Ok(transaction_hashes)
 }
-<<<<<<< v0_5
 
 /// The hash of a L1 -> L2 message.
 // The hash is Keccak256, so it doesn't necessarily fit in a StarkFelt.
@@ -961,8 +954,6 @@ fn l1_handler_message_hash(
 
     L1L2MsgHash(keccak256(encoded))
 }
-||||||| v0_4_old
-=======
 
 /// An InvokeTransactionV1 that has the type field. This enum can be used to serialize/deserialize
 /// invoke v1 transactions directly while `InvokeTransactionV1` can be serialized/deserialized only
@@ -999,4 +990,3 @@ impl From<TypedDeployAccountTransaction> for client_transaction::DeployAccountTr
         tx.into()
     }
 }
->>>>>>> v0_4_new

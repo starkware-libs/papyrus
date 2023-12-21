@@ -76,13 +76,7 @@ use super::super::transaction::{
     get_block_txs_by_number,
     Event,
     GeneralTransactionReceipt,
-<<<<<<< v0_5
-    InvokeTransactionV1,
     L1HandlerMsgHash,
-||||||| v0_4_old
-    InvokeTransactionV1,
-=======
->>>>>>> v0_4_new
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
