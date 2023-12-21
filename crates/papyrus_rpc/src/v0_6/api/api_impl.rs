@@ -178,7 +178,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
-                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
+                l1_gas_price: ResourcePrice {
+                    price_in_wei: block.eth_l1_gas_price,
+                    price_in_fri: block.strk_l1_gas_price,
+                },
                 starknet_version: block.starknet_version,
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
@@ -218,7 +221,10 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 parent_hash: block.parent_block_hash,
                 sequencer_address: block.sequencer_address,
                 timestamp: block.timestamp,
-                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
+                l1_gas_price: ResourcePrice {
+                    price_in_wei: block.eth_l1_gas_price,
+                    price_in_fri: block.strk_l1_gas_price,
+                },
                 starknet_version: block.starknet_version,
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
@@ -484,6 +490,20 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 .0
                 .block_hash;
 
+            let tx = txn
+                .get_transaction(transaction_index)
+                .map_err(internal_server_error)?
+                .unwrap_or_else(|| panic!("Should have tx {}", transaction_hash));
+
+            // TODO: Add version function to transaction in SN_API.
+            let tx_version = match &tx {
+                StarknetApiTransaction::Declare(tx) => tx.version(),
+                StarknetApiTransaction::Deploy(tx) => tx.version,
+                StarknetApiTransaction::DeployAccount(tx) => tx.version(),
+                StarknetApiTransaction::Invoke(tx) => tx.version(),
+                StarknetApiTransaction::L1Handler(tx) => tx.version,
+            };
+
             let thin_tx_output = txn
                 .get_transaction_output(transaction_index)
                 .map_err(internal_server_error)?
@@ -496,10 +516,6 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
             let msg_hash = match thin_tx_output {
                 papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
-                    let tx = txn
-                        .get_transaction(transaction_index)
-                        .map_err(internal_server_error)?
-                        .unwrap_or_else(|| panic!("Should have tx {}", transaction_hash));
                     let starknet_api::transaction::Transaction::L1Handler(tx) = tx else {
                         panic!("tx {} should be L1 handler", transaction_hash);
                     };
@@ -508,8 +524,12 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 _ => None,
             };
 
-            let output =
-                TransactionOutput::from_thin_transaction_output(thin_tx_output, events, msg_hash);
+            let output = TransactionOutput::from_thin_transaction_output(
+                thin_tx_output,
+                tx_version,
+                events,
+                msg_hash,
+            );
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
@@ -547,6 +567,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             };
             let output = PendingTransactionOutput::try_from(TransactionOutput::from((
                 starknet_api_output,
+                client_transaction.transaction_version(),
                 msg_hash,
             )))?;
             Ok(GeneralTransactionReceipt::PendingTransactionReceipt(PendingTransactionReceipt {
@@ -1008,7 +1029,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+                .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
                 .collect()),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
@@ -1084,9 +1105,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         Ok(simulation_results
             .into_iter()
-            .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
+            .map(|(transaction_trace, _, gas_price, fee, unit)| SimulatedTransaction {
                 transaction_trace,
-                fee_estimation: FeeEstimate::from(gas_price, fee),
+                fee_estimation: FeeEstimate::from(gas_price, fee, unit),
             })
             .collect())
     }
@@ -1332,7 +1353,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         Ok(simulation_results
             .into_iter()
             .zip(transaction_hashes)
-            .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
+            .map(|((trace_root, _, _, _, _), transaction_hash)| TransactionTraceWithHash {
                 transaction_hash,
                 trace_root,
             })

@@ -23,6 +23,7 @@ use crate::objects::{
     L1HandlerTransactionTrace,
     OrderedEvent,
     OrderedL2ToL1Message,
+    PriceUnit,
     Retdata,
     RevertReason,
     TransactionTrace,
@@ -90,6 +91,10 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+    }
+    pub enum PriceUnit {
+        Wei = 0,
+        Fri = 1,
     }
 
     pub enum RevertReason {

@@ -9,6 +9,7 @@ use ethers::core::abi::{encode_packed, Token};
 use ethers::core::utils::keccak256;
 use jsonrpsee::types::ErrorObjectOwned;
 use lazy_static::lazy_static;
+use papyrus_execution::objects::PriceUnit;
 use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
@@ -638,11 +639,17 @@ pub enum TransactionOutput {
     L1Handler(L1HandlerTransactionOutput),
 }
 
+#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct FeePayment {
+    pub amount: Fee,
+    pub unit: PriceUnit,
+}
+
 /// A declare transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeclareTransactionOutput {
-    pub actual_fee: Fee,
+    pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
@@ -653,7 +660,7 @@ pub struct DeclareTransactionOutput {
 // Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployAccountTransactionOutput {
-    pub actual_fee: Fee,
+    pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
@@ -665,7 +672,7 @@ pub struct DeployAccountTransactionOutput {
 // Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct DeployTransactionOutput {
-    pub actual_fee: Fee,
+    pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
@@ -677,7 +684,7 @@ pub struct DeployTransactionOutput {
 // Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct InvokeTransactionOutput {
-    pub actual_fee: Fee,
+    pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
@@ -688,7 +695,7 @@ pub struct InvokeTransactionOutput {
 // Note: execution_resources is not included in the output because it is not used in this version.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct L1HandlerTransactionOutput {
-    pub actual_fee: Fee,
+    pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub execution_status: TransactionExecutionStatus,
@@ -804,13 +811,23 @@ impl TransactionOutput {
 
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
+        tx_version: TransactionVersion,
         events: Vec<starknet_api::transaction::Event>,
         message_hash: Option<L1L2MsgHash>,
     ) -> Self {
+        let actual_fee = match tx_version {
+            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
+                FeePayment { amount: thin_tx_output.actual_fee(), unit: PriceUnit::Wei }
+            }
+            TransactionVersion::THREE => {
+                FeePayment { amount: thin_tx_output.actual_fee(), unit: PriceUnit::Fri }
+            }
+            _ => unreachable!("Invalid transaction version."),
+        };
         match thin_tx_output {
             ThinTransactionOutput::Declare(thin_declare) => {
                 TransactionOutput::Declare(DeclareTransactionOutput {
-                    actual_fee: thin_declare.actual_fee,
+                    actual_fee,
                     messages_sent: thin_declare.messages_sent,
                     events,
                     execution_status: thin_declare.execution_status,
@@ -819,7 +836,7 @@ impl TransactionOutput {
             }
             ThinTransactionOutput::Deploy(thin_deploy) => {
                 TransactionOutput::Deploy(DeployTransactionOutput {
-                    actual_fee: thin_deploy.actual_fee,
+                    actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
@@ -829,7 +846,7 @@ impl TransactionOutput {
             }
             ThinTransactionOutput::DeployAccount(thin_deploy) => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
-                    actual_fee: thin_deploy.actual_fee,
+                    actual_fee,
                     messages_sent: thin_deploy.messages_sent,
                     events,
                     contract_address: thin_deploy.contract_address,
@@ -839,7 +856,7 @@ impl TransactionOutput {
             }
             ThinTransactionOutput::Invoke(thin_invoke) => {
                 TransactionOutput::Invoke(InvokeTransactionOutput {
-                    actual_fee: thin_invoke.actual_fee,
+                    actual_fee,
                     messages_sent: thin_invoke.messages_sent,
                     events,
                     execution_status: thin_invoke.execution_status,
@@ -848,7 +865,7 @@ impl TransactionOutput {
             }
             ThinTransactionOutput::L1Handler(thin_l1handler) => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
-                    actual_fee: thin_l1handler.actual_fee,
+                    actual_fee,
                     messages_sent: thin_l1handler.messages_sent,
                     events,
                     execution_status: thin_l1handler.execution_status,
@@ -861,18 +878,31 @@ impl TransactionOutput {
     }
 }
 
-impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
+impl From<(starknet_api::transaction::TransactionOutput, TransactionVersion, Option<L1L2MsgHash>)>
     for TransactionOutput
 {
     #[cfg_attr(coverage_nightly, coverage_attribute)]
     fn from(
-        tx_output_msg_hash: (starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>),
+        tx_output_msg_hash: (
+            starknet_api::transaction::TransactionOutput,
+            TransactionVersion,
+            Option<L1L2MsgHash>,
+        ),
     ) -> Self {
-        let (tx_output, maybe_msg_hash) = tx_output_msg_hash;
+        let (tx_output, tx_version, maybe_msg_hash) = tx_output_msg_hash;
+        let actual_fee = match tx_version {
+            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
+                FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Wei }
+            }
+            TransactionVersion::THREE => {
+                FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Fri }
+            }
+            _ => unreachable!("Invalid transaction version."),
+        };
         match tx_output {
             starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {
                 TransactionOutput::Declare(DeclareTransactionOutput {
-                    actual_fee: declare_tx_output.actual_fee,
+                    actual_fee,
                     messages_sent: declare_tx_output.messages_sent,
                     events: declare_tx_output.events,
                     execution_status: declare_tx_output.execution_status,
@@ -881,7 +911,7 @@ impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
             }
             starknet_api::transaction::TransactionOutput::Deploy(deploy_tx_output) => {
                 TransactionOutput::Deploy(DeployTransactionOutput {
-                    actual_fee: deploy_tx_output.actual_fee,
+                    actual_fee,
                     messages_sent: deploy_tx_output.messages_sent,
                     events: deploy_tx_output.events,
                     contract_address: deploy_tx_output.contract_address,
@@ -891,7 +921,7 @@ impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
             }
             starknet_api::transaction::TransactionOutput::DeployAccount(deploy_tx_output) => {
                 TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
-                    actual_fee: deploy_tx_output.actual_fee,
+                    actual_fee,
                     messages_sent: deploy_tx_output.messages_sent,
                     events: deploy_tx_output.events,
                     contract_address: deploy_tx_output.contract_address,
@@ -901,7 +931,7 @@ impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
             }
             starknet_api::transaction::TransactionOutput::Invoke(invoke_tx_output) => {
                 TransactionOutput::Invoke(InvokeTransactionOutput {
-                    actual_fee: invoke_tx_output.actual_fee,
+                    actual_fee,
                     messages_sent: invoke_tx_output.messages_sent,
                     events: invoke_tx_output.events,
                     execution_status: invoke_tx_output.execution_status,
@@ -910,7 +940,7 @@ impl From<(starknet_api::transaction::TransactionOutput, Option<L1L2MsgHash>)>
             }
             starknet_api::transaction::TransactionOutput::L1Handler(l1_handler_tx_output) => {
                 TransactionOutput::L1Handler(L1HandlerTransactionOutput {
-                    actual_fee: l1_handler_tx_output.actual_fee,
+                    actual_fee,
                     messages_sent: l1_handler_tx_output.messages_sent,
                     events: l1_handler_tx_output.events,
                     execution_status: l1_handler_tx_output.execution_status,
