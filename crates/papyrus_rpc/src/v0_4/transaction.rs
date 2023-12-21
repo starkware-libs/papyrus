@@ -714,3 +714,39 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 
     Ok(transaction_hashes)
 }
+
+/// An InvokeTransactionV1 that has the type field. This enum can be used to serialize/deserialize
+/// invoke v1 transactions directly while `InvokeTransactionV1` can be serialized/deserialized only
+/// from the `Transaction` enum.
+/// This allows RPC methods to receive an invoke v1 transaction directly.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(tag = "type")]
+pub enum TypedInvokeTransactionV1 {
+    #[serde(rename = "INVOKE")]
+    InvokeV1(InvokeTransactionV1),
+}
+
+impl From<TypedInvokeTransactionV1> for client_transaction::InvokeTransaction {
+    fn from(tx: TypedInvokeTransactionV1) -> Self {
+        let TypedInvokeTransactionV1::InvokeV1(tx) = tx;
+        tx.into()
+    }
+}
+
+/// A DeployAccountTransaction that has the type field. This enum can be used to
+/// serialize/deserialize deploy account transactions directly while `DeployAccountTransaction` can
+/// be serialized/deserialized only from the `Transaction` enum.
+/// This allows RPC methods to receive a deploy account transaction directly.
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(tag = "type")]
+pub enum TypedDeployAccountTransaction {
+    #[serde(rename = "DEPLOY_ACCOUNT")]
+    DeployAccount(DeployAccountTransaction),
+}
+
+impl From<TypedDeployAccountTransaction> for client_transaction::DeployAccountTransaction {
+    fn from(tx: TypedDeployAccountTransaction) -> Self {
+        let TypedDeployAccountTransaction::DeployAccount(tx) = tx;
+        tx.into()
+    }
+}
