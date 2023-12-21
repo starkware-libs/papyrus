@@ -25,6 +25,7 @@ use starknet_api::core::{
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::serde_utils::bytes_from_hex_str;
+use starknet_api::stark_felt;
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -54,6 +55,8 @@ pub enum TransactionVersion0 {
     #[serde(rename = "0x0")]
     #[default]
     Version0,
+    #[serde(rename = "0x100000000000000000000000000000000")]
+    Version0OnlyQuery,
 }
 
 #[derive(
@@ -63,6 +66,8 @@ pub enum TransactionVersion1 {
     #[serde(rename = "0x1")]
     #[default]
     Version1,
+    #[serde(rename = "0x100000000000000000000000000000001")]
+    Version1OnlyQuery,
 }
 
 #[derive(
@@ -72,6 +77,8 @@ pub enum TransactionVersion2 {
     #[serde(rename = "0x2")]
     #[default]
     Version2,
+    #[serde(rename = "0x100000000000000000000000000000002")]
+    Version2OnlyQuery,
 }
 
 #[derive(
@@ -81,6 +88,8 @@ pub enum TransactionVersion3 {
     #[serde(rename = "0x3")]
     #[default]
     Version3,
+    #[serde(rename = "0x100000000000000000000000000000003")]
+    Version3OnlyQuery,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -129,7 +138,7 @@ impl From<starknet_api::transaction::DeclareTransactionV2> for DeclareTransactio
             sender_address: tx.sender_address,
             nonce: tx.nonce,
             max_fee: tx.max_fee,
-            version: TransactionVersion2::default(),
+            version: TransactionVersion2::Version2,
             signature: tx.signature,
         }
     }
@@ -187,7 +196,7 @@ impl From<starknet_api::transaction::DeclareTransactionV3> for DeclareTransactio
             fee_data_availability_mode: tx.fee_data_availability_mode,
             paymaster_data: tx.paymaster_data,
             account_deployment_data: tx.account_deployment_data,
-            version: TransactionVersion3::default(),
+            version: TransactionVersion3::Version3,
         }
     }
 }
@@ -257,7 +266,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: TransactionVersion1::default(),
+                version: TransactionVersion1::Version1,
             })),
             starknet_api::transaction::DeployAccountTransaction::V3(
                 starknet_api::transaction::DeployAccountTransactionV3 {
@@ -278,7 +287,7 @@ impl TryFrom<starknet_api::transaction::DeployAccountTransaction> for DeployAcco
                 class_hash,
                 contract_address_salt,
                 constructor_calldata,
-                version: TransactionVersion3::default(),
+                version: TransactionVersion3::Version3,
                 resource_bounds: resource_bounds.into(),
                 tip,
                 nonce_data_availability_mode,
@@ -442,7 +451,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version0(InvokeTransactionV0 {
                 max_fee,
-                version: TransactionVersion0::default(),
+                version: TransactionVersion0::Version0,
                 signature,
                 contract_address,
                 entry_point_selector,
@@ -458,7 +467,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
                 },
             ) => Ok(Self::Version1(InvokeTransactionV1 {
                 max_fee,
-                version: TransactionVersion1::default(),
+                version: TransactionVersion1::Version1,
                 signature,
                 nonce,
                 sender_address,
@@ -480,7 +489,7 @@ impl TryFrom<starknet_api::transaction::InvokeTransaction> for InvokeTransaction
             ) => Ok(Self::Version3(InvokeTransactionV3 {
                 sender_address,
                 calldata,
-                version: TransactionVersion3::default(),
+                version: TransactionVersion3::Version3,
                 signature,
                 nonce,
                 resource_bounds: resource_bounds.into(),
@@ -528,7 +537,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: TransactionVersion0::default(),
+                        version: TransactionVersion0::Version0,
                         signature: tx.signature,
                     })))
                 }
@@ -538,7 +547,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
                         sender_address: tx.sender_address,
                         nonce: tx.nonce,
                         max_fee: tx.max_fee,
-                        version: TransactionVersion1::default(),
+                        version: TransactionVersion1::Version1,
                         signature: tx.signature,
                     })))
                 }

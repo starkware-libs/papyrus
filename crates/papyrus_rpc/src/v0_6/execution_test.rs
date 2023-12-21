@@ -301,7 +301,7 @@ async fn call_estimate_fee() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion1::default(),
+        version: TransactionVersion1::Version1,
         sender_address: account_address,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -360,7 +360,7 @@ async fn call_estimate_fee() {
     let non_existent_entry_point =
         BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
             max_fee: Fee(1000000 * GAS_PRICE.0),
-            version: TransactionVersion1::default(),
+            version: TransactionVersion1::Version1,
             sender_address: account_address,
             calldata: calldata![
                 *DEPRECATED_CONTRACT_ADDRESS.0.key(),    // Contract address.
@@ -412,7 +412,7 @@ async fn pending_call_estimate_fee() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion1::default(),
+        version: TransactionVersion1::Version1,
         sender_address: account_address,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -475,7 +475,7 @@ async fn test_call_simulate(
 ) {
     let mut invoke_v1 = InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion1::default(),
+        version: TransactionVersion1::Version1,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -556,7 +556,7 @@ async fn call_simulate_skip_validate() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion1::default(),
+        version: TransactionVersion1::Version1,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -604,7 +604,7 @@ async fn call_simulate_skip_fee_charge() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion1::default(),
+        version: TransactionVersion1::Version1,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
