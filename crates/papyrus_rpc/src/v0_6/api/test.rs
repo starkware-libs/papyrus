@@ -145,7 +145,7 @@ use super::super::transaction::{
     TransactionWithHash,
     Transactions,
     TypedDeployAccountTransaction,
-    TypedInvokeTransactionV1,
+    TypedInvokeTransaction,
 };
 use super::super::write_api_result::{
     AddDeclareOkResult,
@@ -3323,16 +3323,8 @@ where
     // https://github.com/rust-lang/rfcs/blob/master/text/2289-associated-type-bounds.md
     <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
 {
-<<<<<<< v0_6
-    type Transaction: GetTestInstance + Serialize + Clone + Send + Debug;
+    type Transaction: GetTestInstance + Serialize + Clone + Send + Sync + 'static + Debug;
     type ClientTransaction: TryFrom<Self::Transaction> + Send + Debug;
-||||||| v0_5_old
-    type Transaction: GetTestInstance + Serialize + Clone + Send;
-    type ClientTransaction: TryFrom<Self::Transaction> + Send;
-=======
-    type Transaction: GetTestInstance + Serialize + Clone + Send + Sync + 'static;
-    type ClientTransaction: TryFrom<Self::Transaction> + Send;
->>>>>>> v0_5_new
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
@@ -3479,13 +3471,7 @@ where
 
 struct AddInvokeTest {}
 impl AddTransactionTest for AddInvokeTest {
-<<<<<<< v0_6
-    type Transaction = InvokeTransaction;
-||||||| v0_5_old
-    type Transaction = InvokeTransactionV1;
-=======
-    type Transaction = TypedInvokeTransactionV1;
->>>>>>> v0_5_new
+    type Transaction = TypedInvokeTransaction;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
@@ -3672,8 +3658,8 @@ auto_impl_get_test_instance! {
         pub price_in_wei: GasPrice,
         pub price_in_fri: GasPrice,
     }
-    pub enum TypedInvokeTransactionV1 {
-        InvokeV1(InvokeTransactionV1) = 0,
+    pub enum TypedInvokeTransaction {
+        Invoke(InvokeTransaction) = 0,
     }
     pub enum TypedDeployAccountTransaction {
         DeployAccount(DeployAccountTransaction) = 0,

@@ -41,6 +41,7 @@ use super::{
     TransactionOutput,
     TransactionVersion0,
     TransactionVersion1,
+    TransactionVersion3,
 };
 
 lazy_static::lazy_static! {
@@ -87,7 +88,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion3,
         pub resource_bounds: ResourceBoundsMapping,
         pub tip: Tip,
         pub paymaster_data: PaymasterData,
@@ -115,11 +116,10 @@ auto_impl_get_test_instance! {
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
-<<<<<<< v0_6
     pub struct InvokeTransactionV3 {
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion3,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub resource_bounds: ResourceBoundsMapping,
@@ -129,16 +129,15 @@ auto_impl_get_test_instance! {
         pub nonce_data_availability_mode: DataAvailabilityMode,
         pub fee_data_availability_mode: DataAvailabilityMode,
     }
-||||||| v0_5_old
-=======
     pub enum TransactionVersion0 {
         Version0 = 0,
     }
-
     pub enum TransactionVersion1 {
         Version1 = 0,
     }
->>>>>>> v0_5_new
+    pub enum TransactionVersion3 {
+        Version3 = 0,
+    }
 }
 
 macro_rules! gen_test_from_thin_transaction_output_macro {
