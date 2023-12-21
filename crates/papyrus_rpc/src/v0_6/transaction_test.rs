@@ -39,6 +39,8 @@ use super::{
     InvokeTransactionV3,
     ResourceBoundsMapping,
     TransactionOutput,
+    TransactionVersion0,
+    TransactionVersion1,
 };
 
 lazy_static::lazy_static! {
@@ -77,7 +79,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
     }
     pub struct DeployAccountTransactionV3 {
         pub signature: TransactionSignature,
@@ -99,7 +101,7 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion0,
         pub signature: TransactionSignature,
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
@@ -107,12 +109,13 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
     }
+<<<<<<< v0_6
     pub struct InvokeTransactionV3 {
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
@@ -126,6 +129,16 @@ auto_impl_get_test_instance! {
         pub nonce_data_availability_mode: DataAvailabilityMode,
         pub fee_data_availability_mode: DataAvailabilityMode,
     }
+||||||| v0_5_old
+=======
+    pub enum TransactionVersion0 {
+        Version0 = 0,
+    }
+
+    pub enum TransactionVersion1 {
+        Version1 = 0,
+    }
+>>>>>>> v0_5_new
 }
 
 macro_rules! gen_test_from_thin_transaction_output_macro {

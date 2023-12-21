@@ -51,6 +51,8 @@ use super::transaction::{
     InvokeTransactionV3,
     TransactionStatus,
     TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};
@@ -184,14 +186,20 @@ pub trait JsonRpc {
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
+<<<<<<< v0_6
         invoke_transaction: InvokeTransaction,
+||||||| v0_5_old
+        invoke_transaction: InvokeTransactionV1,
+=======
+        invoke_transaction: TypedInvokeTransactionV1,
+>>>>>>> v0_5_new
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
     #[method(name = "addDeployAccountTransaction")]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
 
     /// Submits a new declare transaction to be added to the chain.
