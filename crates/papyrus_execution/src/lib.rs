@@ -83,7 +83,7 @@ pub type ExecutionResult<T> = Result<T, ExecutionError>;
 /// Parameters that are needed for execution.
 // TODO(yair): Find a way to get them from the Starknet general config.
 pub struct BlockExecutionConfig {
-    /// The adress to receive fees
+    /// The address to receive fees
     pub fee_contract_address: ContractAddress,
     /// The maximum number of steps for an invoke transaction
     pub invoke_tx_max_n_steps: u32,

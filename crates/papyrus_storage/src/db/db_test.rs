@@ -52,7 +52,7 @@ fn open_env_with_enforce_file_exists() {
     let result: DbResult<(DbReader, DbWriter)> = open_env(&db_config);
     assert_matches!(result, Ok(_));
 
-    // Add some charachter to the path to make it invalid.
+    // Add some character to the path to make it invalid.
     // Fourth and final call to `open_env` with path enforcement should fail because the path is
     // invalid.
     db_config.path_prefix = db_config.path_prefix.join("2");

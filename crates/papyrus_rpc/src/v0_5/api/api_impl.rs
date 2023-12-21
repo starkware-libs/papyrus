@@ -1229,7 +1229,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
 
         match simulate_transactions_result {
             Ok(mut simulation_results) => {
-                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
+                Ok(simulation_results.pop().expect("Should have transaction execution result").0)
             }
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),

@@ -216,7 +216,7 @@ fn set_version_if_needed(
         Some(StorageVersion::StateOnly(StateOnlyVersion { state_version: _ })) => {
             // The storage cannot change from state-only to full-archive mode.
             if writer.scope == StorageScope::FullArchive {
-                return Err(StorageError::StorageVersionInconcistency(
+                return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::InconsistentStorageScope,
                 ));
             }
@@ -275,7 +275,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
             state_version: existing_state_version,
             blocks_version: _,
         })) if STORAGE_VERSION_STATE != existing_state_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_STATE,
                     storage_version: existing_state_version,
@@ -287,7 +287,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
             state_version: _,
             blocks_version: existing_blocks_version,
         })) if STORAGE_VERSION_BLOCKS != existing_blocks_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_BLOCKS,
                     storage_version: existing_blocks_version,
@@ -298,7 +298,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
         Some(StorageVersion::StateOnly(StateOnlyVersion {
             state_version: existing_state_version,
         })) if STORAGE_VERSION_STATE != existing_state_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_STATE,
                     storage_version: existing_state_version,
@@ -492,7 +492,7 @@ pub enum StorageError {
     #[error(transparent)]
     MMapFileError(#[from] MMapFileError),
     #[error(transparent)]
-    StorageVersionInconcistency(#[from] StorageVersionError),
+    StorageVersionInconsistency(#[from] StorageVersionError),
     #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
     ScopeError { table_name: String, storage_scope: StorageScope },
     #[error(transparent)]

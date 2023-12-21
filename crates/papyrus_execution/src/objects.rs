@@ -172,7 +172,7 @@ impl TryFrom<TransactionExecutionInfo> for DeployAccountTransactionTrace {
 /// The execution trace of an L1Handler transaction.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct L1HandlerTransactionTrace {
-    /// The trace of the funcion call.
+    /// The trace of the function call.
     pub function_invocation: FunctionInvocation,
 }
 
@@ -188,7 +188,7 @@ impl TryFrom<TransactionExecutionInfo> for L1HandlerTransactionTrace {
     }
 }
 
-/// Wether the function invocation succeeded or reverted.
+/// Whether the function invocation succeeded or reverted.
 // Not using `Result` because it is not being serialized according to the spec.
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[allow(missing_docs)]

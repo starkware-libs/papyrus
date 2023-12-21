@@ -34,7 +34,7 @@ impl From<papyrus_execution::objects::TransactionTrace> for TransactionTrace {
 
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct L1HandlerTransactionTrace {
-    /// The trace of the funcion call.
+    /// The trace of the function call.
     pub function_invocation: FunctionInvocation,
 }
 

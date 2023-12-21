@@ -1221,7 +1221,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
-        Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
+        Ok(simulation_results.pop().expect("Should have transaction execution result").0)
     }
 
     #[instrument(skip(self), level = "debug", err)]

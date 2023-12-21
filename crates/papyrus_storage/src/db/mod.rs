@@ -1,7 +1,7 @@
 //! Basic structs for interacting with the db.
 //!
 //! Low database layer for interaction with libmdbx. The API is supposedly generic enough to easily
-//! replace the database library with other Berkley-like database implementations.
+//! replace the database library with other Berkeley-like database implementations.
 //!
 //! Assumptions:
 //! - The database is transactional with full ACID semantics.
@@ -153,7 +153,7 @@ pub enum DbError {
     /// An error that occurred during serialization.
     #[error("Serialization failed.")]
     Serialization,
-    /// An error that occured when trying to open a db file that does not exist.
+    /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
 }

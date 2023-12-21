@@ -1175,7 +1175,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match simulate_transactions_result {
             Ok(mut simulation_results) => Ok(simulation_results
                 .pop()
-                .expect("Should have transaction exeuction result")
+                .expect("Should have transaction execution result")
                 .0
                 .into()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),

@@ -64,7 +64,7 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
         let version_table = self.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_state_version()? {
             if current_storage_version >= *version {
-                return Err(StorageError::StorageVersionInconcistency(
+                return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::SetLowerVersion {
                         crate_version: version.clone(),
                         storage_version: current_storage_version,
@@ -80,7 +80,7 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
         let version_table = self.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_blocks_version()? {
             if current_storage_version >= *version {
-                return Err(StorageError::StorageVersionInconcistency(
+                return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::SetLowerVersion {
                         crate_version: version.clone(),
                         storage_version: current_storage_version,

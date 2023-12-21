@@ -84,7 +84,7 @@ gen_test_from_thin_transaction_output_macro!(L1Handler);
 
 // TODO: check the conversion against the expected GW transaction.
 #[test]
-fn test_gateway_trascation_from_starknet_api_transaction() {
+fn test_gateway_transaction_from_starknet_api_transaction() {
     let mut rng = get_rng();
 
     let inner_transaction = starknet_api::transaction::DeclareTransactionV0V1::default();

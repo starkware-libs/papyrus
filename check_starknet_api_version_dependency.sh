@@ -8,7 +8,7 @@ CARGO_METADATA=$(cargo metadata --no-deps --format-version 1)
 # Extract the names of the dependencies from the metadata using jq
 DEPENDENCIES=$(echo "$CARGO_METADATA" | jq '.packages[].dependencies[].name')
 
-# cleanup the dependencies names from duble quotes
+# cleanup the dependencies names from double quotes
 DEPENDENCIES=$(echo "$DEPENDENCIES" | grep -oE "\"[^\"]+\"" | tr -d "\"")
 
 if [[ $DEPENDENCIES =~ starknet_api ]]; then

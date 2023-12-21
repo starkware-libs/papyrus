@@ -395,7 +395,7 @@ async fn sync_with_revert() {
         reverted: Arc<Mutex<bool>>,
     }
     impl MockedCentralWithRevert {
-        fn revert_happend(&self) -> bool {
+        fn revert_happened(&self) -> bool {
             match self.reverted.try_lock() {
                 Ok(reverted) => *reverted,
                 _ => false,
@@ -406,7 +406,7 @@ async fn sync_with_revert() {
     #[async_trait]
     impl CentralSourceTrait for MockedCentralWithRevert {
         async fn get_latest_block(&self) -> Result<Option<BlockHashAndNumber>, CentralError> {
-            let already_reverted = self.revert_happend();
+            let already_reverted = self.revert_happened();
             let block_number = match already_reverted {
                 false => BlockNumber(N_BLOCKS_BEFORE_REVERT),
                 true => BlockNumber(N_BLOCKS_AFTER_REVERT),
@@ -423,7 +423,7 @@ async fn sync_with_revert() {
             &self,
             block_number: BlockNumber,
         ) -> Result<Option<BlockHash>, CentralError> {
-            match (self.revert_happend(), block_number) {
+            match (self.revert_happened(), block_number) {
                 (false, BlockNumber(bn)) if bn >= N_BLOCKS_BEFORE_REVERT => Ok(None),
                 (false, BlockNumber(bn)) if bn < N_BLOCKS_BEFORE_REVERT => {
                     Ok(Some(create_block_hash(block_number, false)))
@@ -436,8 +436,8 @@ async fn sync_with_revert() {
                     Ok(Some(create_block_hash(block_number, false)))
                 }
                 _ => unreachable!(
-                    "get_block_hash when Revert happend: {}, bn: {}",
-                    self.revert_happend(),
+                    "get_block_hash when Revert happened: {}, bn: {}",
+                    self.revert_happened(),
                     block_number
                 ),
             }
@@ -448,7 +448,7 @@ async fn sync_with_revert() {
             initial_block_number: BlockNumber,
             up_to_block_number: BlockNumber,
         ) -> BlocksStream<'_> {
-            match self.revert_happend() {
+            match self.revert_happened() {
                 false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
@@ -485,7 +485,7 @@ async fn sync_with_revert() {
             initial_block_number: BlockNumber,
             up_to_block_number: BlockNumber,
         ) -> StateUpdatesStream<'_> {
-            match self.revert_happend() {
+            match self.revert_happened() {
                 false => stream! {
                     for i in initial_block_number.iter_up_to(up_to_block_number) {
                         if i.0 >= N_BLOCKS_BEFORE_REVERT {
