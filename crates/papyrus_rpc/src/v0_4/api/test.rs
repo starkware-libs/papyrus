@@ -86,6 +86,7 @@ use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClien
 use starknet_client::ClientError;
 use test_utils::{
     auto_impl_get_test_instance,
+    get_number_of_variants,
     get_rng,
     get_test_block,
     get_test_body,
@@ -139,6 +140,8 @@ use super::super::transaction::{
     TransactionReceipt,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_result::{
     AddDeclareOkResult,
@@ -3246,7 +3249,7 @@ where
 
 struct AddInvokeTest {}
 impl AddTransactionTest for AddInvokeTest {
-    type Transaction = InvokeTransactionV1;
+    type Transaction = TypedInvokeTransactionV1;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
@@ -3268,7 +3271,7 @@ impl AddTransactionTest for AddInvokeTest {
 
 struct AddDeployAccountTest {}
 impl AddTransactionTest for AddDeployAccountTest {
-    type Transaction = DeployAccountTransaction;
+    type Transaction = TypedDeployAccountTransaction;
     type ClientTransaction = ClientDeployAccountTransaction;
     type Response = AddDeployAccountOkResult;
     type ClientResponse = DeployAccountResponse;
@@ -3426,5 +3429,11 @@ auto_impl_get_test_instance! {
         pub parent_hash: BlockHash,
         pub sequencer_address: ContractAddress,
         pub timestamp: BlockTimestamp,
+    }
+    pub enum TypedInvokeTransactionV1 {
+        InvokeV1(InvokeTransactionV1) = 0,
+    }
+    pub enum TypedDeployAccountTransaction {
+        DeployAccount(DeployAccountTransaction) = 0,
     }
 }
