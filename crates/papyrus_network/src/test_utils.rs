@@ -1,5 +1,6 @@
 mod get_stream;
 
+use std::collections::hash_map::{Keys, ValuesMut};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -98,6 +99,14 @@ impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamHashMap<K, V> {
     pub fn new(map: HashMap<K, V>) -> Self {
         Self { map, finished_streams: Default::default() }
     }
+
+    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
+        self.map.values_mut()
+    }
+
+    pub fn keys(&self) -> Keys<'_, K, V> {
+        self.map.keys()
+    }
 }
 
 impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamTrait for StreamHashMap<K, V> {
@@ -128,8 +137,6 @@ impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamTrait for Strea
 
 /// Create num_swarms swarms and connect each pair of swarms. Return them as a combined stream of
 /// events.
-// TODO(shahak): Remove allow(dead_code)
-#[allow(dead_code)]
 pub(crate) async fn create_fully_connected_swarms_stream<TBehaviour: NetworkBehaviour + Send>(
     num_swarms: usize,
     behaviour_gen: impl Fn() -> TBehaviour,
