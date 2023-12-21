@@ -3,6 +3,7 @@ use std::fmt::Debug;
 use super::serialization::StorageSerde;
 use super::{DbCursor, DbResult, DbTransaction, TransactionKind, RW};
 
+pub(crate) mod common_prefix;
 pub(crate) mod simple_table;
 #[cfg(test)]
 pub(crate) mod test_utils;
