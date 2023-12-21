@@ -6,7 +6,10 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::PendingData as ExecutionPendingData;
+use papyrus_execution::objects::{
+    PendingData as ExecutionPendingData,
+    TransactionSimulationOutput,
+};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -72,10 +75,8 @@ use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
-    DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
-    InvokeTransactionV1,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -84,6 +85,8 @@ use super::super::transaction::{
     TransactionReceipt,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_error::{
     starknet_error_to_declare_error,
@@ -857,7 +860,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: TypedInvokeTransactionV1,
     ) -> RpcResult<AddInvokeOkResult> {
         let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
         match result {
@@ -872,7 +875,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult> {
         let result = self
             .writer_client
@@ -964,7 +967,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
                 .collect()),
             Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
             Err(err) => Err(internal_server_error(err)),
@@ -1033,9 +1036,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
-                    transaction_trace: transaction_trace.into(),
-                    fee_estimation: FeeEstimate::from(gas_price, fee),
+                .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
+                    SimulatedTransaction {
+                        transaction_trace: transaction_trace.into(),
+                        fee_estimation: FeeEstimate::from(gas_price, fee),
+                    }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -1176,7 +1181,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(mut simulation_results) => Ok(simulation_results
                 .pop()
                 .expect("Should have transaction exeuction result")
-                .0
+                .transaction_trace
                 .into()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
@@ -1291,9 +1296,11 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(transaction_hashes)
-                .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
-                    transaction_hash,
-                    trace_root: trace_root.into(),
+                .map(|(TransactionSimulationOutput { transaction_trace, .. }, transaction_hash)| {
+                    TransactionTraceWithHash {
+                        transaction_hash,
+                        trace_root: transaction_trace.into(),
+                    }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),

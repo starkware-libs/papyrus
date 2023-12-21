@@ -31,6 +31,8 @@ use crate::objects::{
     DeployAccountTransactionTrace,
     FunctionInvocationResult,
     InvokeTransactionTrace,
+    PriceUnit,
+    TransactionSimulationOutput,
     TransactionTrace,
 };
 use crate::test_utils::{
@@ -285,7 +287,7 @@ fn simulate_invoke() {
             .iter()
             .zip(charge_fee_results.iter().zip(charge_fee_validate_results.iter())),
     ) {
-        let TransactionTrace::Invoke(exec_only_trace) = &exec_only.0 else {
+        let TransactionTrace::Invoke(exec_only_trace) = &exec_only.transaction_trace else {
             panic!("Wrong trace type, expected InvokeTransactionTrace.")
         };
         assert_matches!(
@@ -297,7 +299,7 @@ fn simulate_invoke() {
             }
         );
 
-        let TransactionTrace::Invoke(validate_trace) = &validate.0 else {
+        let TransactionTrace::Invoke(validate_trace) = &validate.transaction_trace else {
             panic!("Wrong trace type, expected InvokeTransactionTrace.")
         };
         assert_matches!(
@@ -309,7 +311,7 @@ fn simulate_invoke() {
             }
         );
 
-        let TransactionTrace::Invoke(charge_fee_trace) = &charge_fee.0 else {
+        let TransactionTrace::Invoke(charge_fee_trace) = &charge_fee.transaction_trace else {
             panic!("Wrong trace type, expected InvokeTransactionTrace.")
         };
         assert_matches!(
@@ -320,11 +322,13 @@ fn simulate_invoke() {
                 fee_transfer_invocation: Some(_),
             }
         );
-        assert_eq!(charge_fee.2, *GAS_PRICE);
+        assert_eq!(charge_fee.gas_price, *GAS_PRICE);
 
         assert_eq!(exec_only_trace.execute_invocation, charge_fee_trace.execute_invocation);
 
-        let TransactionTrace::Invoke(charge_fee_validate_trace) = &charge_fee_validate.0 else {
+        let TransactionTrace::Invoke(charge_fee_validate_trace) =
+            &charge_fee_validate.transaction_trace
+        else {
             panic!("Wrong trace type, expected InvokeTransactionTrace.")
         };
         assert_matches!(
@@ -360,7 +364,7 @@ fn simulate_declare_deprecated() {
             .iter()
             .zip(charge_fee_results.iter().zip(charge_fee_validate_results.iter())),
     ) {
-        let TransactionTrace::Declare(exec_only_trace) = &exec_only.0 else {
+        let TransactionTrace::Declare(exec_only_trace) = &exec_only.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -368,7 +372,7 @@ fn simulate_declare_deprecated() {
             DeclareTransactionTrace { validate_invocation: None, fee_transfer_invocation: None }
         );
 
-        let TransactionTrace::Declare(validate_trace) = &validate.0 else {
+        let TransactionTrace::Declare(validate_trace) = &validate.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -376,7 +380,7 @@ fn simulate_declare_deprecated() {
             DeclareTransactionTrace { validate_invocation: Some(_), fee_transfer_invocation: None }
         );
 
-        let TransactionTrace::Declare(charge_fee_trace) = &charge_fee.0 else {
+        let TransactionTrace::Declare(charge_fee_trace) = &charge_fee.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -384,7 +388,9 @@ fn simulate_declare_deprecated() {
             DeclareTransactionTrace { validate_invocation: None, fee_transfer_invocation: Some(_) }
         );
 
-        let TransactionTrace::Declare(charge_fee_validate_trace) = &charge_fee_validate.0 else {
+        let TransactionTrace::Declare(charge_fee_validate_trace) =
+            &charge_fee_validate.transaction_trace
+        else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -419,7 +425,7 @@ fn simulate_declare() {
             .iter()
             .zip(charge_fee_results.iter().zip(charge_fee_validate_results.iter())),
     ) {
-        let TransactionTrace::Declare(exec_only_trace) = &exec_only.0 else {
+        let TransactionTrace::Declare(exec_only_trace) = &exec_only.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -427,7 +433,7 @@ fn simulate_declare() {
             DeclareTransactionTrace { validate_invocation: None, fee_transfer_invocation: None }
         );
 
-        let TransactionTrace::Declare(validate_trace) = &validate.0 else {
+        let TransactionTrace::Declare(validate_trace) = &validate.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -435,7 +441,7 @@ fn simulate_declare() {
             DeclareTransactionTrace { validate_invocation: Some(_), fee_transfer_invocation: None }
         );
 
-        let TransactionTrace::Declare(charge_fee_trace) = &charge_fee.0 else {
+        let TransactionTrace::Declare(charge_fee_trace) = &charge_fee.transaction_trace else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -443,7 +449,9 @@ fn simulate_declare() {
             DeclareTransactionTrace { validate_invocation: None, fee_transfer_invocation: Some(_) }
         );
 
-        let TransactionTrace::Declare(charge_fee_validate_trace) = &charge_fee_validate.0 else {
+        let TransactionTrace::Declare(charge_fee_validate_trace) =
+            &charge_fee_validate.transaction_trace
+        else {
             panic!("Wrong trace type, expected DeclareTransactionTrace.")
         };
         assert_matches!(
@@ -478,7 +486,7 @@ fn simulate_deploy_account() {
             .iter()
             .zip(charge_fee_results.iter().zip(charge_fee_validate_results.iter())),
     ) {
-        let TransactionTrace::DeployAccount(exec_only_trace) = &exec_only.0 else {
+        let TransactionTrace::DeployAccount(exec_only_trace) = &exec_only.transaction_trace else {
             panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
         };
         assert_matches!(
@@ -490,7 +498,7 @@ fn simulate_deploy_account() {
             }
         );
 
-        let TransactionTrace::DeployAccount(validate_trace) = &validate.0 else {
+        let TransactionTrace::DeployAccount(validate_trace) = &validate.transaction_trace else {
             panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
         };
         assert_matches!(
@@ -502,7 +510,8 @@ fn simulate_deploy_account() {
             }
         );
 
-        let TransactionTrace::DeployAccount(charge_fee_trace) = &charge_fee.0 else {
+        let TransactionTrace::DeployAccount(charge_fee_trace) = &charge_fee.transaction_trace
+        else {
             panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
         };
         assert_matches!(
@@ -514,7 +523,8 @@ fn simulate_deploy_account() {
             }
         );
 
-        let TransactionTrace::DeployAccount(charge_fee_validate_trace) = &charge_fee_validate.0
+        let TransactionTrace::DeployAccount(charge_fee_validate_trace) =
+            &charge_fee_validate.transaction_trace
         else {
             panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
         };
@@ -552,10 +562,17 @@ fn simulate_invoke_from_new_account() {
     let mut result = execute_simulate_transactions(storage_reader, None, txs, None, false, false);
     assert_eq!(result.len(), 2);
 
-    let Some((TransactionTrace::Invoke(invoke_trace), _, _, _)) = result.pop() else {
+    let Some(TransactionSimulationOutput {
+        transaction_trace: TransactionTrace::Invoke(invoke_trace),
+        ..
+    }) = result.pop()
+    else {
         panic!("Wrong trace type, expected InvokeTransactionTrace.")
     };
-    let Some((TransactionTrace::DeployAccount(deploy_account_trace), _, _, _)) = result.pop()
+    let Some(TransactionSimulationOutput {
+        transaction_trace: TransactionTrace::DeployAccount(deploy_account_trace),
+        ..
+    }) = result.pop()
     else {
         panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
     };
@@ -594,12 +611,21 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     let mut result = execute_simulate_transactions(storage_reader, None, txs, None, true, true);
     assert_eq!(result.len(), 2);
 
-    let Some((TransactionTrace::Invoke(invoke_trace), _, _, invoke_fee_estimation)) = result.pop()
+    let Some(TransactionSimulationOutput {
+        transaction_trace: TransactionTrace::Invoke(invoke_trace),
+        fee: invoke_fee_estimation,
+        price_unit: invoke_unit,
+        ..
+    }) = result.pop()
     else {
         panic!("Wrong trace type, expected InvokeTransactionTrace.")
     };
-    let Some((TransactionTrace::DeployAccount(deploy_account_trace), _, _, deploy_fee_estimation)) =
-        result.pop()
+    let Some(TransactionSimulationOutput {
+        transaction_trace: TransactionTrace::DeployAccount(deploy_account_trace),
+        fee: deploy_fee_estimation,
+        price_unit: deploy_unit,
+        ..
+    }) = result.pop()
     else {
         panic!("Wrong trace type, expected DeployAccountTransactionTrace.")
     };
@@ -614,8 +640,10 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 
     // Check that the fee was charged.
     assert_ne!(deploy_fee_estimation, Fee(0));
+    assert_eq!(invoke_unit, PriceUnit::Wei);
     assert_matches!(deploy_account_trace.fee_transfer_invocation, Some(_));
     assert_ne!(invoke_fee_estimation, Fee(0));
+    assert_eq!(deploy_unit, PriceUnit::Wei);
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
@@ -729,8 +757,8 @@ fn induced_state_diff() {
     let mut account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128;
     let mut sequencer_balance = 0_u128;
 
-    account_balance -= simulation_results[0].3.0;
-    sequencer_balance += simulation_results[0].3.0;
+    account_balance -= simulation_results[0].fee.0;
+    sequencer_balance += simulation_results[0].fee.0;
     let expected_invoke_deprecated = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deployed_contracts: indexmap! {},
@@ -744,10 +772,10 @@ fn induced_state_diff() {
         deprecated_declared_classes: vec![],
         replaced_classes: indexmap! {},
     };
-    assert_eq!(simulation_results[0].1, expected_invoke_deprecated);
+    assert_eq!(simulation_results[0].induced_state_diff, expected_invoke_deprecated);
 
-    account_balance -= simulation_results[1].3.0;
-    sequencer_balance += simulation_results[1].3.0;
+    account_balance -= simulation_results[1].fee.0;
+    sequencer_balance += simulation_results[1].fee.0;
     let expected_declare_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))},
         declared_classes: indexmap! {class_hash!(next_declared_class_hash) => CompiledClassHash::default()},
@@ -761,11 +789,11 @@ fn induced_state_diff() {
         deprecated_declared_classes: vec![],
         replaced_classes: indexmap! {},
     };
-    assert_eq!(simulation_results[1].1, expected_declare_class);
+    assert_eq!(simulation_results[1].induced_state_diff, expected_declare_class);
     next_declared_class_hash += 1;
 
-    account_balance -= simulation_results[2].3.0;
-    sequencer_balance += simulation_results[2].3.0;
+    account_balance -= simulation_results[2].fee.0;
+    sequencer_balance += simulation_results[2].fee.0;
     let expected_declare_deprecated_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(3_u128))},
         deprecated_declared_classes: vec![class_hash!(next_declared_class_hash)],
@@ -779,14 +807,14 @@ fn induced_state_diff() {
         deployed_contracts: indexmap! {},
         replaced_classes: indexmap! {},
     };
-    assert_eq!(simulation_results[2].1, expected_declare_deprecated_class);
+    assert_eq!(simulation_results[2].induced_state_diff, expected_declare_deprecated_class);
 
     let new_account_balance_key =
         get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
     let new_account_balance =
-        u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].3.0;
+        u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].fee.0;
 
-    sequencer_balance += simulation_results[3].3.0;
+    sequencer_balance += simulation_results[3].fee.0;
     let expected_deploy_account = ThinStateDiff {
         nonces: indexmap! {*NEW_ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deprecated_declared_classes: vec![],
@@ -800,7 +828,7 @@ fn induced_state_diff() {
         deployed_contracts: indexmap! {*NEW_ACCOUNT_ADDRESS => *ACCOUNT_CLASS_HASH},
         replaced_classes: indexmap! {},
     };
-    assert_eq!(simulation_results[3].1, expected_deploy_account);
+    assert_eq!(simulation_results[3].induced_state_diff, expected_deploy_account);
 }
 
 #[test]

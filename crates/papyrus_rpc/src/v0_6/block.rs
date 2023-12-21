@@ -1,7 +1,7 @@
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
-use papyrus_storage::StorageTxn;
+use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp, GasPrice};
 use starknet_api::core::{ContractAddress, GlobalRoot};
@@ -50,7 +50,10 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
             sequencer_address: header.sequencer,
             new_root: header.state_root,
             timestamp: header.timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: header.eth_l1_gas_price },
+            l1_gas_price: ResourcePrice {
+                price_in_wei: header.eth_l1_gas_price,
+                price_in_fri: header.strk_l1_gas_price,
+            },
             starknet_version: starknet_version.0,
         }
     }
@@ -59,7 +62,7 @@ impl From<(starknet_api::block::BlockHeader, StarknetVersion)> for BlockHeader {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ResourcePrice {
     pub price_in_wei: GasPrice,
-    // TODO: Add price in strk.
+    pub price_in_fri: GasPrice,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -125,4 +128,43 @@ pub(crate) fn get_accepted_block_number<Mode: TransactionKind>(
             get_latest_block_number(txn)?.ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?
         }
     })
+}
+
+/// Validates that a given block wasn't reverted. Given an instance of this class, we can call its
+/// `validate` method and it will validate that the block's hash didn't change from the validator's
+/// creation.
+pub(crate) struct BlockNotRevertedValidator {
+    block_number: BlockNumber,
+    old_block_hash: BlockHash,
+}
+
+impl BlockNotRevertedValidator {
+    pub fn new<Mode: TransactionKind>(
+        block_number: BlockNumber,
+        txn: &StorageTxn<'_, Mode>,
+    ) -> Result<Self, ErrorObjectOwned> {
+        let header = txn
+            .get_block_header(block_number)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| {
+                ErrorObjectOwned::from(internal_server_error(StorageError::DBInconsistency {
+                    msg: format!("Missing block header {block_number}"),
+                }))
+            })?;
+        Ok(Self { block_number, old_block_hash: header.block_hash })
+    }
+
+    pub fn validate(self, storage_reader: &StorageReader) -> Result<(), ErrorObjectOwned> {
+        let error = ErrorObjectOwned::from(internal_server_error(format!(
+            "Block {} was reverted mid-execution.",
+            self.block_number
+        )));
+        let txn = storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let new_block_hash = txn
+            .get_block_header(self.block_number)
+            .map_err(internal_server_error)?
+            .ok_or(error.clone())?
+            .block_hash;
+        if new_block_hash == self.old_block_hash { Ok(()) } else { Err(error) }
+    }
 }

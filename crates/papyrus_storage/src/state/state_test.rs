@@ -624,3 +624,79 @@ fn replace_class() {
 
     assert_eq!(current_class_hash, class_hash0);
 }
+
+#[test]
+fn declare_revert_declare_scenario() {
+    // Declare a class and a deprecated class.
+    let contract_address: ContractAddress = ContractAddress(patricia_key!("0x11"));
+    let deprecated_class_hash = ClassHash(stark_felt!("0xc1a55"));
+    let class_hash = ClassHash(stark_felt!("0xdec1a55"));
+    let deprecated_class = DeprecatedContractClass::default();
+    let class = (CompiledClassHash::default(), ContractClass::default());
+    let diff0 = StateDiff {
+        deployed_contracts: IndexMap::from([(contract_address, deprecated_class_hash)]),
+        storage_diffs: IndexMap::new(),
+        deprecated_declared_classes: IndexMap::from([(
+            deprecated_class_hash,
+            deprecated_class.clone(),
+        )]),
+        declared_classes: IndexMap::from([(class_hash, class.clone())]),
+        nonces: IndexMap::from([(contract_address, Nonce(StarkHash::from(1_u8)))]),
+        replaced_classes: indexmap! {},
+    };
+
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), diff0.clone(), IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // Assert that both classes are declared.
+    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+    assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_some()
+    );
+
+    // Revert the block and assert that the classes are no longer declared.
+    let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
+    txn.commit().unwrap();
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+    assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_none());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_none()
+    );
+
+    // Re-declaring reverted classes should be possible.
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), diff0, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // Assert that both classes are declared.
+    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+    assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_some()
+    );
+}

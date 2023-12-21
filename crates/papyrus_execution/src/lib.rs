@@ -43,7 +43,7 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transactions::ExecutableTransaction;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use execution_utils::{get_trace_constructor, induced_state_diff};
-use objects::TransactionTrace;
+use objects::{PriceUnit, TransactionSimulationOutput};
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_storage::header::HeaderStorageReader;
@@ -69,6 +69,7 @@ use starknet_api::transaction::{
     L1HandlerTransaction,
     Transaction,
     TransactionHash,
+    TransactionVersion,
 };
 use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
@@ -401,6 +402,19 @@ impl ExecutableTransactionInput {
             }
         }
     }
+
+    /// Returns the transaction version.
+    pub fn transaction_version(&self) -> TransactionVersion {
+        match self {
+            ExecutableTransactionInput::Invoke(tx, ..) => tx.version(),
+            ExecutableTransactionInput::DeclareV0(..) => TransactionVersion::ZERO,
+            ExecutableTransactionInput::DeclareV1(..) => TransactionVersion::ONE,
+            ExecutableTransactionInput::DeclareV2(..) => TransactionVersion::TWO,
+            ExecutableTransactionInput::DeclareV3(..) => TransactionVersion::THREE,
+            ExecutableTransactionInput::DeployAccount(tx, ..) => tx.version(),
+            ExecutableTransactionInput::L1Handler(tx, ..) => tx.version,
+        }
+    }
 }
 
 /// Calculates the transaction hashes for a series of transactions without cloning the transactions.
@@ -427,7 +441,7 @@ pub struct RevertedTransaction {
 
 /// Valid output for fee estimation for a series of transactions can be either a list of fees or the
 /// index and revert reason of the first reverted transaction.
-pub type FeeEstimationResult = Result<Vec<(GasPrice, Fee)>, RevertedTransaction>;
+pub type FeeEstimationResult = Result<Vec<(GasPrice, Fee, PriceUnit)>, RevertedTransaction>;
 
 /// Returns the fee estimation for a series of transactions.
 #[allow(clippy::too_many_arguments)]
@@ -456,18 +470,29 @@ pub fn estimate_fee(
     Ok(txs_execution_info
         .into_iter()
         .enumerate()
-        .map(|(index, (tx_execution_info, _))| {
+        .map(|(index, tx_execution_output)| {
             // If the transaction reverted, fail the entire estimation.
-            if let Some(revert_reason) = tx_execution_info.revert_error {
+            if let Some(revert_reason) = tx_execution_output.execution_info.revert_error {
                 Err(RevertedTransaction { index, revert_reason })
             } else {
+                let gas_price = match tx_execution_output.price_unit {
+                    PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
+                    PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+                };
                 Ok((
-                    GasPrice(block_context.gas_prices.eth_l1_gas_price),
-                    tx_execution_info.actual_fee,
+                    gas_price,
+                    tx_execution_output.execution_info.actual_fee,
+                    tx_execution_output.price_unit,
                 ))
             }
         })
         .collect())
+}
+
+struct TransactionExecutionOutput {
+    execution_info: TransactionExecutionInfo,
+    induced_state_diff: ThinStateDiff,
+    price_unit: PriceUnit,
 }
 
 // Executes a series of transactions and returns the execution results.
@@ -484,7 +509,7 @@ fn execute_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
-) -> ExecutionResult<(Vec<(TransactionExecutionInfo, ThinStateDiff)>, BlockContext)> {
+) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
     let block_context = create_block_context(
         block_context_block_number,
         chain_id.clone(),
@@ -516,6 +541,13 @@ fn execute_transactions(
     let mut res = vec![];
     for (transaction_index, (tx, tx_hash)) in txs.into_iter().zip(tx_hashes.into_iter()).enumerate()
     {
+        let price_unit = match tx.transaction_version() {
+            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
+                PriceUnit::Wei
+            }
+            // From V3 all transactions are priced in Fri.
+            _ => PriceUnit::Fri,
+        };
         let mut transactional_state = CachedState::create_transactional(&mut cached_state);
         let deprecated_declared_class_hash = match &tx {
             ExecutableTransactionInput::DeclareV0(
@@ -536,14 +568,18 @@ fn execute_transactions(
         let state_diff =
             induced_state_diff(&mut transactional_state, deprecated_declared_class_hash)?;
         transactional_state.commit();
-        let tx_execution_info = tx_execution_info_result.map_err(|error| {
+        let execution_info = tx_execution_info_result.map_err(|error| {
             if let Some(class_hash) = cached_state.state.missing_compiled_class {
                 ExecutionError::MissingCompiledClass { class_hash }
             } else {
                 ExecutionError::from((transaction_index, error))
             }
         })?;
-        res.push((tx_execution_info, state_diff));
+        res.push(TransactionExecutionOutput {
+            execution_info,
+            induced_state_diff: state_diff,
+            price_unit,
+        });
     }
 
     Ok((res, block_context))
@@ -720,7 +756,7 @@ pub fn simulate_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
-) -> ExecutionResult<Vec<(TransactionTrace, ThinStateDiff, GasPrice, Fee)>> {
+) -> ExecutionResult<Vec<TransactionSimulationOutput>> {
     let trace_constructors = txs.iter().map(get_trace_constructor).collect::<Vec<_>>();
     let (execution_results, block_context) = execute_transactions(
         txs,
@@ -734,14 +770,23 @@ pub fn simulate_transactions(
         charge_fee,
         validate,
     )?;
-    let gas_price = GasPrice(block_context.gas_prices.eth_l1_gas_price);
     execution_results
         .into_iter()
         .zip(trace_constructors)
-        .map(|((execution_info, state_diff), trace_constructor)| {
-            let fee = execution_info.actual_fee;
-            match trace_constructor(execution_info) {
-                Ok(trace) => Ok((trace, state_diff, gas_price, fee)),
+        .map(|(tx_execution_output, trace_constructor)| {
+            let fee = tx_execution_output.execution_info.actual_fee;
+            let gas_price = match tx_execution_output.price_unit {
+                PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
+                PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+            };
+            match trace_constructor(tx_execution_output.execution_info) {
+                Ok(transaction_trace) => Ok(TransactionSimulationOutput {
+                    transaction_trace,
+                    induced_state_diff: tx_execution_output.induced_state_diff,
+                    gas_price,
+                    fee,
+                    price_unit: tx_execution_output.price_unit,
+                }),
                 Err(e) => Err(e),
             }
         })

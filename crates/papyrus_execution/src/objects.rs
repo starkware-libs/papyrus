@@ -35,11 +35,34 @@ use starknet_api::block::{BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
-use starknet_api::transaction::{Builtin, Calldata, EventContent, ExecutionResources, MessageToL1};
+use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{
+    Builtin,
+    Calldata,
+    EventContent,
+    ExecutionResources,
+    Fee,
+    MessageToL1,
+};
 
 use crate::{ExecutionError, ExecutionResult};
 
 // TODO(yair): Move types to starknet_api.
+
+/// The output of simulating a transaction.
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct TransactionSimulationOutput {
+    /// The execution trace of the transaction.
+    pub transaction_trace: TransactionTrace,
+    /// The state diff induced by the transaction.
+    pub induced_state_diff: ThinStateDiff,
+    /// The gas price in the block context of the transaction execution.
+    pub gas_price: GasPrice,
+    /// The fee in the block context of the transaction execution.
+    pub fee: Fee,
+    /// The unit of the fee.
+    pub price_unit: PriceUnit,
+}
 
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
@@ -409,4 +432,15 @@ pub struct PendingData {
     pub sequencer: ContractAddress,
     /// The classes and casms that were declared in the pending block.
     pub classes: PendingClasses,
+}
+
+/// The unit of the fee.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PriceUnit {
+    /// Wei.
+    #[default]
+    Wei,
+    /// Fri.
+    Fri,
 }
