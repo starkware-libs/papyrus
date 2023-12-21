@@ -1,11 +1,16 @@
 mod get_stream;
 
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
+use std::hash::Hash;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
+use futures::stream::{Stream as StreamTrait, StreamExt};
 use libp2p::core::multiaddr;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
-use libp2p::{Multiaddr, Stream};
+use libp2p::{Multiaddr, PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
 use rand::random;
 use tokio::task::JoinHandle;
@@ -79,4 +84,73 @@ pub(crate) fn hardcoded_data() -> Vec<GetBlocksResponse> {
         },
         GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
     ]
+}
+
+// This is an implementation of `StreamMap` from tokio_stream. The reason we're implementing it
+// ourselves is that the implementation in tokio_stream requires that the values implement the
+// Stream trait from tokio_stream and not from futures.
+pub(crate) struct StreamHashMap<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> {
+    map: HashMap<K, V>,
+    finished_streams: HashSet<K>,
+}
+
+impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamHashMap<K, V> {
+    pub fn new(map: HashMap<K, V>) -> Self {
+        Self { map, finished_streams: Default::default() }
+    }
+}
+
+impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamTrait for StreamHashMap<K, V> {
+    type Item = (K, <V as StreamTrait>::Item);
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let unpinned_self = Pin::into_inner(self);
+        let mut finished = true;
+        for (key, stream) in &mut unpinned_self.map {
+            match stream.poll_next_unpin(cx) {
+                Poll::Ready(Some(value)) => {
+                    return Poll::Ready(Some((key.clone(), value)));
+                }
+                Poll::Ready(None) => {
+                    unpinned_self.finished_streams.insert(key.clone());
+                }
+                Poll::Pending => {
+                    finished = false;
+                }
+            }
+        }
+        if finished {
+            return Poll::Ready(None);
+        }
+        Poll::Pending
+    }
+}
+
+/// Create num_swarms swarms and connect each pair of swarms. Return them as a combined stream of
+/// events.
+// TODO(shahak): Remove allow(dead_code)
+#[allow(dead_code)]
+pub(crate) async fn create_fully_connected_swarms_stream<TBehaviour: NetworkBehaviour + Send>(
+    num_swarms: usize,
+    behaviour_gen: impl Fn() -> TBehaviour,
+) -> StreamHashMap<PeerId, Swarm<TBehaviour>>
+where
+    <TBehaviour as NetworkBehaviour>::ToSwarm: Debug,
+{
+    let mut swarms =
+        (0..num_swarms).map(|_| Swarm::new_ephemeral(|_| behaviour_gen())).collect::<Vec<_>>();
+
+    for swarm in &mut swarms {
+        swarm.listen().with_memory_addr_external().await;
+    }
+
+    for i in 0..(swarms.len() - 1) {
+        let (swarms1, swarms2) = swarms.split_at_mut(i + 1);
+        let swarm1 = &mut swarms1[i];
+        for swarm2 in swarms2 {
+            swarm1.connect(swarm2).await;
+        }
+    }
+
+    StreamHashMap::new(swarms.into_iter().map(|swarm| (*swarm.local_peer_id(), swarm)).collect())
 }
