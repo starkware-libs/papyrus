@@ -438,11 +438,11 @@ pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
 
 // We implement this trait because `Serialize` and `Clone` are not object safe. For more info see
 // https://doc.rust-lang.org/reference/items/traits.html#object-safety
-pub trait SerializeJsonValue {
+pub trait SerializeJsonValue: Send {
     fn to_json_value(&self) -> Result<Value, serde_json::Error>;
 }
 
-impl<T: Serialize + Clone> SerializeJsonValue for T {
+impl<T: Serialize + Clone + Send> SerializeJsonValue for T {
     fn to_json_value(&self) -> Result<Value, serde_json::Error> {
         serde_json::to_value(self.clone())
     }
