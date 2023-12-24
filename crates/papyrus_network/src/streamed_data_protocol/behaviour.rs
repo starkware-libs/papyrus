@@ -69,6 +69,13 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
                 session_id,
                 error: HandlerSessionError::IOError(error),
             } => Self::SessionFailed { session_id, error: SessionError::IOError(error) },
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::RemoteDoesntSupportProtocol { protocol_name },
+            } => Self::SessionFailed {
+                session_id,
+                error: SessionError::RemoteDoesntSupportProtocol { protocol_name },
+            },
             GenericEvent::SessionClosedByRequest { session_id } => {
                 Self::SessionClosedByRequest { session_id }
             }
