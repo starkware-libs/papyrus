@@ -223,13 +223,13 @@
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/TXN_HASH"
             },
             "BROADCASTED_INVOKE_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_INVOKE_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/BROADCASTED_INVOKE_TXN"
             },
             "BROADCASTED_DECLARE_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_DECLARE_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/BROADCASTED_DECLARE_TXN"
             },
             "BROADCASTED_DEPLOY_ACCOUNT_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/BROADCASTED_DEPLOY_ACCOUNT_TXN"
             },
             "FUNCTION_CALL": {
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/FUNCTION_CALL"
