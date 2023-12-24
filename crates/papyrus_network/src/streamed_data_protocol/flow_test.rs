@@ -5,11 +5,11 @@ use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
 use futures::StreamExt;
-use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
+use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event};
-use super::{InboundSessionId, OutboundSessionId, SessionId};
+use super::{Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::messages::block::{BlockHeader, GetBlocks, GetBlocksResponse};
 use crate::messages::common::BlockId;
 use crate::messages::proto::p2p::proto::get_blocks_response::Response;
@@ -189,9 +189,11 @@ fn get_number_for_data(peer_id1: PeerId, peer_id2: PeerId, message_index: usize)
 
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
-    let substream_timeout = Duration::from_secs(3600);
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::<GetBlocks, GetBlocksResponse>::new(substream_timeout)
+        Behaviour::<GetBlocks, GetBlocksResponse>::new(Config {
+            substream_timeout: Duration::from_secs(60),
+            protocol_name: StreamProtocol::new("/"),
+        })
     })
     .await;
 
