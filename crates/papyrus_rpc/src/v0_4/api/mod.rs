@@ -47,6 +47,7 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    MessageFromL1,
     TransactionWithHash,
     TypedDeployAccountTransaction,
     TypedInvokeTransactionV1,
@@ -196,6 +197,14 @@ pub trait JsonRpc {
         transactions: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
