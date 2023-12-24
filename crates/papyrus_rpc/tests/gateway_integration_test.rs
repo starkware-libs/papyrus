@@ -5,16 +5,15 @@ use jsonrpsee::http_client::{HttpClient, HttpClientBuilder};
 use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
-use papyrus_rpc::{AddInvokeOkResultRPC0_4, InvokeTransactionRPC0_4, InvokeTransactionV1RPC0_4};
+use papyrus_rpc::{
+    AddInvokeOkResultRPC0_4,
+    InvokeTransactionRPC0_4,
+    InvokeTransactionV1RPC0_4,
+    TransactionVersion1RPC0_4,
+};
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::{
-    Calldata,
-    Fee,
-    Transaction,
-    TransactionSignature,
-    TransactionVersion,
-};
+use starknet_api::transaction::{Calldata, Fee, Transaction, TransactionSignature};
 use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
 use starknet_client::writer::objects::transaction::InvokeTransaction as SNClientInvokeTransaction;
 use starknet_core::crypto::ecdsa_sign;
@@ -83,7 +82,7 @@ async fn test_gw_integration_testnet() {
         signature: TransactionSignature::default(),
         nonce,
         sender_address,
-        version: TransactionVersion(stark_felt!(1_u8)),
+        version: TransactionVersion1RPC0_4::default(),
         calldata: calldata![
             stark_felt!(1_u8), // OpenZeppelin call array len (number of calls in this tx).
             // Call Array (4 elements per array struct element).
