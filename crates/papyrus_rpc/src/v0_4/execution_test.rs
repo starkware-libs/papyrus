@@ -132,9 +132,9 @@ lazy_static! {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x689"),
+        gas_consumed: stark_felt!("0x68b"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(167300000000000,),
+        overall_fee: Fee(167500000000000,),
     };
 
     // A message from L1 contract at address 0x987 to the contract at CONTRACT_ADDRESS that calls

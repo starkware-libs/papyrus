@@ -860,7 +860,7 @@ fn simulate_with_query_bit_outputs_same_as_no_query_bit() {
 #[test]
 fn blockifier_error_mapping() {
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
-    let expected = format!("Contract constructor execution has failed. {child}");
+    let expected = format!("Contract constructor execution has failed: {child}");
     let blockifier_err =
         BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(child);
     let err = ExecutionError::from((0, blockifier_err));
@@ -872,7 +872,7 @@ fn blockifier_error_mapping() {
     assert_eq!(transaction_index, 0);
 
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
-    let expected = format!("Transaction execution has failed. {child}");
+    let expected = format!("Transaction execution has failed: {child}");
     let blockifier_err = BlockifierTransactionExecutionError::ExecutionError(child);
     let err = ExecutionError::from((0, blockifier_err));
     let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
@@ -883,7 +883,7 @@ fn blockifier_error_mapping() {
     assert_eq!(transaction_index, 0);
 
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
-    let expected = format!("Transaction validation has failed. {child}");
+    let expected = format!("Transaction validation has failed: {child}");
     let blockifier_err = BlockifierTransactionExecutionError::ValidateTransactionError(child);
     let err = ExecutionError::from((0, blockifier_err));
     let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
