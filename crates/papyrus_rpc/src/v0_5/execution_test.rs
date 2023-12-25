@@ -92,6 +92,7 @@ use super::transaction::{
 };
 use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
+    call_and_validate_schema_for_result,
     call_api_then_assert_and_validate_schema_for_result,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
@@ -327,18 +328,18 @@ async fn call_estimate_fee() {
         ..Default::default()
     }));
 
-    let res = module
-        .call::<_, Vec<FeeEstimate>>(
-            "starknet_V0_5_estimateFee",
-            (
-                vec![invoke.clone()],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        "starknet_V0_5_estimateFee",
+        vec![
+            Box::new(vec![invoke.clone()]),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
+        &VERSION_0_5,
+        SpecFile::StarknetApiOpenrpc,
+        &vec![EXPECTED_FEE_ESTIMATE.clone()],
+    )
+    .await;
 
     // Test that calling the same transaction with a different block context with a different gas
     // price produces a different fee.
@@ -447,13 +448,14 @@ async fn test_call_simulate(
     };
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(invoke_v1.clone()));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
-            (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        module,
+        "starknet_V0_5_simulateTransactions",
+        vec![Box::new(block_id), Box::new(vec![invoke]), Box::<Vec<SimulationFlag>>::default()],
+        &VERSION_0_5,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
@@ -527,17 +529,18 @@ async fn call_simulate_skip_validate() {
         ..Default::default()
     }));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                vec![SimulationFlag::SkipValidate],
-            ),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        &module,
+        "starknet_V0_5_simulateTransactions",
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+            Box::new(vec![invoke]),
+            Box::new(vec![SimulationFlag::SkipValidate]),
+        ],
+        &VERSION_0_5,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
@@ -575,17 +578,18 @@ async fn call_simulate_skip_fee_charge() {
         ..Default::default()
     }));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_5_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                vec![SimulationFlag::SkipFeeCharge],
-            ),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        &module,
+        "starknet_V0_5_simulateTransactions",
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+            Box::new(vec![invoke]),
+            Box::new(vec![SimulationFlag::SkipFeeCharge]),
+        ],
+        &VERSION_0_5,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
@@ -681,10 +685,14 @@ async fn trace_block_transactions_regular_and_pending() {
         .commit()
         .unwrap();
 
-    let tx_1_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_5_traceTransaction", [tx_hash1])
-        .await
-        .unwrap();
+    let tx_1_trace = call_and_validate_schema_for_result::<_, TransactionTrace>(
+        &module,
+        "starknet_V0_5_traceTransaction",
+        vec![Box::new(tx_hash1)],
+        &VERSION_0_5,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_matches!(tx_1_trace, TransactionTrace::Invoke(_));
 
@@ -695,13 +703,14 @@ async fn trace_block_transactions_regular_and_pending() {
 
     assert_matches!(tx_2_trace, TransactionTrace::Invoke(_));
 
-    let res = module
-        .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_5_traceBlockTransactions",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
-        )
-        .await
-        .unwrap();
+    let res = call_and_validate_schema_for_result::<_, Vec<TransactionTraceWithHash>>(
+        &module,
+        "starknet_V0_5_traceBlockTransactions",
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))))],
+        &VERSION_0_5,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 2);
     assert_eq!(res[0].trace_root, tx_1_trace);
