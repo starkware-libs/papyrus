@@ -41,7 +41,7 @@ mod header_test;
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use tracing::debug;
 
 use crate::db::serialization::NoVersionValueWrapper;
@@ -69,6 +69,12 @@ pub trait HeaderStorageReader {
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<StarknetVersion>>;
+
+    /// Returns the signature of the block with the given number.
+    fn get_block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<BlockSignature>>;
 }
 
 /// Interface for writing data related to the block headers.
@@ -91,9 +97,20 @@ where
         starknet_version: &StarknetVersion,
     ) -> StorageResult<Self>;
 
-    /// Removes a block header from the storage and returns the removed data.
-    fn revert_header(self, block_number: BlockNumber)
-    -> StorageResult<(Self, Option<BlockHeader>)>;
+    /// Removes a block header and its signature (if exists) from the storage and returns the
+    /// removed data.
+    fn revert_header(
+        self,
+        block_number: BlockNumber,
+    ) -> StorageResult<(Self, Option<BlockHeader>, Option<BlockSignature>)>;
+
+    /// Appends a block signature to the storage.
+    /// Written separately from the header to allow skipping the signature when creating a block.
+    fn append_block_signature(
+        self,
+        block_number: BlockNumber,
+        block_signature: &BlockSignature,
+    ) -> StorageResult<Self>;
 }
 
 /// A version of the Starknet protocol used when creating a block.
@@ -142,6 +159,15 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
             ),
         }
     }
+
+    fn get_block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<BlockSignature>> {
+        let block_signatures_table = self.open_table(&self.tables.block_signatures)?;
+        let block_signature = block_signatures_table.get(&self.txn, &block_number)?;
+        Ok(block_signature)
+    }
 }
 
 impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
@@ -186,11 +212,12 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
     fn revert_header(
         self,
         block_number: BlockNumber,
-    ) -> StorageResult<(Self, Option<BlockHeader>)> {
+    ) -> StorageResult<(Self, Option<BlockHeader>, Option<BlockSignature>)> {
         let markers_table = self.open_table(&self.tables.markers)?;
         let headers_table = self.open_table(&self.tables.headers)?;
         let block_hash_to_number_table = self.open_table(&self.tables.block_hash_to_number)?;
         let starknet_version_table = self.open_table(&self.tables.starknet_version)?;
+        let block_signatures_table = self.open_table(&self.tables.block_signatures)?;
 
         // Assert that header marker equals the reverted block number + 1
         let current_header_marker = self.get_header_marker()?;
@@ -202,7 +229,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                  action.",
                 block_number
             );
-            return Ok((self, None));
+            return Ok((self, None, None));
         }
 
         let reverted_header = headers_table
@@ -215,7 +242,31 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         // Revert starknet version.
         starknet_version_table.delete(&self.txn, &block_number)?;
 
-        Ok((self, Some(reverted_header)))
+        // Revert block signature.
+        let reverted_block_signature = block_signatures_table.get(&self.txn, &block_number)?;
+        if reverted_block_signature.is_some() {
+            block_signatures_table.delete(&self.txn, &block_number)?;
+        }
+
+        Ok((self, Some(reverted_header), reverted_block_signature))
+    }
+
+    fn append_block_signature(
+        self,
+        block_number: BlockNumber,
+        block_signature: &BlockSignature,
+    ) -> StorageResult<Self> {
+        let current_header_marker = self.get_header_marker()?;
+        if block_number >= current_header_marker {
+            return Err(StorageError::BlockSignatureForNonExistingBlock {
+                block_number,
+                block_signature: *block_signature,
+            });
+        }
+
+        let block_signatures_table = self.open_table(&self.tables.block_signatures)?;
+        block_signatures_table.insert(&self.txn, &block_number, block_signature)?;
+        Ok(self)
     }
 }
 
