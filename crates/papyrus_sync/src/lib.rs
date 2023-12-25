@@ -625,7 +625,8 @@ fn stream_new_blocks<
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
-                let (block_number, block, starknet_version) = maybe_block?;
+                let (block_number, block, _block_signature_data, starknet_version) = maybe_block?;
+                // TODO(yair): add the signature data to the sync event.
                 yield SyncEvent::BlockAvailable { block_number, block , starknet_version};
             }
         }
