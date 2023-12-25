@@ -39,7 +39,7 @@ use validator::Validate;
 use self::serialization::{Key, ValueSerde};
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 19;
+const MAX_DBS: usize = 20;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
