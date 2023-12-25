@@ -64,6 +64,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
+use crate::db::table_types::common_prefix::CommonPrefix;
 use crate::db::table_types::simple_table::SimpleTable;
 use crate::db::table_types::Table;
 use crate::db::{DbCursorTrait, DbError, DbTransaction, TableHandle, TransactionKind, RW};
@@ -86,10 +87,10 @@ type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, IndexedDeprecatedContractClass, SimpleTable>;
 type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, LocationInFile, SimpleTable>;
 type DeployedContractsTable<'env> =
-    TableHandle<'env, (ContractAddress, BlockNumber), ClassHash, SimpleTable>;
+    TableHandle<'env, (ContractAddress, BlockNumber), ClassHash, CommonPrefix>;
 type ContractStorageTable<'env> =
-    TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt, SimpleTable>;
-type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce, SimpleTable>;
+    TableHandle<'env, (ContractAddress, (StorageKey, BlockNumber)), StarkFelt, CommonPrefix>;
+type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce, CommonPrefix>;
 
 /// Interface for reading data related to the state.
 // Structure of state data:
@@ -307,14 +308,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = (*address, *key, first_irrelevant_block);
+        let db_key = (*address, (*key, first_irrelevant_block));
         // Find the previous db item.
         let mut cursor = self.storage_table.cursor(self.txn)?;
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
             None => Ok(StarkFelt::default()),
-            Some(((got_address, got_key, _got_block_number), value)) => {
+            Some(((got_address, (got_key, _got_block_number)), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
@@ -728,7 +729,7 @@ fn write_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
-            storage_table.upsert(txn, &(*address, *key, block_number), value)?;
+            storage_table.upsert(txn, &(*address, (*key, block_number)), value)?;
         }
     }
     Ok(())
@@ -843,7 +844,7 @@ fn delete_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in &thin_state_diff.storage_diffs {
         for (key, _) in storage_entries {
-            storage_table.delete(txn, &(*address, *key, block_number))?;
+            storage_table.delete(txn, &(*address, (*key, block_number)))?;
         }
     }
     Ok(())

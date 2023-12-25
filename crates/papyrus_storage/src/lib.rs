@@ -78,6 +78,7 @@ use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::StorageSerde;
+use db::table_types::common_prefix::CommonPrefix;
 use db::table_types::simple_table::SimpleTable;
 use db::table_types::Table;
 use mmap_file::{
@@ -139,16 +140,16 @@ pub fn open_storage(
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_simple_table("block_hash_to_number")?,
         casms: db_writer.create_simple_table("casms")?,
-        contract_storage: db_writer.create_simple_table("contract_storage")?,
+        contract_storage: db_writer.create_common_prefix_table("contract_storage")?,
         declared_classes: db_writer.create_simple_table("declared_classes")?,
         declared_classes_block: db_writer.create_simple_table("declared_classes_block")?,
         deprecated_declared_classes: db_writer
             .create_simple_table("deprecated_declared_classes")?,
-        deployed_contracts: db_writer.create_simple_table("deployed_contracts")?,
+        deployed_contracts: db_writer.create_common_prefix_table("deployed_contracts")?,
         events: db_writer.create_simple_table("events")?,
         headers: db_writer.create_simple_table("headers")?,
         markers: db_writer.create_simple_table("markers")?,
-        nonces: db_writer.create_simple_table("nonces")?,
+        nonces: db_writer.create_common_prefix_table("nonces")?,
         file_offsets: db_writer.create_simple_table("file_offsets")?,
         state_diffs: db_writer.create_simple_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_simple_table("transaction_hash_to_idx")?,
@@ -432,15 +433,15 @@ struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber, SimpleTable>,
         casms: TableIdentifier<ClassHash, LocationInFile, SimpleTable>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt, SimpleTable>,
+        contract_storage: TableIdentifier<(ContractAddress, (StorageKey, BlockNumber)), StarkFelt, CommonPrefix>,
         declared_classes: TableIdentifier<ClassHash, LocationInFile, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass, SimpleTable>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, SimpleTable>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, CommonPrefix>,
         events: TableIdentifier<(ContractAddress, EventIndex), EventContent, SimpleTable>,
         headers: TableIdentifier<BlockNumber, BlockHeader, SimpleTable>,
         markers: TableIdentifier<MarkerKind, BlockNumber, SimpleTable>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, SimpleTable>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, CommonPrefix>,
         file_offsets: TableIdentifier<OffsetKind, usize, SimpleTable>,
         state_diffs: TableIdentifier<BlockNumber, LocationInFile, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex, SimpleTable>,

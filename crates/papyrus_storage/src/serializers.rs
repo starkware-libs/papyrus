@@ -432,6 +432,8 @@ auto_storage_serde! {
 
     (BlockNumber, TransactionOffsetInBlock);
     (BlockHash, ClassHash);
+    (BlockNumber, Nonce);
+    (BlockNumber, ClassHash);
     (ContractAddress, BlockHash);
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
@@ -441,6 +443,9 @@ auto_storage_serde! {
     (usize, Vec<Hint>);
     (usize, Vec<String>);
     (u32, u32);
+    (StorageKey, BlockNumber);
+    (ContractAddress, (StorageKey, BlockNumber));
+    ((StorageKey, BlockNumber), StarkFelt);
 }
 
 ////////////////////////////////////////////////////////////////////////
