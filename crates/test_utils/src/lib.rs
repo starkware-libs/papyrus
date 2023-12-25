@@ -41,6 +41,7 @@ use starknet_api::block::{
     BlockHash,
     BlockHeader,
     BlockNumber,
+    BlockSignature,
     BlockStatus,
     BlockTimestamp,
     GasPrice,
@@ -54,6 +55,7 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
 };
+use starknet_api::crypto::Signature;
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
@@ -409,6 +411,7 @@ auto_impl_get_test_instance! {
         pub timestamp: BlockTimestamp,
     }
     pub struct BlockNumber(pub u64);
+    pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {
         Pending = 0,
         AcceptedOnL2 = 1,
@@ -636,6 +639,10 @@ auto_impl_get_test_instance! {
         pub max_price_per_unit: u128,
     }
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
+        pub struct Signature {
+        pub r: StarkFelt,
+        pub s: StarkFelt,
+    }
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
         pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,

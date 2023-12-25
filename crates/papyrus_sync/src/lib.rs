@@ -324,13 +324,9 @@ impl<
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            // TODO(yair): store the signature.
-            SyncEvent::BlockAvailable {
-                block_number,
-                block,
-                signature: _signature,
-                starknet_version,
-            } => self.store_block(block_number, block, &starknet_version),
+            SyncEvent::BlockAvailable { block_number, block, signature, starknet_version } => {
+                self.store_block(block_number, block, &signature, &starknet_version)
+            }
             SyncEvent::StateDiffAvailable {
                 block_number,
                 block_hash,
@@ -360,6 +356,7 @@ impl<
         &mut self,
         block_number: BlockNumber,
         block: Block,
+        signature: &BlockSignature,
         starknet_version: &StarknetVersion,
     ) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
@@ -371,6 +368,7 @@ impl<
         self.writer
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
+            .append_block_signature(block_number, signature)?
             .update_starknet_version(&block_number, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;

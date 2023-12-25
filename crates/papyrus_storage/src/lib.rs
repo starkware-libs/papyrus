@@ -90,7 +90,7 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
@@ -127,7 +127,7 @@ pub const STORAGE_VERSION_STATE: Version = Version(9);
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(9);
+pub const STORAGE_VERSION_BLOCKS: Version = Version(10);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -136,6 +136,7 @@ pub fn open_storage(
     let (db_reader, mut db_writer) = open_env(&storage_config.db_config)?;
     let tables = Arc::new(Tables {
         block_hash_to_number: db_writer.create_table("block_hash_to_number")?,
+        block_signatures: db_writer.create_table("block_signatures")?,
         casms: db_writer.create_table("casms")?,
         contract_storage: db_writer.create_table("contract_storage")?,
         declared_classes: db_writer.create_table("declared_classes")?,
@@ -428,6 +429,7 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
+        block_signatures: TableIdentifier<BlockNumber, BlockSignature>,
         casms: TableIdentifier<ClassHash, LocationInFile>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
         declared_classes: TableIdentifier<ClassHash, LocationInFile>,
@@ -467,6 +469,7 @@ macro_rules! struct_field_names {
 }
 use struct_field_names;
 
+// TODO: sort the variants alphabetically.
 /// Error type for the storage crate.
 #[allow(missing_docs)]
 #[derive(thiserror::Error, Debug)]
@@ -504,6 +507,8 @@ pub enum StorageError {
          {compiled_class_marker}."
     )]
     InvalidBlockNumber { block: BlockNumber, compiled_class_marker: BlockNumber },
+    #[error("Attempt to write block signature of non-existing block {block_number}.")]
+    BlockSignatureForNonExistingBlock { block_number: BlockNumber },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
