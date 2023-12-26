@@ -19,13 +19,21 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     NotifyHandler,
+    StreamProtocol,
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 
 use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
-use super::protocol::PROTOCOL_NAME;
-use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
+use super::{
+    Config,
+    DataBound,
+    GenericEvent,
+    InboundSessionId,
+    OutboundSessionId,
+    QueryBound,
+    SessionId,
+};
 
 #[derive(thiserror::Error, Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -35,9 +43,8 @@ pub(crate) enum SessionError {
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
-    // TODO(shahak) make PROTOCOL_NAME configurable.
-    #[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
-    RemoteDoesntSupportProtocol,
+    #[error("Remote peer doesn't support the {protocol_name} protocol.")]
+    RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
 }
 
 impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerSessionError>>
@@ -85,7 +92,7 @@ pub(crate) struct PeerNotConnected;
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
-    substream_timeout: Duration,
+    config: Config,
     pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
@@ -97,9 +104,9 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
 impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
-    pub fn new(substream_timeout: Duration) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
-            substream_timeout,
+            config,
             pending_events: Default::default(),
             pending_queries: Default::default(),
             connection_ids_map: Default::default(),
@@ -186,7 +193,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn handle_established_outbound_connection(
@@ -196,7 +203,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.substream_timeout, self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_>) {

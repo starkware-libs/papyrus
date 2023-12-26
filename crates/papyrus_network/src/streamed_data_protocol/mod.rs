@@ -5,7 +5,10 @@ pub mod protocol;
 #[cfg(test)]
 mod flow_test;
 
+use std::time::Duration;
+
 use derive_more::Display;
+use libp2p::swarm::StreamProtocol;
 use libp2p::PeerId;
 use prost::Message;
 
@@ -44,4 +47,10 @@ pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     SessionFailed { session_id: SessionId, error: SessionError },
     SessionClosedByRequest { session_id: SessionId },
     SessionClosedByPeer { session_id: SessionId },
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub(crate) struct Config {
+    pub substream_timeout: Duration,
+    pub protocol_name: StreamProtocol,
 }
