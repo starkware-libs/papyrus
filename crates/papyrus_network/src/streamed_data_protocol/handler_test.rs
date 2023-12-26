@@ -19,7 +19,7 @@ use libp2p::PeerId;
 use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, SessionError, ToBehaviourEvent};
 use crate::messages::{protobuf, read_message, write_message};
-use crate::test_utils::{get_connected_streams, hardcoded_data};
+use crate::test_utils::{get_connected_streams, dummy_data};
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Handler<Query, Data> {}
 
@@ -193,14 +193,14 @@ async fn read_messages<Query: QueryBound, Data: DataBound>(
     handler: Handler<Query, Data>,
     stream: &mut Stream,
     num_messages: usize,
-) -> Vec<protobuf::BlockHeadersResponse> {
+) -> Vec<protobuf::BasicMessage> {
     async fn read_messages_inner(
         stream: &mut Stream,
         num_messages: usize,
-    ) -> Vec<protobuf::BlockHeadersResponse> {
+    ) -> Vec<protobuf::BasicMessage> {
         let mut result = Vec::new();
         for _ in 0..num_messages {
-            match read_message::<protobuf::BlockHeadersResponse, _>(&mut *stream).await.unwrap() {
+            match read_message::<protobuf::BasicMessage, _>(&mut *stream).await.unwrap() {
                 Some(message) => result.push(message),
                 None => return result,
             }
@@ -217,14 +217,14 @@ async fn read_messages<Query: QueryBound, Data: DataBound>(
 
 #[tokio::test]
 async fn process_inbound_session() {
-    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -234,26 +234,26 @@ async fn process_inbound_session() {
         inbound_session_id,
     );
     validate_new_inbound_session_event(&mut handler, &query, inbound_session_id).await;
-    let hardcoded_data_vec = hardcoded_data();
-    for data in &hardcoded_data_vec {
+    let dummy_data_vec = dummy_data();
+    for data in &dummy_data_vec {
         simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
     }
 
     let data_received =
-        read_messages(handler, &mut outbound_stream, hardcoded_data_vec.len()).await;
-    assert_eq!(hardcoded_data_vec, data_received);
+        read_messages(handler, &mut outbound_stream, dummy_data_vec.len()).await;
+    assert_eq!(dummy_data_vec, data_received);
 }
 
 #[tokio::test]
 async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
-    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let inbound_session_id = InboundSessionId { value: 1 };
 
     simulate_negotiated_inbound_session_from_swarm(
@@ -269,8 +269,8 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     simulate_request_to_close_session(&mut handler, inbound_session_id.into());
     validate_session_closed_by_request_event(&mut handler, inbound_session_id.into()).await;
 
-    let hardcoded_data_vec = hardcoded_data();
-    for data in &hardcoded_data_vec {
+    let dummy_data_vec = dummy_data();
+    for data in &dummy_data_vec {
         simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
     }
     let data_received = read_messages(handler, &mut outbound_stream, 1).await;
@@ -285,12 +285,11 @@ fn listen_protocol_across_multiple_handlers() {
     let thread_handles = (0..NUM_HANDLERS).map(|_| {
         let next_inbound_session_id = next_inbound_session_id.clone();
         std::thread::spawn(|| {
-            let handler =
-                Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-                    Config::get_test_config(),
-                    next_inbound_session_id,
-                    PeerId::random(),
-                );
+            let handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
+                Config::get_test_config(),
+                next_inbound_session_id,
+                PeerId::random(),
+            );
             (0..NUM_PROTOCOLS_PER_HANDLER)
                 .map(|_| handler.listen_protocol().info().value)
                 .collect::<Vec<_>>()
@@ -306,14 +305,14 @@ fn listen_protocol_across_multiple_handlers() {
 
 #[tokio::test]
 async fn process_outbound_session() {
-    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     simulate_request_to_send_query_from_swarm(&mut handler, query.clone(), outbound_session_id);
@@ -330,12 +329,12 @@ async fn process_outbound_session() {
         outbound_session_id,
     );
 
-    let hardcoded_data_vec = hardcoded_data();
-    for data in hardcoded_data_vec.clone() {
+    let dummy_data_vec = dummy_data();
+    for data in dummy_data_vec.clone() {
         write_message(data, &mut inbound_stream).await.unwrap();
     }
 
-    for data in &hardcoded_data_vec {
+    for data in &dummy_data_vec {
         validate_received_data_event(&mut handler, data, outbound_session_id).await;
     }
 
@@ -352,7 +351,7 @@ async fn test_outbound_session_negotiation_failure(
     config: Config,
 ) {
     let outbound_session_id = OutboundSessionId { value: 1 };
-    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         config,
         Arc::new(Default::default()),
         PeerId::random(),
@@ -420,7 +419,7 @@ async fn outbound_session_negotiation_failure() {
 
 #[tokio::test]
 async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
-    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
@@ -438,7 +437,7 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     simulate_request_to_close_session(&mut handler, outbound_session_id.into());
     validate_session_closed_by_request_event(&mut handler, outbound_session_id.into()).await;
 
-    for data in hardcoded_data() {
+    for data in dummy_data() {
         // The handler might have already closed outbound_stream, so we don't unwrap the result
         let _ = write_message(data, &mut inbound_stream).await;
     }

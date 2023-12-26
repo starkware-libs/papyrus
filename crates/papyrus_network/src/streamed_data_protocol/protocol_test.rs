@@ -9,13 +9,13 @@ use pretty_assertions::assert_eq;
 
 use super::{InboundProtocol, OutboundProtocol};
 use crate::messages::{protobuf, read_message, write_message, write_usize};
-use crate::test_utils::{get_connected_streams, hardcoded_data};
+use crate::test_utils::{get_connected_streams, dummy_data};
 
 pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/get_blocks/1.0.0");
 
 #[test]
 fn outbound_protocol_info() {
-    let outbound_protocol = OutboundProtocol::<protobuf::BlockHeadersRequest> {
+    let outbound_protocol = OutboundProtocol::<protobuf::BasicMessage> {
         query: Default::default(),
         protocol_name: PROTOCOL_NAME,
     };
@@ -24,7 +24,7 @@ fn outbound_protocol_info() {
 
 #[test]
 fn inbound_protocol_info() {
-    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new(PROTOCOL_NAME);
+    let inbound_protocol = InboundProtocol::<protobuf::BasicMessage>::new(PROTOCOL_NAME);
     assert_eq!(inbound_protocol.protocol_info().collect::<Vec<_>>(), vec![PROTOCOL_NAME]);
 }
 
@@ -32,27 +32,25 @@ fn inbound_protocol_info() {
 async fn positive_flow() {
     let (inbound_stream, outbound_stream, _) = get_connected_streams().await;
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let outbound_protocol = OutboundProtocol { query: query.clone(), protocol_name: PROTOCOL_NAME };
-    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new(PROTOCOL_NAME);
+    let inbound_protocol = InboundProtocol::<protobuf::BasicMessage>::new(PROTOCOL_NAME);
 
     tokio::join!(
         async move {
             let (received_query, mut stream) =
                 inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap();
             assert_eq!(query, received_query);
-            for response in hardcoded_data() {
+            for response in dummy_data() {
                 write_message(response, &mut stream).await.unwrap();
             }
         },
         async move {
             let mut stream =
                 outbound_protocol.upgrade_outbound(outbound_stream, PROTOCOL_NAME).await.unwrap();
-            for expected_response in hardcoded_data() {
-                let response = read_message::<protobuf::BlockHeadersResponse, _>(&mut stream)
-                    .await
-                    .unwrap()
-                    .unwrap();
+            for expected_response in dummy_data() {
+                let response =
+                    read_message::<protobuf::BasicMessage, _>(&mut stream).await.unwrap().unwrap();
                 assert_eq!(response, expected_response);
             }
         }
@@ -62,7 +60,7 @@ async fn positive_flow() {
 #[tokio::test]
 async fn outbound_sends_invalid_request() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new(PROTOCOL_NAME);
+    let inbound_protocol = InboundProtocol::<protobuf::BasicMessage>::new(PROTOCOL_NAME);
 
     tokio::join!(
         async move {
@@ -80,7 +78,7 @@ async fn outbound_sends_invalid_request() {
 #[tokio::test]
 async fn outbound_sends_no_request() {
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let inbound_protocol = InboundProtocol::<protobuf::BlockHeadersRequest>::new(PROTOCOL_NAME);
+    let inbound_protocol = InboundProtocol::<protobuf::BasicMessage>::new(PROTOCOL_NAME);
 
     tokio::join!(
         async move {
