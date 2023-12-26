@@ -19,7 +19,13 @@ use libp2p::swarm::handler::{
     FullyNegotiatedInbound,
     FullyNegotiatedOutbound,
 };
-use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, SubstreamProtocol};
+use libp2p::swarm::{
+    ConnectionHandler,
+    ConnectionHandlerEvent,
+    StreamProtocol,
+    StreamUpgradeError,
+    SubstreamProtocol,
+};
 use libp2p::PeerId;
 use tracing::debug;
 
@@ -53,6 +59,8 @@ pub(crate) enum SessionError {
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
+    #[error("Remote peer doesn't support the {protocol_name} protocol.")]
+    RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
 }
 
 pub(crate) type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
@@ -89,28 +97,6 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
             inbound_sessions_marked_to_end: Default::default(),
         }
     }
-
-    // fn convert_upgrade_error(
-    //     &self,
-    //     error: StreamUpgradeError<OutboundProtocolError<Data>>,
-    // ) -> RequestError<Data> { match error { StreamUpgradeError::Timeout => {
-    //   RequestError::Timeout { substream_timeout: self.substream_timeout } }
-    //   StreamUpgradeError::Apply(request_protocol_error) => match request_protocol_error {
-    //   OutboundProtocolError::IOError(error) => RequestError::IOError(error),
-    //   OutboundProtocolError::ResponseSendError(error) => { RequestError::ResponseSendError(error)
-    //   } }, StreamUpgradeError::NegotiationFailed => RequestError::RemoteDoesntSupportProtocol,
-    //   StreamUpgradeError::Io(error) => RequestError::IOError(error), }
-    // }
-
-    // fn clear_pending_events_related_to_session(&mut self, outbound_session_id: OutboundSessionId)
-    // {     self.pending_events.retain(|event| match event {
-    //         ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData {
-    //             outbound_session_id: other_outbound_session_id,
-    //             ..
-    //         }) => outbound_session_id != *other_outbound_session_id,
-    //         _ => true,
-    //     })
-    // }
 
     /// Poll an inbound session, inserting any events needed to pending_events, and return whether
     /// the inbound session has finished.
@@ -336,28 +322,32 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 self.id_to_inbound_session.insert(inbound_session_id, InboundSession::new(stream));
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
-                info: _outbound_session_id,
-                error: _error,
+                info: outbound_session_id,
+                error: upgrade_error,
             }) => {
-                unimplemented!();
-                // let error = self.convert_upgrade_error(error);
-                // if matches!(error, RequestError::RemoteDoesntSupportProtocol) {
-                //     // This error will happen on all future connections to the peer, so we'll
-                //     // close the handle after reporting to the behaviour.
-                //     self.pending_events.clear();
-                //     self.pending_events.push_front(ConnectionHandlerEvent::NotifyBehaviour(
-                //         SessionProgressEvent::SessionFailed { outbound_session_id, error },
-                //     ));
-                //     self.pending_events
-                //         .push_back(ConnectionHandlerEvent::Close(RemoteDoesntSupportProtocolError));
-                // } else {
-                //     self.clear_pending_events_related_to_session(outbound_session_id);
-                //     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                //         SessionProgressEvent::SessionFailed { outbound_session_id, error },
-                //     ));
-                // }
-                // self.outbound_session_id_to_data_receiver.remove(&outbound_session_id);
+                let session_error = match upgrade_error {
+                    StreamUpgradeError::Timeout => {
+                        SessionError::Timeout { substream_timeout: self.config.substream_timeout }
+                    }
+                    StreamUpgradeError::Apply(outbound_protocol_error) => {
+                        SessionError::IOError(outbound_protocol_error)
+                    }
+                    StreamUpgradeError::NegotiationFailed => {
+                        SessionError::RemoteDoesntSupportProtocol {
+                            protocol_name: self.config.protocol_name.clone(),
+                        }
+                    }
+                    StreamUpgradeError::Io(error) => SessionError::IOError(error),
+                };
+                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    ToBehaviourEvent::SessionFailed {
+                        session_id: SessionId::OutboundSessionId(outbound_session_id),
+                        error: session_error,
+                    },
+                ));
             }
+            // We don't need to handle a ListenUpgradeError because an inbound session is created
+            // only after a successful upgrade so there's no session failure to report.
             _ => {}
         }
     }
