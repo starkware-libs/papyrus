@@ -24,8 +24,16 @@ use libp2p::PeerId;
 use tracing::debug;
 
 use self::session::{FinishReason, InboundSession};
-use super::protocol::{InboundProtocol, OutboundProtocol, PROTOCOL_NAME};
-use super::{DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
+use super::protocol::{InboundProtocol, OutboundProtocol};
+use super::{
+    Config,
+    DataBound,
+    GenericEvent,
+    InboundSessionId,
+    OutboundSessionId,
+    QueryBound,
+    SessionId,
+};
 use crate::messages::read_message;
 
 #[derive(Debug)]
@@ -49,10 +57,6 @@ pub(crate) enum SessionError {
 
 pub(crate) type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
-#[derive(thiserror::Error, Debug)]
-#[error("Remote peer doesn't support the {PROTOCOL_NAME} protocol.")]
-pub(crate) struct RemoteDoesntSupportProtocolError;
-
 type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::OutboundProtocol,
     <H as ConnectionHandler>::OutboundOpenInfo,
@@ -60,7 +64,8 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
 >;
 
 pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
-    substream_timeout: Duration,
+    // TODO(shahak): Consider changing to Arc<Config> if the config becomes heavy to clone.
+    config: Config,
     next_inbound_session_id: Arc<AtomicUsize>,
     peer_id: PeerId,
     id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
@@ -73,13 +78,9 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
     // TODO(shahak) remove allow(dead_code).
     #[allow(dead_code)]
-    pub fn new(
-        substream_timeout: Duration,
-        next_inbound_session_id: Arc<AtomicUsize>,
-        peer_id: PeerId,
-    ) -> Self {
+    pub fn new(config: Config, next_inbound_session_id: Arc<AtomicUsize>, peer_id: PeerId) -> Self {
         Self {
-            substream_timeout,
+            config,
             next_inbound_session_id,
             peer_id,
             id_to_inbound_session: Default::default(),
@@ -145,10 +146,10 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
         SubstreamProtocol::new(
-            InboundProtocol::new(),
+            InboundProtocol::new(self.config.protocol_name.clone()),
             InboundSessionId { value: self.next_inbound_session_id.fetch_add(1, Ordering::AcqRel) },
         )
-        .with_timeout(self.substream_timeout)
+        .with_timeout(self.config.substream_timeout)
     }
 
     fn poll(
@@ -232,10 +233,13 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 // of the timeout.
                 self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(
-                        OutboundProtocol { query },
+                        OutboundProtocol {
+                            query,
+                            protocol_name: self.config.protocol_name.clone(),
+                        },
                         outbound_session_id,
                     )
-                    .with_timeout(self.substream_timeout),
+                    .with_timeout(self.config.substream_timeout),
                 });
             }
             RequestFromBehaviourEvent::SendData { data, inbound_session_id } => {

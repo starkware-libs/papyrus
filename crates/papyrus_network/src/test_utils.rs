@@ -6,11 +6,12 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::pin::Pin;
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use futures::stream::{Stream as StreamTrait, StreamExt};
 use libp2p::core::multiaddr;
 use libp2p::swarm::dial_opts::DialOpts;
-use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
+use libp2p::swarm::{NetworkBehaviour, StreamProtocol, Swarm, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
 use rand::random;
@@ -85,6 +86,12 @@ pub(crate) fn hardcoded_data() -> Vec<GetBlocksResponse> {
         },
         GetBlocksResponse { response: Some(Response::Fin(Fin {})) },
     ]
+}
+
+impl crate::streamed_data_protocol::Config {
+    pub fn get_test_config() -> Self {
+        Self { substream_timeout: Duration::MAX, protocol_name: StreamProtocol::new("/") }
+    }
 }
 
 // This is an implementation of `StreamMap` from tokio_stream. The reason we're implementing it
