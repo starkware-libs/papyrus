@@ -1,12 +1,8 @@
 #[cfg(test)]
 mod messages_test;
 
-pub mod proto {
-    pub mod p2p {
-        pub mod proto {
-            include!(concat!(env!("OUT_DIR"), "/_.rs"));
-        }
-    }
+pub mod protobuf {
+    include!(concat!(env!("OUT_DIR"), "/_.rs"));
 }
 
 use std::io;
@@ -14,8 +10,6 @@ use std::io;
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
 use unsigned_varint::encode::usize_buffer;
-
-pub use crate::messages::proto::p2p::proto as protobuf;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
 

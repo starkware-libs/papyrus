@@ -41,36 +41,11 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     )
 }
 
-pub(crate) fn hardcoded_data() -> Vec<protobuf::BlockHeadersResponse> {
+pub(crate) fn dummy_data() -> Vec<protobuf::BasicMessage> {
     vec![
-        protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader { number: 1, ..Default::default() },
-                )),
-            }],
-        },
-        protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader { number: 2, ..Default::default() },
-                )),
-            }],
-        },
-        protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader { number: 3, ..Default::default() },
-                )),
-            }],
-        },
-        protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Fin(
-                    protobuf::Fin::default(),
-                )),
-            }],
-        },
+        protobuf::BasicMessage { number: 1 },
+        protobuf::BasicMessage { number: 2 },
+        protobuf::BasicMessage { number: 3 },
     ]
 }
 
