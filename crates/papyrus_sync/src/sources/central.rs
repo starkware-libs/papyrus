@@ -26,10 +26,10 @@ use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{Block, BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, CompiledClassHash, GlobalRoot};
+use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
+use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::crypto::Signature;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::reader::{ReaderClientError, StarknetFeederGatewayClient, StarknetReader};
@@ -191,10 +191,8 @@ pub trait CentralSourceTrait {
     ) -> Result<CasmContractClass, CentralError>;
 }
 
-pub(crate) type BlocksStream<'a> = BoxStream<
-    'a,
-    Result<(BlockNumber, Block, CentralBlockSignatureData, StarknetVersion), CentralError>,
->;
+pub(crate) type BlocksStream<'a> =
+    BoxStream<'a, Result<(BlockNumber, Block, BlockSignature, StarknetVersion), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -395,7 +393,7 @@ fn client_to_central_block(
         ),
         ReaderClientError,
     >,
-) -> CentralResult<(Block, CentralBlockSignatureData, StarknetVersion)> {
+) -> CentralResult<(Block, BlockSignature, StarknetVersion)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
@@ -405,10 +403,10 @@ fn client_to_central_block(
                 .map_err(|err| CentralError::ClientError(Arc::new(err)))?;
             Ok((
                 block,
-                CentralBlockSignatureData {
-                    signature: signature_data.signature,
-                    state_diff_commitment: signature_data.signature_input.state_diff_commitment,
-                },
+                BlockSignature(Signature {
+                    r: signature_data.signature[0],
+                    s: signature_data.signature[1],
+                }),
                 StarknetVersion(version),
             ))
         }
@@ -462,12 +460,4 @@ impl CentralSource {
             ))),
         })
     }
-}
-
-/// A struct that holds the signature data of a block.
-// TODO(yair): use SN_API type once https://github.com/starkware-libs/starknet-api/pull/134 is merged.
-#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct CentralBlockSignatureData {
-    pub signature: [StarkFelt; 2],
-    pub state_diff_commitment: GlobalRoot,
 }
