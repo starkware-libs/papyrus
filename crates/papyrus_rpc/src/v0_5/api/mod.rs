@@ -367,26 +367,24 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::DeclareV2(value, casm, false))
         }
         starknet_api::transaction::Transaction::Declare(
-            starknet_api::transaction::DeclareTransaction::V3(_),
-        ) => Err(internal_server_error(
-            "The requested transaction is a declare of version 3, which is not supported on \
-             v0.5.1.",
-        )),
+            starknet_api::transaction::DeclareTransaction::V3(value),
+        ) => {
+            let casm = storage_txn
+                .get_casm(&value.class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(format!(
+                        "Missing casm of class hash {}.",
+                        value.class_hash
+                    ))
+                })?;
+            Ok(ExecutableTransactionInput::DeclareV3(value, casm, false))
+        }
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
         starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
-            match deploy_account_tx {
-                starknet_api::transaction::DeployAccountTransaction::V1(_) => {
-                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx, false))
-                }
-                starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                    Err(internal_server_error(
-                        "The requested transaction is a deploy account of version 3, which is not \
-                         supported on v0.5.1.",
-                    ))
-                }
-            }
+            Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx, false))
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value, false))
