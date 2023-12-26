@@ -266,15 +266,8 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     // consume the new inbound session event without reading it.
     handler.next().await;
 
-    simulate_request_to_close_session(
-        &mut handler,
-        SessionId::InboundSessionId(inbound_session_id),
-    );
-    validate_session_closed_by_request_event(
-        &mut handler,
-        SessionId::InboundSessionId(inbound_session_id),
-    )
-    .await;
+    simulate_request_to_close_session(&mut handler, inbound_session_id.into());
+    validate_session_closed_by_request_event(&mut handler, inbound_session_id.into()).await;
 
     let hardcoded_data_vec = hardcoded_data();
     for data in &hardcoded_data_vec {
@@ -349,11 +342,7 @@ async fn process_outbound_session() {
     validate_no_events(&mut handler);
 
     inbound_stream.close().await.unwrap();
-    validate_session_closed_by_peer_event(
-        &mut handler,
-        SessionId::OutboundSessionId(outbound_session_id),
-    )
-    .await;
+    validate_session_closed_by_peer_event(&mut handler, outbound_session_id.into()).await;
 }
 
 // Extracting to a function because two closures have different types.
@@ -369,12 +358,8 @@ async fn test_outbound_session_negotiation_failure(
         PeerId::random(),
     );
     simulate_outbound_negotiation_failed(&mut handler, outbound_session_id, upgrade_error);
-    validate_session_failed_event(
-        &mut handler,
-        SessionId::OutboundSessionId(outbound_session_id),
-        session_error_matcher,
-    )
-    .await;
+    validate_session_failed_event(&mut handler, outbound_session_id.into(), session_error_matcher)
+        .await;
     validate_no_events(&mut handler);
 }
 
@@ -450,15 +435,8 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
         outbound_session_id,
     );
 
-    simulate_request_to_close_session(
-        &mut handler,
-        SessionId::OutboundSessionId(outbound_session_id),
-    );
-    validate_session_closed_by_request_event(
-        &mut handler,
-        SessionId::OutboundSessionId(outbound_session_id),
-    )
-    .await;
+    simulate_request_to_close_session(&mut handler, outbound_session_id.into());
+    validate_session_closed_by_request_event(&mut handler, outbound_session_id.into()).await;
 
     for data in hardcoded_data() {
         // The handler might have already closed outbound_stream, so we don't unwrap the result
