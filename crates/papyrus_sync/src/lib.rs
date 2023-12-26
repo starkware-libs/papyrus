@@ -33,7 +33,7 @@ use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use sources::base_layer::BaseLayerSourceError;
-use starknet_api::block::{Block, BlockHash, BlockNumber};
+use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
@@ -176,6 +176,7 @@ pub enum SyncEvent {
     BlockAvailable {
         block_number: BlockNumber,
         block: Block,
+        signature: BlockSignature,
         starknet_version: StarknetVersion,
     },
     StateDiffAvailable {
@@ -323,9 +324,13 @@ impl<
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            SyncEvent::BlockAvailable { block_number, block, starknet_version } => {
-                self.store_block(block_number, block, &starknet_version)
-            }
+            // TODO(yair): store the signature.
+            SyncEvent::BlockAvailable {
+                block_number,
+                block,
+                signature: _signature,
+                starknet_version,
+            } => self.store_block(block_number, block, &starknet_version),
             SyncEvent::StateDiffAvailable {
                 block_number,
                 block_hash,
@@ -625,9 +630,8 @@ fn stream_new_blocks<
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
-                let (block_number, block, _block_signature_data, starknet_version) = maybe_block?;
-                // TODO(yair): add the signature data to the sync event.
-                yield SyncEvent::BlockAvailable { block_number, block , starknet_version};
+                let (block_number, block, signature, starknet_version) = maybe_block?;
+                yield SyncEvent::BlockAvailable { block_number, block , signature, starknet_version};
             }
         }
     }
