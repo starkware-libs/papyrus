@@ -20,36 +20,18 @@ use tokio_stream::StreamExt as TokioStreamExt;
 
 use crate::messages::protobuf;
 
-pub(crate) fn create_swarm<BehaviourT: NetworkBehaviour + Send>(
-    behaviour: BehaviourT,
-) -> (Swarm<BehaviourT>, Multiaddr)
-where
-    <BehaviourT as NetworkBehaviour>::ToSwarm: Debug,
-{
-    let mut swarm = Swarm::new_ephemeral(|_| behaviour);
-
-    // Using a random address because if two different tests use the same address simultaneously
-    // they will fail.
-    let listen_address: Multiaddr = multiaddr::Protocol::Memory(random::<u64>()).into();
-    swarm.listen_on(listen_address.clone()).unwrap();
-    swarm.add_external_address(listen_address.clone());
-    (swarm, listen_address)
-}
-
 /// Create two streams that are connected to each other. Return them and a join handle for a thread
 /// that will perform the sends between the streams (this thread will run forever so it shouldn't
 /// be joined).
 pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) {
-    let (mut dialer_swarm, _) = create_swarm(get_stream::Behaviour::default());
-    let (listener_swarm, listener_address) = create_swarm(get_stream::Behaviour::default());
-    dialer_swarm
-        .dial(
-            DialOpts::peer_id(*listener_swarm.local_peer_id())
-                .addresses(vec![listener_address])
-                .build(),
-        )
-        .unwrap();
-    let merged_swarm = dialer_swarm.merge(listener_swarm);
+    let mut swarm1 = Swarm::new_ephemeral(|_| get_stream::Behaviour::default());
+    let mut swarm2 = Swarm::new_ephemeral(|_| get_stream::Behaviour::default());
+    swarm1.listen().with_memory_addr_external().await;
+    swarm2.listen().with_memory_addr_external().await;
+
+    swarm1.connect(&mut swarm2).await;
+
+    let merged_swarm = swarm1.merge(swarm2);
     let mut filtered_swarm = TokioStreamExt::filter_map(merged_swarm, |event| {
         if let SwarmEvent::Behaviour(stream) = event { Some(stream) } else { None }
     });
