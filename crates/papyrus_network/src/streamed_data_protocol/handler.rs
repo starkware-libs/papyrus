@@ -113,7 +113,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
         if let FinishReason::Error(io_error) = finish_reason {
             pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                 ToBehaviourEvent::SessionFailed {
-                    session_id: SessionId::InboundSessionId(inbound_session_id),
+                    session_id: inbound_session_id.into(),
                     error: SessionError::IOError(io_error),
                 },
             ));
@@ -256,7 +256,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionClosedByRequest {
-                        session_id: SessionId::InboundSessionId(inbound_session_id),
+                        session_id: inbound_session_id.into(),
                     },
                 ));
             }
@@ -266,7 +266,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 self.id_to_outbound_session.remove(&outbound_session_id);
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionClosedByRequest {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
+                        session_id: outbound_session_id.into(),
                     },
                 ));
             }
@@ -341,7 +341,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 };
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionFailed {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
+                        session_id: outbound_session_id.into(),
                         error: session_error,
                     },
                 ));

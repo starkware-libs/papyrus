@@ -272,7 +272,7 @@ async fn process_inbound_session() {
     }
     validate_no_events(&mut behaviour);
 
-    let session_id = SessionId::InboundSessionId(inbound_session_id);
+    let session_id = inbound_session_id.into();
     behaviour.close_session(session_id).unwrap();
     validate_request_close_session_event(&mut behaviour, &peer_id, session_id).await;
     validate_no_events(&mut behaviour);
@@ -314,7 +314,7 @@ async fn create_and_process_outbound_session() {
     }
     validate_no_events(&mut behaviour);
 
-    let session_id = SessionId::OutboundSessionId(outbound_session_id);
+    let session_id = outbound_session_id.into();
     behaviour.close_session(session_id).unwrap();
     validate_request_close_session_event(&mut behaviour, &peer_id, session_id).await;
     validate_no_events(&mut behaviour);
@@ -340,17 +340,9 @@ async fn outbound_session_closed_by_peer() {
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
-    simulate_session_closed_by_peer(
-        &mut behaviour,
-        peer_id,
-        SessionId::OutboundSessionId(outbound_session_id),
-    );
+    simulate_session_closed_by_peer(&mut behaviour, peer_id, outbound_session_id.into());
 
-    validate_session_closed_by_peer_event(
-        &mut behaviour,
-        SessionId::OutboundSessionId(outbound_session_id),
-    )
-    .await;
+    validate_session_closed_by_peer_event(&mut behaviour, outbound_session_id.into()).await;
     validate_no_events(&mut behaviour);
 }
 
