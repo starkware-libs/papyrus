@@ -208,9 +208,9 @@ pub trait JsonRpc {
     #[method(name = "estimateFee")]
     async fn estimate_fee(
         &self,
-        transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
+        request: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
 
     /// Estimates the fee of a message from L1.
