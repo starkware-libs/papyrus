@@ -23,11 +23,21 @@ pub struct InboundSessionId {
 }
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub(crate) enum SessionId {
     OutboundSessionId(OutboundSessionId),
     InboundSessionId(InboundSessionId),
+}
+
+impl From<OutboundSessionId> for SessionId {
+    fn from(outbound_session_id: OutboundSessionId) -> Self {
+        Self::OutboundSessionId(outbound_session_id)
+    }
+}
+
+impl From<InboundSessionId> for SessionId {
+    fn from(inbound_session_id: InboundSessionId) -> Self {
+        Self::InboundSessionId(inbound_session_id)
+    }
 }
 
 // This is a workaround for the unstable feature trait aliases
@@ -39,8 +49,6 @@ pub(crate) trait DataBound: Message + 'static + Unpin + Default {}
 impl<T> DataBound for T where T: Message + 'static + Unpin + Default {}
 
 #[derive(Debug)]
-// TODO(shahak) remove allow dead code.
-#[allow(dead_code)]
 pub(crate) enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     NewInboundSession { query: Query, inbound_session_id: InboundSessionId, peer_id: PeerId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
