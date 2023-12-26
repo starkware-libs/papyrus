@@ -137,7 +137,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         self.next_outbound_session_id.value += 1;
 
         self.session_id_to_peer_id_and_connection_id
-            .insert(SessionId::OutboundSessionId(outbound_session_id), (peer_id, connection_id));
+            .insert(outbound_session_id.into(), (peer_id, connection_id));
 
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
@@ -154,9 +154,8 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         data: Data,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let (peer_id, connection_id) = self.get_peer_id_and_connection_id_from_session_id(
-            SessionId::InboundSessionId(inbound_session_id),
-        )?;
+        let (peer_id, connection_id) =
+            self.get_peer_id_and_connection_id_from_session_id(inbound_session_id.into())?;
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
@@ -244,10 +243,8 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         let converted_event = event.into();
         match converted_event {
             Event::NewInboundSession { inbound_session_id, .. } => {
-                self.session_id_to_peer_id_and_connection_id.insert(
-                    SessionId::InboundSessionId(inbound_session_id),
-                    (peer_id, connection_id),
-                );
+                self.session_id_to_peer_id_and_connection_id
+                    .insert(inbound_session_id.into(), (peer_id, connection_id));
             }
             Event::SessionFailed { session_id, .. }
             | Event::SessionClosedByRequest { session_id, .. } => {
