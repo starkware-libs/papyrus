@@ -453,13 +453,13 @@
                 "$ref": "./starknet_api_openrpc.json#/components/schemas/FEE_ESTIMATE"
             },
             "BROADCASTED_TXN": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/BROADCASTED_TXN"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/BROADCASTED_TXN"
             },
             "STATE_DIFF": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/STATE_DIFF"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/STATE_DIFF"
             },
             "EXECUTION_RESOURCES": {
-                "$ref": "./api/starknet_api_openrpc.json#/components/schemas/EXECUTION_RESOURCES"
+                "$ref": "./starknet_api_openrpc.json#/components/schemas/EXECUTION_RESOURCES"
             }
         },
         "errors": {

@@ -126,11 +126,11 @@
             "description": "Returns the execution traces of all transactions included in the given block",
             "params": [
                 {
-                    "name": "block_hash",
-                    "summary": "The hash of the requested block",
+                    "name": "block_id",
+                    "description": "The hash of the requested block, or number (height) of the requested block, or a block tag",
                     "required": true,
                     "schema": {
-                        "$ref": "#/components/schemas/BLOCK_HASH"
+                        "$ref": "#/components/schemas/BLOCK_ID"
                     }
                 }
             ],

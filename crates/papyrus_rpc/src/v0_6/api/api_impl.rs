@@ -978,8 +978,8 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
         simulation_flags: Vec<SimulationFlag>,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
