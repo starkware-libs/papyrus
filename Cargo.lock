@@ -6152,14 +6152,15 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f9d0c42ef835df4cb8fc0468825aa5ad2825da927a89d5346ec0ef74573f158"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=104fbad#104fbad84f832301b5b5f598e29587a1aa51eafd"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
  "hex",
  "indexmap 2.1.0",
  "once_cell",
+ "parity-scale-codec",
+ "parity-scale-codec-derive",
  "primitive-types",
  "serde",
  "serde_json",
