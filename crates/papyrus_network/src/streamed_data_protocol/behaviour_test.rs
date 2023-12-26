@@ -1,6 +1,5 @@
 use std::pin::Pin;
 use std::task::{Context, Poll};
-use std::time::Duration;
 
 use assert_matches::assert_matches;
 use futures::{FutureExt, Stream, StreamExt};
@@ -10,7 +9,7 @@ use libp2p::swarm::{ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
-use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
+use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Behaviour, Event};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::test_utils::hardcoded_data;
@@ -27,8 +26,6 @@ impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
         }
     }
 }
-
-const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
 fn simulate_connection_established_from_swarm<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
@@ -245,7 +242,7 @@ fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behavi
 
 #[tokio::test]
 async fn process_inbound_session() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
@@ -286,7 +283,7 @@ async fn process_inbound_session() {
 
 #[tokio::test]
 async fn create_and_process_outbound_session() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
@@ -327,7 +324,7 @@ async fn create_and_process_outbound_session() {
 
 #[tokio::test]
 async fn outbound_session_closed_by_peer() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.
@@ -356,7 +353,7 @@ async fn outbound_session_closed_by_peer() {
 
 #[test]
 fn close_non_existing_session_fails() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
     behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
     behaviour
         .close_session(SessionId::OutboundSessionId(OutboundSessionId::default()))
@@ -365,7 +362,7 @@ fn close_non_existing_session_fails() {
 
 #[test]
 fn send_data_non_existing_session_fails() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
     for data in hardcoded_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
@@ -373,7 +370,7 @@ fn send_data_non_existing_session_fails() {
 
 #[test]
 fn send_query_peer_not_connected_fails() {
-    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(SUBSTREAM_TIMEOUT);
+    let mut behaviour = Behaviour::<GetBlocks, GetBlocksResponse>::new(Config::get_test_config());
 
     // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
     // messages is fixed.

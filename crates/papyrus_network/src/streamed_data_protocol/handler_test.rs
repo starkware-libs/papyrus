@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
-use std::time::Duration;
 
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
@@ -11,7 +10,7 @@ use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegot
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
 use libp2p::PeerId;
 
-use super::super::{DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
+use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
 use crate::messages::block::{GetBlocks, GetBlocksResponse};
 use crate::messages::{read_message, write_message};
@@ -29,8 +28,6 @@ impl<Query: QueryBound, Data: DataBound> StreamTrait for Handler<Query, Data> {
         }
     }
 }
-
-const SUBSTREAM_TIMEOUT: Duration = Duration::MAX;
 
 fn simulate_request_to_send_data_from_swarm<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
@@ -190,7 +187,7 @@ async fn read_messages<Query: QueryBound, Data: DataBound>(
 #[tokio::test]
 async fn process_inbound_session() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
-        SUBSTREAM_TIMEOUT,
+        Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
@@ -221,7 +218,7 @@ async fn process_inbound_session() {
 #[tokio::test]
 async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
-        SUBSTREAM_TIMEOUT,
+        Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
@@ -269,7 +266,7 @@ fn listen_protocol_across_multiple_handlers() {
         let next_inbound_session_id = next_inbound_session_id.clone();
         std::thread::spawn(|| {
             let handler = Handler::<GetBlocks, GetBlocksResponse>::new(
-                SUBSTREAM_TIMEOUT,
+                Config::get_test_config(),
                 next_inbound_session_id,
                 PeerId::random(),
             );
@@ -289,7 +286,7 @@ fn listen_protocol_across_multiple_handlers() {
 #[tokio::test]
 async fn process_outbound_session() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
-        SUBSTREAM_TIMEOUT,
+        Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
@@ -336,7 +333,7 @@ async fn process_outbound_session() {
 #[tokio::test]
 async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     let mut handler = Handler::<GetBlocks, GetBlocksResponse>::new(
-        SUBSTREAM_TIMEOUT,
+        Config::get_test_config(),
         Arc::new(Default::default()),
         PeerId::random(),
     );
@@ -377,8 +374,8 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
 //   outbound_session_id }); let event = handler.next().await.unwrap(); let
 //   ConnectionHandlerEvent::OutboundSubstreamRequest { protocol } = event else { panic!("Got
 //   unexpected event"); }; assert_eq!(*query, *protocol.upgrade().query());
-//   assert_eq!(SUBSTREAM_TIMEOUT, *protocol.timeout()); protocol.upgrade().data_sender().clone()
-// }
+//   assert_eq!(Config::get_test_config(), *protocol.timeout());
+// protocol.upgrade().data_sender().clone() }
 
 // async fn send_data_and_validate_event<
 //     Query: Message,
@@ -408,7 +405,7 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
 
 // #[tokio::test]
 // async fn process_session() {
-//     let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
+//     let mut handler = Handler::new(Config::get_test_config());
 
 //    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
 //    // messages is fixed.
@@ -430,7 +427,7 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
 
 // #[tokio::test]
 // async fn process_multiple_sessions_simultaneously() {
-//     let mut handler = Handler::new(SUBSTREAM_TIMEOUT);
+//     let mut handler = Handler::new(Config::get_test_config());
 
 //     const N_REQUESTS: usize = 20;
 //     let request_ids = (0..N_REQUESTS).map(|value| OutboundSessionId { value

@@ -13,19 +13,17 @@ use prost::Message;
 
 use crate::messages::{read_message, write_message};
 
-pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/get_blocks/1.0.0");
-
 /// Substream upgrade protocol for sending data on blocks.
 ///
 /// Receives a request to get a range of blocks and sends a stream of data on the blocks.
-#[derive(Default)]
 pub struct InboundProtocol<Query: Message + Default> {
     phantom: PhantomData<Query>,
+    protocol_name: StreamProtocol,
 }
 
 impl<Query: Message + Default> InboundProtocol<Query> {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(protocol_name: StreamProtocol) -> Self {
+        Self { protocol_name, phantom: PhantomData }
     }
 }
 
@@ -34,7 +32,7 @@ impl<Query: Message + Default> UpgradeInfo for InboundProtocol<Query> {
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(PROTOCOL_NAME)
+        iter::once(self.protocol_name.clone())
     }
 }
 
@@ -64,6 +62,9 @@ where
 #[derive(Debug)]
 pub struct OutboundProtocol<Query: Message + Default> {
     pub query: Query,
+    // TODO(shahak): Think of a way to allow multiple protocols with different Query type for
+    // each.
+    pub protocol_name: StreamProtocol,
 }
 
 impl<Query: Message + Default> UpgradeInfo for OutboundProtocol<Query> {
@@ -71,7 +72,7 @@ impl<Query: Message + Default> UpgradeInfo for OutboundProtocol<Query> {
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(PROTOCOL_NAME)
+        iter::once(self.protocol_name.clone())
     }
 }
 
