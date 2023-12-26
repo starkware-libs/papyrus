@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::io;
 use std::pin::Pin;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
@@ -6,12 +7,17 @@ use std::sync::Arc;
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
 use futures::{select, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
-use libp2p::swarm::handler::{ConnectionEvent, FullyNegotiatedInbound, FullyNegotiatedOutbound};
-use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream};
+use libp2p::swarm::handler::{
+    ConnectionEvent,
+    DialUpgradeError,
+    FullyNegotiatedInbound,
+    FullyNegotiatedOutbound,
+};
+use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream, StreamUpgradeError};
 use libp2p::PeerId;
 
 use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
-use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, ToBehaviourEvent};
+use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, SessionError, ToBehaviourEvent};
 use crate::messages::{protobuf, read_message, write_message};
 use crate::test_utils::{get_connected_streams, hardcoded_data};
 
@@ -76,6 +82,17 @@ fn simulate_negotiated_outbound_session_from_swarm<Query: QueryBound, Data: Data
     ));
 }
 
+fn simulate_outbound_negotiation_failed<Query: QueryBound + PartialEq, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    outbound_session_id: OutboundSessionId,
+    error: StreamUpgradeError<io::Error>,
+) {
+    handler.on_connection_event(ConnectionEvent::DialUpgradeError(DialUpgradeError {
+        info: outbound_session_id,
+        error,
+    }));
+}
+
 async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
     query: &Query,
@@ -134,6 +151,21 @@ async fn validate_session_closed_by_peer_event<Query: QueryBound, Data: DataBoun
         ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionClosedByPeer {
             session_id: event_session_id
         }) if event_session_id == session_id
+    );
+}
+
+async fn validate_session_failed_event<Query: QueryBound, Data: DataBound + PartialEq>(
+    handler: &mut Handler<Query, Data>,
+    session_id: SessionId,
+    session_error_matcher: impl FnOnce(&SessionError) -> bool,
+) {
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionFailed {
+            session_id: event_session_id,
+            error,
+        }) if event_session_id == session_id && session_error_matcher(&error)
     );
 }
 
@@ -324,6 +356,83 @@ async fn process_outbound_session() {
     .await;
 }
 
+// Extracting to a function because two closures have different types.
+async fn test_outbound_session_negotiation_failure(
+    upgrade_error: StreamUpgradeError<io::Error>,
+    session_error_matcher: impl FnOnce(&SessionError) -> bool,
+    config: Config,
+) {
+    let outbound_session_id = OutboundSessionId { value: 1 };
+    let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
+        config,
+        Arc::new(Default::default()),
+        PeerId::random(),
+    );
+    simulate_outbound_negotiation_failed(&mut handler, outbound_session_id, upgrade_error);
+    validate_session_failed_event(
+        &mut handler,
+        SessionId::OutboundSessionId(outbound_session_id),
+        session_error_matcher,
+    )
+    .await;
+    validate_no_events(&mut handler);
+}
+
+// TODO(shahak): Add tests where session fails after negotiation.
+#[tokio::test]
+async fn outbound_session_negotiation_failure() {
+    let error_kind = io::ErrorKind::UnexpectedEof;
+    let config = Config::get_test_config();
+    test_outbound_session_negotiation_failure(
+        StreamUpgradeError::Timeout,
+        |session_error| {
+            matches!(
+                session_error,
+                SessionError::Timeout { substream_timeout }
+                if *substream_timeout == config.substream_timeout
+            )
+        },
+        config.clone(),
+    )
+    .await;
+    test_outbound_session_negotiation_failure(
+        StreamUpgradeError::Apply(error_kind.into()),
+        |session_error| {
+            matches!(
+                session_error,
+                SessionError::IOError(error)
+                if error.kind() == error_kind
+            )
+        },
+        config.clone(),
+    )
+    .await;
+    test_outbound_session_negotiation_failure(
+        StreamUpgradeError::NegotiationFailed,
+        |session_error| {
+            matches!(
+                session_error,
+                SessionError::RemoteDoesntSupportProtocol { protocol_name }
+                if *protocol_name == config.protocol_name
+            )
+        },
+        config.clone(),
+    )
+    .await;
+    test_outbound_session_negotiation_failure(
+        StreamUpgradeError::Io(error_kind.into()),
+        |session_error| {
+            matches!(
+                session_error,
+                SessionError::IOError(error)
+                if error.kind() == error_kind
+            )
+        },
+        config.clone(),
+    )
+    .await;
+}
+
 #[tokio::test]
 async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     let mut handler = Handler::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
@@ -352,111 +461,9 @@ async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
     .await;
 
     for data in hardcoded_data() {
-        write_message(data, &mut inbound_stream).await.unwrap();
+        // The handler might have already closed outbound_stream, so we don't unwrap the result
+        let _ = write_message(data, &mut inbound_stream).await;
     }
 
     validate_no_events(&mut handler);
 }
-// async fn start_request_and_validate_event<
-//     Query: Message + PartialEq + Clone,
-//     Data: Message + Default,
-// >(
-//     handler: &mut Handler<Query, Data>,
-//     query: &Query,
-//     outbound_session_id: OutboundSessionId,
-// ) -> UnboundedSender<Data> { handler.on_behaviour_event(NewQueryEvent { query: query.clone(),
-//   outbound_session_id }); let event = handler.next().await.unwrap(); let
-//   ConnectionHandlerEvent::OutboundSubstreamRequest { protocol } = event else { panic!("Got
-//   unexpected event"); }; assert_eq!(*query, *protocol.upgrade().query());
-//   assert_eq!(Config::get_test_config(), *protocol.timeout());
-// protocol.upgrade().data_sender().clone() }
-
-// async fn send_data_and_validate_event<
-//     Query: Message,
-//     Data: Message + Default + PartialEq + Clone,
-// >(
-//     handler: &mut Handler<Query, Data>,
-//     data: &Data,
-//     outbound_session_id: OutboundSessionId,
-//     data_sender: &UnboundedSender<Data>,
-// ) { data_sender.unbounded_send(data.clone()).unwrap(); let event = handler.next().await.unwrap();
-//   assert_matches!( event,
-//   ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData{
-//   outbound_session_id: event_outbound_session_id, data: event_data }) if
-//   event_outbound_session_id == outbound_session_id && event_data == *data );
-// }
-
-// async fn finish_session_and_validate_event<Query: Message, Data: Message + Default>(
-//     handler: &mut Handler<Query, Data>,
-//     outbound_session_id: OutboundSessionId,
-// ) { handler.on_connection_event(ConnectionEvent::FullyNegotiatedOutbound( FullyNegotiatedOutbound
-//   { protocol: (), info: outbound_session_id }, )); let event = handler.next().await.unwrap();
-//   assert_matches!( event,
-//   ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::SessionFinished{
-//   outbound_session_id: event_outbound_session_id }) if event_outbound_session_id ==
-//   outbound_session_id );
-// }
-
-// #[tokio::test]
-// async fn process_session() {
-//     let mut handler = Handler::new(Config::get_test_config());
-
-//    // TODO(shahak): Change to GetBlocks::default() when the bug that forbids sending default
-//    // messages is fixed.
-//     let request = GetBlocks { limit: 10, ..Default::default() };
-//     let request_id = OutboundSessionId::default();
-//     let response = GetBlocksResponse {
-//         response: Some(Response::Header(BlockHeader {
-//             parent_block: Some(BlockId { hash: None, height: 1 }),
-//             ..Default::default()
-//         })),
-//     };
-
-//     let responses_sender =
-//         start_request_and_validate_event(&mut handler, &request, request_id).await;
-
-//     send_data_and_validate_event(&mut handler, &response, request_id, &responses_sender).await;
-//     finish_session_and_validate_event(&mut handler, request_id).await;
-// }
-
-// #[tokio::test]
-// async fn process_multiple_sessions_simultaneously() {
-//     let mut handler = Handler::new(Config::get_test_config());
-
-//     const N_REQUESTS: usize = 20;
-//     let request_ids = (0..N_REQUESTS).map(|value| OutboundSessionId { value
-// }).collect::<Vec<_>>();     let requests = (0..N_REQUESTS)
-//         .map(|i| GetBlocks { skip: i as u64, ..Default::default() })
-//         .collect::<Vec<_>>();
-//     let responses = (0..N_REQUESTS)
-//         .map(|i| GetBlocksResponse {
-//             response: Some(Response::Header(BlockHeader {
-//                 parent_block: Some(BlockId { hash: None, height: i as u64 }),
-//                 ..Default::default()
-//             })),
-//         })
-//         .collect::<Vec<_>>();
-
-//     for ((request, request_id), response) in zip(zip(requests, request_ids), responses.iter()) {
-//         let responses_sender =
-//             start_request_and_validate_event(&mut handler, &request, request_id).await;
-//         responses_sender.unbounded_send(response.clone()).unwrap();
-//     }
-
-//     let mut request_id_found = [false; N_REQUESTS];
-//     for event in handler.take(N_REQUESTS).collect::<Vec<_>>().await {
-//         match event {
-//             ConnectionHandlerEvent::NotifyBehaviour(SessionProgressEvent::ReceivedData {
-//                 outbound_session_id: OutboundSessionId { value: i },
-//                 data: event_data,
-//             }) => {
-//                 assert_eq!(responses[i], event_data);
-//                 assert!(!request_id_found[i]);
-//                 request_id_found[i] = true;
-//             }
-//             _ => {
-//                 panic!("Got unexpected event");
-//             }
-//         }
-//     }
-// }
