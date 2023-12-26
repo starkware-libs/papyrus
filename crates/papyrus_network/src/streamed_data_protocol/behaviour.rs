@@ -13,6 +13,7 @@ use defaultmap::DefaultHashMap;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{
+    ConnectionClosed,
     ConnectionDenied,
     ConnectionHandler,
     ConnectionId,
@@ -45,6 +46,12 @@ pub(crate) enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    // If there's a connection with a single session and it was closed because of another reason,
+    // we'll might get ConnectionClosed instead of that reason because the swarm automatically
+    // closes a connection that has no sessions. If this is a problem, set the swarm's
+    // idle_connection_timeout to a non-zero number.
+    #[error("Connection to remote peer closed.")]
+    ConnectionClosed,
 }
 
 impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerSessionError>>
@@ -221,16 +228,24 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
             }) => {
                 self.connection_ids_map.get_mut(peer_id).insert(connection_id);
             }
-            FromSwarm::NewListener(_)
-            | FromSwarm::NewListenAddr(_)
-            | FromSwarm::ExpiredListenAddr(_)
-            | FromSwarm::ListenerClosed(_)
-            | FromSwarm::NewExternalAddrCandidate(_)
-            | FromSwarm::ExternalAddrConfirmed(_)
-            | FromSwarm::ExternalAddrExpired(_) => {}
-            _ => {
-                unimplemented!();
+            FromSwarm::ConnectionClosed(ConnectionClosed { peer_id, connection_id, .. }) => {
+                self.session_id_to_peer_id_and_connection_id.retain(
+                    |session_id, (session_peer_id, session_connection_id)| {
+                        if peer_id == *session_peer_id && connection_id == *session_connection_id {
+                            self.pending_events.push_back(ToSwarm::GenerateEvent(
+                                Event::SessionFailed {
+                                    session_id: *session_id,
+                                    error: SessionError::ConnectionClosed,
+                                },
+                            ));
+                            false
+                        } else {
+                            true
+                        }
+                    },
+                );
             }
+            _ => {}
         }
     }
 
