@@ -41,6 +41,8 @@ pub struct DbWholeStats {
     /// Page size of the database.
     #[serde(serialize_with = "readable_bytes")]
     pub page_size: u64,
+    /// The number of pages in the free list.
+    pub freelist_size: usize,
 }
 
 impl DbReader {
@@ -70,6 +72,7 @@ impl DbReader {
             overflow_pages: stat.overflow_pages(),
             total_size: stat.total_size(),
             page_size: stat.page_size().into(),
+            freelist_size: self.env.freelist()?,
         })
     }
 }
