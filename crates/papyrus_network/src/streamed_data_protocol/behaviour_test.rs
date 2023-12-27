@@ -12,7 +12,7 @@ use super::super::handler::{RequestFromBehaviourEvent, ToBehaviourEvent};
 use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
 use super::{Behaviour, Event, SessionError};
 use crate::messages::protobuf;
-use crate::test_utils::hardcoded_data;
+use crate::test_utils::dummy_data;
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
 
@@ -262,11 +262,9 @@ fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behavi
 #[tokio::test]
 async fn process_inbound_session() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
 
@@ -276,12 +274,12 @@ async fn process_inbound_session() {
     validate_new_inbound_session_event(&mut behaviour, &peer_id, inbound_session_id, &query).await;
     validate_no_events(&mut behaviour);
 
-    let hardcoded_data_vec = hardcoded_data();
-    for data in &hardcoded_data_vec {
+    let dummy_data_vec = dummy_data();
+    for data in &dummy_data_vec {
         behaviour.send_data(data.clone(), inbound_session_id).unwrap();
     }
 
-    for data in &hardcoded_data_vec {
+    for data in &dummy_data_vec {
         validate_request_send_data_event(&mut behaviour, &peer_id, data, inbound_session_id).await;
     }
     validate_no_events(&mut behaviour);
@@ -299,11 +297,9 @@ async fn process_inbound_session() {
 #[tokio::test]
 async fn create_and_process_outbound_session() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
@@ -313,12 +309,12 @@ async fn create_and_process_outbound_session() {
         .await;
     validate_no_events(&mut behaviour);
 
-    let hardcoded_data_vec = hardcoded_data();
-    for data in &hardcoded_data_vec {
+    let dummy_data_vec = dummy_data();
+    for data in &dummy_data_vec {
         simulate_received_data(&mut behaviour, peer_id, data.clone(), outbound_session_id);
     }
 
-    for data in &hardcoded_data_vec {
+    for data in &dummy_data_vec {
         validate_received_data_event(&mut behaviour, data, outbound_session_id).await;
     }
     validate_no_events(&mut behaviour);
@@ -336,11 +332,9 @@ async fn create_and_process_outbound_session() {
 #[tokio::test]
 async fn outbound_session_closed_by_peer() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
@@ -359,15 +353,13 @@ async fn outbound_session_closed_by_peer() {
 #[tokio::test]
 async fn connection_closed() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
 
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
 
     // Consume the event to create an outbound session.
@@ -410,9 +402,7 @@ async fn connection_closed() {
 #[test]
 fn close_non_existing_session_fails() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
     behaviour.close_session(SessionId::InboundSessionId(InboundSessionId::default())).unwrap_err();
     behaviour
         .close_session(SessionId::OutboundSessionId(OutboundSessionId::default()))
@@ -422,10 +412,8 @@ fn close_non_existing_session_fails() {
 #[test]
 fn send_data_non_existing_session_fails() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
-    for data in hardcoded_data() {
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    for data in dummy_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
 }
@@ -433,11 +421,9 @@ fn send_data_non_existing_session_fails() {
 #[test]
 fn send_query_peer_not_connected_fails() {
     let mut behaviour =
-        Behaviour::<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>::new(
-            Config::get_test_config(),
-        );
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
 
-    let query = protobuf::BlockHeadersRequest::default();
+    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
 
     behaviour.send_query(query.clone(), peer_id).unwrap_err();
