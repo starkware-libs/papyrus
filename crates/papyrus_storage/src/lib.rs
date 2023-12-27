@@ -146,7 +146,7 @@ pub fn open_storage(
         deprecated_declared_classes: db_writer
             .create_simple_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_common_prefix_table("deployed_contracts")?,
-        events: db_writer.create_simple_table("events")?,
+        events: db_writer.create_common_prefix_table("events")?,
         headers: db_writer.create_simple_table("headers")?,
         markers: db_writer.create_simple_table("markers")?,
         nonces: db_writer.create_common_prefix_table("nonces")?,
@@ -438,7 +438,7 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, CommonPrefix>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent, SimpleTable>,
+        events: TableIdentifier<(ContractAddress, EventIndex), EventContent, CommonPrefix>,
         headers: TableIdentifier<BlockNumber, BlockHeader, SimpleTable>,
         markers: TableIdentifier<MarkerKind, BlockNumber, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, CommonPrefix>,

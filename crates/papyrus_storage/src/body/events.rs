@@ -62,6 +62,7 @@ use starknet_api::transaction::{
 };
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
+use crate::db::table_types::common_prefix::CommonPrefix;
 use crate::db::table_types::simple_table::SimpleTable;
 use crate::db::table_types::Table;
 use crate::db::{DbCursor, DbCursorTrait, DbTransaction, RO};
@@ -460,7 +461,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
 /// A key-value pair of the events table.
 type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
-type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent, SimpleTable>;
+type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent, CommonPrefix>;
 /// A key-value pair of the transaction outputs table.
 type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 /// A cursor of the transaction outputs table.

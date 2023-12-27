@@ -61,6 +61,7 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::StorageSerde;
+use crate::db::table_types::common_prefix::CommonPrefix;
 use crate::db::table_types::simple_table::SimpleTable;
 use crate::db::table_types::Table;
 use crate::db::{DbCursorTrait, DbTransaction, TableHandle, TransactionKind, RW};
@@ -74,7 +75,7 @@ type TransactionHashToIdxTable<'env> =
 type TransactionIdxToHashTable<'env> =
     TableHandle<'env, TransactionIndex, TransactionHash, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent, SimpleTable>;
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent, CommonPrefix>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]

@@ -446,6 +446,7 @@ auto_storage_serde! {
     (StorageKey, BlockNumber);
     (ContractAddress, (StorageKey, BlockNumber));
     ((StorageKey, BlockNumber), StarkFelt);
+    (EventIndex, EventContent);
 }
 
 ////////////////////////////////////////////////////////////////////////
