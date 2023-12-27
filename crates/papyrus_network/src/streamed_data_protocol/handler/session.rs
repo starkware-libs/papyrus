@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 
 use futures::future::BoxFuture;
 use futures::{AsyncWriteExt, FutureExt};
@@ -15,6 +15,7 @@ use crate::messages::write_message;
 pub(super) struct InboundSession<Data: DataBound> {
     pending_messages: VecDeque<Data>,
     current_task: WriteMessageTask,
+    wakers_waiting_for_new_message: Vec<Waker>,
 }
 
 pub(super) enum FinishReason {
@@ -35,6 +36,7 @@ impl<Data: DataBound> InboundSession<Data> {
         Self {
             pending_messages: Default::default(),
             current_task: WriteMessageTask::Waiting(stream),
+            wakers_waiting_for_new_message: Default::default(),
         }
     }
 
@@ -42,6 +44,9 @@ impl<Data: DataBound> InboundSession<Data> {
     // TODO(shahak) remove allow dead code.
     pub fn add_message_to_queue(&mut self, data: Data) {
         self.pending_messages.push_back(data);
+        for waker in self.wakers_waiting_for_new_message.drain(..) {
+            waker.wake();
+        }
     }
 
     #[allow(dead_code)]
@@ -76,6 +81,7 @@ impl<Data: DataBound> InboundSession<Data> {
             });
             return self.handle_running(cx);
         }
+        self.wakers_waiting_for_new_message.push(cx.waker().clone());
         None
     }
 
