@@ -5,12 +5,12 @@ use pretty_assertions::assert_eq;
 
 use super::{read_message, write_message};
 use crate::messages::protobuf;
-use crate::test_utils::{get_connected_streams, hardcoded_data};
+use crate::test_utils::{dummy_data, get_connected_streams};
 
 #[tokio::test]
 async fn read_write_positive_flow() {
     let (mut stream1, mut stream2, _) = get_connected_streams().await;
-    let messages = hardcoded_data();
+    let messages = dummy_data();
     for message in &messages {
         write_message(message.clone(), &mut stream1).await.unwrap();
     }
