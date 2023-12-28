@@ -320,8 +320,8 @@ where
 #[allow(missing_docs)]
 /// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
 /// transaction output we can get all its events from the events table (see
-/// [`get_transaction_events`](crate::body::BodyStorageReader::get_transaction_events) in
-/// [`BodyStorageReader`](crate::body::BodyStorageReader)). These events contract addresses are
+/// get_transaction_events(crate::body::BodyStorageReader::get_transaction_events) in
+/// BodyStorageReader(crate::body::BodyStorageReader)). These events contract addresses are
 /// taken from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
 /// In particular, they are not sorted and with duplicates.
 #[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
