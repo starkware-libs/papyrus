@@ -447,7 +447,7 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, LocationInFile, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex, SimpleTable>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash, SimpleTable>,
-        transaction_outputs: TableIdentifier<TransactionIndex, LocationInFile, CommonPrefix>,
+        transaction_outputs: TableIdentifier<TransactionIndex, LocationInFile, SimpleTable>,
         transactions: TableIdentifier<TransactionIndex, Transaction, SimpleTable>,
 
         // Version tables
