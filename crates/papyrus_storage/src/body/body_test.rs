@@ -5,7 +5,6 @@ use starknet_api::transaction::TransactionOffsetInBlock;
 use test_case::test_case;
 use test_utils::{get_test_block, get_test_body};
 
-use crate::body::events::ThinTransactionOutput;
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
 use crate::db::{DbError, KeyAlreadyExistsError};
 use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
@@ -92,18 +91,11 @@ async fn append_body() {
             expected_tx
         );
 
-        let expected_tx_output =
-            original_index.map(|i| ThinTransactionOutput::from(tx_outputs[i].clone()));
+        let expected_tx_output = original_index.map(|i| tx_outputs[i].clone());
         assert_eq!(
             txn.get_transaction_output(TransactionIndex(block_number, tx_offset)).unwrap(),
             expected_tx_output
         );
-
-        let expected_events = original_index.map(|i| tx_outputs[i].events().to_owned());
-        assert_eq!(
-            txn.get_transaction_events(TransactionIndex(block_number, tx_offset)).unwrap(),
-            expected_events
-        )
     }
 
     // Check transaction index by hash.
@@ -167,15 +159,12 @@ async fn append_body() {
     // Check block transaction outputs.
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber(0)).unwrap(),
-        Some(vec![ThinTransactionOutput::from(tx_outputs[0].clone())])
+        Some(vec![tx_outputs[0].clone()])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber(1)).unwrap(), Some(vec![]));
     assert_eq!(
         txn.get_block_transaction_outputs(BlockNumber(2)).unwrap(),
-        Some(vec![
-            ThinTransactionOutput::from(tx_outputs[1].clone()),
-            ThinTransactionOutput::from(tx_outputs[2].clone()),
-        ])
+        Some(vec![tx_outputs[1].clone(), tx_outputs[2].clone(),])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3)).unwrap(), None);
 }
@@ -347,7 +336,6 @@ async fn revert_transactions() {
 
         assert!(reader.begin_ro_txn().unwrap().get_transaction(tx_index).unwrap().is_none());
         assert!(reader.begin_ro_txn().unwrap().get_transaction_output(tx_index).unwrap().is_none());
-        assert!(reader.begin_ro_txn().unwrap().get_transaction_events(tx_index).unwrap().is_none());
         assert!(
             reader.begin_ro_txn().unwrap().get_transaction_idx_by_hash(&tx_hash).unwrap().is_none()
         );
