@@ -650,7 +650,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto 0.5.2",
- "starknet_api",
+ "starknet_api 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "thiserror",
@@ -4736,7 +4736,7 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "tar",
  "tempfile",
  "test-with",
@@ -4758,7 +4758,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto 0.5.2",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "test_utils",
 ]
 
@@ -4800,7 +4800,7 @@ dependencies = [
  "rand_chacha",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "test_utils",
  "thiserror",
  "tracing",
@@ -4873,7 +4873,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "starknet_client",
  "tempfile",
  "test_utils",
@@ -4940,7 +4940,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-core",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "starknet_client",
  "strum 0.25.0",
  "strum_macros 0.25.3",
@@ -4987,7 +4987,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "tempfile",
  "test-case",
  "test_utils",
@@ -5025,7 +5025,7 @@ dependencies = [
  "reqwest",
  "serde",
  "simple_logger",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "starknet_client",
  "test_utils",
  "thiserror",
@@ -6620,6 +6620,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "starknet_api"
+version = "0.6.0"
+source = "git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version#7655114efbfd5d06ce83e97e79e7150f48e5fde9"
+dependencies = [
+ "cairo-lang-starknet 2.5.0",
+ "derive_more",
+ "hex",
+ "indexmap 2.1.0",
+ "once_cell",
+ "parity-scale-codec",
+ "parity-scale-codec-derive",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "starknet-crypto 0.5.2",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
+ "thiserror",
+]
+
+[[package]]
 name = "starknet_client"
 version = "0.2.1"
 dependencies = [
@@ -6641,7 +6662,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "test_utils",
  "thiserror",
  "tokio",
@@ -6911,7 +6932,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.6.0 (git+https://github.com/starkware-libs/starknet-api?branch=elin/cairo/bump-version)",
  "tracing",
 ]
 

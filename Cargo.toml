@@ -89,7 +89,7 @@ serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
-starknet_api = "0.6.0"
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", branch = "elin/cairo/bump-version" }
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
 strum = "0.25.0"
