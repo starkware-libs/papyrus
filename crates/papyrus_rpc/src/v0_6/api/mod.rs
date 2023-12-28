@@ -7,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::TransactionTrace;
+use papyrus_execution::objects::{PriceUnit, TransactionTrace};
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -49,8 +49,11 @@ use super::transaction::{
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
+    MessageFromL1,
     TransactionStatus,
     TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransaction,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};
@@ -184,14 +187,14 @@ pub trait JsonRpc {
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransaction,
+        invoke_transaction: TypedInvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
     #[method(name = "addDeployAccountTransaction")]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
 
     /// Submits a new declare transaction to be added to the chain.
@@ -205,10 +208,18 @@ pub trait JsonRpc {
     #[method(name = "estimateFee")]
     async fn estimate_fee(
         &self,
-        transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
+        request: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
@@ -285,15 +296,19 @@ pub struct FeeEstimate {
     pub gas_consumed: StarkFelt,
     pub gas_price: GasPrice,
     pub overall_fee: Fee,
+    pub unit: PriceUnit,
 }
 
 impl FeeEstimate {
-    pub fn from(gas_price: GasPrice, overall_fee: Fee) -> Self {
+    pub fn from(gas_price: GasPrice, overall_fee: Fee, unit: PriceUnit) -> Self {
         match gas_price {
             GasPrice(0) => Self::default(),
-            _ => {
-                Self { gas_consumed: (overall_fee.0 / gas_price.0).into(), gas_price, overall_fee }
-            }
+            _ => Self {
+                gas_consumed: (overall_fee.0 / gas_price.0).into(),
+                gas_price,
+                overall_fee,
+                unit,
+            },
         }
     }
 }

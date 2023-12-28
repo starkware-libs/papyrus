@@ -87,6 +87,7 @@ use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClien
 use starknet_client::ClientError;
 use test_utils::{
     auto_impl_get_test_instance,
+    get_number_of_variants,
     get_rng,
     get_test_block,
     get_test_body,
@@ -143,6 +144,8 @@ use super::super::transaction::{
     TransactionStatus,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransaction,
 };
 use super::super::write_api_result::{
     AddDeclareOkResult,
@@ -590,12 +593,16 @@ async fn get_block_w_full_transactions() {
     let pending_sequencer_address: ContractAddress = random::<u64>().into();
     let pending_timestamp = BlockTimestamp(random::<u64>());
     let pending_eth_l1_gas_price = GasPrice(random::<u128>());
+    let pending_strk_l1_gas_price = GasPrice(random::<u128>());
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            l1_gas_price: ResourcePrice {
+                price_in_wei: pending_eth_l1_gas_price,
+                price_in_fri: pending_strk_l1_gas_price,
+            },
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -609,6 +616,7 @@ async fn get_block_w_full_transactions() {
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
         pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
+        pending_block.strk_l1_gas_price = pending_strk_l1_gas_price;
         pending_block.starknet_version = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
@@ -759,12 +767,16 @@ async fn get_block_w_transaction_hashes() {
     let pending_sequencer_address: ContractAddress = random::<u64>().into();
     let pending_timestamp = BlockTimestamp(random::<u64>());
     let pending_eth_l1_gas_price = GasPrice(random::<u128>());
+    let pending_strk_l1_gas_price = GasPrice(random::<u128>());
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            l1_gas_price: ResourcePrice {
+                price_in_wei: pending_eth_l1_gas_price,
+                price_in_fri: pending_strk_l1_gas_price,
+            },
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -783,6 +795,7 @@ async fn get_block_w_transaction_hashes() {
         pending_block.timestamp = pending_timestamp;
         pending_block.sequencer_address = pending_sequencer_address;
         pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
+        pending_block.strk_l1_gas_price = pending_strk_l1_gas_price;
         pending_block.starknet_version = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
@@ -992,12 +1005,19 @@ async fn get_transaction_status() {
         .unwrap();
 
     let transaction_hash = block.body.transaction_hashes[0];
+    let transaction_version = match block.body.transactions.index(0) {
+        StarknetApiTransaction::Declare(tx) => tx.version(),
+        StarknetApiTransaction::Deploy(tx) => tx.version,
+        StarknetApiTransaction::DeployAccount(tx) => tx.version(),
+        StarknetApiTransaction::Invoke(tx) => tx.version(),
+        StarknetApiTransaction::L1Handler(tx) => tx.version,
+    };
     let tx = block.body.transaction_outputs.index(0).clone();
     let msg_hash = match tx {
         starknet_api::transaction::TransactionOutput::L1Handler(_) => Some(L1L2MsgHash::default()),
         _ => None,
     };
-    let output = TransactionOutput::from((tx, msg_hash));
+    let output = TransactionOutput::from((tx, transaction_version, msg_hash));
     let expected_status = TransactionStatus {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         execution_status: output.execution_status().clone(),
@@ -1104,13 +1124,23 @@ async fn get_transaction_receipt() {
         .unwrap();
 
     let transaction_hash = block.body.transaction_hashes[0];
+    let transaction_version = match block.body.transactions.index(0) {
+        StarknetApiTransaction::Declare(tx) => tx.version(),
+        StarknetApiTransaction::Deploy(tx) => tx.version,
+        StarknetApiTransaction::DeployAccount(tx) => tx.version(),
+        StarknetApiTransaction::Invoke(tx) => tx.version(),
+        StarknetApiTransaction::L1Handler(tx) => tx.version,
+    };
     let tx = block.body.transactions.index(0).clone();
     let msg_hash = match tx {
         starknet_api::transaction::Transaction::L1Handler(tx) => Some(tx.calc_msg_hash()),
         _ => None,
     };
-    let output =
-        TransactionOutput::from((block.body.transaction_outputs.index(0).clone(), msg_hash));
+    let output = TransactionOutput::from((
+        block.body.transaction_outputs.index(0).clone(),
+        transaction_version,
+        msg_hash,
+    ));
     let expected_receipt = TransactionReceipt {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         transaction_hash,
@@ -1474,6 +1504,25 @@ async fn get_class_hash_at() {
         .await
         .unwrap();
     assert_eq!(res, pending_class_hash);
+
+    // Get class hash of pending block when it's replaced.
+    let replaced_class_hash = ClassHash(random::<u64>().into());
+    pending_data.write().await.state_update.state_diff.replaced_classes.append(&mut vec![
+        ClientReplacedClass { address: *address, class_hash: replaced_class_hash },
+        ClientReplacedClass { address: pending_address, class_hash: replaced_class_hash },
+    ]);
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), *address))
+        .await
+        .unwrap();
+    assert_eq!(res, replaced_class_hash);
+
+    let res = module
+        .call::<_, ClassHash>(method_name, (BlockId::Tag(Tag::Pending), pending_address))
+        .await
+        .unwrap();
+    assert_eq!(res, replaced_class_hash);
 
     // Get class hash of pending block when it's not up to date.
     pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
@@ -1884,6 +1933,7 @@ fn generate_client_transaction_client_receipt_and_rpc_receipt(
         };
         let maybe_output = PendingTransactionOutput::try_from(TransactionOutput::from((
             starknet_api_output,
+            client_transaction.transaction_version(),
             msg_hash,
         )));
         let Ok(output) = maybe_output else {
@@ -3273,14 +3323,15 @@ where
     // https://github.com/rust-lang/rfcs/blob/master/text/2289-associated-type-bounds.md
     <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
 {
-    type Transaction: GetTestInstance + Serialize + Clone + Send + Debug;
+    type Transaction: GetTestInstance + Serialize + Clone + Send + Sync + 'static + Debug;
     type ClientTransaction: TryFrom<Self::Transaction> + Send + Debug;
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
         + Debug
         + Clone
-        + Send;
+        + Send
+        + Sync;
     type ClientResponse: GetTestInstance + Clone + Send;
 
     const METHOD_NAME: &'static str;
@@ -3311,8 +3362,15 @@ where
             None,
             None,
         );
-        let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
-        assert_eq!(resp, expected_resp);
+        call_api_then_assert_and_validate_schema_for_result(
+            &module,
+            Self::METHOD_NAME,
+            vec![Box::new(tx)],
+            &VERSION,
+            SpecFile::WriteApi,
+            &expected_resp,
+        )
+        .await;
     }
 
     async fn test_internal_error() {
@@ -3413,7 +3471,7 @@ where
 
 struct AddInvokeTest {}
 impl AddTransactionTest for AddInvokeTest {
-    type Transaction = InvokeTransaction;
+    type Transaction = TypedInvokeTransaction;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
@@ -3435,7 +3493,7 @@ impl AddTransactionTest for AddInvokeTest {
 
 struct AddDeployAccountTest {}
 impl AddTransactionTest for AddDeployAccountTest {
-    type Transaction = DeployAccountTransaction;
+    type Transaction = TypedDeployAccountTransaction;
     type ClientTransaction = ClientDeployAccountTransaction;
     type Response = AddDeployAccountOkResult;
     type ClientResponse = DeployAccountResponse;
@@ -3571,8 +3629,7 @@ fn spec_api_methods_coverage() {
         .map(method_name_to_spec_method_name)
         .sorted()
         .collect::<Vec<_>>();
-    let non_implemented_apis =
-        ["starknet_estimateMessageFee".to_string(), "starknet_pendingTransactions".to_string()];
+    let non_implemented_apis = ["starknet_pendingTransactions".to_string()];
     let method_names_in_spec = get_method_names_from_spec(&VERSION)
         .iter()
         .filter_map(|method| {
@@ -3598,5 +3655,12 @@ auto_impl_get_test_instance! {
     }
     pub struct ResourcePrice {
         pub price_in_wei: GasPrice,
+        pub price_in_fri: GasPrice,
+    }
+    pub enum TypedInvokeTransaction {
+        Invoke(InvokeTransaction) = 0,
+    }
+    pub enum TypedDeployAccountTransaction {
+        DeployAccount(DeployAccountTransaction) = 0,
     }
 }

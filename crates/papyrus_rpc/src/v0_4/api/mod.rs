@@ -47,7 +47,10 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    MessageFromL1,
     TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};
@@ -170,14 +173,14 @@ pub trait JsonRpc {
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: TypedInvokeTransactionV1,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
     #[method(name = "addDeployAccountTransaction")]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
 
     /// Submits a new declare transaction to be added to the chain.
@@ -191,9 +194,17 @@ pub trait JsonRpc {
     #[method(name = "estimateFee")]
     async fn estimate_fee(
         &self,
-        transactions: Vec<BroadcastedTransaction>,
+        request: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]

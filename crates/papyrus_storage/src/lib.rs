@@ -98,12 +98,11 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
-use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
+use starknet_api::transaction::{Transaction, TransactionHash, TransactionOutput};
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
-use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
 use crate::db::{
     open_env,
@@ -438,7 +437,9 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, BlockNumber, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash, CommonPrefix>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent, CommonPrefix>,
+        // The u8 value type is place holder because value is not needed in this mapping.
+        // This table type will be chang in the future.
+        events: TableIdentifier<(ContractAddress, EventIndex), u8, CommonPrefix>,
         headers: TableIdentifier<BlockNumber, BlockHeader, SimpleTable>,
         markers: TableIdentifier<MarkerKind, BlockNumber, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce, CommonPrefix>,
@@ -446,7 +447,7 @@ struct_field_names! {
         state_diffs: TableIdentifier<BlockNumber, LocationInFile, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex, SimpleTable>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash, SimpleTable>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput, SimpleTable>,
+        transaction_outputs: TableIdentifier<TransactionIndex, LocationInFile, CommonPrefix>,
         transactions: TableIdentifier<TransactionIndex, Transaction, SimpleTable>,
 
         // Version tables
@@ -570,6 +571,7 @@ struct FileHandlers<Mode: TransactionKind> {
     contract_class: FileHandler<ContractClass, Mode>,
     casm: FileHandler<CasmContractClass, Mode>,
     deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
+    transaction_output: FileHandler<TransactionOutput, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -594,6 +596,11 @@ impl FileHandlers<RW> {
         deprecated_contract_class: &DeprecatedContractClass,
     ) -> LocationInFile {
         self.clone().deprecated_contract_class.append(deprecated_contract_class)
+    }
+
+    // Appends a transaction output to the corresponding file and returns its location.
+    fn append_transaction_output(&self, transaction_output: &TransactionOutput) -> LocationInFile {
+        self.clone().transaction_output.append(transaction_output)
     }
 
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
@@ -643,6 +650,16 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             msg: format!("DeprecatedContractClass at location {:?} not found.", location),
         })
     }
+
+    // Returns the transaction output at the given location or an error in case it doesn't exist.
+    fn get_transaction_output_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<TransactionOutput> {
+        self.transaction_output.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("TransactionOutput at location {:?} not found.", location),
+        })
+    }
 }
 
 fn open_storage_files(
@@ -677,9 +694,17 @@ fn open_storage_files(
     let deprecated_contract_class_offset =
         table.get(&db_transaction, &OffsetKind::DeprecatedContractClass)?.unwrap_or_default();
     let (deprecated_contract_class_writer, deprecated_contract_class_reader) = open_file(
-        mmap_file_config,
+        mmap_file_config.clone(),
         db_config.path().join("deprecated_contract_class.dat"),
         deprecated_contract_class_offset,
+    )?;
+
+    let transaction_output_offset =
+        table.get(&db_transaction, &OffsetKind::TransactionOutput)?.unwrap_or_default();
+    let (transaction_output_writer, transaction_output_reader) = open_file(
+        mmap_file_config,
+        db_config.path().join("transaction_output.da"),
+        transaction_output_offset,
     )?;
 
     Ok((
@@ -688,12 +713,14 @@ fn open_storage_files(
             contract_class: contract_class_writer,
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
+            transaction_output: transaction_output_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
+            transaction_output: transaction_output_reader,
         },
     ))
 }
@@ -709,4 +736,6 @@ pub enum OffsetKind {
     Casm,
     /// A deprecated contract class file.
     DeprecatedContractClass,
+    /// A transaction output file.
+    TransactionOutput,
 }

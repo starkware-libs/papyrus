@@ -27,8 +27,9 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber};
-use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::core::{ClassHash, CompiledClassHash, GlobalRoot};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use starknet_api::hash::StarkFelt;
 use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::reader::{ReaderClientError, StarknetFeederGatewayClient, StarknetReader};
@@ -190,8 +191,10 @@ pub trait CentralSourceTrait {
     ) -> Result<CasmContractClass, CentralError>;
 }
 
-pub(crate) type BlocksStream<'a> =
-    BoxStream<'a, Result<(BlockNumber, Block, StarknetVersion), CentralError>>;
+pub(crate) type BlocksStream<'a> = BoxStream<
+    'a,
+    Result<(BlockNumber, Block, CentralBlockSignatureData, StarknetVersion), CentralError>,
+>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -252,14 +255,21 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             // TODO(dan): add explanation.
             let mut res =
                 futures_util::stream::iter(initial_block_number.iter_up_to(up_to_block_number))
-                    .map(|bn| async move { (bn, self.starknet_client.block(bn).await) })
+                    .map(|bn| async move {
+                        let block_and_signature = futures_util::try_join!(
+                            self.starknet_client.block(bn),
+                            self.starknet_client.block_signature(bn)
+                        );
+                        (bn, block_and_signature)
+                    })
                     .buffered(self.concurrent_requests);
-            while let Some((current_block_number, maybe_client_block)) = res.next().await {
+            while let Some((current_block_number, maybe_client_block)) = res.next().await
+            {
                 let maybe_central_block =
                     client_to_central_block(current_block_number, maybe_client_block);
                 match maybe_central_block {
-                    Ok(block_and_version) => {
-                        yield Ok((current_block_number, block_and_version.0, block_and_version.1));
+                    Ok((block, signature, version)) => {
+                        yield Ok((current_block_number, block, signature, version));
                     }
                     Err(err) => {
                         yield (Err(err));
@@ -378,25 +388,43 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
 
 fn client_to_central_block(
     current_block_number: BlockNumber,
-    maybe_client_block: Result<Option<starknet_client::reader::Block>, ReaderClientError>,
-) -> CentralResult<(Block, StarknetVersion)> {
-    let res = match maybe_client_block {
-        Ok(Some(block)) => {
+    maybe_client_block: Result<
+        (
+            Option<starknet_client::reader::Block>,
+            Option<starknet_client::reader::BlockSignatureData>,
+        ),
+        ReaderClientError,
+    >,
+) -> CentralResult<(Block, CentralBlockSignatureData, StarknetVersion)> {
+    match maybe_client_block {
+        Ok((Some(block), Some(signature_data))) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
-            trace!("Block: {block:#?}.");
-            Ok(block
+            trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
+            let (block, version) = block
                 .to_starknet_api_block_and_version()
-                .map_err(|err| CentralError::ClientError(Arc::new(err)))?)
+                .map_err(|err| CentralError::ClientError(Arc::new(err)))?;
+            Ok((
+                block,
+                CentralBlockSignatureData {
+                    signature: signature_data.signature,
+                    state_diff_commitment: signature_data.signature_input.state_diff_commitment,
+                },
+                StarknetVersion(version),
+            ))
         }
-        Ok(None) => Err(CentralError::BlockNotFound { block_number: current_block_number }),
+        Ok((None, Some(_))) => {
+            debug!("Block {current_block_number} not found, but signature was found.");
+            Err(CentralError::BlockNotFound { block_number: current_block_number })
+        }
+        Ok((Some(_), None)) => {
+            debug!("Block {current_block_number} found, but signature was not found.");
+            Err(CentralError::BlockNotFound { block_number: current_block_number })
+        }
+        Ok((None, None)) => {
+            debug!("Block {current_block_number} not found.");
+            Err(CentralError::BlockNotFound { block_number: current_block_number })
+        }
         Err(err) => Err(CentralError::ClientError(Arc::new(err))),
-    };
-    match res {
-        Ok((block, version_string)) => Ok((block, StarknetVersion(version_string))),
-        Err(err) => {
-            debug!("Received error for block {}: {:?}.", current_block_number, err);
-            Err(err)
-        }
     }
 }
 
@@ -434,4 +462,12 @@ impl CentralSource {
             ))),
         })
     }
+}
+
+/// A struct that holds the signature data of a block.
+// TODO(yair): use SN_API type once https://github.com/starkware-libs/starknet-api/pull/134 is merged.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+pub struct CentralBlockSignatureData {
+    pub signature: [StarkFelt; 2],
+    pub state_diff_commitment: GlobalRoot,
 }

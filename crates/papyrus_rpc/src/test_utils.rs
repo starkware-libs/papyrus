@@ -341,13 +341,11 @@ fn fix_errors(spec: &mut serde_json::Value) {
     }
 }
 
-#[allow(dead_code)]
 pub fn method_name_to_spec_method_name(method_name: &str) -> String {
     let re = Regex::new((VERSION_PATTERN.to_string() + "_").as_str()).unwrap();
     re.replace_all(method_name, "").to_string()
 }
 
-#[allow(dead_code)]
 pub async fn call_api_then_assert_and_validate_schema_for_err<
     R: JsonRpcServerImpl,
     T: for<'a> Deserialize<'a> + std::fmt::Debug,
@@ -383,7 +381,6 @@ pub async fn call_api_then_assert_and_validate_schema_for_err<
     );
 }
 
-#[allow(dead_code)]
 pub async fn call_api_then_assert_and_validate_schema_for_result<
     R: JsonRpcServerImpl,
     T: for<'a> Deserialize<'a> + std::fmt::Debug + std::cmp::PartialEq,
@@ -395,10 +392,26 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
     spec_file: SpecFile,
     expected_res: &T,
 ) {
+    assert_eq!(
+        call_and_validate_schema_for_result::<_, T>(module, method, params, version_id, spec_file)
+            .await,
+        *expected_res
+    );
+}
+
+pub async fn call_and_validate_schema_for_result<
+    R: JsonRpcServerImpl,
+    T: for<'a> Deserialize<'a> + std::fmt::Debug,
+>(
+    module: &RpcModule<R>,
+    method: &str,
+    params: Vec<Box<dyn SerializeJsonValue>>,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) -> T {
     validate_schema_for_method_params(method, &params, version_id, spec_file);
     let params = params_vec_to_named_params(method, params, version_id, spec_file);
     let (json_response, res) = raw_call::<_, _, T>(module, method, &params).await;
-    assert_eq!(res.unwrap(), *expected_res);
     assert!(
         validate_schema(
             &get_starknet_spec_api_schema_for_method_results(
@@ -417,6 +430,7 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
         )
         .unwrap(),
     );
+    res.unwrap()
 }
 
 pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
@@ -438,11 +452,11 @@ pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
 
 // We implement this trait because `Serialize` and `Clone` are not object safe. For more info see
 // https://doc.rust-lang.org/reference/items/traits.html#object-safety
-pub trait SerializeJsonValue {
+pub trait SerializeJsonValue: Send {
     fn to_json_value(&self) -> Result<Value, serde_json::Error>;
 }
 
-impl<T: Serialize + Clone> SerializeJsonValue for T {
+impl<T: Serialize + Clone + Send> SerializeJsonValue for T {
     fn to_json_value(&self) -> Result<Value, serde_json::Error> {
         serde_json::to_value(self.clone())
     }

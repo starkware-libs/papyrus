@@ -6,12 +6,17 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
+use papyrus_execution::objects::{
+    PendingData as ExecutionPendingData,
+    TransactionSimulationOutput,
+    TransactionTrace,
+};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
     execution_utils,
     simulate_transactions as exec_simulate_transactions,
+    ExecutableTransactionInput,
     ExecutionConfigByBlock,
     ExecutionError,
 };
@@ -28,6 +33,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventContent,
     EventIndexInTransactionOutput,
+    Fee,
     Transaction as StarknetApiTransaction,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -47,6 +53,7 @@ use super::super::block::{
     get_block_header_by_number,
     Block,
     BlockHeader,
+    BlockNotRevertedValidator,
     GeneralBlockHeader,
     PendingBlockHeader,
     ResourcePrice,
@@ -73,11 +80,10 @@ use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
-    DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
-    InvokeTransactionV1,
     L1HandlerMsgHash,
+    MessageFromL1,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -87,6 +93,8 @@ use super::super::transaction::{
     TransactionStatus,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_error::{
     starknet_error_to_declare_error,
@@ -484,18 +492,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .0
                 .block_hash;
 
-            let thin_tx_output = txn
+            let output = txn
                 .get_transaction_output(transaction_index)
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-            let events = txn
-                .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let msg_hash = match thin_tx_output {
-                papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
+            let msg_hash = match output {
+                starknet_api::transaction::TransactionOutput::L1Handler(_) => {
                     let tx = txn
                         .get_transaction(transaction_index)
                         .map_err(internal_server_error)?
@@ -508,8 +511,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 _ => None,
             };
 
-            let output =
-                TransactionOutput::from_thin_transaction_output(thin_tx_output, events, msg_hash);
+            let output = TransactionOutput::from((output, msg_hash));
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
@@ -860,6 +862,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             None
         };
         let block_number = get_accepted_block_number(&txn, block_id)?;
+        let block_not_reverted_validator = BlockNotRevertedValidator::new(block_number, &txn)?;
         drop(txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -889,6 +892,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match call_result {
             Ok(res) => Ok(res.retdata.0),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -902,7 +907,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: TypedInvokeTransactionV1,
     ) -> RpcResult<AddInvokeOkResult> {
         let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
         match result {
@@ -917,7 +922,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult> {
         let result = self
             .writer_client
@@ -975,6 +980,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             transactions.into_iter().map(|tx| tx.try_into()).collect::<Result<_, _>>()?;
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -1002,10 +1009,12 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee)| FeeEstimate::from(gas_price, fee))
+                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
                 .collect()),
             Ok(Err(reverted_tx)) => Err(contract_error(ContractError {
                 revert_error: format!(
@@ -1041,6 +1050,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         };
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::right_after_block(block_number);
         let block_execution_config = self
@@ -1073,12 +1084,16 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|(transaction_trace, _, gas_price, fee)| SimulatedTransaction {
-                    transaction_trace,
-                    fee_estimation: FeeEstimate::from(gas_price, fee),
+                .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
+                    SimulatedTransaction {
+                        transaction_trace,
+                        fee_estimation: FeeEstimate::from(gas_price, fee),
+                    }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
@@ -1181,6 +1196,9 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             (None, executable_transactions, transaction_hashes, block_number, state_number)
         };
 
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
+
         drop(storage_txn);
 
         let block_execution_config = self
@@ -1210,10 +1228,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match simulate_transactions_result {
-            Ok(mut simulation_results) => {
-                Ok(simulation_results.pop().expect("Should have transaction exeuction result").0)
-            }
+            Ok(mut simulation_results) => Ok(simulation_results
+                .pop()
+                .expect("Should have transaction exeuction result")
+                .transaction_trace),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
@@ -1233,6 +1254,9 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         };
 
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
 
         let (maybe_pending_data, block_transactions, transaction_hashes, state_number) =
             match maybe_client_pending_data {
@@ -1318,17 +1342,98 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         .await
         .map_err(internal_server_error)?;
 
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
                 .zip(transaction_hashes)
-                .map(|((trace_root, _, _, _), transaction_hash)| TransactionTraceWithHash {
-                    transaction_hash,
-                    trace_root,
+                .map(|(TransactionSimulationOutput { transaction_trace, .. }, transaction_hash)| {
+                    TransactionTraceWithHash { transaction_hash, trace_root: transaction_trace }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
+        }
+    }
+
+    #[instrument(skip(self, message), level = "debug", err)]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate> {
+        trace!("Estimating fee of message: {:#?}", message);
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &storage_txn).await?,
+                self.pending_classes.read().await.clone(),
+            ))
+        } else {
+            None
+        };
+        // Convert the message to an L1 handler transaction, and estimate the fee of the
+        // transaction.
+        // The fee input is used to bound the amount of fee used. Because we want to estimate the
+        // fee, we pass u128::MAX so the execution won't fail.
+        let executable_txns =
+            vec![ExecutableTransactionInput::L1Handler(message.into(), Fee(u128::MAX), false)];
+
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
+        drop(storage_txn);
+        let state_number = StateNumber::right_after_block(block_number);
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
+
+        let estimate_fee_result = tokio::task::spawn_blocking(move || {
+            exec_estimate_fee(
+                executable_txns,
+                &chain_id,
+                reader,
+                maybe_pending_data,
+                state_number,
+                block_number,
+                &block_execution_config,
+                false,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
+        match estimate_fee_result {
+            Ok(Ok(fee_as_vec)) => {
+                if fee_as_vec.len() != 1 {
+                    return Err(internal_server_error(format!(
+                        "Expected a single fee, got {}",
+                        fee_as_vec.len()
+                    )));
+                }
+                let Some((gas_price, fee, _unit)) = fee_as_vec.first() else {
+                    return Err(internal_server_error(
+                        "Expected a single fee, got an empty vector",
+                    ));
+                };
+                Ok(FeeEstimate::from(*gas_price, *fee))
+            }
+            // Error in the execution of the contract.
+            Ok(Err(reverted_tx)) => {
+                Err(contract_error(ContractError { revert_error: reverted_tx.revert_reason })
+                    .into())
+            }
+            // Internal error during the execution.
+            Err(err) => Err(internal_server_error(err)),
         }
     }
 }

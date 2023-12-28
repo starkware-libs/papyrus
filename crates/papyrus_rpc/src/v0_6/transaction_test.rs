@@ -39,6 +39,9 @@ use super::{
     InvokeTransactionV3,
     ResourceBoundsMapping,
     TransactionOutput,
+    TransactionVersion0,
+    TransactionVersion1,
+    TransactionVersion3,
 };
 
 lazy_static::lazy_static! {
@@ -77,7 +80,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
     }
     pub struct DeployAccountTransactionV3 {
         pub signature: TransactionSignature,
@@ -85,7 +88,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion3,
         pub resource_bounds: ResourceBoundsMapping,
         pub tip: Tip,
         pub paymaster_data: PaymasterData,
@@ -99,7 +102,7 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion0,
         pub signature: TransactionSignature,
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
@@ -107,7 +110,7 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
@@ -116,7 +119,7 @@ auto_impl_get_test_instance! {
     pub struct InvokeTransactionV3 {
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion3,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub resource_bounds: ResourceBoundsMapping,
@@ -126,6 +129,15 @@ auto_impl_get_test_instance! {
         pub nonce_data_availability_mode: DataAvailabilityMode,
         pub fee_data_availability_mode: DataAvailabilityMode,
     }
+    pub enum TransactionVersion0 {
+        Version0 = 0,
+    }
+    pub enum TransactionVersion1 {
+        Version1 = 0,
+    }
+    pub enum TransactionVersion3 {
+        Version3 = 0,
+    }
 }
 
 macro_rules! gen_test_from_thin_transaction_output_macro {
@@ -133,9 +145,11 @@ macro_rules! gen_test_from_thin_transaction_output_macro {
         paste! {
             #[tokio::test]
             async fn [<from_thin_transaction_output_ $variant:lower>]() {
-                let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
-                let output = TransactionOutput::from_thin_transaction_output(thin_output, vec![], None);
-                assert_matches!(output, TransactionOutput::$variant(_));
+                    for tx_version in [TransactionVersion::ZERO, TransactionVersion::ONE, TransactionVersion::THREE] {
+                    let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
+                    let output = TransactionOutput::from_thin_transaction_output(thin_output, tx_version, vec![], None);
+                    assert_matches!(output, TransactionOutput::$variant(_));
+                }
             }
         }
     };
@@ -150,8 +164,12 @@ gen_test_from_thin_transaction_output_macro!(Invoke);
 async fn from_thin_transaction_output_l1handler() {
     let thin_output = ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput::default());
     let msg_hash = L1L2MsgHash::default();
-    let output =
-        TransactionOutput::from_thin_transaction_output(thin_output, vec![], Some(msg_hash));
+    let output = TransactionOutput::from_thin_transaction_output(
+        thin_output,
+        TransactionVersion::ZERO,
+        vec![],
+        Some(msg_hash),
+    );
     assert_matches!(output, TransactionOutput::L1Handler(_));
 }
 

@@ -86,6 +86,7 @@ use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClien
 use starknet_client::ClientError;
 use test_utils::{
     auto_impl_get_test_instance,
+    get_number_of_variants,
     get_rng,
     get_test_block,
     get_test_body,
@@ -139,6 +140,8 @@ use super::super::transaction::{
     TransactionReceipt,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_result::{
     AddDeclareOkResult,
@@ -3106,14 +3109,15 @@ where
     // https://github.com/rust-lang/rfcs/blob/master/text/2289-associated-type-bounds.md
     <<Self as AddTransactionTest>::ClientTransaction as TryFrom<Self::Transaction>>::Error: Debug,
 {
-    type Transaction: GetTestInstance + Serialize + Clone + Send;
+    type Transaction: GetTestInstance + Serialize + Clone + Send + Sync + 'static;
     type ClientTransaction: TryFrom<Self::Transaction> + Send;
     type Response: From<Self::ClientResponse>
         + for<'de> Deserialize<'de>
         + Eq
         + Debug
         + Clone
-        + Send;
+        + Send
+        + Sync;
     type ClientResponse: GetTestInstance + Clone + Send;
 
     const METHOD_NAME: &'static str;
@@ -3144,8 +3148,15 @@ where
             None,
             None,
         );
-        let resp = module.call::<_, Self::Response>(Self::METHOD_NAME, [tx]).await.unwrap();
-        assert_eq!(resp, expected_resp);
+        call_api_then_assert_and_validate_schema_for_result(
+            &module,
+            Self::METHOD_NAME,
+            vec![Box::new(tx)],
+            &VERSION_0_4,
+            SpecFile::WriteApi,
+            &expected_resp,
+        )
+        .await;
     }
 
     async fn test_internal_error() {
@@ -3246,7 +3257,7 @@ where
 
 struct AddInvokeTest {}
 impl AddTransactionTest for AddInvokeTest {
-    type Transaction = InvokeTransactionV1;
+    type Transaction = TypedInvokeTransactionV1;
     type ClientTransaction = ClientInvokeTransaction;
     type Response = AddInvokeOkResult;
     type ClientResponse = InvokeResponse;
@@ -3268,7 +3279,7 @@ impl AddTransactionTest for AddInvokeTest {
 
 struct AddDeployAccountTest {}
 impl AddTransactionTest for AddDeployAccountTest {
-    type Transaction = DeployAccountTransaction;
+    type Transaction = TypedDeployAccountTransaction;
     type ClientTransaction = ClientDeployAccountTransaction;
     type Response = AddDeployAccountOkResult;
     type ClientResponse = DeployAccountResponse;
@@ -3404,8 +3415,7 @@ fn spec_api_methods_coverage() {
         .map(method_name_to_spec_method_name)
         .sorted()
         .collect::<Vec<_>>();
-    let non_implemented_apis =
-        ["starknet_estimateMessageFee".to_string(), "starknet_pendingTransactions".to_string()];
+    let non_implemented_apis = ["starknet_pendingTransactions".to_string()];
     let method_names_in_spec = get_method_names_from_spec(&VERSION_0_4)
         .iter()
         .filter_map(|method| {
@@ -3426,5 +3436,11 @@ auto_impl_get_test_instance! {
         pub parent_hash: BlockHash,
         pub sequencer_address: ContractAddress,
         pub timestamp: BlockTimestamp,
+    }
+    pub enum TypedInvokeTransactionV1 {
+        InvokeV1(InvokeTransactionV1) = 0,
+    }
+    pub enum TypedDeployAccountTransaction {
+        DeployAccount(DeployAccountTransaction) = 0,
     }
 }
