@@ -546,6 +546,7 @@ impl TransactionOutput {
         }
     }
 
+    #[allow(dead_code)]
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         events: Vec<starknet_api::transaction::Event>,
