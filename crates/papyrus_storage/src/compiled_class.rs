@@ -40,6 +40,7 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
+use tracing::{debug, instrument};
 
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
@@ -81,15 +82,21 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
     #[latency_histogram("storage_append_casm_latency_seconds")]
+    #[instrument(level = "debug", skip(self, casm))]
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
+        debug!("Opening tables.");
         let casm_table = self.open_table(&self.tables.casms)?;
         let markers_table = self.open_table(&self.tables.markers)?;
         let state_diff_table = self.open_table(&self.tables.state_diffs)?;
         let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
+        debug!("Appending casm to mem file.");
 
         let location = self.file_handlers.append_casm(casm);
+        debug!("Appending casm location to table.");
         casm_table.insert(&self.txn, class_hash, &location)?;
+        debug!("Updating file offset table.");
         file_offset_table.upsert(&self.txn, &OffsetKind::Casm, &location.next_offset())?;
+        debug!("Updating marker.");
         update_marker(
             &self.txn,
             &markers_table,
@@ -97,6 +104,7 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
             self.file_handlers.clone(),
             class_hash,
         )?;
+        debug!("Finished appending casm.");
         Ok(self)
     }
 }
