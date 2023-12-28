@@ -69,13 +69,17 @@ use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
+    DeclareTransactionOutput,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
     DeclareTransactionV3,
     DeployAccountTransaction,
+    DeployAccountTransactionOutput,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     DeployTransaction,
+    DeployTransactionOutput,
+    Event,
     EventContent,
     EventData,
     EventIndexInTransactionOutput,
@@ -83,10 +87,12 @@ use starknet_api::transaction::{
     ExecutionResources,
     Fee,
     InvokeTransaction,
+    InvokeTransactionOutput,
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
     L1HandlerTransaction,
+    L1HandlerTransactionOutput,
     L1ToL2Payload,
     L2ToL1Payload,
     MessageToL1,
@@ -100,6 +106,7 @@ use starknet_api::transaction::{
     TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
+    TransactionOutput,
     TransactionSignature,
     TransactionVersion,
 };
@@ -175,6 +182,13 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
         V3(DeclareTransactionV3) = 3,
     }
+    pub struct DeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -207,6 +221,22 @@ auto_storage_serde! {
         V1(DeployAccountTransactionV1) = 0,
         V3(DeployAccountTransactionV3) = 1,
     }
+    pub struct DeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+    pub struct DeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
@@ -230,6 +260,10 @@ auto_storage_serde! {
     }
     // TODO(dan): consider implementing directly with no H160 dependency.
     pub struct EthAddress(pub H160);
+    pub struct Event {
+        pub from_address: ContractAddress,
+        pub content: EventContent,
+    }
     pub struct EventAbiEntry {
         pub name: String,
         pub keys: Vec<TypedParameter>,
@@ -265,11 +299,25 @@ auto_storage_serde! {
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
     }
+    pub struct InvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub enum IsCompressed {
         No = 0,
         Yes = 1,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
+    pub struct L1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
     enum MarkerKind {
         Header = 0,
@@ -293,6 +341,7 @@ auto_storage_serde! {
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
+        TransactionOutput= 4,
     }
     pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
@@ -389,6 +438,13 @@ auto_storage_serde! {
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct TransactionOffsetInBlock(pub usize);
+    pub enum TransactionOutput {
+        Declare(DeclareTransactionOutput) = 0,
+        Deploy(DeployTransactionOutput) = 1,
+        DeployAccount(DeployAccountTransactionOutput) = 2,
+        Invoke(InvokeTransactionOutput) = 3,
+        L1Handler(L1HandlerTransactionOutput) = 4,
+    }
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
