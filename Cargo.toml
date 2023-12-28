@@ -34,10 +34,10 @@ base64 = "0.13.0"
 bitvec = "1.0.1"
 blockifier = "0.4.0-rc10"
 byteorder = "1.4.3"
-cairo-lang-starknet = "2.4.0"
-cairo-lang-casm = "2.4.0"
-cairo-lang-utils = "2.4.0"
-cairo-vm = "0.8.2"
+cairo-lang-starknet = { git = "https://github.com/starkware-libs/cairo", branch = "elin/ec-op/bump-cairo-vm" }
+cairo-lang-casm = { git = "https://github.com/starkware-libs/cairo", branch = "elin/ec-op/bump-cairo-vm" }
+cairo-lang-utils = { git = "https://github.com/starkware-libs/cairo", branch = "elin/ec-op/bump-cairo-vm" }
+cairo-vm = { git = "https://github.com/elintul/cairo-vm.git", branch = "elin/ec-op/projective-point" }
 camelpaste = "0.1.0"
 chrono = "0.4.26"
 clap = { version = "4.3.10" }
