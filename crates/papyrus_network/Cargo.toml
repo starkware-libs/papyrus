@@ -7,15 +7,17 @@ license-file.workspace = true
 
 [dependencies]
 bytes.workspace = true
+clap = { workspace = true, features = ["derive"] }
 defaultmap.workspace = true
 derive_more.workspace = true
 futures.workspace = true
-libp2p.workspace = true
+libp2p = { workspace = true, features = ["quic", "tokio"] }
 replace_with.workspace = true
 prost.workspace = true
 prost-types.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
 unsigned-varint = { workspace = true, features = ["std"] }
 
@@ -28,5 +30,4 @@ libp2p-swarm-test.workspace = true
 mockall.workspace = true
 pretty_assertions.workspace = true
 rand.workspace = true
-tokio = { workspace = true, features = ["full", "sync"] }
 tokio-stream.workspace = true
