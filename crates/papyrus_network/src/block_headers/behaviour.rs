@@ -25,8 +25,7 @@ where
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
     >,
-    data_pending_pairing:
-        HashMap<OutboundSessionId, protobuf::block_headers_response_part::HeaderMessage>,
+    header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
     outbound_sessions_pending_termination: HashSet<OutboundSessionId>,
     inbound_sessions_pending_termination: HashSet<InboundSessionId>,
     db_executor: Arc<DBExecutor>,
@@ -38,8 +37,6 @@ where
 pub(crate) enum BehaviourInternalError {
     #[error(transparent)]
     ProtobufConversionError(#[from] ProtobufConversionError),
-    #[error("Pairing block header and signature error")]
-    PairingError,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -64,7 +61,7 @@ where
     pub fn new(config: Config, db_executor: Arc<DBExecutor>) -> Self {
         Self {
             streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
-            data_pending_pairing: HashMap::new(),
+            header_pending_pairing: HashMap::new(),
             outbound_sessions_pending_termination: HashSet::new(),
             inbound_sessions_pending_termination: HashSet::new(),
             db_executor,
@@ -186,79 +183,56 @@ where
         }
     }
 
-    // this function assumes that the data and header_message are each one of block header or
-    // signatures but not the same one. the function will return error if both parameter will
-    // evaluate to none or the same type.
-    fn get_block_header_and_signatures_from_event_data_and_stored_data(
-        &self,
-        data: &protobuf::block_headers_response_part::HeaderMessage,
-        header_message: &protobuf::block_headers_response_part::HeaderMessage,
-    ) -> Result<(BlockHeader, Vec<Signature>), BehaviourInternalError> {
-        let (block_header_x, signatures_x) = self.header_message_to_header_or_signatures(data)?;
-        let (block_header_y, signatures_y) =
-            self.header_message_to_header_or_signatures(header_message)?;
-        let Some(block_header) = block_header_x.or_else(|| block_header_y.or(None)) else {
-            return Err(BehaviourInternalError::PairingError {});
-        };
-        let Some(signatures) = signatures_x.or_else(|| signatures_y.or(None)) else {
-            return Err(BehaviourInternalError::PairingError {});
-        };
-        Ok((block_header, signatures))
-    }
-
-    pub(crate) fn handle_pairing_of_header_and_signature(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-        header_message: &protobuf::block_headers_response_part::HeaderMessage,
-        ignore_event_and_return_pending: &mut bool,
-    ) -> Event {
-        if let Some(data) = self.data_pending_pairing.get(&outbound_session_id) {
-            *ignore_event_and_return_pending = false;
-            match self.get_block_header_and_signatures_from_event_data_and_stored_data(
-                data,
-                header_message,
-            ) {
-                Ok((block_header, signatures)) => Event::RecievedData {
-                    data: BlockHeaderData { block_header, signatures },
-                    outbound_session_id,
-                },
-                Err(e) => match e {
-                    BehaviourInternalError::ProtobufConversionError(e) => {
-                        Event::ProtobufConversionError(e)
-                    }
-                    BehaviourInternalError::PairingError => Event::SessionFailed {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
-                        session_error: SessionError::PairingError,
-                    },
-                },
-            }
-        } else {
-            *ignore_event_and_return_pending = true;
-            self.data_pending_pairing.insert(outbound_session_id, header_message.clone());
-            Event::SessionFailed {
-                session_id: SessionId::OutboundSessionId(outbound_session_id),
-                session_error: SessionError::WaitingToCompletePairing,
-            }
-        }
-    }
-
     fn handle_received_data(
         &mut self,
         data: protobuf::BlockHeadersResponse,
         outbound_session_id: OutboundSessionId,
         ignore_event_and_return_pending: &mut bool,
     ) -> Event {
-        // TODO: handle getting more then one message part in the response.
-        if let Some(header_message) = data.part.first().and_then(|part| part.header_message.clone())
-        {
-            match header_message {
-                protobuf::block_headers_response_part::HeaderMessage::Header(_)
-                | protobuf::block_headers_response_part::HeaderMessage::Signatures(_) => self
-                    .handle_pairing_of_header_and_signature(
+        // TODO: handle getting more than one message part in the response.
+        if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
+            match message {
+                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
+                    *ignore_event_and_return_pending = true;
+                    // TODO: check that there is no header for this session id already.
+                    self.header_pending_pairing.insert(outbound_session_id, header.clone());
+                    Event::SessionFailed {
+                        session_id: outbound_session_id.into(),
+                        session_error: SessionError::WaitingToCompletePairing,
+                    }
+                }
+                protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
+                    let Some(block_header) = self
+                        .header_pending_pairing
+                        .remove(&outbound_session_id)
+                        .and_then(|header| header.try_into().ok())
+                    else {
+                        return Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::PairingError,
+                        };
+                    };
+                    let Some(signatures) = sigs
+                        .signatures
+                        .iter()
+                        .try_fold(vec![], |mut acc, sig| {
+                            sig.clone().try_into().map(|sig| {
+                                acc.push(sig);
+                                acc
+                            })
+                        })
+                        .ok()
+                    else {
+                        return Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::PairingError,
+                        };
+                    };
+                    Event::RecievedData {
+                        data: BlockHeaderData { block_header, signatures },
                         outbound_session_id,
-                        &header_message,
-                        ignore_event_and_return_pending,
-                    ),
+                    }
+                }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(_) => {
                     *ignore_event_and_return_pending = true;
                     self.close_outbound_session(outbound_session_id);
@@ -271,7 +245,7 @@ where
         } else {
             Event::SessionFailed {
                 session_id: SessionId::OutboundSessionId(OutboundSessionId { value: usize::MAX }),
-                session_error: SessionError::StreamedDataEventConversionError,
+                session_error: SessionError::IncompatibleDataError,
             }
         }
     }
