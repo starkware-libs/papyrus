@@ -595,7 +595,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
         {
-            Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
+            Ok(GatewayContractClass::Sierra(class.into()))
         } else {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
@@ -638,7 +638,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             &txn,
             state_number,
             // This map converts &(T, S) to (&T, &S).
-            maybe_pending_deployed_contracts_and_replaced_classes.as_ref().map(|(x, y)| (x, y)),
+            maybe_pending_deployed_contracts_and_replaced_classes.as_ref().map(|t| (&t.0, &t.1)),
             contract_address,
         )
         .map_err(internal_server_error)?

@@ -186,7 +186,7 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
 #[test]
 fn test_invoke_transaction_to_client_transaction() {
     let _invoke_transaction: client_transaction::InvokeTransaction =
-        InvokeTransactionV1::get_test_instance(&mut get_rng()).try_into().unwrap();
+        InvokeTransactionV1::get_test_instance(&mut get_rng()).into();
 }
 
 #[test]

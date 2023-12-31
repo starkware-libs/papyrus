@@ -1137,7 +1137,7 @@ async fn get_class_at() {
     // New Class
     let (class_hash, (_compiled_hash, contract_class)) =
         diff.declared_classes.get_index(0).unwrap();
-    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    let expected_contract_class = contract_class.clone().into();
     assert_eq!(diff.deployed_contracts.get_index(1).unwrap().1, class_hash);
     let address = diff.deployed_contracts.get_index(1).unwrap().0;
 

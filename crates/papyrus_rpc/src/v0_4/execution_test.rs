@@ -1058,7 +1058,7 @@ fn message_from_l1_to_l1_handler_tx() {
     assert_eq!(l1_handler_tx.contract_address, *CONTRACT_ADDRESS);
     assert_eq!(l1_handler_tx.entry_point_selector, selector_from_name("l1_handle"));
     // The first item of calldata is the from_address.
-    let from_address = EthAddress::try_from(*l1_handler_tx.calldata.0.get(0).unwrap()).unwrap();
+    let from_address = EthAddress::try_from(*l1_handler_tx.calldata.0.first().unwrap()).unwrap();
     assert_eq!(from_address, MESSAGE_FROM_L1.from_address);
     let rest_of_calldata = &l1_handler_tx.calldata.0[1..];
     assert_eq!(rest_of_calldata, MESSAGE_FROM_L1.payload.0.as_slice());
