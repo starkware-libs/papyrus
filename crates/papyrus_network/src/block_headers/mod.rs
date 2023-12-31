@@ -1,7 +1,7 @@
 pub mod behaviour;
 #[cfg(test)]
-#[path = "block_headers_test.rs"]
-mod block_headers_test;
+#[path = "behaviour_test.rs"]
+mod behaviour_test;
 
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
