@@ -48,7 +48,7 @@ use super::{
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
-pub(crate) enum RequestFromBehaviourEvent<Query, Data> {
+pub enum RequestFromBehaviourEvent<Query, Data> {
     CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
     SendData { data: Data, inbound_session_id: InboundSessionId },
     CloseSession { session_id: SessionId },
@@ -57,7 +57,7 @@ pub(crate) enum RequestFromBehaviourEvent<Query, Data> {
 #[derive(thiserror::Error, Debug)]
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
-pub(crate) enum SessionError {
+pub enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
@@ -68,7 +68,7 @@ pub(crate) enum SessionError {
     OtherOutboundPeerSentData,
 }
 
-pub(crate) type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
+pub type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
 type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::OutboundProtocol,
@@ -76,7 +76,7 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::ToBehaviour,
 >;
 
-pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
+pub struct Handler<Query: QueryBound, Data: DataBound> {
     // TODO(shahak): Consider changing to Arc<Config> if the config becomes heavy to clone.
     config: Config,
     next_inbound_session_id: Arc<AtomicUsize>,
