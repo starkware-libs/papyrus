@@ -15,8 +15,8 @@ use crate::{BlockQuery, Direction};
 pub(crate) enum SessionError {
     #[error(transparent)]
     StreamedData(#[from] streamed_data::behaviour::SessionError),
-    #[error("Streamed data event conversion error")]
-    StreamedDataEventConversionError,
+    #[error("Incompatible data error")]
+    IncompatibleDataError,
     #[error("Pairing of header and signature error")]
     PairingError,
     #[error("Session closed unexpectedly")]
