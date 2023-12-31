@@ -161,11 +161,7 @@ where
         outbound_session_id: OutboundSessionId,
     ) -> Event;
 
-    fn handle_new_inbound_session(
-        &mut self,
-        query: protobuf::BlockHeadersRequest,
-        inbound_session_id: InboundSessionId,
-    ) -> Event;
+    fn insert_inbound_session_id_to_waiting_list(&mut self, inbound_session_id: InboundSessionId);
 
     fn map_streamed_data_behaviour_event_to_own_event(
         &mut self,
@@ -174,7 +170,12 @@ where
     ) -> Event {
         match in_event {
             StreamedDataEvent::NewInboundSession { query, inbound_session_id, peer_id: _ } => {
-                self.handle_new_inbound_session(query, inbound_session_id)
+                let query = match query.try_into() {
+                    Ok(query) => query,
+                    Err(e) => return Event::ProtobufConversionError(e),
+                };
+                self.insert_inbound_session_id_to_waiting_list(inbound_session_id);
+                Event::NewInboundQuery { query, inbound_session_id }
             }
             StreamedDataEvent::SessionFailed { session_id, error } => Event::SessionFailed {
                 session_id,
@@ -202,6 +203,13 @@ impl<DBExecutor> BehaviourTrait<DBExecutor> for Behaviour<DBExecutor>
 where
     DBExecutor: db_executor::DBExecutor,
 {
+    fn insert_inbound_session_id_to_waiting_list(&mut self, inbound_session_id: InboundSessionId) {
+        let newly_inserted = self.inbound_session_ids_pending_query_id.insert(inbound_session_id);
+        // TODO: should we assert that the value did not exist before? the session id should
+        // be unique so we shouldn't have one before.
+        assert!(newly_inserted);
+    }
+
     fn handle_received_data(
         &mut self,
         data: protobuf::BlockHeadersResponse,
@@ -313,22 +321,6 @@ where
                 session_error: SessionError::SessionClosedUnexpectedly,
             }
         }
-    }
-
-    fn handle_new_inbound_session(
-        &mut self,
-        query: protobuf::BlockHeadersRequest,
-        inbound_session_id: InboundSessionId,
-    ) -> Event {
-        let query = match query.try_into() {
-            Ok(query) => query,
-            Err(e) => return Event::ProtobufConversionError(e),
-        };
-        let newly_inserted = self.inbound_session_ids_pending_query_id.insert(inbound_session_id);
-        // TODO: should we assert that the value did not exist before? the session id should
-        // be unique so we shouldn't have one before.
-        assert!(newly_inserted);
-        Event::NewInboundQuery { query, inbound_session_id }
     }
 }
 
