@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::task::Poll;
 
 use futures::Stream;
-use starknet_api::block::BlockHeader;
+use starknet_api::block::{BlockHeader, BlockSignature};
 
 use crate::messages::protobuf;
 use crate::BlockQuery;
@@ -12,7 +12,7 @@ use crate::BlockQuery;
 pub struct QueryId(pub usize);
 
 pub enum Data {
-    BlockHeader(BlockHeader),
+    BlockHeaderAndSignature { header: BlockHeader, signature: BlockSignature },
     Fin { block_number: u64 },
 }
 
@@ -67,7 +67,10 @@ impl Stream for DummyDBExecutor {
         {
             let data = if *status < query.limit {
                 *status += 1;
-                Data::BlockHeader(BlockHeader::default())
+                Data::BlockHeaderAndSignature {
+                    header: BlockHeader::default(),
+                    signature: BlockSignature::default(),
+                }
             } else {
                 Data::Fin { block_number: 0 }
             };
