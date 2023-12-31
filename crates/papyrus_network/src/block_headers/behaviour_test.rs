@@ -10,9 +10,43 @@ use crate::messages::protobuf;
 use crate::streamed_data::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::BlockQuery;
 
-// static mut test_db_executor: TestDBExecutor = TestDBExecutor {};
+    let broken_header_message =
+        protobuf::block_headers_response_part::HeaderMessage::Header(protobuf::BlockHeader {
+            parent_header: Some(protobuf::Hash { elements: vec![0x01] }), // hash not long enough
+            ..Default::default()
+        });
+    let res = behaviour.header_message_to_header_or_signatures(&broken_header_message);
+    assert!(res.is_err());
+
+    // TODO: add a get test instance method that returns valid object for HeaderMessage::Signatures,
+    // protobuf::Signatures and protobuf::ConcensusSignature
+    let signatures_message =
+        protobuf::block_headers_response_part::HeaderMessage::Signatures(protobuf::Signatures {
+            block: Some(protobuf::BlockId { number: 1, ..Default::default() }),
+            signatures: vec![protobuf::ConsensusSignature {
+                r: Some(protobuf::Felt252 { elements: [0x01].repeat(32) }),
+                s: Some(protobuf::Felt252 { elements: [0x01].repeat(32) }),
+            }],
+        });
+    assert_matches!(
+        behaviour.header_message_to_header_or_signatures(&signatures_message),
+        Ok((None, Some(Vec::<Signature> { .. })))
+    );
+
+    let broken_signatures_message =
+        protobuf::block_headers_response_part::HeaderMessage::Signatures(protobuf::Signatures {
+            block: Some(protobuf::BlockId { number: 1, ..Default::default() }),
+            signatures: vec![protobuf::ConsensusSignature {
+                r: None,
+                s: Some(protobuf::Felt252 { elements: [0x01].repeat(32) }),
+            }],
+        });
+    let res = behaviour.header_message_to_header_or_signatures(&broken_signatures_message);
+    assert!(res.is_err());
+}
 
 #[test]
+>>>>>>> 1900c987 (chore(network): rename block_header behaviour test file)
 #[ignore = "functionality not implemented completely yet"]
 fn test_fin_handling() {
     unimplemented!()
