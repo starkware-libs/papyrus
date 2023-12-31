@@ -66,7 +66,7 @@ use crate::db::{DbCursor, DbTransaction, RO};
 use crate::{StorageResult, StorageTxn};
 
 /// An identifier of an event.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 #[cfg_attr(any(test, feature = "testing"), derive(Hash))]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 

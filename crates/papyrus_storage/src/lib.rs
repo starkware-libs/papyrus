@@ -77,7 +77,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::StorageSerde;
+use db::serialization::{Key, StorageSerde};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -397,7 +397,7 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn open_table<K: Key + Debug, V: StorageSerde + Debug>(
         &self,
         table_id: &TableIdentifier<K, V>,
     ) -> StorageResult<TableHandle<'_, K, V>> {
@@ -544,7 +544,7 @@ pub struct DbStats {
     pub tables_stats: BTreeMap<String, DbTableStats>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 // A marker is the first block number for which the corresponding data doesn't exist yet.
 // Invariants:
 // - CompiledClass <= State <= Header
@@ -695,7 +695,7 @@ fn open_storage_files(
 }
 
 /// Represents a kind of mmap file.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 pub enum OffsetKind {
     /// A thin state diff file.
     ThinStateDiff,
