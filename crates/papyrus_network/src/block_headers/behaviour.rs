@@ -4,18 +4,13 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
-    ConnectionDenied,
-    ConnectionHandler,
-    ConnectionId,
-    FromSwarm,
-    NetworkBehaviour,
-    ToSwarm,
+    ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 
-use super::{BlockHeader, BlockHeaderData, Event, SessionError, Signature};
+use super::{BlockHeaderData, Event, SessionError};
 use crate::db_executor::{self, Data, QueryId};
-use crate::messages::{protobuf, ProtobufConversionError};
+use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
 
@@ -39,24 +34,10 @@ where
 }
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum BehaviourInternalError {
-    #[error(transparent)]
-    ProtobufConversionError(#[from] ProtobufConversionError),
-}
-
-#[derive(thiserror::Error, Debug)]
 #[error(transparent)]
 pub(crate) struct SessionIdNotFoundError(
     #[from] crate::streamed_data::behaviour::SessionIdNotFoundError,
 );
-
-pub(crate) trait BehaviourTrait {
-    fn map_streamed_data_behaviour_event_to_own_event(
-        &mut self,
-        in_event: StreamedDataEvent<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>,
-        ignore_event_and_return_pending: &mut bool,
-    ) -> Event;
-}
 
 impl<DBExecutor> Behaviour<DBExecutor>
 where
@@ -159,36 +140,68 @@ where
         let old_value = self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
         removed && old_value.is_none()
     }
+}
 
-    // tries to covert the protobuf message to block header or signatures.
-    // if the message is of type fin it will panic.
-    //
-    pub fn header_message_to_header_or_signatures(
-        &self,
-        header_message: &protobuf::block_headers_response_part::HeaderMessage,
-    ) -> Result<(Option<BlockHeader>, Option<Vec<Signature>>), BehaviourInternalError> {
-        match header_message {
-            protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                match header.clone().try_into() {
-                    Ok(header) => Ok((Some(header), None)),
-                    Err(e) => Err(BehaviourInternalError::ProtobufConversionError(e)),
-                }
+// functionality moved into this trait so that we can mock it in tests.
+pub(super) trait BehaviourTrait<DBExecutor>
+where
+    DBExecutor: db_executor::DBExecutor,
+{
+    fn handle_received_data(
+        &mut self,
+        data: protobuf::BlockHeadersResponse,
+        outbound_session_id: OutboundSessionId,
+        ignore_event_and_return_pending: &mut bool,
+    ) -> Event;
+
+    fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event;
+
+    fn handle_outbound_session_closed_by_peer(
+        &mut self,
+        outbound_session_id: OutboundSessionId,
+    ) -> Event;
+
+    fn handle_new_inbound_session(
+        &mut self,
+        query: protobuf::BlockHeadersRequest,
+        inbound_session_id: InboundSessionId,
+    ) -> Event;
+
+    fn map_streamed_data_behaviour_event_to_own_event(
+        &mut self,
+        in_event: StreamedDataEvent<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>,
+        ignore_event_and_return_pending: &mut bool,
+    ) -> Event {
+        match in_event {
+            StreamedDataEvent::NewInboundSession { query, inbound_session_id, peer_id: _ } => {
+                self.handle_new_inbound_session(query, inbound_session_id)
             }
-            protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
-                let mut signatures = Vec::new();
-                // TODO: is empty sigs vector a valid message?
-                for sig in &sigs.signatures {
-                    match sig.clone().try_into() {
-                        Ok(sig) => signatures.push(sig),
-                        Err(e) => return Err(BehaviourInternalError::ProtobufConversionError(e)),
-                    }
-                }
-                Ok((None, Some(signatures)))
+            StreamedDataEvent::SessionFailed { session_id, error } => Event::SessionFailed {
+                session_id,
+                session_error: SessionError::StreamedData(error),
+            },
+            streamed_data::GenericEvent::SessionClosedByPeer { session_id } => {
+                let SessionId::OutboundSessionId(outbound_session_id) = session_id else {
+                    return Event::SessionFailed {
+                        session_id,
+                        session_error: SessionError::IncorrectSessionId,
+                    };
+                };
+                self.handle_outbound_session_closed_by_peer(outbound_session_id)
             }
-            protobuf::block_headers_response_part::HeaderMessage::Fin(_) => unreachable!(),
+            streamed_data::GenericEvent::SessionClosedByRequest { session_id } => {
+                self.handle_session_closed_by_request(session_id)
+            }
+            StreamedDataEvent::ReceivedData { data, outbound_session_id } => self
+                .handle_received_data(data, outbound_session_id, ignore_event_and_return_pending),
         }
     }
+}
 
+impl<DBExecutor> BehaviourTrait<DBExecutor> for Behaviour<DBExecutor>
+where
+    DBExecutor: db_executor::DBExecutor,
+{
     fn handle_received_data(
         &mut self,
         data: protobuf::BlockHeadersResponse,
@@ -319,41 +332,6 @@ where
     }
 }
 
-impl<DBExecutor> BehaviourTrait for Behaviour<DBExecutor>
-where
-    DBExecutor: db_executor::DBExecutor,
-{
-    fn map_streamed_data_behaviour_event_to_own_event(
-        &mut self,
-        in_event: StreamedDataEvent<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>,
-        ignore_event_and_return_pending: &mut bool,
-    ) -> Event {
-        match in_event {
-            StreamedDataEvent::NewInboundSession { query, inbound_session_id, peer_id: _ } => {
-                self.handle_new_inbound_session(query, inbound_session_id)
-            }
-            StreamedDataEvent::SessionFailed { session_id, error } => Event::SessionFailed {
-                session_id,
-                session_error: SessionError::StreamedData(error),
-            },
-            streamed_data::GenericEvent::SessionClosedByPeer { session_id } => {
-                let SessionId::OutboundSessionId(outbound_session_id) = session_id else {
-                    return Event::SessionFailed {
-                        session_id,
-                        session_error: SessionError::IncorrectSessionId,
-                    };
-                };
-                self.handle_outbound_session_closed_by_peer(outbound_session_id)
-            }
-            streamed_data::GenericEvent::SessionClosedByRequest { session_id } => {
-                self.handle_session_closed_by_request(session_id)
-            }
-            StreamedDataEvent::ReceivedData { data, outbound_session_id } => self
-                .handle_received_data(data, outbound_session_id, ignore_event_and_return_pending),
-        }
-    }
-}
-
 impl<DBExecutor> NetworkBehaviour for Behaviour<DBExecutor>
 where
     // DBExecutor must have static lifetime
@@ -423,7 +401,11 @@ where
                         &mut ignore_event_and_return_pending,
                     )
                 });
-                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
+                if ignore_event_and_return_pending {
+                    Poll::Pending
+                } else {
+                    Poll::Ready(event)
+                }
             }
             Poll::Pending => Poll::Pending,
         }
