@@ -7,6 +7,7 @@ pub mod patricia_hash_tree;
 pub mod pending_classes;
 pub mod state;
 pub mod transaction_hash;
+pub mod state_diff_commitment;
 
 #[derive(Copy, Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub struct BlockHashAndNumber {
