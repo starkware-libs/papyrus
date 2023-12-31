@@ -1,7 +1,8 @@
 #[cfg(test)]
 #[path = "handler_test.rs"]
 mod handler_test;
-mod session;
+mod inbound_session;
+mod outbound_session;
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
@@ -10,8 +11,6 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use async_stream::stream;
-use futures::stream::BoxStream;
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::handler::{
     ConnectionEvent,
@@ -27,9 +26,14 @@ use libp2p::swarm::{
     SubstreamProtocol,
 };
 use libp2p::PeerId;
-use tracing::debug;
+use tracing::{debug, warn};
 
-use self::session::{FinishReason, InboundSession, InboundSessionError};
+use self::inbound_session::{
+    FinishReason as InboundFinishReason,
+    InboundSession,
+    InboundSessionError,
+};
+use self::outbound_session::{FinishReason as OutboundFinishReason, OutboundSession};
 use super::protocol::{InboundProtocol, OutboundProtocol};
 use super::{
     Config,
@@ -40,7 +44,6 @@ use super::{
     QueryBound,
     SessionId,
 };
-use crate::messages::read_message;
 
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -79,7 +82,7 @@ pub(crate) struct Handler<Query: QueryBound, Data: DataBound> {
     next_inbound_session_id: Arc<AtomicUsize>,
     peer_id: PeerId,
     id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
-    id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
+    id_to_outbound_session: HashMap<OutboundSessionId, OutboundSession<Data>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
     inbound_sessions_marked_to_end: HashSet<InboundSessionId>,
 }
@@ -113,7 +116,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
             return is_session_finished;
         };
         match finish_reason {
-            FinishReason::Error(InboundSessionError::IO(io_error)) => {
+            InboundFinishReason::Error(InboundSessionError::IO(io_error)) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionFailed {
                         session_id: inbound_session_id.into(),
@@ -121,7 +124,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
                     },
                 ));
             }
-            FinishReason::Error(InboundSessionError::OtherPeerSentData) => {
+            InboundFinishReason::Error(InboundSessionError::OtherPeerSentData) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionFailed {
                         session_id: inbound_session_id.into(),
@@ -129,12 +132,12 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
                     },
                 ));
             }
-            FinishReason::OtherPeerClosed => {
+            InboundFinishReason::OtherPeerClosed => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionClosedByPeer { session_id: inbound_session_id.into() },
                 ));
             }
-            FinishReason::Closed => {}
+            InboundFinishReason::Closed => {}
         }
         true
     }
@@ -192,31 +195,44 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
 
         // Handle outbound sessions.
         self.id_to_outbound_session.retain(|outbound_session_id, outbound_session| {
+            let outbound_session_id = *outbound_session_id;
             match outbound_session.poll_next_unpin(cx) {
                 Poll::Ready(Some(Ok(data))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::ReceivedData {
-                            outbound_session_id: *outbound_session_id,
-                            data,
-                        },
+                        ToBehaviourEvent::ReceivedData { outbound_session_id, data },
                     ));
                     true
                 }
-                Poll::Ready(Some(Err(io_error))) => {
+                Poll::Ready(Some(Err(OutboundFinishReason::Error(io_error)))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                         ToBehaviourEvent::SessionFailed {
-                            session_id: SessionId::OutboundSessionId(*outbound_session_id),
+                            session_id: SessionId::OutboundSessionId(outbound_session_id),
                             error: SessionError::IOError(io_error),
                         },
                     ));
                     false
                 }
-                Poll::Ready(None) => {
+                Poll::Ready(Some(Err(OutboundFinishReason::Closed))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::SessionClosedByPeer {
-                            session_id: SessionId::OutboundSessionId(*outbound_session_id),
+                        ToBehaviourEvent::SessionClosedByRequest {
+                            session_id: outbound_session_id.into(),
                         },
                     ));
+                    false
+                }
+                Poll::Ready(Some(Err(OutboundFinishReason::OtherPeerClosed))) => {
+                    self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                        ToBehaviourEvent::SessionClosedByPeer {
+                            session_id: outbound_session_id.into(),
+                        },
+                    ));
+                    false
+                }
+                Poll::Ready(None) => {
+                    warn!(
+                        "Outbound session stream finished without being dropped before. This \
+                         shouldn't happen"
+                    );
                     false
                 }
                 Poll::Pending => true,
@@ -281,12 +297,17 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             RequestFromBehaviourEvent::CloseSession {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
             } => {
-                self.id_to_outbound_session.remove(&outbound_session_id);
-                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionClosedByRequest {
-                        session_id: outbound_session_id.into(),
-                    },
-                ));
+                if let Some(outbound_session) =
+                    self.id_to_outbound_session.get_mut(&outbound_session_id)
+                {
+                    outbound_session.start_closing();
+                } else {
+                    // TODO(shahak): Consider handling this in a different way than just logging.
+                    debug!(
+                        "Got a request to close a non-existing or closed outbound session with id \
+                         {outbound_session_id}. Ignoring request."
+                    );
+                }
             }
         }
     }
@@ -303,28 +324,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
     ) {
         match event {
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
-                protocol: mut stream,
+                protocol: stream,
                 info: outbound_session_id,
             }) => {
-                self.id_to_outbound_session.insert(
-                    outbound_session_id,
-                    stream! {
-                        loop {
-                            let result_opt = read_message::<Data, _>(&mut stream).await;
-                            let result = match result_opt {
-                                Ok(Some(data)) => Ok(data),
-                                Ok(None) => break,
-                                Err(error) => Err(error),
-                            };
-                            let is_err = result.is_err();
-                            yield result;
-                            if is_err {
-                                break;
-                            }
-                        }
-                    }
-                    .boxed(),
-                );
+                self.id_to_outbound_session
+                    .insert(outbound_session_id, OutboundSession::new(stream));
             }
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
                 protocol: (query, stream),
