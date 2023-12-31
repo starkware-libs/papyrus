@@ -118,3 +118,6 @@ tower = "0.4"
 unsigned-varint = "0.8.0"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "104fbad" }

@@ -62,26 +62,47 @@ impl Behaviour {
         data: Data,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let header_message = match data {
-            Data::BlockHeader(block_header) => {
-                protobuf::block_headers_response_part::HeaderMessage::Header(block_header.into())
+        let mut remove_query_id = false;
+        let header_messages = match data {
+            Data::BlockHeaderAndSignature { header, signature } => {
+                vec![
+                    protobuf::block_headers_response_part::HeaderMessage::Header(
+                        header.clone().into(),
+                    ),
+                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
+                        protobuf::Signatures {
+                            signatures: vec![signature.into()],
+                            block: Some(protobuf::BlockId {
+                                number: header.block_number.0,
+                                header: Some(header.block_hash.into()),
+                            }),
+                        },
+                    ),
+                ]
             }
             Data::Fin { .. } => {
-                protobuf::block_headers_response_part::HeaderMessage::Fin(Default::default())
+                vec![protobuf::block_headers_response_part::HeaderMessage::Fin(Default::default())]
             }
         };
-        // TODO: after this header should go its signatures.
-        self.streamed_data_behaviour
-            .send_data(
+        for header_message in header_messages {
+            let Ok(_) = self.streamed_data_behaviour.send_data(
                 protobuf::BlockHeadersResponse {
                     part: vec![protobuf::BlockHeadersResponsePart {
                         header_message: Some(header_message.clone()),
                     }],
                 },
-                inbound_session_id,
-            )
-            .map_err(SessionIdNotFoundError)?;
-        if let protobuf::block_headers_response_part::HeaderMessage::Fin { .. } = header_message {
+                *inbound_session_id,
+            ) else {
+                return Err(SessionIdNotFoundError(
+                    streamed_data::behaviour::SessionIdNotFoundError {},
+                ));
+            };
+            if let protobuf::block_headers_response_part::HeaderMessage::Fin { .. } = header_message
+            {
+                remove_query_id = true;
+            }
+        }
+        if remove_query_id {
             self.close_inbound_session(inbound_session_id);
         }
         Ok(())

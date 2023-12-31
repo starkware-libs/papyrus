@@ -9433,3 +9433,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "starknet_api"
+version = "0.6.0"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=104fbad#104fbad84f832301b5b5f598e29587a1aa51eafd"
