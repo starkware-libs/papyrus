@@ -933,6 +933,7 @@ impl StorageSerde for CasmContractClass {
             hints: Vec::<(usize, Vec<Hint>)>::deserialize_from(data)?,
             pythonic_hints: Option::<Vec<(usize, Vec<String>)>>::deserialize_from(data)?,
             entry_points_by_type: CasmContractEntryPoints::deserialize_from(data)?,
+            bytecode_segment_lengths: None,
         })
     }
 }
