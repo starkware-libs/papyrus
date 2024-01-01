@@ -5,7 +5,7 @@ mod behaviour_test;
 
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
-use starknet_api::hash::StarkFelt;
+use starknet_api::crypto::Signature;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
@@ -69,12 +69,6 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     }
 }
 
-#[derive(Debug)]
-pub struct Signature {
-    pub r: StarkFelt,
-    pub s: StarkFelt,
-}
-
 // TODO(nevo): decide if we need this struct or we can covert the protobuf directly to starknet api
 // BlockHeader.
 #[derive(Debug)]
@@ -130,4 +124,15 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
 pub struct BlockHeaderData {
     pub block_header: BlockHeader,
     pub signatures: Vec<Signature>,
+}
+
+impl TryFrom<protobuf::Signatures> for Vec<Signature> {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Signatures) -> Result<Self, Self::Error> {
+        let mut signatures = Vec::with_capacity(value.signatures.len());
+        for signature in value.signatures {
+            signatures.push(signature.try_into()?);
+        }
+        Ok(signatures)
+    }
 }
