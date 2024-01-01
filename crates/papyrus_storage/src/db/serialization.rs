@@ -1,3 +1,6 @@
+use std::fmt::Debug;
+use std::marker::PhantomData;
+
 use crate::db::DbError;
 
 pub(crate) trait StorageSerdeEx: StorageSerde {
@@ -32,6 +35,30 @@ pub trait StorageSerde: Sized {
 
 pub(crate) trait Key: StorageSerdeEx + Ord + Clone {}
 impl<T> Key for T where T: StorageSerdeEx + Ord + Clone {}
+
+pub(crate) trait ValueSerde {
+    type Value: StorageSerde + Debug;
+
+    fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError>;
+    fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value>;
+}
+
+#[derive(Debug)]
+pub(crate) struct NoVersionValueWrapper<T: StorageSerde> {
+    _value_type: PhantomData<T>,
+}
+
+impl<T: StorageSerde + Debug> ValueSerde for NoVersionValueWrapper<T> {
+    type Value = T;
+
+    fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError> {
+        StorageSerdeEx::serialize(obj)
+    }
+
+    fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value> {
+        StorageSerdeEx::deserialize(bytes)
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum StorageSerdeError {

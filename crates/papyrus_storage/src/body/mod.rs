@@ -60,16 +60,20 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{NoVersionValueWrapper, StorageSerde};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
-type TransactionsTable<'env> = TableHandle<'env, TransactionIndex, Transaction>;
-type TransactionOutputsTable<'env> = TableHandle<'env, TransactionIndex, ThinTransactionOutput>;
-type TransactionHashToIdxTable<'env> = TableHandle<'env, TransactionHash, TransactionIndex>;
-type TransactionIdxToHashTable<'env> = TableHandle<'env, TransactionIndex, TransactionHash>;
+type TransactionsTable<'env> =
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<Transaction>>;
+type TransactionOutputsTable<'env> =
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>>;
+type TransactionHashToIdxTable<'env> =
+    TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>>;
+type TransactionIdxToHashTable<'env> =
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<TransactionHash>>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, EventContent>;
+type EventsTable<'env> = TableHandle<'env, EventsTableKey, NoVersionValueWrapper<EventContent>>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -253,7 +257,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     fn get_transactions_in_block<V: StorageSerde + Debug>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, V>,
+        table: TableHandle<'env, TransactionIndex, NoVersionValueWrapper<V>>,
     ) -> StorageResult<Option<Vec<V>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);

@@ -64,6 +64,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
+use crate::db::serialization::NoVersionValueWrapper;
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -77,16 +78,21 @@ use crate::{
     StorageTxn,
 };
 
-type FileOffsetTable<'env> = TableHandle<'env, OffsetKind, usize>;
-type DeclaredClassesTable<'env> = TableHandle<'env, ClassHash, LocationInFile>;
-type DeclaredClassesBlockTable<'env> = TableHandle<'env, ClassHash, BlockNumber>;
+type FileOffsetTable<'env> = TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>>;
+type DeclaredClassesTable<'env> =
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>>;
+type DeclaredClassesBlockTable<'env> =
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>>;
 type DeprecatedDeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, IndexedDeprecatedContractClass>;
-type CompiledClassesTable<'env> = TableHandle<'env, ClassHash, LocationInFile>;
-type DeployedContractsTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), ClassHash>;
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>>;
+type CompiledClassesTable<'env> =
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>>;
+type DeployedContractsTable<'env> =
+    TableHandle<'env, (ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>>;
 type ContractStorageTable<'env> =
-    TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), StarkFelt>;
-type NoncesTable<'env> = TableHandle<'env, (ContractAddress, BlockNumber), Nonce>;
+    TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>>;
+type NoncesTable<'env> =
+    TableHandle<'env, (ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>>;
 
 /// Interface for reading data related to the state.
 // Structure of state data:
@@ -603,7 +609,7 @@ fn update_marker<'env>(
 fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, LocationInFile>,
+    state_diffs_table: &'env TableHandle<'_, BlockNumber, NoVersionValueWrapper<LocationInFile>>,
     file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<()> {
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
