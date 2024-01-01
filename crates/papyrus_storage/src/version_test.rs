@@ -37,7 +37,7 @@ async fn version() {
 
     assert_matches!(
         err,
-        StorageError::StorageVersionInconcistency(StorageVersionError::SetLowerVersion {
+        StorageError::StorageVersionInconsistency(StorageVersionError::SetLowerVersion {
             crate_version,
             storage_version
         })
@@ -67,7 +67,7 @@ fn test_verify_storage_version_different_blocks_version() {
         .unwrap();
     assert_matches!(
         verify_storage_version(reader),
-        Err(StorageError::StorageVersionInconcistency(
+        Err(StorageError::StorageVersionInconsistency(
             StorageVersionError::InconsistentStorageVersion {
                 crate_version: STORAGE_VERSION_BLOCKS,
                 storage_version: _,
@@ -89,7 +89,7 @@ fn test_verify_storage_version_different_state_version() {
         .unwrap();
     assert_matches!(
         verify_storage_version(reader),
-        Err(StorageError::StorageVersionInconcistency(
+        Err(StorageError::StorageVersionInconsistency(
             StorageVersionError::InconsistentStorageVersion {
                 crate_version: STORAGE_VERSION_STATE,
                 storage_version: _,
