@@ -12,13 +12,12 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use super::{BlockHeaderData, Event, SessionError};
+use super::{BlockHeader, BlockHeaderData, Event, SessionError};
 use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
 
-#[allow(dead_code)]
 pub(crate) struct Behaviour {
     // TODO: make this a trait of type "streamed_data_protocol::behaviour::BehaviourTrait" (new
     // trait to add) so that the test can mock the streamed_data behaviour.
@@ -112,12 +111,77 @@ impl Behaviour {
 
 // functionality moved into this trait so that we can mock it in tests.
 pub(super) trait BehaviourTrait {
+    fn store_header_pending_pairing_with_signature(
+        &mut self,
+        header: protobuf::BlockHeader,
+        outbound_session_id: OutboundSessionId,
+    ) -> Option<()>;
+
+    fn fetch_pending_header_for_session(
+        &mut self,
+        outbound_session_id: OutboundSessionId,
+    ) -> Option<BlockHeader>;
+
+    fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId);
+
     fn handle_received_data(
         &mut self,
         data: protobuf::BlockHeadersResponse,
         outbound_session_id: OutboundSessionId,
         ignore_event_and_return_pending: &mut bool,
-    ) -> Event;
+    ) -> Event {
+        // TODO: handle getting more then one message part in the response.
+        if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
+            match message {
+                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
+                    *ignore_event_and_return_pending = true;
+                    // TODO: handle error once this function is implemented to return one.
+                    let Some(_success) = self
+                        .store_header_pending_pairing_with_signature(header, outbound_session_id)
+                    else {
+                        unreachable!("store_header_pending_pairing_with_signature should allways return Some(())")
+                    };
+                    Event::SessionFailed {
+                        session_id: outbound_session_id.into(),
+                        session_error: SessionError::WaitingToCompletePairing,
+                    }
+                }
+                protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
+                    let Some(block_header) =
+                        self.fetch_pending_header_for_session(outbound_session_id)
+                    else {
+                        return Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::PairingError,
+                        };
+                    };
+                    let Some(signatures) = sigs.try_into().ok() else {
+                        return Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::IncompatibleDataError,
+                        };
+                    };
+                    Event::RecievedData {
+                        data: BlockHeaderData { block_header, signatures },
+                        outbound_session_id,
+                    }
+                }
+                protobuf::block_headers_response_part::HeaderMessage::Fin(_) => {
+                    *ignore_event_and_return_pending = true;
+                    self.close_outbound_session(outbound_session_id);
+                    Event::SessionFailed {
+                        session_id: SessionId::OutboundSessionId(outbound_session_id),
+                        session_error: SessionError::ReceivedFin,
+                    }
+                }
+            }
+        } else {
+            Event::SessionFailed {
+                session_id: outbound_session_id.into(),
+                session_error: SessionError::IncompatibleDataError,
+            }
+        }
+    }
 
     fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event;
 
@@ -162,71 +226,35 @@ pub(super) trait BehaviourTrait {
 }
 
 impl BehaviourTrait for Behaviour {
-    fn handle_received_data(
+    fn store_header_pending_pairing_with_signature(
         &mut self,
-        data: protobuf::BlockHeadersResponse,
+        header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-        ignore_event_and_return_pending: &mut bool,
-    ) -> Event {
-        // TODO: handle getting more than one message part in the response.
-        if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
-            match message {
-                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                    *ignore_event_and_return_pending = true;
-                    // TODO: check that there is no header for this session id already.
-                    self.header_pending_pairing.insert(outbound_session_id, header.clone());
-                    Event::SessionFailed {
-                        session_id: outbound_session_id.into(),
-                        session_error: SessionError::WaitingToCompletePairing,
-                    }
-                }
-                protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
-                    let Some(block_header) = self
-                        .header_pending_pairing
-                        .remove(&outbound_session_id)
-                        .and_then(|header| header.try_into().ok())
-                    else {
-                        return Event::SessionFailed {
-                            session_id: outbound_session_id.into(),
-                            session_error: SessionError::PairingError,
-                        };
-                    };
-                    let Some(signatures) = sigs
-                        .signatures
-                        .iter()
-                        .try_fold(vec![], |mut acc, sig| {
-                            sig.clone().try_into().map(|sig| {
-                                acc.push(sig);
-                                acc
-                            })
-                        })
-                        .ok()
-                    else {
-                        return Event::SessionFailed {
-                            session_id: outbound_session_id.into(),
-                            session_error: SessionError::PairingError,
-                        };
-                    };
-                    Event::RecievedData {
-                        data: BlockHeaderData { block_header, signatures },
-                        outbound_session_id,
-                    }
-                }
-                protobuf::block_headers_response_part::HeaderMessage::Fin(_) => {
-                    *ignore_event_and_return_pending = true;
-                    self.close_outbound_session(outbound_session_id);
-                    Event::SessionFailed {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
-                        session_error: SessionError::ReceivedFin,
-                    }
-                }
-            }
-        } else {
-            Event::SessionFailed {
-                session_id: SessionId::OutboundSessionId(OutboundSessionId { value: usize::MAX }),
-                session_error: SessionError::IncompatibleDataError,
-            }
-        }
+    ) -> Option<()> {
+        // TODO: check that there is no header for this session id already and fail if necessary.
+        self.header_pending_pairing.insert(outbound_session_id, header.clone());
+        Some(())
+    }
+
+    fn fetch_pending_header_for_session(
+        &mut self,
+        outbound_session_id: OutboundSessionId,
+    ) -> Option<BlockHeader> {
+        self.header_pending_pairing
+            .remove(&outbound_session_id)
+            .map(|header| header.try_into())
+            .and_then(|header| header.ok())
+    }
+
+    /// Instruct behaviour to close an outbound session. A corresponding event will be emitted when
+    /// the session is closed.
+    fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId) {
+        // TODO: handle errors in this function
+        let _newly_inserted =
+            self.outbound_sessions_pending_termination.insert(outbound_session_id);
+        let _ = self
+            .streamed_data_behaviour
+            .close_session(SessionId::OutboundSessionId(outbound_session_id));
     }
 
     fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event {
