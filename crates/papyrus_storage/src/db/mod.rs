@@ -153,7 +153,7 @@ pub enum DbError {
     /// An error that occurred during serialization.
     #[error("Serialization failed.")]
     Serialization,
-    /// An error that occured when trying to open a db file that does not exist.
+    /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
 }
