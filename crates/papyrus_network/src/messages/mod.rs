@@ -169,3 +169,30 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
         }
     }
 }
+
+pub trait TestInstance {
+    fn test_instance() -> Self;
+}
+
+impl TestInstance for protobuf::BlockHeader {
+    fn test_instance() -> Self {
+        Self {
+            number: 1,
+            parent_header: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
+            sequencer_address: Some(protobuf::Address { elements: [0].repeat(32).to_vec() }),
+            ..Default::default()
+        }
+    }
+}
+
+impl TestInstance for protobuf::Signatures {
+    fn test_instance() -> Self {
+        Self {
+            block: Some(protobuf::BlockId { number: 1, header: None }),
+            signatures: vec![protobuf::ConsensusSignature {
+                r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+                s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+            }],
+        }
+    }
+}
