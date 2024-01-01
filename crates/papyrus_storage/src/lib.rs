@@ -77,7 +77,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{Key, StorageSerde};
+use db::serialization::{Key, NoVersionValueWrapper, ValueSerde};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -397,7 +397,7 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: Key + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn open_table<K: Key + Debug, V: ValueSerde + Debug>(
         &self,
         table_id: &TableIdentifier<K, V>,
     ) -> StorageResult<TableHandle<'_, K, V>> {
@@ -427,27 +427,27 @@ pub fn table_names() -> &'static [&'static str] {
 
 struct_field_names! {
     struct Tables {
-        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, LocationInFile>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
-        declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        file_offsets: TableIdentifier<OffsetKind, usize>,
-        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
-        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>>,
+        casms: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>>,
+        declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>>,
+        declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>>,
+        headers: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockHeader>>,
+        markers: TableIdentifier<MarkerKind, NoVersionValueWrapper<BlockNumber>>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>>,
+        file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>>,
+        state_diffs: TableIdentifier<BlockNumber, NoVersionValueWrapper<LocationInFile>>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>>,
+        transaction_idx_to_hash: TableIdentifier<TransactionIndex, NoVersionValueWrapper<TransactionHash>>,
+        transaction_outputs: TableIdentifier<TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>>,
+        transactions: TableIdentifier<TransactionIndex, NoVersionValueWrapper<Transaction>>,
 
         // Version tables
-        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        starknet_version: TableIdentifier<BlockNumber, NoVersionValueWrapper<StarknetVersion>>,
+        storage_version: TableIdentifier<String, NoVersionValueWrapper<Version>>
     }
 }
 
@@ -558,7 +558,8 @@ pub(crate) enum MarkerKind {
     BaseLayerBlock,
 }
 
-pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+pub(crate) type MarkersTable<'env> =
+    TableHandle<'env, MarkerKind, NoVersionValueWrapper<BlockNumber>>;
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
@@ -645,7 +646,7 @@ fn open_storage_files(
     db_config: &DbConfig,
     mmap_file_config: MmapFileConfig,
     db_reader: DbReader,
-    file_offsets_table: &TableIdentifier<OffsetKind, usize>,
+    file_offsets_table: &TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>>,
 ) -> StorageResult<(FileHandlers<RW>, FileHandlers<RO>)> {
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
