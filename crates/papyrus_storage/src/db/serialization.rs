@@ -30,6 +30,9 @@ pub trait StorageSerde: Sized {
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self>;
 }
 
+pub(crate) trait Key: StorageSerdeEx + Ord + Clone {}
+impl<T> Key for T where T: StorageSerdeEx + Ord + Clone {}
+
 #[derive(thiserror::Error, Debug)]
 pub enum StorageSerdeError {
     #[error(transparent)]
