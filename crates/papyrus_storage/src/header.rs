@@ -73,6 +73,12 @@ pub trait HeaderStorageReader {
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<BlockSignature>>;
+
+    fn get_startknet_versions(
+        &self,
+        start_block: BlockNumber,
+        end_block: BlockNumber,
+    ) -> StorageResult<std::collections::HashSet<StarknetVersion>>;
 }
 
 /// Interface for writing data related to the block headers.
@@ -112,7 +118,7 @@ where
 }
 
 /// A version of the Starknet protocol used when creating a block.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, Hash)]
 pub struct StarknetVersion(pub String);
 
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
@@ -165,6 +171,24 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         let block_signatures_table = self.open_table(&self.tables.block_signatures)?;
         let block_signature = block_signatures_table.get(&self.txn, &block_number)?;
         Ok(block_signature)
+    }
+
+    fn get_startknet_versions(
+        &self,
+        start_block: BlockNumber,
+        end_block: BlockNumber,
+    ) -> StorageResult<std::collections::HashSet<StarknetVersion>> {
+        let starknet_version_table = self.open_table(&self.tables.starknet_version)?;
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(&start_block.next())?;
+        let mut res = std::collections::HashSet::new();
+        while let Some((_block_number, starknet_version)) = cursor.next()? {
+            if _block_number >= end_block {
+                break;
+            }
+            res.insert(starknet_version);
+        }
+        Ok(res)
     }
 }
 

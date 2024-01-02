@@ -7,7 +7,7 @@ license-file.workspace = true
 description = "A storage implementation for a Starknet node."
 
 [features]
-testing = ["tempfile"]
+testing = []
 
 [dependencies]
 byteorder.workspace = true
@@ -31,7 +31,7 @@ primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
-tempfile = { workspace = true, optional = true }
+tempfile = { workspace = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }

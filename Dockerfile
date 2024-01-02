@@ -75,6 +75,9 @@ COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 # Copy the dump_declared_classes executable.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
 
+# Copy the debug executable.
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/debug /app/target/release/debug
+
 RUN set -ex; \
     apk update; \
     apk add --no-cache tini; \
