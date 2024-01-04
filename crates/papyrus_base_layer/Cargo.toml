@@ -8,7 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-trait.workspace = true
 ethers.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.3.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.0" }
 rustc-hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
