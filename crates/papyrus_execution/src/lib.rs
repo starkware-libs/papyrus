@@ -590,24 +590,7 @@ fn execute_transactions(
 impl From<(usize, BlockifierTransactionExecutionError)> for ExecutionError {
     fn from(transaction_index_and_error: (usize, BlockifierTransactionExecutionError)) -> Self {
         let (transaction_index, error) = transaction_index_and_error;
-        Self::TransactionExecutionError {
-            transaction_index,
-            execution_error: match &error {
-                // Some variants don't propagate their child's error so we do this manually
-                // until it is fixed in the blockifier. We have a test to
-                // ensure we don't miss fix.
-                BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(x) => {
-                    format!("{error} {x}")
-                }
-                BlockifierTransactionExecutionError::ExecutionError(x) => {
-                    format!("{error} {x}")
-                }
-                BlockifierTransactionExecutionError::ValidateTransactionError(x) => {
-                    format!("{error} {x}")
-                }
-                other => other.to_string(),
-            },
-        }
+        Self::TransactionExecutionError { transaction_index, execution_error: error.to_string() }
     }
 }
 
