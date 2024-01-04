@@ -256,9 +256,9 @@ async fn call_estimate_fee() {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
+        gas_consumed: stark_felt!("0x69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     }];
 
     assert_eq!(res, expected_fee_estimate);
@@ -313,9 +313,9 @@ async fn pending_call_estimate_fee() {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
+        gas_consumed: stark_felt!("0x69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     }];
     assert_eq!(res, expected_fee_estimate);
 }
@@ -360,9 +360,9 @@ async fn call_simulate() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
+        gas_consumed: stark_felt!("0x69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -419,9 +419,9 @@ async fn pending_call_simulate() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
+        gas_consumed: stark_felt!("0x69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -477,9 +477,9 @@ async fn call_simulate_skip_validate() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
+        gas_consumed: stark_felt!("0x69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
@@ -535,9 +535,9 @@ async fn call_simulate_skip_fee_charge() {
     // call.
     // Why is it different from the estimate_fee call?
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("9ba"),
+        gas_consumed: stark_felt!("69e"),
         gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
+        overall_fee: Fee(169400000000000),
     };
 
     assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
