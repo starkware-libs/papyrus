@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
@@ -9,16 +8,13 @@ use libp2p::swarm::{
 use libp2p::{Multiaddr, PeerId};
 
 use super::{BlockHeaderData, Event, SessionError};
-use crate::db_executor::{self, Data, QueryId};
+use crate::db_executor::{Data, QueryId};
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
 
 #[allow(dead_code)]
-pub(crate) struct Behaviour<DBExecutor>
-where
-    DBExecutor: db_executor::DBExecutor,
-{
+pub(crate) struct Behaviour {
     // TODO: make this a trait of type "streamed_data_protocol::behaviour::BehaviourTrait" (new
     // trait to add) so that the test can mock the streamed_data behaviour.
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
@@ -28,7 +24,6 @@ where
     header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
     outbound_sessions_pending_termination: HashSet<OutboundSessionId>,
     inbound_sessions_pending_termination: HashSet<InboundSessionId>,
-    db_executor: Arc<DBExecutor>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -37,18 +32,14 @@ pub(crate) struct SessionIdNotFoundError(
     #[from] crate::streamed_data::behaviour::SessionIdNotFoundError,
 );
 
-impl<DBExecutor> Behaviour<DBExecutor>
-where
-    DBExecutor: db_executor::DBExecutor,
-{
+impl Behaviour {
     #[allow(dead_code)]
-    pub fn new(config: Config, db_executor: Arc<DBExecutor>) -> Self {
+    pub fn new(config: Config) -> Self {
         Self {
             streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
             header_pending_pairing: HashMap::new(),
             outbound_sessions_pending_termination: HashSet::new(),
             inbound_sessions_pending_termination: HashSet::new(),
-            db_executor,
         }
     }
 
@@ -300,12 +291,7 @@ where
     }
 }
 
-impl<DBExecutor> NetworkBehaviour for Behaviour<DBExecutor>
-where
-    // DBExecutor must have static lifetime
-    // since NetworkBehaviour requires it.
-    DBExecutor: db_executor::DBExecutor + 'static,
-{
+impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = streamed_data::handler::Handler<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
