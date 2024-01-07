@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::Poll;
@@ -20,7 +21,7 @@ pub(crate) trait DBExecutor: Stream<Item = (QueryId, Data)> + Unpin {
     fn register_query(&mut self, query: BlockQuery) -> QueryId;
 }
 
-struct DummyDBExecutor {
+pub struct DummyDBExecutor {
     _data: Vec<protobuf::BlockHeadersResponse>,
     query_id_to_query_and_status: HashMap<QueryId, (BlockQuery, u64)>,
     query_conter: usize,
@@ -65,16 +66,24 @@ impl Stream for DummyDBExecutor {
         if let Some((query_id, (query, status))) =
             unpinned_self.query_id_to_query_and_status.iter_mut().next()
         {
-            let data = if *status < query.limit {
-                *status += 1;
-                Data::BlockHeaderAndSignature {
-                    header: BlockHeader::default(),
-                    signature: BlockSignature::default(),
+            let res = match (*status).cmp(&query.limit) {
+                Ordering::Less => {
+                    *status += 1;
+                    Some((
+                        *query_id,
+                        Data::BlockHeaderAndSignature {
+                            header: BlockHeader::default(),
+                            signature: BlockSignature::default(),
+                        },
+                    ))
                 }
-            } else {
-                Data::Fin { block_number: 0 }
+                Ordering::Equal => {
+                    *status += 1;
+                    Some((*query_id, Data::Fin { block_number: 0 }))
+                }
+                Ordering::Greater => None,
             };
-            Poll::Ready(Some((*query_id, data)))
+            Poll::Ready(res)
         } else {
             Poll::Pending
         }

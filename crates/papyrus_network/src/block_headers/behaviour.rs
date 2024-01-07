@@ -12,6 +12,7 @@ use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
+use crate::BlockQuery;
 
 pub(crate) struct Behaviour {
     // TODO: make this a trait of type "streamed_data_protocol::behaviour::BehaviourTrait" (new
@@ -31,6 +32,10 @@ pub(crate) struct SessionIdNotFoundError(
     #[from] crate::streamed_data::behaviour::SessionIdNotFoundError,
 );
 
+#[derive(thiserror::Error, Debug)]
+#[error(transparent)]
+pub(crate) struct PeerNotConnected(#[from] crate::streamed_data::behaviour::PeerNotConnected);
+
 impl Behaviour {
     #[allow(dead_code)]
     pub fn new(config: Config) -> Self {
@@ -43,10 +48,14 @@ impl Behaviour {
     }
 
     #[allow(dead_code)]
-    pub fn send_query(&mut self, query: protobuf::BlockHeadersRequest, peer_id: PeerId) {
+    pub fn send_query(
+        &mut self,
+        query: BlockQuery,
+        peer_id: PeerId,
+    ) -> Result<OutboundSessionId, PeerNotConnected> {
         // TODO: keep track of the query id and the session id so that we can map between them for
         // reputation.
-        let _outbound_session_id = self.streamed_data_behaviour.send_query(query, peer_id);
+        self.streamed_data_behaviour.send_query(query.into(), peer_id).map_err(|e| e.into())
     }
 
     /// Send data to the session that is mapped to this query id.
@@ -177,13 +186,12 @@ pub(super) trait BehaviourTrait {
                             session_error: SessionError::IncompatibleDataError,
                         };
                     };
-                    Event::RecievedData {
+                    Event::ReceivedData {
                         data: BlockHeaderData { block_header, signatures },
                         outbound_session_id,
                     }
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(_) => {
-                    *ignore_event_and_return_pending = true;
                     self.close_outbound_session(outbound_session_id);
                     Event::SessionFailed {
                         session_id: SessionId::OutboundSessionId(outbound_session_id),
