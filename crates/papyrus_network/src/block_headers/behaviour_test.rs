@@ -157,7 +157,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     );
     assert_matches!(
         res_event,
-        Event::RecievedData {data, outbound_session_id: session_id} => {
+        Event::ReceivedData {data, outbound_session_id: session_id} => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
@@ -259,7 +259,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     );
     assert_matches!(
         res_event,
-        Event::RecievedData {data, outbound_session_id: session_id} => {
+        Event::ReceivedData {data, outbound_session_id: session_id} => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
@@ -290,7 +290,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     );
     assert_matches!(
         res_event,
-        Event::RecievedData {data, outbound_session_id: session_id} => {
+        Event::ReceivedData {data, outbound_session_id: session_id} => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
