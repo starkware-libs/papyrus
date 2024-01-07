@@ -102,7 +102,7 @@
         "dashboardTitle": "",
         "maxItems": 90,
         "showOptions": "current",
-        "sortOrder": 1,
+        "sortOrder": 3,
         "stateFilter": {
           "alerting": false,
           "execution_error": false,

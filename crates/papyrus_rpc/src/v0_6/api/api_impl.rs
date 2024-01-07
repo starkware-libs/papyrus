@@ -12,6 +12,7 @@ use papyrus_execution::{
     execute_call,
     execution_utils,
     simulate_transactions as exec_simulate_transactions,
+    ExecutableTransactionInput,
     ExecutionConfigByBlock,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
@@ -27,6 +28,7 @@ use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventContent,
     EventIndexInTransactionOutput,
+    Fee,
     Transaction as StarknetApiTransaction,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -56,6 +58,7 @@ use super::super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::super::error::{
+    ContractError,
     JsonRpcError,
     TransactionExecutionError,
     BLOCK_NOT_FOUND,
@@ -72,11 +75,10 @@ use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
     get_block_txs_by_number,
-    DeployAccountTransaction,
     Event,
     GeneralTransactionReceipt,
-    InvokeTransaction,
     L1HandlerMsgHash,
+    MessageFromL1,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
@@ -86,6 +88,8 @@ use super::super::transaction::{
     TransactionStatus,
     TransactionWithHash,
     Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransaction,
 };
 use super::super::write_api_error::{
     starknet_error_to_declare_error,
@@ -608,7 +612,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             .get_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
         {
-            Ok(GatewayContractClass::Sierra(class.try_into().map_err(internal_server_error)?))
+            Ok(GatewayContractClass::Sierra(class.into()))
         } else {
             let class = state_reader
                 .get_deprecated_class_definition_at(state_number, &class_hash)
@@ -651,7 +655,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             &txn,
             state_number,
             // This map converts &(T, S) to (&T, &S).
-            maybe_pending_deployed_contracts_and_replaced_classes.as_ref().map(|(x, y)| (x, y)),
+            maybe_pending_deployed_contracts_and_replaced_classes.as_ref().map(|t| (&t.0, &t.1)),
             contract_address,
         )
         .map_err(internal_server_error)?
@@ -920,7 +924,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransaction,
+        invoke_transaction: TypedInvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult> {
         let result = self.writer_client.add_invoke_transaction(&invoke_transaction.into()).await;
         match result {
@@ -935,7 +939,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult> {
         let result = self
             .writer_client
@@ -974,8 +978,8 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
     async fn estimate_fee(
         &self,
         transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
         simulation_flags: Vec<SimulationFlag>,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
@@ -1365,6 +1369,86 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 trace_root: simulation_output.transaction_trace,
             })
             .collect())
+    }
+
+    #[instrument(skip(self, message), level = "debug", err)]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate> {
+        trace!("Estimating fee of message: {:#?}", message);
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
+            Some(client_pending_data_to_execution_pending_data(
+                read_pending_data(&self.pending_data, &storage_txn).await?,
+                self.pending_classes.read().await.clone(),
+            ))
+        } else {
+            None
+        };
+        // Convert the message to an L1 handler transaction, and estimate the fee of the
+        // transaction.
+        // The fee input is used to bound the amount of fee used. Because we want to estimate the
+        // fee, we pass u128::MAX so the execution won't fail.
+        let executable_txns =
+            vec![ExecutableTransactionInput::L1Handler(message.into(), Fee(u128::MAX), false)];
+
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let block_not_reverted_validator =
+            BlockNotRevertedValidator::new(block_number, &storage_txn)?;
+        drop(storage_txn);
+        let state_number = StateNumber::right_after_block(block_number);
+        let block_execution_config = self
+            .execution_config
+            .get_execution_config_for_block(block_number)
+            .map_err(|err| {
+                internal_server_error(format!("Failed to get execution config: {}", err))
+            })?
+            .clone();
+        let chain_id = self.chain_id.clone();
+        let reader = self.storage_reader.clone();
+
+        let estimate_fee_result = tokio::task::spawn_blocking(move || {
+            exec_estimate_fee(
+                executable_txns,
+                &chain_id,
+                reader,
+                maybe_pending_data,
+                state_number,
+                block_number,
+                &block_execution_config,
+                false,
+            )
+        })
+        .await
+        .map_err(internal_server_error)?;
+
+        block_not_reverted_validator.validate(&self.storage_reader)?;
+
+        match estimate_fee_result {
+            Ok(Ok(fee_as_vec)) => {
+                if fee_as_vec.len() != 1 {
+                    return Err(internal_server_error(format!(
+                        "Expected a single fee, got {}",
+                        fee_as_vec.len()
+                    )));
+                }
+                let Some((gas_price, fee, unit)) = fee_as_vec.first() else {
+                    return Err(internal_server_error(
+                        "Expected a single fee, got an empty vector",
+                    ));
+                };
+                Ok(FeeEstimate::from(*gas_price, *fee, *unit))
+            }
+            // Error in the execution of the contract.
+            Ok(Err(reverted_tx)) => Err(JsonRpcError::<ContractError>::from(ContractError {
+                revert_error: reverted_tx.revert_reason,
+            })
+            .into()),
+            // Internal error during the execution.
+            Err(err) => Err(internal_server_error(err)),
+        }
     }
 }
 

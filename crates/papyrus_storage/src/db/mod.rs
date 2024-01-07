@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use validator::Validate;
 
-use crate::db::serialization::{StorageSerde, StorageSerdeEx};
+use self::serialization::{Key, ValueSerde};
 
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 19;
@@ -153,7 +153,7 @@ pub enum DbError {
     /// An error that occurred during serialization.
     #[error("Serialization failed.")]
     Serialization,
-    /// An error that occured when trying to open a db file that does not exist.
+    /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
 }
@@ -241,7 +241,7 @@ impl DbWriter {
         Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
     }
 
-    pub(crate) fn create_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn create_table<K: Key + Debug, V: ValueSerde + Debug>(
         &mut self,
         name: &'static str,
     ) -> DbResult<TableIdentifier<K, V>> {
@@ -272,7 +272,7 @@ pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub fn open_table<'env, K: Key + Debug, V: ValueSerde + Debug>(
         &'env self,
         table_id: &TableIdentifier<K, V>,
     ) -> DbResult<TableHandle<'env, K, V>> {
@@ -285,20 +285,20 @@ impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
         })
     }
 }
-pub(crate) struct TableIdentifier<K: StorageSerde + Debug, V: StorageSerde + Debug> {
+pub(crate) struct TableIdentifier<K: Key + Debug, V: ValueSerde + Debug> {
     pub(crate) name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-pub(crate) struct TableHandle<'env, K: StorageSerde + Debug, V: StorageSerde + Debug> {
+pub(crate) struct TableHandle<'env, K: Key + Debug, V: ValueSerde + Debug> {
     database: libmdbx::Table<'env>,
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'env, K, V> {
+impl<'env, 'txn, K: Key + Debug, V: ValueSerde + Debug> TableHandle<'env, K, V> {
     pub(crate) fn cursor<Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
@@ -311,7 +311,7 @@ impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
         key: &K,
-    ) -> DbResult<Option<V>> {
+    ) -> DbResult<Option<V::Value>> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
         let bin_key = key.serialize()?;
         let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
@@ -325,9 +325,9 @@ impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'
         &'env self,
         txn: &DbTransaction<'env, RW>,
         key: &K,
-        value: &V,
+        value: &V::Value,
     ) -> DbResult<()> {
-        let data = value.serialize()?;
+        let data = V::serialize(value)?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
         Ok(())
@@ -337,9 +337,9 @@ impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'
         &'env self,
         txn: &DbTransaction<'env, RW>,
         key: &K,
-        value: &V,
+        value: &V::Value,
     ) -> DbResult<()> {
-        let data = value.serialize()?;
+        let data = V::serialize(value)?;
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE).map_err(|err| {
             match err {
@@ -360,14 +360,14 @@ impl<'env, 'txn, K: StorageSerde + Debug, V: StorageSerde + Debug> TableHandle<'
     }
 }
 
-pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
+pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: Key, V: ValueSerde> {
     cursor: Cursor<'txn, Mode::Internal>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'txn, Mode, K, V> {
-    pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V)>> {
+impl<'txn, Mode: TransactionKind, K: Key, V: ValueSerde> DbCursor<'txn, Mode, K, V> {
+    pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V::Value)>> {
         let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
             None => Ok(None),
@@ -382,7 +382,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 
     #[allow(clippy::should_implement_trait)]
-    pub(crate) fn next(&mut self) -> DbResult<Option<(K, V)>> {
+    pub(crate) fn next(&mut self) -> DbResult<Option<(K, V::Value)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {
             None => Ok(None),
@@ -397,7 +397,7 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
     }
 
     /// Position at first key greater than or equal to specified key.
-    pub(crate) fn lower_bound(&mut self, key: &K) -> DbResult<Option<(K, V)>> {
+    pub(crate) fn lower_bound(&mut self, key: &K) -> DbResult<Option<(K, V::Value)>> {
         let key_bytes = key.serialize()?;
         let prev_cursor_res =
             self.cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
@@ -415,13 +415,13 @@ impl<'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> DbCursor<'tx
 }
 
 /// Iterator for iterating over a DB table
-pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> {
+pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde> {
     cursor: &'cursor mut DbCursor<'txn, Mode, K, V>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
+impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde>
     DbIter<'cursor, 'txn, Mode, K, V>
 {
     #[allow(dead_code)]
@@ -430,10 +430,10 @@ impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde>
     }
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: StorageSerde, V: StorageSerde> Iterator
+impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde> Iterator
     for DbIter<'cursor, 'txn, Mode, K, V>
 {
-    type Item = DbResult<(K, V)>;
+    type Item = DbResult<(K, V::Value)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let prev_cursor_res = self.cursor.next().transpose()?;

@@ -55,6 +55,7 @@ use crate::syncing_state::get_last_synced_block;
 pub use crate::v0_4::transaction::{
     InvokeTransaction as InvokeTransactionRPC0_4,
     InvokeTransactionV1 as InvokeTransactionV1RPC0_4,
+    TransactionVersion1 as TransactionVersion1RPC0_4,
 };
 pub use crate::v0_4::write_api_result::AddInvokeOkResult as AddInvokeOkResultRPC0_4;
 

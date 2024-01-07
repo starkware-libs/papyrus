@@ -218,8 +218,7 @@ impl HashChain {
             .elements
             .iter()
             .fold(FieldElement::ZERO, |current_hash, felt| pedersen_hash(&current_hash, felt));
-        let n_elements =
-            FieldElement::try_from(self.elements.len()).expect("Got too many elements.");
+        let n_elements = FieldElement::from(self.elements.len());
         pedersen_hash(&current_hash, &n_elements).into()
     }
 

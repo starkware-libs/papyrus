@@ -22,7 +22,12 @@ use starknet_api::StarknetApiError;
 use tracing::{debug, instrument};
 use url::Url;
 
-pub use crate::reader::objects::block::{Block, TransactionReceiptsError};
+pub use crate::reader::objects::block::{
+    Block,
+    BlockSignatureData,
+    BlockSignatureMessage,
+    TransactionReceiptsError,
+};
 pub use crate::reader::objects::pending_data::PendingData;
 pub use crate::reader::objects::state::{
     ContractClass,
@@ -97,6 +102,11 @@ pub trait StarknetReader {
 
     // Returns true if the reader is alive.
     async fn is_alive(&self) -> bool;
+
+    async fn block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockSignatureData>>;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -115,6 +125,7 @@ struct StarknetUrls {
     get_state_update: Url,
     get_pending_data: Url,
     feeder_gateway_is_alive: Url,
+    get_block_signature: Url,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -129,6 +140,7 @@ const PENDING_BLOCK_ID: &str = "pending";
 const INCLUDE_BLOCK: &str = "includeBlock";
 const FEEDER_GATEWAY_IS_ALIVE: &str = "feeder_gateway/is_alive";
 const FEEDER_GATEWAY_ALIVE_RESPONSE: &str = "FeederGateway is alive!";
+const GET_BLOCK_SIGNATURE_URL: &str = "feeder_gateway/get_signature";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -158,6 +170,7 @@ impl StarknetUrls {
                 .finish()
                 .clone(),
             feeder_gateway_is_alive: base_url.join(FEEDER_GATEWAY_IS_ALIVE)?,
+            get_block_signature: base_url.join(GET_BLOCK_SIGNATURE_URL)?,
         })
     }
 }
@@ -334,6 +347,21 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         let expected_response = FEEDER_GATEWAY_ALIVE_RESPONSE.to_string();
         response.is_ok_and(|response| response == expected_response)
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    async fn block_signature(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockSignatureData>> {
+        let mut url = self.urls.get_block_signature.clone();
+        url.query_pairs_mut().append_pair(BLOCK_NUMBER_QUERY, &block_number.to_string());
+        let response = self.request_with_retry_url(url).await;
+        load_object_from_response(
+            response,
+            KnownStarknetErrorCode::BlockNotFound,
+            format!("Failed to get signature for block {block_number:?} from starknet server."),
+        )
     }
 }
 

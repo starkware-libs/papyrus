@@ -15,7 +15,6 @@ use starknet_api::transaction::{
     Fee,
     Transaction,
     TransactionSignature,
-    TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
@@ -27,6 +26,8 @@ use super::{
     InvokeTransactionV0,
     InvokeTransactionV1,
     TransactionOutput,
+    TransactionVersion0,
+    TransactionVersion1,
 };
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
@@ -39,7 +40,7 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
     }
     pub enum InvokeTransaction {
         Version0(InvokeTransactionV0) = 0,
@@ -47,7 +48,7 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion0,
         pub signature: TransactionSignature,
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
@@ -55,11 +56,18 @@ auto_impl_get_test_instance! {
     }
     pub struct InvokeTransactionV1 {
         pub max_fee: Fee,
-        pub version: TransactionVersion,
+        pub version: TransactionVersion1,
         pub signature: TransactionSignature,
         pub nonce: Nonce,
         pub sender_address: ContractAddress,
         pub calldata: Calldata,
+    }
+    pub enum TransactionVersion0 {
+        Version0 = 0,
+    }
+
+    pub enum TransactionVersion1 {
+        Version1 = 0,
     }
 }
 
@@ -139,5 +147,5 @@ fn test_gateway_trascation_from_starknet_api_transaction() {
 #[test]
 fn test_invoke_transaction_to_client_transaction() {
     let _invoke_transaction: client_transaction::InvokeTransaction =
-        InvokeTransactionV1::get_test_instance(&mut get_rng()).try_into().unwrap();
+        InvokeTransactionV1::get_test_instance(&mut get_rng()).into();
 }
