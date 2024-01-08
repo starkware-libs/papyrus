@@ -10,8 +10,6 @@ use crate::messages::protobuf;
 use crate::streamed_data::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::BlockQuery;
 
-// static mut test_db_executor: TestDBExecutor = TestDBExecutor {};
-
 #[test]
 #[ignore = "functionality not implemented completely yet"]
 fn test_fin_handling() {
@@ -26,15 +24,15 @@ async fn poll_is_pending_if_streamed_data_behaviour_poll_is_pending() {
 
 #[tokio::test]
 #[ignore = "functionality not implemented completely yet"]
-async fn poll_is_pending_if_streamed_data_behaviour_poll_is_ready_but_event_mapping_returns_wait_to_complete_pairing()
- {
+async fn poll_is_pending_if_streamed_data_behaviour_poll_is_ready_but_event_mapping_returns_wait_to_complete_pairing(
+) {
     unimplemented!()
 }
 
 #[tokio::test]
 #[ignore = "functionality not implemented completely yet"]
-async fn poll_is_ready_if_streamed_data_behaviour_poll_is_ready_and_event_mapping_returns_not_to_wait_to_complete_pairing()
- {
+async fn poll_is_ready_if_streamed_data_behaviour_poll_is_ready_and_event_mapping_returns_not_to_wait_to_complete_pairing(
+) {
     unimplemented!()
 }
 
