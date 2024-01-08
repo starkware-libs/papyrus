@@ -6,6 +6,9 @@ on:
     - cron: '30 0 * * *'  # Uses macos runner.
   workflow_dispatch:  # Uses ubuntu runner.
 
+env:
+  PROTOC_VERSION: 25 # homebrew doesn't support minor versions
+
 jobs:
   GW-integration-test-ubuntu:
     uses: ./.github/workflows/nightly-tests-call.yml
@@ -28,5 +31,61 @@ jobs:
       SLACK_ALERT_CHANNEL: ${{ secrets.SLACK_ALERT_CHANNEL }}
       SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
     if: github.event.schedule == '30 0 * * *'
+
+  executable-run:
+    runs-on: macos-latest
+    if: github.event.schedule == '30 0 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: mkdir data
+
+      - run: brew install protobuf@$PROTOC_VERSION
+
+      - name: Build node
+        run: cargo build -r
+
+      - name: Run executable
+        run: >
+          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
+          & sleep 30 ; kill $!
+
+  test:
+    runs-on: macos-latest
+    if: github.event.schedule == '30 0 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: npm install -g ganache@7.4.3
+
+      - run: brew install protobuf@$PROTOC_VERSION
+
+      - run: |
+          cargo test -r
+        env:
+          SEED: 0
+
+  build-load-test:
+    runs-on: macos-latest
+    if: github.event.schedule == '30 0 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build -r -p papyrus_load_test
+
+  integration-test:
+    runs-on: macos-latest
+    if: github.event.schedule == '30 0 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: >
+          cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
+          cargo run -r -p papyrus_node --bin central_source_integration_test
 
 
