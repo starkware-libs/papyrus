@@ -38,7 +38,7 @@ async fn poll_is_ready_if_streamed_data_behaviour_poll_is_ready_and_event_mappin
 
 struct TestBehaviour {}
 
-impl BehaviourTrait<TestDBExecutor> for TestBehaviour {
+impl BehaviourTrait for TestBehaviour {
     fn handle_received_data(
         &mut self,
         _data: protobuf::BlockHeadersResponse,
