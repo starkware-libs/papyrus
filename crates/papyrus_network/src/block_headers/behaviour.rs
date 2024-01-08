@@ -29,8 +29,6 @@ where
     outbound_sessions_pending_termination: HashSet<OutboundSessionId>,
     inbound_sessions_pending_termination: HashSet<InboundSessionId>,
     db_executor: Arc<DBExecutor>,
-    query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
-    inbound_session_ids_pending_query_id: HashSet<InboundSessionId>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -51,8 +49,6 @@ where
             outbound_sessions_pending_termination: HashSet::new(),
             inbound_sessions_pending_termination: HashSet::new(),
             db_executor,
-            query_id_to_inbound_session_id: HashMap::new(),
-            inbound_session_ids_pending_query_id: HashSet::new(),
         }
     }
 
@@ -69,12 +65,8 @@ where
     pub fn send_data(
         &mut self,
         data: Data,
-        query_id: QueryId,
+        inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let inbound_session_id = self
-            .query_id_to_inbound_session_id
-            .get(&query_id)
-            .ok_or(SessionIdNotFoundError(streamed_data::behaviour::SessionIdNotFoundError {}))?;
         let header_message = match data {
             Data::BlockHeader(block_header) => {
                 protobuf::block_headers_response_part::HeaderMessage::Header(block_header.into())
@@ -91,17 +83,10 @@ where
                         header_message: Some(header_message.clone()),
                     }],
                 },
-                *inbound_session_id,
+                inbound_session_id,
             )
             .map_err(SessionIdNotFoundError)?;
         if let protobuf::block_headers_response_part::HeaderMessage::Fin { .. } = header_message {
-            // remove the session id from the mapping here since we need the query id to find it
-            // in the hash map.
-            #[allow(clippy::clone_on_copy)]
-            // we need to clone here since we need self.query_id_to_inbound_session_id to be
-            // mutable.
-            let inbound_session_id = inbound_session_id.clone();
-            self.query_id_to_inbound_session_id.remove(&query_id);
             self.close_inbound_session(inbound_session_id);
         }
         Ok(())
@@ -126,19 +111,6 @@ where
         let _ = self
             .streamed_data_behaviour
             .close_session(SessionId::OutboundSessionId(outbound_session_id));
-    }
-
-    /// Adds the query id to the map of inbound session id to query id.
-    /// returns true if the inbound session id was pending to be matched with a query id and was not
-    /// in the map before.
-    fn register_query_id(
-        &mut self,
-        query_id: QueryId,
-        inbound_session_id: InboundSessionId,
-    ) -> bool {
-        let removed = self.inbound_session_ids_pending_query_id.remove(&inbound_session_id);
-        let old_value = self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
-        removed && old_value.is_none()
     }
 }
 
@@ -324,10 +296,6 @@ where
             Ok(query) => query,
             Err(e) => return Event::ProtobufConversionError(e),
         };
-        let newly_inserted = self.inbound_session_ids_pending_query_id.insert(inbound_session_id);
-        // TODO: should we assert that the value did not exist before? the session id should
-        // be unique so we shouldn't have one before.
-        assert!(newly_inserted);
         Event::NewInboundQuery { query, inbound_session_id }
     }
 }
