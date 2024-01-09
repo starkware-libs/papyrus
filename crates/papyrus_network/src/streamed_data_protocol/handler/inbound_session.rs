@@ -78,7 +78,7 @@ impl<Data: DataBound> InboundSession<Data> {
         })
     }
 
-    fn handle_waiting(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
+    fn handle_waiting(&mut self, cx: &mut Context<'_>) {
         if let Some(data) = self.pending_messages.pop_front() {
             replace_with_or_abort(&mut self.current_task, |current_task| {
                 let WriteMessageTask::Waiting(mut stream) = current_task else {
@@ -92,10 +92,9 @@ impl<Data: DataBound> InboundSession<Data> {
                     .boxed(),
                 )
             });
-            return self.handle_running(cx);
+        } else {
+            self.wakers_waiting_for_new_message.push(cx.waker().clone());
         }
-        self.wakers_waiting_for_new_message.push(cx.waker().clone());
-        None
     }
 
     fn handle_running(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
@@ -106,7 +105,7 @@ impl<Data: DataBound> InboundSession<Data> {
             Poll::Pending => None,
             Poll::Ready(Ok(stream)) => {
                 self.current_task = WriteMessageTask::Waiting(stream);
-                self.handle_waiting(cx)
+                None
             }
             Poll::Ready(Err(io_error)) => {
                 Some(FinishReason::Error(InboundSessionError::IO(io_error)))
@@ -138,11 +137,33 @@ impl<Data: DataBound> Future for InboundSession<Data> {
         {
             return Poll::Ready(finish_reason);
         }
-        let result = match &mut unpinned_self.current_task {
-            WriteMessageTask::Running(_) => unpinned_self.handle_running(cx),
-            WriteMessageTask::Waiting(_) => unpinned_self.handle_waiting(cx),
-            WriteMessageTask::Closing(_) => unpinned_self.handle_closing(cx),
-        };
+        let mut is_waiting = false;
+        let mut is_running = false;
+        let mut result = None;
+        loop {
+            match &mut unpinned_self.current_task {
+                WriteMessageTask::Running(_) => {
+                    if is_running {
+                        break;
+                    }
+                    is_running = true;
+                    is_waiting = false;
+                    result = unpinned_self.handle_running(cx);
+                }
+                WriteMessageTask::Waiting(_) => {
+                    if is_waiting {
+                        break;
+                    }
+                    is_waiting = true;
+                    is_running = false;
+                    unpinned_self.handle_waiting(cx);
+                }
+                WriteMessageTask::Closing(_) => {
+                    result = unpinned_self.handle_closing(cx);
+                    break;
+                }
+            }
+        }
         match result {
             Some(finish_reason) => Poll::Ready(finish_reason),
             None => Poll::Pending,
