@@ -14,7 +14,7 @@ on:
     types: [checks_requested]
 
 env:
-  PROTOC_VERSION: 25.1
+  PROTOC_VERSION: v25.1
 
 jobs:
   commitlint:
