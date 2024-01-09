@@ -3,7 +3,12 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm,
+    ConnectionDenied,
+    ConnectionHandler,
+    ConnectionId,
+    FromSwarm,
+    NetworkBehaviour,
+    ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 
@@ -121,12 +126,6 @@ pub(super) trait BehaviourTrait {
         outbound_session_id: OutboundSessionId,
     ) -> Event;
 
-    fn handle_new_inbound_session(
-        &mut self,
-        query: protobuf::BlockHeadersRequest,
-        inbound_session_id: InboundSessionId,
-    ) -> Event;
-
     fn map_streamed_data_behaviour_event_to_own_event(
         &mut self,
         in_event: StreamedDataEvent<protobuf::BlockHeadersRequest, protobuf::BlockHeadersResponse>,
@@ -134,7 +133,11 @@ pub(super) trait BehaviourTrait {
     ) -> Event {
         match in_event {
             StreamedDataEvent::NewInboundSession { query, inbound_session_id, peer_id: _ } => {
-                self.handle_new_inbound_session(query, inbound_session_id)
+                let query = match query.try_into() {
+                    Ok(query) => query,
+                    Err(e) => return Event::ProtobufConversionError(e),
+                };
+                Event::NewInboundQuery { query, inbound_session_id }
             }
             StreamedDataEvent::SessionFailed { session_id, error } => Event::SessionFailed {
                 session_id,
@@ -271,18 +274,6 @@ impl BehaviourTrait for Behaviour {
             }
         }
     }
-
-    fn handle_new_inbound_session(
-        &mut self,
-        query: protobuf::BlockHeadersRequest,
-        inbound_session_id: InboundSessionId,
-    ) -> Event {
-        let query = match query.try_into() {
-            Ok(query) => query,
-            Err(e) => return Event::ProtobufConversionError(e),
-        };
-        Event::NewInboundQuery { query, inbound_session_id }
-    }
 }
 
 impl NetworkBehaviour for Behaviour {
@@ -349,11 +340,7 @@ impl NetworkBehaviour for Behaviour {
                         &mut ignore_event_and_return_pending,
                     )
                 });
-                if ignore_event_and_return_pending {
-                    Poll::Pending
-                } else {
-                    Poll::Ready(event)
-                }
+                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
             }
             Poll::Pending => Poll::Pending,
         }
