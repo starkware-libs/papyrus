@@ -24,8 +24,8 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.0" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-dev.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-dev.1" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
