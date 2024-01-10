@@ -50,6 +50,11 @@ struct Args {
     #[arg(short = 'm', long, default_value_t)]
     num_messages_per_session: u64,
 
+    /// Number of segments to divide each inbound session. Each segments results will be printed
+    /// separately alongside a final summary.
+    #[arg(short = 'g', long, default_value_t = 1)]
+    num_segments: u64,
+
     /// Size (in bytes) of each message to send for inbound sessions.
     #[arg(short = 's', long, default_value_t)]
     message_size: u64,
@@ -68,15 +73,8 @@ fn create_outbound_sessions(
     for number in 0..args.num_queries_per_connection {
         let outbound_session_id =
             swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).unwrap();
-        outbound_session_measurements.insert(
-            outbound_session_id,
-            OutboundSessionMeasurement {
-                start_time: Instant::now(),
-                first_message_time: None,
-                num_messages: None,
-                message_size: None,
-            },
-        );
+        outbound_session_measurements
+            .insert(outbound_session_id, OutboundSessionMeasurement::new());
     }
 }
 
@@ -97,7 +95,8 @@ fn send_data_to_inbound_session(
             inbound_session_id,
         )
         .unwrap();
-    for _ in 0..args.num_messages_per_session {
+    let segment_size = args.num_messages_per_session / args.num_segments;
+    for i in 0..args.num_messages_per_session {
         swarm
             .behaviour_mut()
             .send_data(
@@ -109,15 +108,42 @@ fn send_data_to_inbound_session(
                 inbound_session_id,
             )
             .unwrap();
+        if i % segment_size == 0 {
+            swarm
+                .behaviour_mut()
+                .send_data(
+                    StressTestMessage {
+                        msg: Some(Msg::SegmentFinished(BasicMessage { number: segment_size })),
+                    },
+                    inbound_session_id,
+                )
+                .unwrap();
+        }
+    }
+    let last_segment_size = args.num_messages_per_session % segment_size;
+    // If there is only one segment, there's no need to print its measurements since they'll appear
+    // in the total measurements.
+    if last_segment_size != 0 && args.num_segments > 1 {
+        swarm
+            .behaviour_mut()
+            .send_data(
+                StressTestMessage {
+                    msg: Some(Msg::SegmentFinished(BasicMessage { number: last_segment_size })),
+                },
+                inbound_session_id,
+            )
+            .unwrap();
     }
     swarm.behaviour_mut().close_session(inbound_session_id.into()).unwrap();
 }
 
 struct OutboundSessionMeasurement {
-    pub start_time: Instant,
-    pub first_message_time: Option<Instant>,
-    pub num_messages: Option<u64>,
-    pub message_size: Option<u64>,
+    start_time: Instant,
+    first_message_time: Option<Instant>,
+    current_segment_start_time: Option<Instant>,
+    segment_measurements: Vec<(Duration, u64)>,
+    num_messages: Option<u64>,
+    message_size: Option<u64>,
 }
 
 impl OutboundSessionMeasurement {
@@ -126,7 +152,7 @@ impl OutboundSessionMeasurement {
         let elapsed = self.start_time.elapsed();
         let num_messages = self.num_messages.unwrap();
         let message_size = self.message_size.unwrap();
-        println!("---------- Outbound session finished ----------");
+        println!("########## Outbound session finished ##########");
         println!(
             "Session had {} messages of size {}. In total {}",
             num_messages,
@@ -147,8 +173,43 @@ impl OutboundSessionMeasurement {
             "{}/second",
             pretty_size((message_size * num_messages) as f64 / messages_elapsed.as_secs_f64())
         );
+        println!("---- Message sending statistics across time ----");
+        for (segment_elapsed, num_messages_in_segment) in &self.segment_measurements {
+            println!(
+                "{:.2} messages/second",
+                *num_messages_in_segment as f64 / segment_elapsed.as_secs_f64()
+            );
+        }
+    }
+
+    pub fn new() -> Self {
+        Self {
+            start_time: Instant::now(),
+            first_message_time: None,
+            current_segment_start_time: None,
+            segment_measurements: vec![],
+            num_messages: None,
+            message_size: None,
+        }
+    }
+    pub fn report_first_message(&mut self, inbound_session_start: InboundSessionStart) {
+        self.first_message_time = Some(Instant::now());
+        self.current_segment_start_time = self.first_message_time;
+        self.num_messages = Some(inbound_session_start.num_messages);
+        self.message_size = Some(inbound_session_start.message_size);
+    }
+
+    pub fn report_segment_finished(&mut self, basic_message: BasicMessage) {
+        self.segment_measurements.push((
+            self.current_segment_start_time
+                .expect("Received SegmentFinished as the first message")
+                .elapsed(),
+            basic_message.number,
+        ));
+        self.current_segment_start_time = Some(Instant::now());
     }
 }
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -209,14 +270,20 @@ async fn main() {
                 outbound_session_measurements[&outbound_session_id].print();
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
-                if let Some(Msg::Start(InboundSessionStart { num_messages, message_size })) =
-                    data.msg
-                {
-                    let measurement =
-                        outbound_session_measurements.get_mut(&outbound_session_id).unwrap();
-                    measurement.first_message_time = Some(Instant::now());
-                    measurement.num_messages = Some(num_messages);
-                    measurement.message_size = Some(message_size);
+                match data.msg {
+                    Some(Msg::Start(inbound_session_start)) => {
+                        outbound_session_measurements
+                            .get_mut(&outbound_session_id)
+                            .unwrap()
+                            .report_first_message(inbound_session_start);
+                    }
+                    Some(Msg::SegmentFinished(basic_message)) => {
+                        outbound_session_measurements
+                            .get_mut(&outbound_session_id)
+                            .unwrap()
+                            .report_segment_finished(basic_message);
+                    }
+                    _ => {}
                 }
             }
             SwarmEvent::Behaviour(Event::SessionFailed {

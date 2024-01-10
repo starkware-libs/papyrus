@@ -13,5 +13,6 @@ message StressTestMessage {
     oneof msg {
         InboundSessionStart start = 1;
         bytes content = 2;
+        BasicMessage segment_finished = 3;
     }
 }
