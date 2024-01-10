@@ -48,7 +48,7 @@ pub(crate) trait ValueSerde {
     fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value>;
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// A generic wrapper for values that do not have a version.
 pub(crate) struct NoVersionValueWrapper<T: StorageSerde> {
     _value_type: PhantomData<T>,

@@ -27,7 +27,7 @@ use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
-use crate::db::serialization::{StorageSerde, StorageSerdeEx};
+use crate::db::serialization::{StorageSerde, ValueSerde};
 use crate::db::{TransactionKind, RO, RW};
 
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
@@ -103,18 +103,18 @@ pub enum MMapFileError {
 }
 
 /// A trait for writing to a memory mapped file.
-pub trait Writer<V: StorageSerde> {
+pub(crate) trait Writer<V: ValueSerde> {
     /// Inserts an object to the file, returns the [`LocationInFile`] of the object.
-    fn append(&mut self, val: &V) -> LocationInFile;
+    fn append(&mut self, val: &V::Value) -> LocationInFile;
 
     /// Flushes the mmap to the file.
     fn flush(&self);
 }
 
 /// A trait for reading from a memory mapped file.
-pub trait Reader<V: StorageSerde> {
+pub(crate) trait Reader<V: ValueSerde> {
     /// Returns an object from the file.
-    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>>;
+    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V::Value>>;
 }
 
 /// Represents a location in the file.
@@ -135,7 +135,7 @@ impl LocationInFile {
 
 /// Represents a memory mapped append only file.
 #[derive(Debug)]
-struct MMapFile<V: StorageSerde> {
+struct MMapFile<V: ValueSerde> {
     config: MmapFileConfig,
     file: File,
     size: usize,
@@ -145,7 +145,7 @@ struct MMapFile<V: StorageSerde> {
     _value_type: PhantomData<V>,
 }
 
-impl<V: StorageSerde> MMapFile<V> {
+impl<V: ValueSerde> MMapFile<V> {
     /// Grows the file by the growth step.
     fn grow(&mut self) {
         self.flush();
@@ -165,7 +165,7 @@ impl<V: StorageSerde> MMapFile<V> {
 
 /// Open a memory mapped file, create it if it doesn't exist.
 #[instrument(level = "debug", err)]
-pub(crate) fn open_file<V: StorageSerde>(
+pub(crate) fn open_file<V: ValueSerde>(
     config: MmapFileConfig,
     path: PathBuf,
     offset: usize,
@@ -200,16 +200,16 @@ pub(crate) fn open_file<V: StorageSerde>(
 
 /// A wrapper around `MMapFile` that provides both write and read interfaces.
 #[derive(Clone, Debug)]
-pub(crate) struct FileHandler<V: StorageSerde, Mode: TransactionKind> {
+pub(crate) struct FileHandler<V: ValueSerde, Mode: TransactionKind> {
     memory_ptr: *const u8,
     mmap_file: Arc<Mutex<MMapFile<V>>>,
     _mode: PhantomData<Mode>,
 }
 
-unsafe impl<V: StorageSerde, Mode: TransactionKind> Send for FileHandler<V, Mode> {}
-unsafe impl<V: StorageSerde, Mode: TransactionKind> Sync for FileHandler<V, Mode> {}
+unsafe impl<V: ValueSerde, Mode: TransactionKind> Send for FileHandler<V, Mode> {}
+unsafe impl<V: ValueSerde, Mode: TransactionKind> Sync for FileHandler<V, Mode> {}
 
-impl<V: StorageSerde> FileHandler<V, RW> {
+impl<V: ValueSerde> FileHandler<V, RW> {
     fn grow_file_if_needed(&mut self, offset: usize) {
         let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
         if mmap_file.size < offset + mmap_file.config.max_object_size {
@@ -222,11 +222,12 @@ impl<V: StorageSerde> FileHandler<V, RW> {
     }
 }
 
-impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
-    fn append(&mut self, val: &V) -> LocationInFile {
+impl<V: ValueSerde + Debug> Writer<V> for FileHandler<V, RW> {
+    fn append(&mut self, val: &V::Value) -> LocationInFile {
         trace!("Inserting object: {:?}", val);
         // TODO(dan): change serialize_into to return serialization size.
-        let len = val.serialize().expect("Should be able to serialize").len();
+
+        let len = V::serialize(val).expect("Should be able to serialize").len();
         let offset;
         {
             let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
@@ -254,9 +255,9 @@ impl<V: StorageSerde + Debug> Writer<V> for FileHandler<V, RW> {
     }
 }
 
-impl<V: StorageSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
+impl<V: ValueSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
     /// Returns an object from the file.
-    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V>> {
+    fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V::Value>> {
         debug!("Reading object at location: {:?}", location);
         let mut bytes = unsafe {
             std::slice::from_raw_parts(
