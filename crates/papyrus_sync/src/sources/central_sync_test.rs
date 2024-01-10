@@ -14,7 +14,7 @@ use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
-use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::ClassHash;
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
@@ -27,7 +27,6 @@ use super::pending::MockPendingSourceTrait;
 use crate::sources::base_layer::{BaseLayerSourceTrait, MockBaseLayerSourceTrait};
 use crate::sources::central::{
     BlocksStream,
-    CentralBlockSignatureData,
     CompiledClassesStream,
     MockCentralSourceTrait,
     StateUpdatesStream,
@@ -182,7 +181,7 @@ async fn sync_happy_flow() {
                 yield Ok((
                     block_number,
                     Block { header, body: BlockBody::default() },
-                    CentralBlockSignatureData::default(),
+                    BlockSignature::default(),
                     StarknetVersion(STARKNET_VERSION.to_string())
                 ));
             }
@@ -469,7 +468,7 @@ async fn sync_with_revert() {
                         yield Ok((
                             i,
                             Block{ header, body: BlockBody::default() },
-                            CentralBlockSignatureData::default(),
+                            BlockSignature::default(),
                             StarknetVersion(STARKNET_VERSION.to_string()),
                         ));
                     }
@@ -489,7 +488,7 @@ async fn sync_with_revert() {
                         yield Ok((
                             i,
                             Block{header, body: BlockBody::default()},
-                            CentralBlockSignatureData::default(),
+                            BlockSignature::default(),
                             StarknetVersion(STARKNET_VERSION.to_string())
                         ));
                     }
@@ -589,7 +588,7 @@ async fn test_unrecoverable_sync_error_flow() {
             yield Ok((
                 BLOCK_NUMBER,
                 Block { header, body: BlockBody::default()},
-                CentralBlockSignatureData::default(),
+                BlockSignature::default(),
                 StarknetVersion(STARKNET_VERSION.to_string()),
             ));
         }
