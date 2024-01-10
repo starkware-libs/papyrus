@@ -77,7 +77,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::StorageSerde;
+use db::serialization::{Key, NoVersionValueWrapper, ValueSerde};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -122,12 +122,12 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage state code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
-pub const STORAGE_VERSION_STATE: Version = Version(9);
+pub const STORAGE_VERSION_STATE: Version = Version(10);
 /// The current version of the storage blocks code.
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(9);
+pub const STORAGE_VERSION_BLOCKS: Version = Version(10);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -216,7 +216,7 @@ fn set_version_if_needed(
         Some(StorageVersion::StateOnly(StateOnlyVersion { state_version: _ })) => {
             // The storage cannot change from state-only to full-archive mode.
             if writer.scope == StorageScope::FullArchive {
-                return Err(StorageError::StorageVersionInconcistency(
+                return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::InconsistentStorageScope,
                 ));
             }
@@ -275,7 +275,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
             state_version: existing_state_version,
             blocks_version: _,
         })) if STORAGE_VERSION_STATE != existing_state_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_STATE,
                     storage_version: existing_state_version,
@@ -287,7 +287,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
             state_version: _,
             blocks_version: existing_blocks_version,
         })) if STORAGE_VERSION_BLOCKS != existing_blocks_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_BLOCKS,
                     storage_version: existing_blocks_version,
@@ -298,7 +298,7 @@ fn verify_storage_version(reader: StorageReader) -> StorageResult<()> {
         Some(StorageVersion::StateOnly(StateOnlyVersion {
             state_version: existing_state_version,
         })) if STORAGE_VERSION_STATE != existing_state_version => {
-            Err(StorageError::StorageVersionInconcistency(
+            Err(StorageError::StorageVersionInconsistency(
                 StorageVersionError::InconsistentStorageVersion {
                     crate_version: STORAGE_VERSION_STATE,
                     storage_version: existing_state_version,
@@ -397,7 +397,7 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: StorageSerde + Debug, V: StorageSerde + Debug>(
+    pub(crate) fn open_table<K: Key + Debug, V: ValueSerde + Debug>(
         &self,
         table_id: &TableIdentifier<K, V>,
     ) -> StorageResult<TableHandle<'_, K, V>> {
@@ -427,27 +427,27 @@ pub fn table_names() -> &'static [&'static str] {
 
 struct_field_names! {
     struct Tables {
-        block_hash_to_number: TableIdentifier<BlockHash, BlockNumber>,
-        casms: TableIdentifier<ClassHash, LocationInFile>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), StarkFelt>,
-        declared_classes: TableIdentifier<ClassHash, LocationInFile>,
-        declared_classes_block: TableIdentifier<ClassHash, BlockNumber>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, IndexedDeprecatedContractClass>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), ClassHash>,
-        events: TableIdentifier<(ContractAddress, EventIndex), EventContent>,
-        headers: TableIdentifier<BlockNumber, BlockHeader>,
-        markers: TableIdentifier<MarkerKind, BlockNumber>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), Nonce>,
-        file_offsets: TableIdentifier<OffsetKind, usize>,
-        state_diffs: TableIdentifier<BlockNumber, LocationInFile>,
-        transaction_hash_to_idx: TableIdentifier<TransactionHash, TransactionIndex>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, TransactionHash>,
-        transaction_outputs: TableIdentifier<TransactionIndex, ThinTransactionOutput>,
-        transactions: TableIdentifier<TransactionIndex, Transaction>,
+        block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>>,
+        casms: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>>,
+        declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>>,
+        declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>>,
+        headers: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockHeader>>,
+        markers: TableIdentifier<MarkerKind, NoVersionValueWrapper<BlockNumber>>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>>,
+        file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>>,
+        state_diffs: TableIdentifier<BlockNumber, NoVersionValueWrapper<LocationInFile>>,
+        transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>>,
+        transaction_idx_to_hash: TableIdentifier<TransactionIndex, NoVersionValueWrapper<TransactionHash>>,
+        transaction_outputs: TableIdentifier<TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>>,
+        transactions: TableIdentifier<TransactionIndex, NoVersionValueWrapper<Transaction>>,
 
         // Version tables
-        starknet_version: TableIdentifier<BlockNumber, StarknetVersion>,
-        storage_version: TableIdentifier<String, Version>
+        starknet_version: TableIdentifier<BlockNumber, NoVersionValueWrapper<StarknetVersion>>,
+        storage_version: TableIdentifier<String, NoVersionValueWrapper<Version>>
     }
 }
 
@@ -492,7 +492,7 @@ pub enum StorageError {
     #[error(transparent)]
     MMapFileError(#[from] MMapFileError),
     #[error(transparent)]
-    StorageVersionInconcistency(#[from] StorageVersionError),
+    StorageVersionInconsistency(#[from] StorageVersionError),
     #[error("The table {table_name} is unused under the {storage_scope:?} storage scope.")]
     ScopeError { table_name: String, storage_scope: StorageScope },
     #[error(transparent)]
@@ -544,7 +544,7 @@ pub struct DbStats {
     pub tables_stats: BTreeMap<String, DbTableStats>,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 // A marker is the first block number for which the corresponding data doesn't exist yet.
 // Invariants:
 // - CompiledClass <= State <= Header
@@ -558,7 +558,8 @@ pub(crate) enum MarkerKind {
     BaseLayerBlock,
 }
 
-pub(crate) type MarkersTable<'env> = TableHandle<'env, MarkerKind, BlockNumber>;
+pub(crate) type MarkersTable<'env> =
+    TableHandle<'env, MarkerKind, NoVersionValueWrapper<BlockNumber>>;
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
@@ -645,7 +646,7 @@ fn open_storage_files(
     db_config: &DbConfig,
     mmap_file_config: MmapFileConfig,
     db_reader: DbReader,
-    file_offsets_table: &TableIdentifier<OffsetKind, usize>,
+    file_offsets_table: &TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>>,
 ) -> StorageResult<(FileHandlers<RW>, FileHandlers<RO>)> {
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
@@ -695,7 +696,7 @@ fn open_storage_files(
 }
 
 /// Represents a kind of mmap file.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 pub enum OffsetKind {
     /// A thin state diff file.
     ThinStateDiff,

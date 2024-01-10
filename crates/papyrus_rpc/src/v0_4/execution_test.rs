@@ -29,7 +29,15 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
 };
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
+    PatriciaKey,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass,
     EntryPointType,
@@ -40,6 +48,7 @@ use starknet_api::transaction::{
     Calldata,
     EventContent,
     Fee,
+    L1HandlerTransaction,
     MessageToL1,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -86,9 +95,17 @@ use super::execution::{
     L1HandlerTransactionTrace,
     TransactionTrace,
 };
-use super::transaction::{DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1};
-use crate::api::{BlockHashOrNumber, BlockId, Tag};
+use super::transaction::{
+    DeployAccountTransaction,
+    InvokeTransaction,
+    InvokeTransactionV1,
+    MessageFromL1,
+    TransactionVersion1,
+};
+use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
+    call_and_validate_schema_for_result,
+    call_api_then_assert_and_validate_schema_for_result,
     get_starknet_spec_api_schema_for_components,
     get_starknet_spec_api_schema_for_method_results,
     get_test_pending_classes,
@@ -113,6 +130,27 @@ lazy_static! {
     pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!("0x1010");
     pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
     pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
+    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
+    // call.
+    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x68b"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(167500000000000,),
+    };
+
+    // A message from L1 contract at address 0x987 to the contract at CONTRACT_ADDRESS that calls
+    // the entry point "l1_handle" with the value 0x123, the retdata should be 0x123.
+    pub static ref MESSAGE_FROM_L1: MessageFromL1 = MessageFromL1 {
+        from_address: EthAddress::try_from(stark_felt!(
+            "0x987"
+        ))
+        .unwrap(),
+        to_address: *CONTRACT_ADDRESS,
+        entry_point_selector: selector_from_name("l1_handle"),
+        payload: calldata![
+            stark_felt!("0x123")
+        ],
+    };
 }
 
 #[tokio::test]
@@ -125,29 +163,33 @@ async fn execution_call() {
     let key = stark_felt!(1234_u16);
     let value = stark_felt!(18_u8);
 
-    let res = module
-        .call::<_, Vec<StarkFelt>>(
-            "starknet_V0_4_call",
-            (
-                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
-                selector_from_name("test_storage_read_write"),
-                calldata![key, value],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-            ),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(res, vec![value]);
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        "starknet_V0_4_call",
+        vec![
+            Box::new(CallRequest {
+                contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                entry_point_selector: selector_from_name("test_storage_read_write"),
+                calldata: calldata![key, value],
+            }),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
+        &VERSION_0_4,
+        SpecFile::StarknetApiOpenrpc,
+        &vec![value],
+    )
+    .await;
 
     // Calling a non-existent contract.
     let err = module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                ContractAddress(patricia_key!("0x1234")),
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: ContractAddress(patricia_key!("0x1234")),
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -161,9 +203,11 @@ async fn execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                ContractAddress(patricia_key!("0x1234")),
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: ContractAddress(patricia_key!("0x1234")),
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(7))),
             ),
         )
@@ -177,9 +221,11 @@ async fn execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                *DEPRECATED_CONTRACT_ADDRESS,
-                selector_from_name("aaa"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                    entry_point_selector: selector_from_name("aaa"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -198,17 +244,15 @@ async fn execution_call() {
         Some(StarkFelt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
-    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                contract_address,
-                entry_point_selector,
-                calldata,
+                CallRequest { contract_address, entry_point_selector, calldata },
                 BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
             ),
         )
@@ -235,9 +279,11 @@ async fn pending_execution_call() {
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
             (
-                *DEPRECATED_CONTRACT_ADDRESS.0.key(),
-                selector_from_name("test_storage_read_write"),
-                calldata![key, value],
+                CallRequest {
+                    contract_address: *DEPRECATED_CONTRACT_ADDRESS,
+                    entry_point_selector: selector_from_name("test_storage_read_write"),
+                    calldata: calldata![key, value],
+                },
                 BlockId::Tag(Tag::Pending),
             ),
         )
@@ -257,14 +303,17 @@ async fn pending_execution_call() {
         Some(StarkFelt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
-    let entry_point_selector = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
+    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
         .call::<_, Vec<StarkFelt>>(
             "starknet_V0_4_call",
-            (contract_address, entry_point_selector, calldata, BlockId::Tag(Tag::Pending)),
+            (
+                CallRequest { contract_address, entry_point_selector, calldata },
+                BlockId::Tag(Tag::Pending),
+            ),
         )
         .await
         .unwrap();
@@ -281,7 +330,7 @@ async fn call_estimate_fee() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
+        version: TransactionVersion1::default(),
         sender_address: account_address,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -292,26 +341,18 @@ async fn call_estimate_fee() {
         ..Default::default()
     }));
 
-    let res = module
-        .call::<_, Vec<FeeEstimate>>(
-            "starknet_V0_4_estimateFee",
-            (
-                vec![invoke.clone()],
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-            ),
-        )
-        .await
-        .unwrap();
-
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    }];
-
-    assert_eq!(res, expected_fee_estimate);
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        "starknet_V0_4_estimateFee",
+        vec![
+            Box::new(vec![invoke.clone()]),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
+        &VERSION_0_4,
+        SpecFile::StarknetApiOpenrpc,
+        &vec![EXPECTED_FEE_ESTIMATE.clone()],
+    )
+    .await;
 
     // Test that calling the same transaction with a different block context with a different gas
     // price produces a different fee.
@@ -322,7 +363,7 @@ async fn call_estimate_fee() {
         )
         .await
         .unwrap();
-    assert_ne!(res, expected_fee_estimate);
+    assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
     // the current contract is that the transaction hash appears in the calldata and thus it is
@@ -345,7 +386,7 @@ async fn pending_call_estimate_fee() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
+        version: TransactionVersion1::default(),
         sender_address: account_address,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -363,15 +404,7 @@ async fn pending_call_estimate_fee() {
         )
         .await
         .unwrap();
-
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    let expected_fee_estimate = vec![FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    }];
-    assert_eq!(res, expected_fee_estimate);
+    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
     // the current contract is that the transaction hash appears in the calldata and thus it is
@@ -417,7 +450,7 @@ async fn test_call_simulate(
 ) {
     let mut invoke_v1 = InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
+        version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -429,28 +462,20 @@ async fn test_call_simulate(
     };
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(invoke_v1.clone()));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
-            (block_id, vec![invoke], Vec::<SimulationFlag>::new()),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        module,
+        "starknet_V0_4_simulateTransactions",
+        vec![Box::new(block_id), Box::new(vec![invoke]), Box::<Vec<SimulationFlag>>::default()],
+        &VERSION_0_4,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 
@@ -508,7 +533,7 @@ async fn call_simulate_skip_validate() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
+        version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -519,32 +544,24 @@ async fn call_simulate_skip_validate() {
         ..Default::default()
     }));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                vec![SimulationFlag::SkipValidate],
-            ),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        &module,
+        "starknet_V0_4_simulateTransactions",
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+            Box::new(vec![invoke]),
+            Box::new(vec![SimulationFlag::SkipValidate]),
+        ],
+        &VERSION_0_4,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 
@@ -566,7 +583,7 @@ async fn call_simulate_skip_fee_charge() {
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
         max_fee: Fee(1000000 * GAS_PRICE.0),
-        version: TransactionVersion::ONE,
+        version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
@@ -577,32 +594,24 @@ async fn call_simulate_skip_fee_charge() {
         ..Default::default()
     }));
 
-    let mut res = module
-        .call::<_, Vec<SimulatedTransaction>>(
-            "starknet_V0_4_simulateTransactions",
-            (
-                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))),
-                vec![invoke],
-                vec![SimulationFlag::SkipFeeCharge],
-            ),
-        )
-        .await
-        .unwrap();
+    let mut res = call_and_validate_schema_for_result::<_, Vec<SimulatedTransaction>>(
+        &module,
+        "starknet_V0_4_simulateTransactions",
+        vec![
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+            Box::new(vec![invoke]),
+            Box::new(vec![SimulationFlag::SkipFeeCharge]),
+        ],
+        &VERSION_0_4,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 1);
 
     let simulated_tx = res.pop().unwrap();
 
-    // TODO(yair): verify this is the correct fee, got this value by printing the result of the
-    // call.
-    // Why is it different from the estimate_fee call?
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("9ba"),
-        gas_price: *GAS_PRICE,
-        overall_fee: Fee(249000000000000),
-    };
-
-    assert_eq!(simulated_tx.fee_estimation, expected_fee_estimate);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 
@@ -693,10 +702,14 @@ async fn trace_block_transactions_regular_and_pending() {
         .commit()
         .unwrap();
 
-    let tx_1_trace = module
-        .call::<_, TransactionTrace>("starknet_V0_4_traceTransaction", [tx_hash1])
-        .await
-        .unwrap();
+    let tx_1_trace = call_and_validate_schema_for_result::<_, TransactionTrace>(
+        &module,
+        "starknet_V0_4_traceTransaction",
+        vec![Box::new(tx_hash1)],
+        &VERSION_0_4,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_matches!(tx_1_trace, TransactionTrace::Invoke(_));
 
@@ -707,13 +720,14 @@ async fn trace_block_transactions_regular_and_pending() {
 
     assert_matches!(tx_2_trace, TransactionTrace::Invoke(_));
 
-    let res = module
-        .call::<_, Vec<TransactionTraceWithHash>>(
-            "starknet_V0_4_traceBlockTransactions",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
-        )
-        .await
-        .unwrap();
+    let res = call_and_validate_schema_for_result::<_, Vec<TransactionTraceWithHash>>(
+        &module,
+        "starknet_V0_4_traceBlockTransactions",
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))))],
+        &VERSION_0_4,
+        SpecFile::TraceApi,
+    )
+    .await;
 
     assert_eq!(res.len(), 2);
     assert_eq!(res[0].trace_root, tx_1_trace);
@@ -1035,6 +1049,47 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
         .unwrap();
     validate_result(res[0].trace_root.clone());
     validate_result(res[1].trace_root.clone());
+}
+
+#[test]
+fn message_from_l1_to_l1_handler_tx() {
+    let l1_handler_tx = L1HandlerTransaction::from(MESSAGE_FROM_L1.clone());
+    assert_eq!(l1_handler_tx.version, TransactionVersion::ONE);
+    assert_eq!(l1_handler_tx.contract_address, *CONTRACT_ADDRESS);
+    assert_eq!(l1_handler_tx.entry_point_selector, selector_from_name("l1_handle"));
+    // The first item of calldata is the from_address.
+    let from_address = EthAddress::try_from(*l1_handler_tx.calldata.0.first().unwrap()).unwrap();
+    assert_eq!(from_address, MESSAGE_FROM_L1.from_address);
+    let rest_of_calldata = &l1_handler_tx.calldata.0[1..];
+    assert_eq!(rest_of_calldata, MESSAGE_FROM_L1.payload.0.as_slice());
+}
+
+#[tokio::test]
+async fn call_estimate_message_fee() {
+    let (module, storage_writer) =
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    prepare_storage_for_execution(storage_writer);
+
+    // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
+    // is correct.
+    let expected_fee_estimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x0"),
+        gas_price: *GAS_PRICE,
+        overall_fee: Fee(0),
+    };
+
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        "starknet_V0_4_estimateMessageFee",
+        vec![
+            Box::new(MESSAGE_FROM_L1.clone()),
+            Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0)))),
+        ],
+        &VERSION_0_4,
+        SpecFile::StarknetApiOpenrpc,
+        &expected_fee_estimate,
+    )
+    .await;
 }
 
 #[test]

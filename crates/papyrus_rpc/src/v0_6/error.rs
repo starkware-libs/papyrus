@@ -19,6 +19,8 @@ pub const CONTRACT_NOT_FOUND: JsonRpcError<String> =
 pub const INVALID_TRANSACTION_HASH: JsonRpcError<String> =
     JsonRpcError { code: 25, message: "Invalid transaction hash", data: None };
 
+// TODO(shahak): Remove allow(dead_code) once all errors are used.
+#[allow(dead_code)]
 pub const INVALID_BLOCK_HASH: JsonRpcError<String> =
     JsonRpcError { code: 26, message: "Invalid block hash", data: None };
 
@@ -54,10 +56,11 @@ pub struct ContractError {
     pub revert_error: String,
 }
 
-pub fn contract_error(contract_error: ContractError) -> JsonRpcError<ContractError> {
-    JsonRpcError { code: 40, message: "Contract error", data: Some(contract_error) }
+impl From<ContractError> for JsonRpcError<ContractError> {
+    fn from(contract_error: ContractError) -> Self {
+        Self { code: 40, message: "Contract error", data: Some(contract_error) }
+    }
 }
-
 #[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub struct TransactionExecutionError {
     pub transaction_index: usize,
@@ -87,8 +90,9 @@ pub const INSUFFICIENT_ACCOUNT_BALANCE: JsonRpcError<String> = JsonRpcError {
     data: None,
 };
 
-pub const VALIDATION_FAILURE: JsonRpcError<String> =
-    JsonRpcError { code: 55, message: "Account validation failed", data: None };
+pub fn validation_failure(data: String) -> JsonRpcError<String> {
+    JsonRpcError { code: 55, message: "Account validation failed", data: Some(data) }
+}
 
 pub const COMPILATION_FAILED: JsonRpcError<String> =
     JsonRpcError { code: 56, message: "Compilation failed", data: None };

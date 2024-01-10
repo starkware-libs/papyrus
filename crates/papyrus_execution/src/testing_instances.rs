@@ -8,7 +8,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, MessageToL1};
 use starknet_api::{contract_address, patricia_key};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
@@ -23,6 +23,7 @@ use crate::objects::{
     L1HandlerTransactionTrace,
     OrderedEvent,
     OrderedL2ToL1Message,
+    PriceUnit,
     Retdata,
     RevertReason,
     TransactionTrace,
@@ -31,7 +32,7 @@ use crate::{BlockExecutionConfig, ExecutionConfigByBlock};
 
 /// Return the default execution config, using the relative path from the testing directory.
 pub fn test_get_default_execution_config() -> ExecutionConfigByBlock {
-    let execution_config_file = PathBuf::from("../../config/execution_config/mainnet_config.json");
+    let execution_config_file = PathBuf::from("../../config/execution/mainnet.json");
     execution_config_file.try_into().unwrap()
 }
 
@@ -91,6 +92,10 @@ auto_impl_get_test_instance! {
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
+    pub enum PriceUnit {
+        Wei = 0,
+        Fri = 1,
+    }
 
     pub enum RevertReason {
         RevertReason(String) = 0,
@@ -109,6 +114,7 @@ impl GetTestInstance for FunctionInvocation {
             calls: Vec::new(),
             events: Vec::<OrderedEvent>::get_test_instance(rng),
             messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            execution_resources: ExecutionResources::get_test_instance(rng),
         }
     }
 }

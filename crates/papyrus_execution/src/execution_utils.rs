@@ -14,7 +14,7 @@ use blockifier::state::state_api::{State, StateReader};
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
-use papyrus_common::state::{DeployedContract, StorageEntry};
+use papyrus_common::state::{DeployedContract, ReplacedClass, StorageEntry};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
@@ -26,7 +26,13 @@ use thiserror::Error;
 
 use crate::objects::TransactionTrace;
 use crate::state_reader::ExecutionStateReader;
-use crate::{ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError, ExecutionResult};
+use crate::{
+    BlockifierError,
+    ExecutableTransactionInput,
+    ExecutionConfigByBlock,
+    ExecutionError,
+    ExecutionResult,
+};
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -122,7 +128,8 @@ pub fn induced_state_diff(
     let mut replaced_classes = IndexMap::new();
     let default_class_hash = ClassHash::default();
     for (address, class_hash) in blockifier_state_diff.address_to_class_hash.iter() {
-        let prev_class_hash = transactional_state.state.get_class_hash_at(*address)?;
+        let prev_class_hash =
+            transactional_state.state.get_class_hash_at(*address).map_err(BlockifierError::new)?;
         if prev_class_hash == default_class_hash {
             deployed_contracts.insert(*address, *class_hash);
         } else {
@@ -186,10 +193,22 @@ pub fn get_nonce_at<Mode: TransactionKind>(
 pub fn get_class_hash_at<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
     state_number: StateNumber,
-    pending_deployed_contracts: Option<&Vec<DeployedContract>>,
+    pending_deployed_contracts_and_replaced_classes: Option<(
+        &Vec<DeployedContract>,
+        &Vec<ReplacedClass>,
+    )>,
     contract_address: ContractAddress,
 ) -> StorageResult<Option<ClassHash>> {
-    if let Some(pending_deployed_contracts) = pending_deployed_contracts {
+    if let Some((pending_deployed_contracts, pending_replaced_classes)) =
+        pending_deployed_contracts_and_replaced_classes
+    {
+        // Searching first in the replaced classes because if the contract was deployed and
+        // replaced, the replaced class is the contract's class.
+        for ReplacedClass { address, class_hash } in pending_replaced_classes {
+            if *address == contract_address {
+                return Ok(Some(*class_hash));
+            }
+        }
         for DeployedContract { address, class_hash } in pending_deployed_contracts {
             if *address == contract_address {
                 return Ok(Some(*class_hash));

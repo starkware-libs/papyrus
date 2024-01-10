@@ -9,7 +9,12 @@ use blockifier::state::state_api::StateReader;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
-use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
+use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StorageEntry,
+};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -60,6 +65,7 @@ fn read_state() {
     let nonce1 = Nonce(stark_felt!(2_u128));
     let class_hash3 = ClassHash(567_u128.into());
     let class_hash4 = ClassHash(89_u128.into());
+    let class_hash5 = ClassHash(98765_u128.into());
 
     storage_writer
         .begin_rw_txn()
@@ -95,6 +101,8 @@ fn read_state() {
                 ),
                 declared_classes: indexmap!(
                     class_hash0 =>
+                    (compiled_class_hash0, class0.clone()),
+                    class_hash5 =>
                     (compiled_class_hash0, class0.clone())
                 ),
                 deprecated_declared_classes: indexmap!(
@@ -132,6 +140,7 @@ fn read_state() {
         storage_reader: storage_reader.clone(),
         state_number: state_number0,
         maybe_pending_data: None,
+        missing_compiled_class: None,
     };
     let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_0, StarkFelt::default());
@@ -152,6 +161,7 @@ fn read_state() {
         storage_reader: storage_reader.clone(),
         state_number: state_number1,
         maybe_pending_data: None,
+        missing_compiled_class: None,
     };
     let storage_after_block_1 = state_reader1.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_1, storage_value0);
@@ -163,11 +173,17 @@ fn read_state() {
         state_reader1.get_compiled_contract_class(&class_hash0).unwrap();
     assert_eq!(compiled_contract_class_after_block_1, blockifier_casm0);
 
+    // Test that if we try to get a casm and it's missing, that an error is returned and the field
+    // `missing_compiled_class` is set to its hash
+    state_reader1.get_compiled_contract_class(&class_hash5).unwrap_err();
+    assert_eq!(state_reader1.missing_compiled_class.unwrap(), class_hash5);
+
     let state_number2 = StateNumber::right_after_block(BlockNumber(2));
     let mut state_reader2 = ExecutionStateReader {
         storage_reader,
         state_number: state_number2,
         maybe_pending_data: None,
+        missing_compiled_class: None,
     };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_2, nonce0);
@@ -212,6 +228,16 @@ fn read_state() {
         state_reader2.get_compiled_contract_class(&class_hash4).unwrap(),
         BlockifierContractClass::V0(ContractClassV0::try_from(class1).unwrap())
     );
+
+    // Test get_class_hash_at when the class is replaced.
+    if let Some(pending_data) = &mut state_reader2.maybe_pending_data {
+        pending_data.replaced_classes = vec![
+            ReplacedClass { address: address0, class_hash: class_hash3 },
+            ReplacedClass { address: address2, class_hash: class_hash3 },
+        ];
+    }
+    assert_eq!(state_reader2.get_class_hash_at(address0).unwrap(), class_hash3);
+    assert_eq!(state_reader2.get_class_hash_at(address2).unwrap(), class_hash3);
 }
 
 // Make sure we have the arbitrary precision feature of serde_json.

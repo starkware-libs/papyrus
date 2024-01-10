@@ -1,3 +1,4 @@
+use pretty_assertions::assert_eq;
 use serde::{Deserialize, Serialize};
 use sha3::{Digest, Keccak256};
 use starknet_api::block::BlockNumber;
@@ -12,6 +13,7 @@ use super::{
     validate_transaction_hash,
     CONSTRUCTOR_ENTRY_POINT_SELECTOR,
 };
+use crate::TransactionOptions;
 
 #[test]
 fn test_ascii_as_felt() {
@@ -36,6 +38,7 @@ fn test_constructor_selector() {
 struct TransactionTestData {
     transaction: Transaction,
     transaction_hash: TransactionHash,
+    only_query_transaction_hash: Option<TransactionHash>,
     chain_id: ChainId,
     block_number: BlockNumber,
 }
@@ -55,7 +58,7 @@ fn test_transaction_hash() {
                 &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash,
-                false,
+                &TransactionOptions::default(),
             )
             .unwrap(),
             "expected transaction hash {}",
@@ -64,7 +67,7 @@ fn test_transaction_hash() {
         let actual_transaction_hash = get_transaction_hash(
             &transaction_test_data.transaction,
             &transaction_test_data.chain_id,
-            false,
+            &TransactionOptions::default(),
         )
         .unwrap();
         assert_eq!(
@@ -89,11 +92,36 @@ fn test_deprecated_transaction_hash() {
                 &transaction_test_data.block_number,
                 &transaction_test_data.chain_id,
                 transaction_test_data.transaction_hash,
-                false,
+                &TransactionOptions::default(),
             )
             .unwrap(),
             "expected_transaction_hash: {:?}",
             transaction_test_data.transaction_hash
+        );
+    }
+}
+
+#[test]
+fn test_only_query_transaction_hash() {
+    let transactions_test_data_vec: Vec<TransactionTestData> =
+        serde_json::from_value(read_json_file("transaction_hash.json")).unwrap();
+
+    for transaction_test_data in transactions_test_data_vec {
+        // L1Handler only-query transactions are not supported.
+        if let Transaction::L1Handler(_) = transaction_test_data.transaction {
+            continue;
+        }
+
+        dbg!(transaction_test_data.transaction_hash);
+        let actual_transaction_hash = get_transaction_hash(
+            &transaction_test_data.transaction,
+            &transaction_test_data.chain_id,
+            &TransactionOptions { only_query: true },
+        )
+        .unwrap();
+        assert_eq!(
+            actual_transaction_hash,
+            transaction_test_data.only_query_transaction_hash.unwrap(),
         );
     }
 }

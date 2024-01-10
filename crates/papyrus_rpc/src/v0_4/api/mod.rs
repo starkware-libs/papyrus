@@ -16,17 +16,12 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
-use starknet_api::transaction::{
-    Calldata,
-    EventKey,
-    Fee,
-    TransactionHash,
-    TransactionOffsetInBlock,
-};
+use starknet_api::transaction::{EventKey, Fee, TransactionHash, TransactionOffsetInBlock};
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -52,10 +47,13 @@ use super::transaction::{
     InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    MessageFromL1,
     TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
-use crate::api::BlockId;
+use crate::api::{BlockId, CallRequest};
 use crate::syncing_state::SyncingState;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
@@ -169,26 +167,20 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    async fn call(
-        &self,
-        contract_address: ContractAddress,
-        entry_point_selector: EntryPointSelector,
-        calldata: Calldata,
-        block_id: BlockId,
-    ) -> RpcResult<Vec<StarkFelt>>;
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>>;
 
     /// Submits a new invoke transaction to be added to the chain.
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransactionV1,
+        invoke_transaction: TypedInvokeTransactionV1,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
     #[method(name = "addDeployAccountTransaction")]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
 
     /// Submits a new declare transaction to be added to the chain.
@@ -202,9 +194,17 @@ pub trait JsonRpc {
     #[method(name = "estimateFee")]
     async fn estimate_fee(
         &self,
-        transactions: Vec<BroadcastedTransaction>,
+        request: Vec<BroadcastedTransaction>,
         block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
@@ -247,10 +247,14 @@ pub struct EventsChunk {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub to_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<ContinuationToken>,
     pub chunk_size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<ContractAddress>,
     #[serde(default)]
     pub keys: Vec<HashSet<EventKey>>,
@@ -357,26 +361,24 @@ pub(crate) fn stored_txn_to_executable_txn(
             Ok(ExecutableTransactionInput::DeclareV2(value, casm, false))
         }
         starknet_api::transaction::Transaction::Declare(
-            starknet_api::transaction::DeclareTransaction::V3(_),
-        ) => Err(internal_server_error(
-            "The requested transaction is a declare of version 3, which is not supported on \
-             v0.4.0.",
-        )),
+            starknet_api::transaction::DeclareTransaction::V3(value),
+        ) => {
+            let casm = storage_txn
+                .get_casm(&value.class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| {
+                    internal_server_error(format!(
+                        "Missing casm of class hash {}.",
+                        value.class_hash
+                    ))
+                })?;
+            Ok(ExecutableTransactionInput::DeclareV3(value, casm, false))
+        }
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
         }
         starknet_api::transaction::Transaction::DeployAccount(deploy_account_tx) => {
-            match deploy_account_tx {
-                starknet_api::transaction::DeployAccountTransaction::V1(_) => {
-                    Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx, false))
-                }
-                starknet_api::transaction::DeployAccountTransaction::V3(_) => {
-                    Err(internal_server_error(
-                        "The requested transaction is a deploy account of version 3, which is not \
-                         supported on v0.4.0.",
-                    ))
-                }
-            }
+            Ok(ExecutableTransactionInput::DeployAccount(deploy_account_tx, false))
         }
         starknet_api::transaction::Transaction::Invoke(value) => {
             Ok(ExecutableTransactionInput::Invoke(value, false))
@@ -525,7 +527,13 @@ impl TryFrom<ExecutionError> for JsonRpcError {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
         match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
+            ExecutionError::MissingCompiledClass { class_hash } => {
+                debug!(
+                    "Execution failed because it required the compiled class with hash \
+                     {class_hash} and we didn't download it yet."
+                );
+                Ok(BLOCK_NOT_FOUND)
+            }
             ExecutionError::ContractNotFound { .. } => Ok(CONTRACT_NOT_FOUND),
             // All other execution errors are considered contract errors.
             _ => Ok(CONTRACT_ERROR),

@@ -27,9 +27,12 @@ use starknet_api::transaction::{
     Tip,
     Transaction,
     TransactionHash,
+    TransactionVersion,
 };
-use starknet_api::StarknetApiError;
+use starknet_api::{stark_felt, StarknetApiError};
 use starknet_crypto::{pedersen_hash, poseidon_hash_many, FieldElement};
+
+use crate::TransactionOptions;
 
 type ResourceName = [u8; 7];
 
@@ -65,42 +68,47 @@ lazy_static! {
 pub fn get_transaction_hash(
     transaction: &Transaction,
     chain_id: &ChainId,
-    only_query: bool,
+    transaction_options: &TransactionOptions,
 ) -> Result<TransactionHash, StarknetApiError> {
-    if only_query {
-        // TODO(yair): Implement.
-        todo!("Calculating tx hash with only_query bit not supported yet.");
-    }
+    let tx_version = get_tx_version(transaction, transaction_options);
     match transaction {
         Transaction::Declare(declare) => match declare {
             DeclareTransaction::V0(declare_v0) => {
-                get_declare_transaction_v0_hash(declare_v0, chain_id)
+                get_declare_transaction_v0_hash(declare_v0, chain_id, &tx_version)
             }
             DeclareTransaction::V1(declare_v1) => {
-                get_declare_transaction_v1_hash(declare_v1, chain_id)
+                get_declare_transaction_v1_hash(declare_v1, chain_id, &tx_version)
             }
             DeclareTransaction::V2(declare_v2) => {
-                get_declare_transaction_v2_hash(declare_v2, chain_id)
+                get_declare_transaction_v2_hash(declare_v2, chain_id, &tx_version)
             }
             DeclareTransaction::V3(declare_v3) => {
-                get_declare_transaction_v3_hash(declare_v3, chain_id)
+                get_declare_transaction_v3_hash(declare_v3, chain_id, &tx_version)
             }
         },
-        Transaction::Deploy(deploy) => get_deploy_transaction_hash(deploy, chain_id),
+        Transaction::Deploy(deploy) => get_deploy_transaction_hash(deploy, chain_id, &tx_version),
         Transaction::DeployAccount(deploy_account) => match deploy_account {
             DeployAccountTransaction::V1(deploy_account_v1) => {
-                get_deploy_account_transaction_v1_hash(deploy_account_v1, chain_id)
+                get_deploy_account_transaction_v1_hash(deploy_account_v1, chain_id, &tx_version)
             }
             DeployAccountTransaction::V3(deploy_account_v3) => {
-                get_deploy_account_transaction_v3_hash(deploy_account_v3, chain_id)
+                get_deploy_account_transaction_v3_hash(deploy_account_v3, chain_id, &tx_version)
             }
         },
         Transaction::Invoke(invoke) => match invoke {
-            InvokeTransaction::V0(invoke_v0) => get_invoke_transaction_v0_hash(invoke_v0, chain_id),
-            InvokeTransaction::V1(invoke_v1) => get_invoke_transaction_v1_hash(invoke_v1, chain_id),
-            InvokeTransaction::V3(invoke_v3) => get_invoke_transaction_v3_hash(invoke_v3, chain_id),
+            InvokeTransaction::V0(invoke_v0) => {
+                get_invoke_transaction_v0_hash(invoke_v0, chain_id, &tx_version)
+            }
+            InvokeTransaction::V1(invoke_v1) => {
+                get_invoke_transaction_v1_hash(invoke_v1, chain_id, &tx_version)
+            }
+            InvokeTransaction::V3(invoke_v3) => {
+                get_invoke_transaction_v3_hash(invoke_v3, chain_id, &tx_version)
+            }
         },
-        Transaction::L1Handler(l1_handler) => get_l1_handler_transaction_hash(l1_handler, chain_id),
+        Transaction::L1Handler(l1_handler) => {
+            get_l1_handler_transaction_hash(l1_handler, chain_id, &tx_version)
+        }
     }
 }
 
@@ -113,7 +121,9 @@ fn get_deprecated_transaction_hashes(
     chain_id: &ChainId,
     block_number: &BlockNumber,
     transaction: &Transaction,
+    transaction_options: &TransactionOptions,
 ) -> Result<Vec<TransactionHash>, StarknetApiError> {
+    let tx_version = get_tx_version(transaction, transaction_options);
     Ok(
         if chain_id == &ChainId("SN_MAIN".to_string())
             && block_number > &MAINNET_TRANSACTION_HASH_WITH_VERSION
@@ -123,17 +133,21 @@ fn get_deprecated_transaction_hashes(
             match transaction {
                 Transaction::Declare(_) => vec![],
                 Transaction::Deploy(deploy) => {
-                    vec![get_deprecated_deploy_transaction_hash(deploy, chain_id)?]
+                    vec![get_deprecated_deploy_transaction_hash(deploy, chain_id, &tx_version)?]
                 }
                 Transaction::DeployAccount(_) => vec![],
                 Transaction::Invoke(invoke) => match invoke {
                     InvokeTransaction::V0(invoke_v0) => {
-                        vec![get_deprecated_invoke_transaction_v0_hash(invoke_v0, chain_id)?]
+                        vec![get_deprecated_invoke_transaction_v0_hash(
+                            invoke_v0,
+                            chain_id,
+                            &tx_version,
+                        )?]
                     }
                     InvokeTransaction::V1(_) | InvokeTransaction::V3(_) => vec![],
                 },
                 Transaction::L1Handler(l1_handler) => {
-                    get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id)?
+                    get_deprecated_l1_handler_transaction_hashes(l1_handler, chain_id, &tx_version)?
                 }
             }
         },
@@ -150,11 +164,15 @@ pub fn validate_transaction_hash(
     block_number: &BlockNumber,
     chain_id: &ChainId,
     expected_hash: TransactionHash,
-    only_query: bool,
+    transaction_options: &TransactionOptions,
 ) -> Result<bool, StarknetApiError> {
-    let mut possible_hashes =
-        get_deprecated_transaction_hashes(chain_id, block_number, transaction)?;
-    possible_hashes.push(get_transaction_hash(transaction, chain_id, only_query)?);
+    let mut possible_hashes = get_deprecated_transaction_hashes(
+        chain_id,
+        block_number,
+        transaction,
+        transaction_options,
+    )?;
+    possible_hashes.push(get_transaction_hash(transaction, chain_id, transaction_options)?);
     Ok(possible_hashes.contains(&expected_hash))
 }
 
@@ -200,8 +218,7 @@ impl HashChain {
             .elements
             .iter()
             .fold(FieldElement::ZERO, |current_hash, felt| pedersen_hash(&current_hash, felt));
-        let n_elements =
-            FieldElement::try_from(self.elements.len()).expect("Got too many elements.");
+        let n_elements = FieldElement::from(self.elements.len());
         pedersen_hash(&current_hash, &n_elements).into()
     }
 
@@ -272,21 +289,24 @@ fn data_availability_mode_index(mode: &DataAvailabilityMode) -> u64 {
 fn get_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
-    get_common_deploy_transaction_hash(transaction, chain_id, false)
+    get_common_deploy_transaction_hash(transaction, chain_id, false, transaction_version)
 }
 
 fn get_deprecated_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
-    get_common_deploy_transaction_hash(transaction, chain_id, true)
+    get_common_deploy_transaction_hash(transaction, chain_id, true, transaction_version)
 }
 
 fn get_common_deploy_transaction_hash(
     transaction: &DeployTransaction,
     chain_id: &ChainId,
     is_deprecated: bool,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     let contract_address = calculate_contract_address(
         transaction.contract_address_salt,
@@ -298,7 +318,7 @@ fn get_common_deploy_transaction_hash(
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DEPLOY)
-        .chain_if(&transaction.version.0, !is_deprecated)
+        .chain_if(&transaction_version.0, !is_deprecated)
         .chain(contract_address.0.key())
         .chain(&CONSTRUCTOR_ENTRY_POINT_SELECTOR)
         .chain(
@@ -315,26 +335,29 @@ fn get_common_deploy_transaction_hash(
 fn get_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
-    get_common_invoke_transaction_v0_hash(transaction, chain_id, false)
+    get_common_invoke_transaction_v0_hash(transaction, chain_id, false, transaction_version)
 }
 
 fn get_deprecated_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
-    get_common_invoke_transaction_v0_hash(transaction, chain_id, true)
+    get_common_invoke_transaction_v0_hash(transaction, chain_id, true, transaction_version)
 }
 
 fn get_common_invoke_transaction_v0_hash(
     transaction: &InvokeTransactionV0,
     chain_id: &ChainId,
     is_deprecated: bool,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain(&INVOKE)
-        .chain_if(&ZERO, !is_deprecated) // Version
+        .chain_if(&transaction_version.0, !is_deprecated) // Version
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
@@ -347,11 +370,12 @@ fn get_common_invoke_transaction_v0_hash(
 fn get_invoke_transaction_v1_hash(
     transaction: &InvokeTransactionV1,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain(&INVOKE)
-        .chain(&ONE) // Version
+        .chain(&transaction_version.0)
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in invoke transaction.
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
@@ -365,6 +389,7 @@ fn get_invoke_transaction_v1_hash(
 fn get_invoke_transaction_v3_hash(
     transaction: &InvokeTransactionV3,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     let tip_resource_bounds_hash =
         get_tip_resource_bounds_hash(&transaction.resource_bounds, &transaction.tip)?;
@@ -382,17 +407,17 @@ fn get_invoke_transaction_v3_hash(
 
     Ok(TransactionHash(
         HashChain::new()
-        .chain(&INVOKE)
-        .chain(&THREE) // Version
-        .chain(transaction.sender_address.0.key())
-        .chain(&tip_resource_bounds_hash)
-        .chain(&paymaster_data_hash)
-        .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .chain(&transaction.nonce.0)
-        .chain(&data_availability_mode)
-        .chain(&account_deployment_data_hash)
-        .chain(&calldata_hash)
-        .get_poseidon_hash(),
+            .chain(&INVOKE)
+            .chain(&transaction_version.0)
+            .chain(transaction.sender_address.0.key())
+            .chain(&tip_resource_bounds_hash)
+            .chain(&paymaster_data_hash)
+            .chain(&ascii_as_felt(chain_id.0.as_str())?)
+            .chain(&transaction.nonce.0)
+            .chain(&data_availability_mode)
+            .chain(&account_deployment_data_hash)
+            .chain(&calldata_hash)
+            .get_poseidon_hash(),
     ))
 }
 
@@ -406,20 +431,33 @@ enum L1HandlerVersions {
 fn get_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
-    get_common_l1_handler_transaction_hash(transaction, chain_id, L1HandlerVersions::V0)
+    get_common_l1_handler_transaction_hash(
+        transaction,
+        chain_id,
+        L1HandlerVersions::V0,
+        transaction_version,
+    )
 }
 
 fn get_deprecated_l1_handler_transaction_hashes(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<Vec<TransactionHash>, StarknetApiError> {
     Ok(vec![
-        get_common_l1_handler_transaction_hash(transaction, chain_id, L1HandlerVersions::AsInvoke)?,
+        get_common_l1_handler_transaction_hash(
+            transaction,
+            chain_id,
+            L1HandlerVersions::AsInvoke,
+            transaction_version,
+        )?,
         get_common_l1_handler_transaction_hash(
             transaction,
             chain_id,
             L1HandlerVersions::V0Deprecated,
+            transaction_version,
         )?,
     ])
 }
@@ -428,11 +466,12 @@ fn get_common_l1_handler_transaction_hash(
     transaction: &L1HandlerTransaction,
     chain_id: &ChainId,
     version: L1HandlerVersions,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain_if_else(&INVOKE, &L1_HANDLER, version == L1HandlerVersions::AsInvoke)
-        .chain_if(&transaction.version.0, version > L1HandlerVersions::V0Deprecated)
+        .chain_if(&transaction_version.0, version > L1HandlerVersions::V0Deprecated)
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
@@ -446,11 +485,12 @@ fn get_common_l1_handler_transaction_hash(
 fn get_declare_transaction_v0_hash(
     transaction: &DeclareTransactionV0V1,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DECLARE)
-        .chain(&ZERO) // Version
+        .chain(&transaction_version.0)
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO ) // No entry point selector in declare transaction.
         .chain(&HashChain::new().get_pedersen_hash())
@@ -464,11 +504,12 @@ fn get_declare_transaction_v0_hash(
 fn get_declare_transaction_v1_hash(
     transaction: &DeclareTransactionV0V1,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DECLARE)
-        .chain(&ONE) // Version
+        .chain(&transaction_version.0)
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in declare transaction.
         .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
@@ -482,11 +523,12 @@ fn get_declare_transaction_v1_hash(
 fn get_declare_transaction_v2_hash(
     transaction: &DeclareTransactionV2,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DECLARE)
-        .chain(&TWO) // Version
+        .chain(&transaction_version.0)
         .chain(transaction.sender_address.0.key())
         .chain(&ZERO) // No entry point selector in declare transaction.
         .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
@@ -501,6 +543,7 @@ fn get_declare_transaction_v2_hash(
 fn get_declare_transaction_v3_hash(
     transaction: &DeclareTransactionV3,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     let tip_resource_bounds_hash =
         get_tip_resource_bounds_hash(&transaction.resource_bounds, &transaction.tip)?;
@@ -517,7 +560,7 @@ fn get_declare_transaction_v3_hash(
     Ok(TransactionHash(
         HashChain::new()
             .chain(&DECLARE)
-            .chain(&THREE) // Version
+            .chain(&transaction_version.0)
             .chain(transaction.sender_address.0.key())
             .chain(&tip_resource_bounds_hash)
             .chain(&paymaster_data_hash)
@@ -534,6 +577,7 @@ fn get_declare_transaction_v3_hash(
 fn get_deploy_account_transaction_v1_hash(
     transaction: &DeployAccountTransactionV1,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     let calldata_hash = HashChain::new()
         .chain(&transaction.class_hash.0)
@@ -551,7 +595,7 @@ fn get_deploy_account_transaction_v1_hash(
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DEPLOY_ACCOUNT)
-        .chain(&ONE) // Version
+        .chain(&transaction_version.0)
         .chain(contract_address.0.key())
         .chain(&ZERO) // No entry point selector in deploy account transaction.
         .chain(&calldata_hash)
@@ -565,6 +609,7 @@ fn get_deploy_account_transaction_v1_hash(
 fn get_deploy_account_transaction_v3_hash(
     transaction: &DeployAccountTransactionV3,
     chain_id: &ChainId,
+    transaction_version: &TransactionVersion,
 ) -> Result<TransactionHash, StarknetApiError> {
     let contract_address = calculate_contract_address(
         transaction.contract_address_salt,
@@ -585,17 +630,40 @@ fn get_deploy_account_transaction_v3_hash(
 
     Ok(TransactionHash(
         HashChain::new()
-        .chain(&DEPLOY_ACCOUNT)
-        .chain(&THREE) // Version
-        .chain(contract_address.0.key())
-        .chain(&tip_resource_bounds_hash)
-        .chain(&paymaster_data_hash)
-        .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .chain(&data_availability_mode)
-        .chain(&transaction.nonce.0)
-        .chain(&constructor_calldata_hash)
-        .chain(&transaction.class_hash.0)
-        .chain(&transaction.contract_address_salt.0)
-        .get_poseidon_hash(),
+            .chain(&DEPLOY_ACCOUNT)
+            .chain(&transaction_version.0)
+            .chain(contract_address.0.key())
+            .chain(&tip_resource_bounds_hash)
+            .chain(&paymaster_data_hash)
+            .chain(&ascii_as_felt(chain_id.0.as_str())?)
+            .chain(&data_availability_mode)
+            .chain(&transaction.nonce.0)
+            .chain(&constructor_calldata_hash)
+            .chain(&transaction.class_hash.0)
+            .chain(&transaction.contract_address_salt.0)
+            .get_poseidon_hash(),
     ))
+}
+
+// Returns the transaction version taking into account the transaction options.
+fn get_tx_version(
+    tx: &Transaction,
+    transaction_options: &TransactionOptions,
+) -> TransactionVersion {
+    let mut version = match tx {
+        Transaction::Declare(tx) => tx.version(),
+        Transaction::Deploy(tx) => tx.version,
+        Transaction::DeployAccount(tx) => tx.version(),
+        Transaction::Invoke(tx) => tx.version(),
+        Transaction::L1Handler(tx) => tx.version,
+    };
+
+    // If only_query is true, set the 128-th bit.
+    if transaction_options.only_query {
+        let query_only_bit: FieldElement =
+            stark_felt!("0x100000000000000000000000000000000").into();
+        let fe: FieldElement = version.0.into();
+        version = TransactionVersion(StarkFelt::from(fe + query_only_bit));
+    }
+    version
 }

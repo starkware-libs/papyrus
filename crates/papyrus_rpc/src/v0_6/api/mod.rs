@@ -7,7 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::TransactionTrace;
+use papyrus_execution::objects::{PriceUnit, TransactionTrace};
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -17,17 +17,12 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
-use starknet_api::transaction::{
-    Calldata,
-    EventKey,
-    Fee,
-    TransactionHash,
-    TransactionOffsetInBlock,
-};
+use starknet_api::transaction::{EventKey, Fee, TransactionHash, TransactionOffsetInBlock};
+use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
@@ -36,7 +31,13 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use super::error::{JsonRpcError, BLOCK_NOT_FOUND, INVALID_CONTINUATION_TOKEN};
+use super::error::{
+    ContractError,
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CONTRACT_NOT_FOUND,
+    INVALID_CONTINUATION_TOKEN,
+};
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
@@ -48,11 +49,14 @@ use super::transaction::{
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
+    MessageFromL1,
     TransactionStatus,
     TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransaction,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
-use crate::api::BlockId;
+use crate::api::{BlockId, CallRequest};
 use crate::syncing_state::SyncingState;
 use crate::{internal_server_error, ContinuationTokenAsStruct};
 
@@ -177,26 +181,20 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    async fn call(
-        &self,
-        contract_address: ContractAddress,
-        entry_point_selector: EntryPointSelector,
-        calldata: Calldata,
-        block_id: BlockId,
-    ) -> RpcResult<Vec<StarkFelt>>;
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>>;
 
     /// Submits a new invoke transaction to be added to the chain.
     #[method(name = "addInvokeTransaction")]
     async fn add_invoke_transaction(
         &self,
-        invoke_transaction: InvokeTransaction,
+        invoke_transaction: TypedInvokeTransaction,
     ) -> RpcResult<AddInvokeOkResult>;
 
     /// Submits a new deploy account transaction to be added to the chain.
     #[method(name = "addDeployAccountTransaction")]
     async fn add_deploy_account_transaction(
         &self,
-        deploy_account_transaction: DeployAccountTransaction,
+        deploy_account_transaction: TypedDeployAccountTransaction,
     ) -> RpcResult<AddDeployAccountOkResult>;
 
     /// Submits a new declare transaction to be added to the chain.
@@ -210,10 +208,18 @@ pub trait JsonRpc {
     #[method(name = "estimateFee")]
     async fn estimate_fee(
         &self,
-        transactions: Vec<BroadcastedTransaction>,
-        block_id: BlockId,
+        request: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
+        block_id: BlockId,
     ) -> RpcResult<Vec<FeeEstimate>>;
+
+    /// Estimates the fee of a message from L1.
+    #[method(name = "estimateMessageFee")]
+    async fn estimate_message_fee(
+        &self,
+        message: MessageFromL1,
+        block_id: BlockId,
+    ) -> RpcResult<FeeEstimate>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
@@ -256,10 +262,14 @@ pub struct EventsChunk {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 pub struct EventFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub to_block: Option<BlockId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub continuation_token: Option<ContinuationToken>,
     pub chunk_size: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<ContractAddress>,
     #[serde(default)]
     pub keys: Vec<HashSet<EventKey>>,
@@ -286,15 +296,19 @@ pub struct FeeEstimate {
     pub gas_consumed: StarkFelt,
     pub gas_price: GasPrice,
     pub overall_fee: Fee,
+    pub unit: PriceUnit,
 }
 
 impl FeeEstimate {
-    pub fn from(gas_price: GasPrice, overall_fee: Fee) -> Self {
+    pub fn from(gas_price: GasPrice, overall_fee: Fee, unit: PriceUnit) -> Self {
         match gas_price {
             GasPrice(0) => Self::default(),
-            _ => {
-                Self { gas_consumed: (overall_fee.0 / gas_price.0).into(), gas_price, overall_fee }
-            }
+            _ => Self {
+                gas_consumed: (overall_fee.0 / gas_price.0).into(),
+                gas_price,
+                overall_fee,
+                unit,
+            },
         }
     }
 }
@@ -582,13 +596,22 @@ impl TryFrom<ApiContractClass> for GatewayContractClass {
     }
 }
 
-impl TryFrom<ExecutionError> for JsonRpcError<String> {
-    type Error = ErrorObjectOwned;
-    fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
-        match value {
-            ExecutionError::NotSynced { .. } => Ok(BLOCK_NOT_FOUND),
-            _ => Err(internal_server_error(value)),
+pub(crate) fn execution_error_to_error_object_owned(err: ExecutionError) -> ErrorObjectOwned {
+    match err {
+        ExecutionError::MissingCompiledClass { class_hash } => {
+            debug!(
+                "Execution failed because it required the compiled class with hash {class_hash} \
+                 and we didn't download it yet."
+            );
+            BLOCK_NOT_FOUND.into()
         }
+        ExecutionError::ContractError(blockifier_err) => {
+            let contract_err = ContractError { revert_error: blockifier_err.to_string() };
+            let rpc_err: JsonRpcError<ContractError> = contract_err.into();
+            rpc_err.into()
+        }
+        ExecutionError::ContractNotFound { .. } => CONTRACT_NOT_FOUND.into(),
+        _ => internal_server_error(err),
     }
 }
 

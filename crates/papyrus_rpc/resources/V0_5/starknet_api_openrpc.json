@@ -1271,7 +1271,7 @@
                 "title": "Storage key",
                 "$comment": "A storage key, represented as a string of hex digits",
                 "description": "A storage key. Represented as up to 62 hex digits, 3 bits, and 5 leading zeroes.",
-                "pattern": "^0x0[0-7]{1}[a-fA-F0-9]{0,62}$"
+                "pattern": "^0x(0|[0-7]{1}[a-fA-F0-9]{0,62}$)"
             },
             "ETH_ADDRESS": {
                 "title": "Ethereum address",
@@ -2245,7 +2245,10 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -3346,7 +3349,7 @@
                         "description": "The number of KECCAK builtin instances",
                         "$ref": "#/components/schemas/NUM_AS_HEX"
                     },
-                    "segment_arena_builtin_applications": {
+                    "segment_arena_builtin": {
                         "title": "Keccak applications",
                         "description": "The number of KECCAK builtin instances",
                         "$ref": "#/components/schemas/NUM_AS_HEX"
@@ -3361,7 +3364,7 @@
                     "ecdsa_builtin_applications",
                     "bitwise_builtin_applications",
                     "keccak_builtin_applications",
-                    "segment_arena_builtin_applications"
+                    "segment_arena_builtin"
                 ]
             }
         },

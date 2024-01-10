@@ -7,8 +7,15 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use mockito::mock;
 use pretty_assertions::assert_eq;
-use starknet_api::block::BlockNumber;
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
+use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::{
+    ClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -40,6 +47,7 @@ use super::{
     GET_BLOCK_URL,
     GET_STATE_UPDATE_URL,
 };
+use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -191,7 +199,7 @@ async fn contract_class() {
     let mock_by_hash =
         mock(
             "GET",
-            &format!("/feeder_gateway/get_class_by_hash?\
+            &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&\
          {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c")[..],
         )
         .with_status(200)
@@ -275,7 +283,7 @@ async fn deprecated_contract_class() {
     let mock_by_hash =
         mock(
             "GET",
-            &format!("/feeder_gateway/get_class_by_hash?\
+            &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&\
          {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
         )
         .with_status(200)
@@ -298,10 +306,15 @@ async fn deprecated_contract_class() {
     // Undeclared class.
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
     let mock_by_hash =
-        mock("GET", &format!("/feeder_gateway/get_class_by_hash?{CLASS_HASH_QUERY}=0x7")[..])
-            .with_status(400)
-            .with_body(body)
-            .create();
+        mock(
+            "GET",
+            &format!(
+                "/feeder_gateway/get_class_by_hash?blockNumber=pending&{CLASS_HASH_QUERY}=0x7"
+            )[..],
+        )
+        .with_status(400)
+        .with_body(body)
+        .create();
     let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
@@ -371,7 +384,10 @@ async fn compiled_class_by_hash() {
     let raw_casm_contract_class = read_resource_file("reader/casm_contract_class.json");
     let mock_casm_contract_class = mock(
         "GET",
-        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x7")[..],
+        &format!(
+            "/feeder_gateway/get_compiled_class_by_class_hash?blockNumber=pending&\
+             {CLASS_HASH_QUERY}=0x7"
+        )[..],
     )
     .with_status(200)
     .with_body(&raw_casm_contract_class)
@@ -389,7 +405,10 @@ async fn compiled_class_by_hash() {
     let body = r#"{"code": "StarknetErrorCode.UNDECLARED_CLASS", "message": "Class with hash 0x7 is not declared."}"#;
     let mock_undeclared = mock(
         "GET",
-        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x0")[..],
+        &format!(
+            "/feeder_gateway/get_compiled_class_by_class_hash?blockNumber=pending&\
+             {CLASS_HASH_QUERY}=0x0"
+        )[..],
     )
     .with_status(400)
     .with_body(body)
@@ -482,7 +501,7 @@ async fn block_unserializable() {
 #[tokio::test]
 async fn class_by_hash_unserializable() {
     test_unserializable(
-        &format!("/feeder_gateway/get_class_by_hash?{CLASS_HASH_QUERY}=0x1")[..],
+        &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&{CLASS_HASH_QUERY}=0x1")[..],
         |starknet_client| async move {
             starknet_client.class_by_hash(ClassHash(stark_felt!("0x1"))).await
         },
@@ -502,10 +521,64 @@ async fn state_update_unserializable() {
 #[tokio::test]
 async fn compiled_class_by_hash_unserializable() {
     test_unserializable(
-        &format!("/feeder_gateway/get_compiled_class_by_class_hash?{CLASS_HASH_QUERY}=0x7")[..],
+        &format!(
+            "/feeder_gateway/get_compiled_class_by_class_hash?blockNumber=pending&\
+             {CLASS_HASH_QUERY}=0x7"
+        )[..],
         |starknet_client| async move {
             starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x7"))).await
         },
     )
     .await
+}
+
+#[tokio::test]
+async fn get_block_signature() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+
+    let expected_block_signature = BlockSignatureData {
+        block_number: BlockNumber(20),
+        signature: [stark_felt!("0x1"), stark_felt!("0x2")],
+        signature_input: BlockSignatureMessage {
+            block_hash: BlockHash(stark_felt!("0x20")),
+            state_diff_commitment: GlobalRoot(stark_felt!("0x1234")),
+        },
+    };
+
+    let mock_block_signature =
+        mock("GET", &format!("/feeder_gateway/get_signature?{BLOCK_NUMBER_QUERY}=20")[..])
+            .with_status(200)
+            .with_body(serde_json::to_string(&expected_block_signature).unwrap())
+            .create();
+
+    let block_signature = starknet_client.block_signature(BlockNumber(20)).await.unwrap().unwrap();
+    mock_block_signature.assert();
+    assert_eq!(block_signature, expected_block_signature);
+}
+
+#[tokio::test]
+async fn get_block_signature_unknown_block() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+
+    let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number 999999 was not found."}"#;
+    let mock_no_block =
+        mock("GET", &format!("/feeder_gateway/get_signature?{BLOCK_NUMBER_QUERY}=999999")[..])
+            .with_status(400)
+            .with_body(body)
+            .create();
+    let block_signature = starknet_client.block_signature(BlockNumber(999999)).await.unwrap();
+    mock_no_block.assert();
+    assert!(block_signature.is_none());
 }

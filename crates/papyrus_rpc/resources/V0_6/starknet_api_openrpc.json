@@ -1288,7 +1288,7 @@
                 "title": "Storage key",
                 "$comment": "A storage key, represented as a string of hex digits",
                 "description": "A storage key. Represented as up to 62 hex digits, 3 bits, and 5 leading zeroes.",
-                "pattern": "^0x0[0-7]{1}[a-fA-F0-9]{0,62}$"
+                "pattern": "^0x(0|[0-7]{1}[a-fA-F0-9]{0,62}$)"
             },
             "ETH_ADDRESS": {
                 "title": "Ethereum address",
@@ -1697,7 +1697,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x0"
+                                    "0x0",
+                                    "0x100000000000000000000000000000000"
                                 ]
                             },
                             "signature": {
@@ -1751,7 +1752,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x1"
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
                                 ]
                             },
                             "signature": {
@@ -1815,7 +1817,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x2"
+                                    "0x2",
+                                    "0x100000000000000000000000000000002"
                                 ]
                             },
                             "signature": {
@@ -1875,7 +1878,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
@@ -2011,7 +2015,11 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2072,7 +2080,11 @@
                             "version": {
                                 "title": "Version",
                                 "description": "Version of the transaction scheme",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
+                                "type": "string",
+                                "enum": [
+                                    "0x2",
+                                    "0x100000000000000000000000000000002"
+                                ]
                             },
                             "signature": {
                                 "title": "Signature",
@@ -2131,7 +2143,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
@@ -2235,7 +2248,11 @@
                     "version": {
                         "title": "Version",
                         "description": "Version of the transaction scheme",
-                        "$ref": "#/components/schemas/NUM_AS_HEX"
+                        "type": "string",
+                        "enum": [
+                            "0x1",
+                            "0x100000000000000000000000000000001"
+                        ]
                     },
                     "signature": {
                         "title": "Signature",
@@ -2291,7 +2308,8 @@
                         "description": "Version of the transaction scheme",
                         "type": "string",
                         "enum": [
-                            "0x3"
+                            "0x3",
+                            "0x100000000000000000000000000000003"
                         ]
                     },
                     "signature": {
@@ -2434,7 +2452,8 @@
                         "description": "Version of the transaction scheme",
                         "type": "string",
                         "enum": [
-                            "0x0"
+                            "0x0",
+                            "0x100000000000000000000000000000000"
                         ]
                     },
                     "signature": {
@@ -2504,7 +2523,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x1"
+                                    "0x1",
+                                    "0x100000000000000000000000000000001"
                                 ]
                             },
                             "signature": {
@@ -2559,7 +2579,8 @@
                                 "description": "Version of the transaction scheme",
                                 "type": "string",
                                 "enum": [
-                                    "0x3"
+                                    "0x3",
+                                    "0x100000000000000000000000000000003"
                                 ]
                             },
                             "signature": {
@@ -2692,7 +2713,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "execution_status": {
@@ -3068,7 +3089,7 @@
                     },
                     "actual_fee": {
                         "title": "Actual fee",
-                        "$ref": "#/components/schemas/FELT",
+                        "$ref": "#/components/schemas/FEE_PAYMENT",
                         "description": "The fee that was charged by the sequencer"
                     },
                     "messages_sent": {
@@ -3645,12 +3666,18 @@
                         "title": "Overall fee",
                         "description": "The estimated fee for the transaction (in gwei or fri, depending on the tx version), product of gas_consumed and gas_price",
                         "$ref": "#/components/schemas/FELT"
+                    },
+                    "unit": {
+                        "title": "Fee unit",
+                        "description": "units in which the fee is given",
+                        "$ref": "#/components/schemas/PRICE_UNIT"
                     }
                 },
                 "required": [
                     "gas_consumed",
                     "gas_price",
-                    "overall_fee"
+                    "overall_fee",
+                    "unit"
                 ]
             },
             "FEE_PAYMENT": {
@@ -3724,7 +3751,7 @@
             "RESOURCE_PRICE": {
                 "type": "object",
                 "properties": {
-                    "price_in_strk": {
+                    "price_in_fri": {
                         "title": "price in fri",
                         "description": "the price of one unit of the given resource, denominated in fri (10^-18 strk)",
                         "$ref": "#/components/schemas/FELT"
@@ -3736,7 +3763,8 @@
                     }
                 },
                 "required": [
-                    "price_in_wei"
+                    "price_in_wei",
+                    "price_in_fri"
                 ]
             },
             "EXECUTION_RESOURCES": {
@@ -3816,7 +3844,7 @@
                             "const": 0
                         }
                     },
-                    "segment_arena_builtin_applications": {
+                    "segment_arena_builtin": {
                         "title": "Segment arena",
                         "description": "The number of accesses to the segment arena",
                         "type": "integer",

@@ -13,7 +13,7 @@ use papyrus_storage::{StorageScope, StorageWriter};
 use pretty_assertions::assert_eq;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 use starknet_api::core::ChainId;
 use starknet_client::reader::PendingData;
 use starknet_client::writer::MockStarknetWriter;
@@ -93,20 +93,21 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
 
 // Call a method on the `RPC module` without having to spin up a server.
 // Returns the raw `result field` in JSON-RPC response and the deserialized result if successful.
+// `params_obj` should be serialized to the format that JSON-RPC expects, which is either an array
+// of parameters or a map from parameter name to parameter.
+//
+// For example (the parameteres of getTransactionByBlockIdAndIndex"):
+// ["latest", 5] or {"block_id": "latest", "index": 5}.
 pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Deserialize<'a>>(
     module: &RpcModule<R>,
     method: &str,
-    params_obj: &Option<S>, //&str,
+    params_obj: &S,
 ) -> (Value, RpcResult<T>) {
-    let params_str = if params_obj.is_none() {
-        "".to_string()
-    } else {
-        let params = serde_json::to_value(params_obj).unwrap();
-        let params_string = params.to_string();
-        match params {
-            Value::Array(_) => format!(r#", "params":{params_string}"#),
-            _ => format!(r#","params":[{params_string}]"#),
-        }
+    let params = serde_json::to_value(params_obj).unwrap();
+    let params_str = match params {
+        Value::Array(vec) if vec.is_empty() => "".to_string(),
+        Value::Object(map) if map.is_empty() => "".to_string(),
+        _ => format!(r#", "params":{}"#, params),
     };
     let req = format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}"{params_str}}}"#);
     let (resp_wrapper, _) = module
@@ -152,6 +153,24 @@ pub fn get_starknet_spec_api_schema_for_components(
             component_names
                 .iter()
                 .map(move |component| format!("file:///api/{file}#/components/schemas/{component}"))
+        }),
+        version_id,
+    )
+}
+
+pub fn get_starknet_spec_api_schema_for_method_param(
+    file_to_methods_and_param_indices: &[(SpecFile, &[(&str, usize)])],
+    version_id: &VersionId,
+) -> JSONSchema {
+    get_starknet_spec_api_schema(
+        file_to_methods_and_param_indices.iter().flat_map(|(file, methods_and_param_indices)| {
+            let spec: serde_json::Value =
+                read_spec(format!("./resources/{}/{file}", version_id.name));
+
+            methods_and_param_indices.iter().map(move |(method, param_index)| {
+                let method_index = get_method_index(&spec, method);
+                format!("file:///api/{file}#/methods/{method_index}/params/{param_index}/schema")
+            })
         }),
         version_id,
     )
@@ -322,56 +341,96 @@ fn fix_errors(spec: &mut serde_json::Value) {
     }
 }
 
-#[allow(dead_code)]
 pub fn method_name_to_spec_method_name(method_name: &str) -> String {
     let re = Regex::new((VERSION_PATTERN.to_string() + "_").as_str()).unwrap();
     re.replace_all(method_name, "").to_string()
 }
 
-#[allow(dead_code)]
 pub async fn call_api_then_assert_and_validate_schema_for_err<
     R: JsonRpcServerImpl,
-    S: Serialize,
     T: for<'a> Deserialize<'a> + std::fmt::Debug,
 >(
     module: &RpcModule<R>,
     method: &str,
-    params: &Option<S>,
+    params: Vec<Box<dyn SerializeJsonValue>>,
     version_id: &VersionId,
+    spec_file: SpecFile,
     expected_err: &ErrorObjectOwned,
 ) {
-    let (json_response, err) = raw_call::<_, S, T>(module, method, params).await;
+    validate_schema_for_method_params(method, &params, version_id, spec_file);
+    let params = params_vec_to_named_params(method, params, version_id, spec_file);
+    let (json_response, err) = raw_call::<_, _, T>(module, method, &params).await;
     assert_eq!(err.unwrap_err(), *expected_err);
-    assert!(validate_schema(
-        &get_starknet_spec_api_schema_for_method_errors(
-            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
-            version_id,
+    assert!(
+        validate_schema(
+            &get_starknet_spec_api_schema_for_method_errors(
+                &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
+                version_id,
+            ),
+            &json_response["error"],
         ),
-        &json_response["error"],
-    ));
+        "Error of method {} does not correspond to the specs.\nError serialization:\n{}\nError \
+         specs:\n{}",
+        method,
+        serde_json::to_string_pretty(&json_response).unwrap(),
+        // The arguments here are evaluated only when the assertion fails.
+        serde_json::to_string_pretty(
+            &get_method_spec_object(method, version_id, spec_file)["errors"]
+        )
+        .unwrap(),
+    );
 }
 
-#[allow(dead_code)]
 pub async fn call_api_then_assert_and_validate_schema_for_result<
     R: JsonRpcServerImpl,
-    S: Serialize,
     T: for<'a> Deserialize<'a> + std::fmt::Debug + std::cmp::PartialEq,
 >(
     module: &RpcModule<R>,
     method: &str,
-    params: &Option<S>,
+    params: Vec<Box<dyn SerializeJsonValue>>,
     version_id: &VersionId,
+    spec_file: SpecFile,
     expected_res: &T,
 ) {
-    let (json_response, res) = raw_call::<_, S, T>(module, method, params).await;
-    assert_eq!(res.unwrap(), *expected_res);
-    assert!(validate_schema(
-        &get_starknet_spec_api_schema_for_method_results(
-            &[(SpecFile::StarknetApiOpenrpc, &[method_name_to_spec_method_name(method).as_str()])],
-            version_id,
+    assert_eq!(
+        call_and_validate_schema_for_result::<_, T>(module, method, params, version_id, spec_file)
+            .await,
+        *expected_res
+    );
+}
+
+pub async fn call_and_validate_schema_for_result<
+    R: JsonRpcServerImpl,
+    T: for<'a> Deserialize<'a> + std::fmt::Debug,
+>(
+    module: &RpcModule<R>,
+    method: &str,
+    params: Vec<Box<dyn SerializeJsonValue>>,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) -> T {
+    validate_schema_for_method_params(method, &params, version_id, spec_file);
+    let params = params_vec_to_named_params(method, params, version_id, spec_file);
+    let (json_response, res) = raw_call::<_, _, T>(module, method, &params).await;
+    assert!(
+        validate_schema(
+            &get_starknet_spec_api_schema_for_method_results(
+                &[(spec_file, &[method_name_to_spec_method_name(method).as_str()])],
+                version_id,
+            ),
+            &json_response["result"],
         ),
-        &json_response["result"],
-    ));
+        "Result of method {} does not correspond to the specs.\nResult serialization:\n{}\nResult \
+         specs:\n{}",
+        method,
+        serde_json::to_string_pretty(&json_response).unwrap(),
+        // The arguments here are evaluated only when the assertion fails.
+        serde_json::to_string_pretty(
+            &get_method_spec_object(method, version_id, spec_file)["result"]
+        )
+        .unwrap(),
+    );
+    res.unwrap()
 }
 
 pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
@@ -389,4 +448,89 @@ pub fn get_method_names_from_spec(version_id: &VersionId) -> Vec<String> {
                 .collect::<Vec<String>>()
         })
         .collect::<Vec<_>>()
+}
+
+// We implement this trait because `Serialize` and `Clone` are not object safe. For more info see
+// https://doc.rust-lang.org/reference/items/traits.html#object-safety
+pub trait SerializeJsonValue: Send {
+    fn to_json_value(&self) -> Result<Value, serde_json::Error>;
+}
+
+impl<T: Serialize + Clone + Send> SerializeJsonValue for T {
+    fn to_json_value(&self) -> Result<Value, serde_json::Error> {
+        serde_json::to_value(self.clone())
+    }
+}
+
+fn validate_schema_for_method_params(
+    method: &str,
+    params: &Vec<Box<dyn SerializeJsonValue>>,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) {
+    let method_spec_object = get_method_spec_object(method, version_id, spec_file);
+    if params.is_empty() {
+        assert!(
+            method_spec_object["params"].as_array().unwrap().is_empty(),
+            "Got no params for method {} which expects the following params according to the \
+             specs:\n{}",
+            method,
+            serde_json::to_string_pretty(&method_spec_object["params"]).unwrap(),
+        );
+
+        return;
+    };
+    for (i, param) in params.iter().enumerate() {
+        assert!(
+            validate_schema(
+                &get_starknet_spec_api_schema_for_method_param(
+                    &[(spec_file, &[(method_name_to_spec_method_name(method).as_str(), i)])],
+                    version_id,
+                ),
+                &param.to_json_value().unwrap(),
+            ),
+            "Param no. {} of method {} does not correspond to the specs.\nParam \
+             serialization:\n{}\nParam specs:\n{}",
+            i,
+            method,
+            serde_json::to_string_pretty(&param.to_json_value().unwrap()).unwrap(),
+            serde_json::to_string_pretty(&method_spec_object["params"][i]).unwrap(),
+        );
+    }
+}
+
+// Convert a vector of parameters to a map from parameter name to parameter.
+// Get the name of the parameters from the specs.
+fn params_vec_to_named_params(
+    method: &str,
+    params: Vec<Box<dyn SerializeJsonValue>>,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) -> Value {
+    let method_spec_object = get_method_spec_object(method, version_id, spec_file);
+    let method_params_spec_array = method_spec_object["params"].as_array().unwrap();
+    let method_names = method_params_spec_array.iter().map(|param_spec_object| {
+        param_spec_object.as_object().unwrap()["name"].as_str().unwrap().to_owned()
+    });
+
+    assert_eq!(method_params_spec_array.len(), params.len());
+
+    let serialized_params = params.into_iter().map(|param| param.to_json_value().unwrap());
+
+    Value::Object(Map::from_iter(method_names.zip(serialized_params)))
+}
+
+// Read the spec file and return the json object specifying the given method.
+fn get_method_spec_object(
+    method: &str,
+    version_id: &VersionId,
+    spec_file: SpecFile,
+) -> Map<String, Value> {
+    let spec: serde_json::Value = read_spec(format!("./resources/{}/{spec_file}", version_id.name));
+    let method_index = get_method_index(&spec, &method_name_to_spec_method_name(method));
+
+    spec.as_object().unwrap()["methods"].as_array().unwrap()[method_index]
+        .as_object()
+        .unwrap()
+        .clone()
 }

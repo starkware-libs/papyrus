@@ -15,6 +15,7 @@ use cairo_lang_starknet::casm_contract_class::{
     CasmContractEntryPoint,
     CasmContractEntryPoints,
 };
+use cairo_lang_starknet::NestedIntList;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use integer_encoding::*;
@@ -286,6 +287,10 @@ auto_storage_serde! {
     pub struct MessageToL2 {
         pub from_address: EthAddress,
         pub payload: L1ToL2Payload,
+    }
+    pub enum NestedIntList {
+        Leaf(usize) = 0,
+        Node(Vec<NestedIntList>) = 1,
     }
     pub struct Nonce(pub StarkFelt);
     pub enum OffsetKind {
@@ -912,6 +917,7 @@ impl StorageSerde for CasmContractClass {
         self.prime.serialize_into(&mut to_compress)?;
         self.compiler_version.serialize_into(&mut to_compress)?;
         self.bytecode.serialize_into(&mut to_compress)?;
+        self.bytecode_segment_lengths.serialize_into(&mut to_compress)?;
         self.hints.serialize_into(&mut to_compress)?;
         self.pythonic_hints.serialize_into(&mut to_compress)?;
         self.entry_points_by_type.serialize_into(&mut to_compress)?;
@@ -930,6 +936,7 @@ impl StorageSerde for CasmContractClass {
             prime: BigUint::deserialize_from(data)?,
             compiler_version: String::deserialize_from(data)?,
             bytecode: Vec::<BigUintAsHex>::deserialize_from(data)?,
+            bytecode_segment_lengths: Option::<NestedIntList>::deserialize_from(data)?,
             hints: Vec::<(usize, Vec<Hint>)>::deserialize_from(data)?,
             pythonic_hints: Option::<Vec<(usize, Vec<String>)>>::deserialize_from(data)?,
             entry_points_by_type: CasmContractEntryPoints::deserialize_from(data)?,

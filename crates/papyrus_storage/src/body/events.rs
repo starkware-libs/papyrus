@@ -62,11 +62,12 @@ use starknet_api::transaction::{
 };
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
+use crate::db::serialization::NoVersionValueWrapper;
 use crate::db::{DbCursor, DbTransaction, RO};
 use crate::{StorageResult, StorageTxn};
 
 /// An identifier of an event.
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 #[cfg_attr(any(test, feature = "testing"), derive(Hash))]
 pub struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
 
@@ -309,6 +310,16 @@ impl ThinTransactionOutput {
             ThinTransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
         }
     }
+    /// Returns the actual fee.
+    pub fn actual_fee(&self) -> Fee {
+        match self {
+            ThinTransactionOutput::Declare(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::Deploy(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::DeployAccount(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::Invoke(tx_output) => tx_output.actual_fee,
+            ThinTransactionOutput::L1Handler(tx_output) => tx_output.actual_fee,
+        }
+    }
 }
 /// A thin version of
 /// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the
@@ -458,9 +469,10 @@ impl From<TransactionOutput> for ThinTransactionOutput {
 /// A key-value pair of the events table.
 type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
-type EventsTableCursor<'txn> = DbCursor<'txn, RO, EventsTableKey, EventContent>;
+type EventsTableCursor<'txn> =
+    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<EventContent>>;
 /// A key-value pair of the transaction outputs table.
 type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 /// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, ThinTransactionOutput>;
+    DbCursor<'txn, RO, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>>;

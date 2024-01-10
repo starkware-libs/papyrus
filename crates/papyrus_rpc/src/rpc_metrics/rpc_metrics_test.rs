@@ -4,8 +4,15 @@ use std::time::Instant;
 use jsonrpsee::server::logger::{Logger, TransportProtocol};
 use jsonrpsee::Methods;
 use metrics_exporter_prometheus::PrometheusBuilder;
+use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::state::StateStorageWriter;
+use papyrus_storage::test_utils::get_test_storage;
+use pretty_assertions::assert_eq;
 use prometheus_parse::Value::Counter;
-use test_utils::prometheus_is_contained;
+use starknet_api::block::{BlockBody, BlockHeader, BlockNumber};
+use starknet_api::state::StateDiff;
+use test_utils::{prometheus_is_contained, send_request};
 
 use crate::rpc_metrics::{
     get_method_and_version,
@@ -16,6 +23,13 @@ use crate::rpc_metrics::{
     METHOD_LABEL,
     VERSION_LABEL,
 };
+use crate::run_server;
+use crate::test_utils::{
+    get_test_highest_block,
+    get_test_pending_classes,
+    get_test_pending_data,
+    get_test_rpc_config,
+};
 
 #[test]
 fn get_method_and_version_test() {
@@ -25,6 +39,9 @@ fn get_method_and_version_test() {
     assert_eq!(version, "V0_6_0");
 }
 
+// Ignored because server_metrics test is running in parallel and we are unable to install multiple
+// recorders.
+#[ignore]
 #[test]
 fn logger_test() {
     let full_method_name = "starknet_V0_6_0_blockNumber";
@@ -33,7 +50,10 @@ fn logger_test() {
     let illegal_method_label = vec![(METHOD_LABEL, ILLEGAL_METHOD)];
     let handle = PrometheusBuilder::new().install_recorder().unwrap();
     let callback = jsonrpsee::MethodCallback::Unsubscription(Arc::new(|_, _, _, _| {
-        jsonrpsee::MethodResponse { result: String::new(), success: true }
+        jsonrpsee::MethodResponse {
+            result: String::new(),
+            success_or_error: jsonrpsee::helpers::MethodResponseResult::Success,
+        }
     }));
     let mut methods = Methods::new();
     methods.verify_and_insert(full_method_name, callback).unwrap();
@@ -58,7 +78,12 @@ fn logger_test() {
     );
 
     // Successful call.
-    logger.on_result(full_method_name, true, Instant::now(), TransportProtocol::Http);
+    logger.on_result(
+        full_method_name,
+        jsonrpsee::helpers::MethodResponseResult::Success,
+        Instant::now(),
+        TransportProtocol::Http,
+    );
     assert_eq!(
         prometheus_is_contained(handle.render(), INCOMING_REQUEST, &labels),
         Some(Counter(1f64))
@@ -73,7 +98,12 @@ fn logger_test() {
     );
 
     // Failed call.
-    logger.on_result(full_method_name, false, Instant::now(), TransportProtocol::Http);
+    logger.on_result(
+        full_method_name,
+        jsonrpsee::helpers::MethodResponseResult::Failed(0),
+        Instant::now(),
+        TransportProtocol::Http,
+    );
     assert_eq!(
         prometheus_is_contained(handle.render(), INCOMING_REQUEST, &labels),
         Some(Counter(2f64))
@@ -91,7 +121,12 @@ fn logger_test() {
     let bad_method_name = "starknet_V0_6_0_illegal_method";
     let (method, version) = get_method_and_version(bad_method_name);
     let bad_labels = vec![(METHOD_LABEL, method.as_str()), (VERSION_LABEL, version.as_str())];
-    logger.on_result(bad_method_name, false, Instant::now(), TransportProtocol::Http);
+    logger.on_result(
+        bad_method_name,
+        jsonrpsee::helpers::MethodResponseResult::Failed(0),
+        Instant::now(),
+        TransportProtocol::Http,
+    );
     assert_eq!(prometheus_is_contained(handle.render(), INCOMING_REQUEST, &bad_labels), None);
     assert_eq!(
         prometheus_is_contained(handle.render(), INCOMING_REQUEST, &illegal_method_label),
@@ -102,4 +137,94 @@ fn logger_test() {
         prometheus_is_contained(handle.render(), FAILED_REQUESTS, &illegal_method_label),
         Some(Counter(1f64))
     );
+}
+
+#[tokio::test]
+async fn server_metrics() {
+    let prometheus_handle = PrometheusBuilder::new().install_recorder().unwrap();
+
+    // Run the server.
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_body(BlockNumber(0), BlockBody::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(0), StateDiff::default(), [].into())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let mut gateway_config = get_test_rpc_config();
+    gateway_config.collect_metrics = true;
+    let (server_address, _handle) = run_server(
+        &gateway_config,
+        get_test_highest_block(),
+        get_test_pending_data(),
+        get_test_pending_classes(),
+        storage_reader,
+        "NODE VERSION",
+    )
+    .await
+    .unwrap();
+
+    let get_counters = || {
+        let mut incoming_block_number = String::new();
+        let mut failing_block_number = String::new();
+        let mut incoming_get_state_update = String::new();
+        let mut failing_get_state_update = String::new();
+        let metrics = prometheus_handle.render();
+        for line in metrics.split('\n').filter(|line| line.contains("V0_6")) {
+            if line.contains("rpc_incoming_requests{method=\"blockNumber\"") {
+                println!("{}", line);
+                incoming_block_number = line.split(' ').last().unwrap().to_owned();
+            }
+            if line.contains("rpc_failed_requests{method=\"blockNumber\"") {
+                println!("{}", line);
+                failing_block_number = line.split(' ').last().unwrap().to_owned();
+            }
+            if line.contains("rpc_incoming_requests{method=\"getStateUpdate\"") {
+                println!("{}", line);
+                incoming_get_state_update = line.split(' ').last().unwrap().to_owned();
+            }
+            if line.contains("rpc_failed_requests{method=\"getStateUpdate\"") {
+                println!("{}", line);
+                failing_get_state_update = line.split(' ').last().unwrap().to_owned();
+            }
+        }
+        (
+            incoming_block_number,
+            failing_block_number,
+            incoming_get_state_update,
+            failing_get_state_update,
+        )
+    };
+
+    let (
+        incoming_block_number,
+        failing_block_number,
+        incoming_get_state_update,
+        failing_get_state_update,
+    ) = get_counters();
+
+    assert_eq!(incoming_block_number, "0");
+    assert_eq!(failing_block_number, "0");
+    assert_eq!(incoming_get_state_update, "0");
+    assert_eq!(failing_get_state_update, "0");
+
+    send_request(server_address, "starknet_blockNumber", "", "V0_6").await;
+    send_request(server_address, "starknet_getStateUpdate", r#"{"block_number": 7}"#, "V0_6").await;
+
+    let (
+        incoming_block_number,
+        failing_block_number,
+        incoming_get_state_update,
+        failing_get_state_update,
+    ) = get_counters();
+
+    assert_eq!(incoming_block_number, "1");
+    assert_eq!(failing_block_number, "0");
+    assert_eq!(incoming_get_state_update, "1");
+    assert_eq!(failing_get_state_update, "1");
 }

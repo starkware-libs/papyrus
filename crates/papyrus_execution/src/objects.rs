@@ -1,4 +1,5 @@
 //! Execution objects.
+use std::collections::HashMap;
 
 use blockifier::execution::call_info::{
     CallInfo,
@@ -8,6 +9,18 @@ use blockifier::execution::call_info::{
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::TransactionExecutionInfo;
+use cairo_vm::vm::runners::builtin_runner::{
+    BITWISE_BUILTIN_NAME,
+    EC_OP_BUILTIN_NAME,
+    HASH_BUILTIN_NAME,
+    KECCAK_BUILTIN_NAME,
+    OUTPUT_BUILTIN_NAME,
+    POSEIDON_BUILTIN_NAME,
+    RANGE_CHECK_BUILTIN_NAME,
+    SEGMENT_ARENA_BUILTIN_NAME,
+    SIGNATURE_BUILTIN_NAME,
+};
+use cairo_vm::vm::runners::cairo_runner::ExecutionResources as VmExecutionResources;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use papyrus_common::pending_classes::PendingClasses;
@@ -22,11 +35,34 @@ use starknet_api::block::{BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
-use starknet_api::transaction::{Calldata, EventContent, MessageToL1};
+use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{
+    Builtin,
+    Calldata,
+    EventContent,
+    ExecutionResources,
+    Fee,
+    MessageToL1,
+};
 
 use crate::{ExecutionError, ExecutionResult};
 
 // TODO(yair): Move types to starknet_api.
+
+/// The output of simulating a transaction.
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+pub struct TransactionSimulationOutput {
+    /// The execution trace of the transaction.
+    pub transaction_trace: TransactionTrace,
+    /// The state diff induced by the transaction.
+    pub induced_state_diff: ThinStateDiff,
+    /// The gas price in the block context of the transaction execution.
+    pub gas_price: GasPrice,
+    /// The fee in the block context of the transaction execution.
+    pub fee: Fee,
+    /// The unit of the fee.
+    pub price_unit: PriceUnit,
+}
 
 /// The execution trace of a transaction.
 #[allow(missing_docs)]
@@ -207,6 +243,8 @@ pub struct FunctionInvocation {
     pub events: Vec<OrderedEvent>,
     /// The messages sent by this invocation to L1.
     pub messages: Vec<OrderedL2ToL1Message>,
+    /// The VM execution resources used by this invocation.
+    pub execution_resources: ExecutionResources,
 }
 
 impl TryFrom<CallInfo> for FunctionInvocation {
@@ -245,8 +283,45 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                     OrderedL2ToL1Message::from(ordered_message, call_info.call.storage_address)
                 })
                 .collect(),
+            execution_resources: vm_resources_to_execution_resources(call_info.vm_resources)?,
         })
     }
+}
+
+// Can't implement `TryFrom` because both types are from external crates.
+fn vm_resources_to_execution_resources(
+    vm_resources: VmExecutionResources,
+) -> ExecutionResult<ExecutionResources> {
+    let mut builtin_instance_counter = HashMap::new();
+    for (builtin_name, count) in vm_resources.builtin_instance_counter {
+        if count == 0 {
+            continue;
+        }
+        let count: u64 = count as u64;
+        match builtin_name.as_str() {
+            OUTPUT_BUILTIN_NAME => {
+                continue;
+            }
+            HASH_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Pedersen, count),
+            RANGE_CHECK_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::RangeCheck, count),
+            SIGNATURE_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Ecdsa, count),
+            BITWISE_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Bitwise, count),
+            EC_OP_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::EcOp, count),
+            KECCAK_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Keccak, count),
+            POSEIDON_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Poseidon, count),
+            SEGMENT_ARENA_BUILTIN_NAME => {
+                builtin_instance_counter.insert(Builtin::SegmentArena, count)
+            }
+            _ => {
+                return Err(ExecutionError::UnknownBuiltin { builtin_name });
+            }
+        };
+    }
+    Ok(ExecutionResources {
+        steps: vm_resources.n_steps as u64,
+        builtin_instance_counter,
+        memory_holes: vm_resources.n_memory_holes as u64,
+    })
 }
 
 /// library call or regular call.
@@ -357,4 +432,15 @@ pub struct PendingData {
     pub sequencer: ContractAddress,
     /// The classes and casms that were declared in the pending block.
     pub classes: PendingClasses,
+}
+
+/// The unit of the fee.
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PriceUnit {
+    /// Wei.
+    #[default]
+    Wei,
+    /// Fri.
+    Fri,
 }

@@ -7,9 +7,7 @@ license-file.workspace = true
 description = "A storage implementation for a Starknet node."
 
 [features]
-testing = [
-    "tempfile",
-]
+testing = ["tempfile"]
 
 [dependencies]
 byteorder.workspace = true
@@ -26,8 +24,8 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.2.0-rc4" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.2.0-rc4" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-dev.1" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -47,8 +45,8 @@ paste.workspace = true
 pretty_assertions.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
-schemars = {workspace = true, features = ["preserve_order"] }
-tempfile = { workspace = true}
+schemars = { workspace = true, features = ["preserve_order"] }
+tempfile = { workspace = true }
 test-case.workspace = true
-test_utils = { path = "../test_utils"}
+test_utils = { path = "../test_utils" }
 tokio = { workspace = true, features = ["full", "sync"] }

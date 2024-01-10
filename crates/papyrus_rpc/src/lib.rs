@@ -36,7 +36,7 @@ use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageReader, StorageScope, StorageTxn};
 use rpc_metrics::MetricLogger;
 use serde::{Deserialize, Serialize};
@@ -55,6 +55,7 @@ use crate::syncing_state::get_last_synced_block;
 pub use crate::v0_4::transaction::{
     InvokeTransaction as InvokeTransactionRPC0_4,
     InvokeTransactionV1 as InvokeTransactionV1RPC0_4,
+    TransactionVersion1 as TransactionVersion1RPC0_4,
 };
 pub use crate::v0_4::write_api_result::AddInvokeOkResult as AddInvokeOkResultRPC0_4;
 
@@ -89,7 +90,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: PathBuf::from("config/execution_config/mainnet_config.json"),
+            execution_config: PathBuf::from("config/execution/mainnet.json"),
         }
     }
 }
@@ -175,10 +176,11 @@ fn verify_storage_scope(storage_reader: &StorageReader) -> RpcResult<()> {
     }
 }
 
+/// Get the latest block that we've downloaded and that we've downloaded its state diff.
 fn get_latest_block_number<Mode: TransactionKind>(
     txn: &StorageTxn<'_, Mode>,
 ) -> Result<Option<BlockNumber>, ErrorObjectOwned> {
-    Ok(txn.get_header_marker().map_err(internal_server_error)?.prev())
+    Ok(txn.get_state_marker().map_err(internal_server_error)?.prev())
 }
 
 fn get_block_status<Mode: TransactionKind>(
@@ -240,11 +242,11 @@ pub async fn run_server(
             .build(&config.server_address)
             .await?;
         addr = server.local_addr()?;
-        handle = server.start(methods)?;
+        handle = server.start(methods);
     } else {
         let server = server_builder.build(&config.server_address).await?;
         addr = server.local_addr()?;
-        handle = server.start(methods)?;
+        handle = server.start(methods);
     }
     info!(local_address = %addr, "JSON-RPC is running.");
     Ok((addr, handle))

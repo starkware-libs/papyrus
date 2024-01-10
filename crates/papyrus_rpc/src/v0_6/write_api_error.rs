@@ -2,6 +2,7 @@ use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, Sta
 
 use super::error::{
     unexpected_error,
+    validation_failure,
     JsonRpcError,
     CLASS_ALREADY_DECLARED,
     CLASS_HASH_NOT_FOUND,
@@ -15,7 +16,6 @@ use super::error::{
     NON_ACCOUNT,
     UNSUPPORTED_CONTRACT_CLASS_VERSION,
     UNSUPPORTED_TX_VERSION,
-    VALIDATION_FAILURE,
 };
 
 #[cfg(test)]
@@ -38,7 +38,7 @@ pub(crate) fn starknet_error_to_invoke_error(error: StarknetError) -> JsonRpcErr
         KnownStarknetErrorCode::InsufficientMaxFee => INSUFFICIENT_MAX_FEE,
         KnownStarknetErrorCode::InvalidTransactionNonce => INVALID_TRANSACTION_NONCE,
         KnownStarknetErrorCode::InvalidTransactionVersion => UNSUPPORTED_TX_VERSION,
-        KnownStarknetErrorCode::ValidateFailure => VALIDATION_FAILURE,
+        KnownStarknetErrorCode::ValidateFailure => validation_failure(error.message),
         _ => unexpected_error(error.message),
     }
 }
@@ -61,7 +61,7 @@ pub(crate) fn starknet_error_to_declare_error(error: StarknetError) -> JsonRpcEr
         KnownStarknetErrorCode::InvalidContractClassVersion => UNSUPPORTED_CONTRACT_CLASS_VERSION,
         KnownStarknetErrorCode::InvalidTransactionNonce => INVALID_TRANSACTION_NONCE,
         KnownStarknetErrorCode::InvalidTransactionVersion => UNSUPPORTED_TX_VERSION,
-        KnownStarknetErrorCode::ValidateFailure => VALIDATION_FAILURE,
+        KnownStarknetErrorCode::ValidateFailure => validation_failure(error.message),
         _ => unexpected_error(error.message),
     }
 }
@@ -79,7 +79,7 @@ pub(crate) fn starknet_error_to_deploy_account_error(error: StarknetError) -> Js
         KnownStarknetErrorCode::InvalidTransactionNonce => INVALID_TRANSACTION_NONCE,
         KnownStarknetErrorCode::InvalidTransactionVersion => UNSUPPORTED_TX_VERSION,
         KnownStarknetErrorCode::UndeclaredClass => CLASS_HASH_NOT_FOUND,
-        KnownStarknetErrorCode::ValidateFailure => VALIDATION_FAILURE,
+        KnownStarknetErrorCode::ValidateFailure => validation_failure(error.message),
         _ => unexpected_error(error.message),
     }
 }
