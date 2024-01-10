@@ -68,15 +68,8 @@ fn create_outbound_sessions(
     for number in 0..args.num_queries_per_connection {
         let outbound_session_id =
             swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).unwrap();
-        outbound_session_measurements.insert(
-            outbound_session_id,
-            OutboundSessionMeasurement {
-                start_time: Instant::now(),
-                first_message_time: None,
-                num_messages: None,
-                message_size: None,
-            },
-        );
+        outbound_session_measurements
+            .insert(outbound_session_id, OutboundSessionMeasurement::new());
     }
 }
 
@@ -114,10 +107,10 @@ fn send_data_to_inbound_session(
 }
 
 struct OutboundSessionMeasurement {
-    pub start_time: Instant,
-    pub first_message_time: Option<Instant>,
-    pub num_messages: Option<u64>,
-    pub message_size: Option<u64>,
+    start_time: Instant,
+    first_message_time: Option<Instant>,
+    num_messages: Option<u64>,
+    message_size: Option<u64>,
 }
 
 impl OutboundSessionMeasurement {
@@ -126,7 +119,7 @@ impl OutboundSessionMeasurement {
         let elapsed = self.start_time.elapsed();
         let num_messages = self.num_messages.unwrap();
         let message_size = self.message_size.unwrap();
-        println!("---------- Outbound session finished ----------");
+        println!("########## Outbound session finished ##########");
         println!(
             "Session had {} messages of size {}. In total {}",
             num_messages,
@@ -148,7 +141,22 @@ impl OutboundSessionMeasurement {
             pretty_size((message_size * num_messages) as f64 / messages_elapsed.as_secs_f64())
         );
     }
+
+    pub fn new() -> Self {
+        Self {
+            start_time: Instant::now(),
+            first_message_time: None,
+            num_messages: None,
+            message_size: None,
+        }
+    }
+    pub fn report_first_message(&mut self, inbound_session_start: InboundSessionStart) {
+        self.first_message_time = Some(Instant::now());
+        self.num_messages = Some(inbound_session_start.num_messages);
+        self.message_size = Some(inbound_session_start.message_size);
+    }
 }
+
 #[tokio::main]
 async fn main() {
     let args = Args::parse();
@@ -209,14 +217,11 @@ async fn main() {
                 outbound_session_measurements[&outbound_session_id].print();
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
-                if let Some(Msg::Start(InboundSessionStart { num_messages, message_size })) =
-                    data.msg
-                {
-                    let measurement =
-                        outbound_session_measurements.get_mut(&outbound_session_id).unwrap();
-                    measurement.first_message_time = Some(Instant::now());
-                    measurement.num_messages = Some(num_messages);
-                    measurement.message_size = Some(message_size);
+                if let Some(Msg::Start(inbound_session_start)) = data.msg {
+                    outbound_session_measurements
+                        .get_mut(&outbound_session_id)
+                        .unwrap()
+                        .report_first_message(inbound_session_start);
                 }
             }
             SwarmEvent::Behaviour(Event::SessionFailed {
