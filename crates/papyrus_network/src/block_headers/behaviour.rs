@@ -151,12 +151,12 @@ trait BehaviourTrait {
         &mut self,
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<()>;
+    ) -> Result<(), SessionError>;
 
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<BlockHeader>;
+    ) -> Result<BlockHeader, SessionError>;
 
     fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId);
 
@@ -168,23 +168,26 @@ trait BehaviourTrait {
         // TODO: handle getting more then one message part in the response.
         if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
             match message {
-                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                    // TODO: handle error once this function is implemented to return one.
-                    let Some(_success) = self
-                        .store_header_pending_pairing_with_signature(header, outbound_session_id)
-                    else {
-                        unreachable!("store_header_pending_pairing_with_signature should allways return Some(())")
-                    };
-                    None
-                }
+                // TODO: consider if two consecutive headers is an error or not and what it the
+                // right way to handle it.
+                protobuf::block_headers_response_part::HeaderMessage::Header(header) => self
+                    .store_header_pending_pairing_with_signature(header, outbound_session_id)
+                    .err()
+                    .map(|e| Event::SessionFailed {
+                        session_id: outbound_session_id.into(),
+                        session_error: e,
+                    }),
                 protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
-                    let Some(block_header) =
-                        self.fetch_header_pending_pairing_with_signature(outbound_session_id)
-                    else {
-                        return Some(Event::SessionFailed {
-                            session_id: outbound_session_id.into(),
-                            session_error: SessionError::PairingError,
-                        });
+                    let block_header = match self
+                        .fetch_header_pending_pairing_with_signature(outbound_session_id)
+                    {
+                        Ok(block_header) => block_header,
+                        Err(e) => {
+                            return Some(Event::SessionFailed {
+                                session_id: outbound_session_id.into(),
+                                session_error: e,
+                            });
+                        }
                     };
                     let Some(signatures) = sigs.try_into().ok() else {
                         return Some(Event::SessionFailed {
@@ -260,20 +263,22 @@ impl BehaviourTrait for Behaviour {
         &mut self,
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<()> {
-        // TODO: check that there is no header for this session id already and fail if necessary.
-        self.header_pending_pairing.insert(outbound_session_id, header.clone());
-        Some(())
+    ) -> Result<(), SessionError> {
+        self.header_pending_pairing
+            .insert(outbound_session_id, header.clone())
+            .map(|_| ())
+            .xor(Some(()))
+            .ok_or_else(|| SessionError::PairingError)
     }
 
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<BlockHeader> {
+    ) -> Result<BlockHeader, SessionError> {
         self.header_pending_pairing
             .remove(&outbound_session_id)
-            .map(|header| header.try_into())
-            .and_then(|header| header.ok())
+            .map(|header| header.try_into().map_err(|_| SessionError::PairingError))
+            .unwrap_or(Err(SessionError::PairingError))
     }
 
     /// Instruct behaviour to close an outbound session. A corresponding event will be emitted when
