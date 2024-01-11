@@ -18,6 +18,7 @@ use papyrus_network::streamed_data_protocol::{
     OutboundSessionId,
     SessionId,
 };
+use tokio::time::timeout;
 
 fn pretty_size(mut size: f64) -> String {
     for term in ["B", "KB", "MB", "GB"] {
@@ -192,10 +193,19 @@ async fn main() {
     }
 
     let mut outbound_session_measurements = HashMap::new();
-    while let Some(event) = swarm.next().await {
+    let mut connected_in_the_past = false;
+    loop {
+        let maybe_event = timeout(Duration::from_secs(10), swarm.next()).await;
+        let Ok(Some(event)) = maybe_event else {
+            if !connected_in_the_past || swarm.network_info().num_peers() > 0 {
+                continue;
+            }
+            break;
+        };
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
+                connected_in_the_past = true;
                 create_outbound_sessions(
                     &mut swarm,
                     peer_id,
