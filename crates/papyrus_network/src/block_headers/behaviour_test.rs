@@ -70,17 +70,13 @@ fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
             peer_id,
             query: query.clone(),
         };
-    let mut ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
     // Make sure we return the right event and call insert_inbound_session_id_to_waiting_list
     let converted_query: BlockQuery = query.try_into().unwrap();
     assert_matches!(
         res_event,
-        Event::NewInboundQuery { query, inbound_session_id }
+        Some(Event::NewInboundQuery { query, inbound_session_id })
         if query == converted_query && inbound_session_id == inbound_session_id
     );
 
@@ -95,14 +91,10 @@ fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
             peer_id,
             query: query.clone(),
         };
-    let mut ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::ProtobufConversionError(ProtobufConversionError::MissingField)
+        Some(Event::ProtobufConversionError(ProtobufConversionError::MissingField))
     );
 }
 
@@ -122,20 +114,16 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
             }],
         },
     };
-    let mut ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::SessionFailed {session_id, session_error} => {
-            assert_matches!(session_error, SessionError::WaitingToCompletePairing);
-            assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
-        }
+        None /* Some(Event::SessionFailed {session_id, session_error}) => {
+              *     assert_matches!(session_error, SessionError::WaitingToCompletePairing);
+              *     assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
+              * } */
     );
     assert_eq!(behaviour.store_header_pending_pairing_with_signature_call_count, 1);
-    assert!(ignore_event_and_return_pending);
 
     // Send matching signature response event to behaviour from streamed data behaviour
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -150,14 +138,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::ReceivedData {data, outbound_session_id: session_id} => {
+        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
@@ -166,7 +150,6 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
         }
     );
     assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
-    assert!(!ignore_event_and_return_pending);
 
     // Send fin event to behaviour from streamed data behaviour
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -179,14 +162,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::SessionFailed {session_id, session_error} => {
+        Some(Event::SessionFailed {session_id, session_error}) => {
             assert_matches!(session_error, SessionError::ReceivedFin);
             assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
         }
@@ -216,11 +195,8 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
             }],
         },
     };
-    let mut ignore_event_and_return_pending = false;
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+
+    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
     // Send header response event to behaviour from streamed data behaviour - session B
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -233,11 +209,8 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
             }],
         },
     };
-    let mut ignore_event_and_return_pending = false;
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+
+    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
     // Send matching signature response event to behaviour from streamed data behaviour - Session B
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -252,14 +225,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::ReceivedData {data, outbound_session_id: session_id} => {
+        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
@@ -268,7 +237,6 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         }
     );
     assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
-    assert!(!ignore_event_and_return_pending);
 
     // Send matching signature response event to behaviour from streamed data behaviour - Session A
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -283,14 +251,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::ReceivedData {data, outbound_session_id: session_id} => {
+        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
                 if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
@@ -299,7 +263,6 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         }
     );
     assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 2);
-    assert!(!ignore_event_and_return_pending);
 }
 
 #[test]
@@ -321,17 +284,14 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_pairing_error() {
             }],
         },
     };
-    let mut ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::SessionFailed {
+        Some(Event::SessionFailed {
             session_id,
             session_error,
-        } => {
+        }) => {
             assert_eq!(session_id, outbound_session_id.into());
             assert_matches!(session_error, SessionError::PairingError)
         }
@@ -350,17 +310,14 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             part: vec![protobuf::BlockHeadersResponsePart { header_message: None }],
         },
     };
-    let mut ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::SessionFailed {
+        Some(Event::SessionFailed {
             session_id,
             session_error,
-        } => {
+        }) => {
             assert_eq!(session_id, outbound_session_id.into());
             assert_matches!(session_error, SessionError::IncompatibleDataError)
         }
@@ -377,11 +334,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
     // Send bad signature message - should return incompatible data error event
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
@@ -399,17 +352,13 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             }],
         },
     };
-    ignore_event_and_return_pending = false;
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
-        streamed_data_event,
-        &mut ignore_event_and_return_pending,
-    );
+    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Event::SessionFailed {
+        Some(Event::SessionFailed {
             session_id,
             session_error,
-        } => {
+        }) => {
             assert_eq!(session_id, outbound_session_id.into());
             assert_matches!(session_error, SessionError::IncompatibleDataError)
         }
