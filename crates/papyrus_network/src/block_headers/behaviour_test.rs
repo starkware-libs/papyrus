@@ -415,10 +415,13 @@ impl BehaviourTrait for TestBehaviour {
         &mut self,
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<()> {
+    ) -> Result<(), SessionError> {
         self.store_header_pending_pairing_with_signature_call_count += 1;
-        self.header_pending_pairing.insert(outbound_session_id, header.clone());
-        Some(())
+        self.header_pending_pairing
+            .insert(outbound_session_id, header.clone())
+            .map(|_| ())
+            .xor(Some(()))
+            .ok_or_else(|| SessionError::PairingError)
     }
 }
 
