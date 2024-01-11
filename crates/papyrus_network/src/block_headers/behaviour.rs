@@ -3,7 +3,12 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm,
+    ConnectionDenied,
+    ConnectionHandler,
+    ConnectionId,
+    FromSwarm,
+    NetworkBehaviour,
+    ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 
@@ -15,8 +20,6 @@ use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, Se
 use crate::BlockQuery;
 
 pub(crate) struct Behaviour {
-    // TODO: make this a trait of type "streamed_data_protocol::behaviour::BehaviourTrait" (new
-    // trait to add) so that the test can mock the streamed_data behaviour.
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
@@ -53,8 +56,6 @@ impl Behaviour {
         query: BlockQuery,
         peer_id: PeerId,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        // TODO: keep track of the query id and the session id so that we can map between them for
-        // reputation.
         self.streamed_data_behaviour.send_query(query.into(), peer_id).map_err(|e| e.into())
     }
 
@@ -120,17 +121,6 @@ impl Behaviour {
         let _ = self
             .streamed_data_behaviour
             .close_session(SessionId::InboundSessionId(inbound_session_id));
-    }
-
-    /// Instruct behaviour to close an outbound session. A corresponding event will be emitted when
-    /// the session is closed.
-    #[allow(dead_code)]
-    pub fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId) {
-        let _newly_inserted =
-            self.outbound_sessions_pending_termination.insert(outbound_session_id);
-        let _ = self
-            .streamed_data_behaviour
-            .close_session(SessionId::OutboundSessionId(outbound_session_id));
     }
 }
 
@@ -399,11 +389,7 @@ impl NetworkBehaviour for Behaviour {
                         }
                     }
                 });
-                if ignore_event_and_return_pending {
-                    Poll::Pending
-                } else {
-                    Poll::Ready(event)
-                }
+                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
             }
             Poll::Pending => Poll::Pending,
         }
