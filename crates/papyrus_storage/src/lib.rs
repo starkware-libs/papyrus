@@ -563,10 +563,10 @@ pub(crate) type MarkersTable<'env> =
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
-    thin_state_diff: FileHandler<ThinStateDiff, Mode>,
-    contract_class: FileHandler<ContractClass, Mode>,
-    casm: FileHandler<CasmContractClass, Mode>,
-    deprecated_contract_class: FileHandler<DeprecatedContractClass, Mode>,
+    thin_state_diff: FileHandler<NoVersionValueWrapper<ThinStateDiff>, Mode>,
+    contract_class: FileHandler<NoVersionValueWrapper<ContractClass>, Mode>,
+    casm: FileHandler<NoVersionValueWrapper<CasmContractClass>, Mode>,
+    deprecated_contract_class: FileHandler<NoVersionValueWrapper<DeprecatedContractClass>, Mode>,
 }
 
 impl FileHandlers<RW> {

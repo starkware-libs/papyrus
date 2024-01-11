@@ -6,6 +6,7 @@ use tempfile::tempdir;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
+use crate::db::serialization::NoVersionValueWrapper;
 use crate::test_utils::get_mmap_file_test_config;
 
 #[test]
@@ -26,19 +27,19 @@ fn config_validation() {
 fn write_read() {
     let dir = tempdir().unwrap();
     let offset = 0;
-    let (mut writer, reader) = open_file(
+    let (mut writer, reader) = open_file::<NoVersionValueWrapper<Vec<u8>>>(
         get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_write_read"),
         offset,
     )
     .unwrap();
-    let data: Vec<u8> = vec![1, 2, 3];
+    let data = vec![1, 2, 3];
 
     let location_in_file = writer.append(&data);
     let res_writer = writer.get(location_in_file).unwrap().unwrap();
     assert_eq!(res_writer, data);
 
-    let res: Vec<u8> = reader.get(location_in_file).unwrap().unwrap();
+    let res = reader.get(location_in_file).unwrap().unwrap();
     assert_eq!(res, data);
 
     dir.close().unwrap();
@@ -48,13 +49,13 @@ fn write_read() {
 fn concurrent_reads() {
     let dir = tempdir().unwrap();
     let offset = 0;
-    let (mut writer, reader) = open_file(
+    let (mut writer, reader) = open_file::<NoVersionValueWrapper<Vec<u8>>>(
         get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_concurrent_reads"),
         offset,
     )
     .unwrap();
-    let data: Vec<u8> = vec![1, 2, 3];
+    let data = vec![1, 2, 3];
 
     let location_in_file = writer.append(&data);
 
@@ -68,7 +69,7 @@ fn concurrent_reads() {
     }
 
     for handle in handles {
-        let res: Vec<u8> = handle.join().unwrap().unwrap();
+        let res = handle.join().unwrap().unwrap();
         assert_eq!(res, data);
     }
 
@@ -79,14 +80,14 @@ fn concurrent_reads() {
 fn concurrent_reads_single_write() {
     let dir = tempdir().unwrap();
     let offset = 0;
-    let (mut writer, reader) = open_file(
+    let (mut writer, reader) = open_file::<NoVersionValueWrapper<Vec<u8>>>(
         get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_concurrent_reads_single_write"),
         offset,
     )
     .unwrap();
-    let first_data: Vec<u8> = vec![1, 2, 3];
-    let second_data: Vec<u8> = vec![3, 2, 1];
+    let first_data = vec![1, 2, 3];
+    let second_data = vec![3, 2, 1];
     let first_location = writer.append(&first_data);
     writer.flush();
     let second_location =
@@ -116,15 +117,15 @@ fn concurrent_reads_single_write() {
     barrier.wait();
 
     for handle in handles {
-        let res: Vec<u8> = handle.join().unwrap().unwrap();
+        let res = handle.join().unwrap().unwrap();
         assert_eq!(res, second_data);
     }
 }
 
 #[test]
 fn grow_file() {
-    let data: Vec<u8> = vec![1, 2];
-    let serialization_size = StorageSerdeEx::serialize(&data).unwrap().len();
+    let data = vec![1, 2];
+    let serialization_size = NoVersionValueWrapper::serialize(&data).unwrap().len();
     let dir = tempdir().unwrap();
     let config = MmapFileConfig {
         max_size: 10 * serialization_size,
@@ -140,7 +141,9 @@ fn grow_file() {
         // file_size = 0, offset = 0
         assert_eq!(file.metadata().unwrap().len(), 0);
 
-        let (mut writer, _) = open_file(config.clone(), file_path.clone(), offset).unwrap();
+        let (mut writer, _) =
+            open_file::<NoVersionValueWrapper<Vec<u8>>>(config.clone(), file_path.clone(), offset)
+                .unwrap();
         // file_size = 4 (growth_step), offset = 0
         let mut file_size = file.metadata().unwrap().len();
         assert_eq!(file_size, config.growth_step as u64);
@@ -174,7 +177,7 @@ fn grow_file() {
     let file =
         OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
-    let _ = open_file::<Vec<u8>>(config.clone(), file_path, offset).unwrap();
+    let _ = open_file::<NoVersionValueWrapper<Vec<u8>>>(config.clone(), file_path, offset).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
 
     dir.close().unwrap();
@@ -190,7 +193,7 @@ async fn write_read_different_locations() {
         offset,
     )
     .unwrap();
-    let mut data: Vec<u8> = vec![0, 1];
+    let mut data = vec![0, 1];
 
     const ROUNDS: u8 = 10;
     const LEN: usize = 3;
@@ -199,7 +202,7 @@ async fn write_read_different_locations() {
     let lock = Arc::new(RwLock::new(0));
 
     async fn reader_task(
-        reader: FileHandler<Vec<u8>, RO>,
+        reader: FileHandler<NoVersionValueWrapper<Vec<u8>>, RO>,
         lock: Arc<RwLock<usize>>,
         barrier: Arc<Barrier>,
     ) {
@@ -210,7 +213,7 @@ async fn write_read_different_locations() {
         }
         let read_offset = 3 * rand::thread_rng().gen_range(0..round + 1);
         let read_location = LocationInFile { offset: read_offset, len: LEN };
-        let read_value: Vec<u8> = reader.get(read_location).unwrap().unwrap();
+        let read_value = reader.get(read_location).unwrap().unwrap();
         let first_expected_value: u8 = (read_offset / 3 * 2).try_into().unwrap();
         let expected_value = vec![first_expected_value, first_expected_value + 1];
         assert_eq!(read_value, expected_value);
@@ -241,20 +244,20 @@ async fn write_read_different_locations() {
 fn reader_when_writer_is_out_of_scope() {
     let dir = tempdir().unwrap();
     let offset = 0;
-    let (mut writer, reader) = open_file(
+    let (mut writer, reader) = open_file::<NoVersionValueWrapper<Vec<u8>>>(
         get_mmap_file_test_config(),
         dir.path().to_path_buf().join("test_reader_when_writer_is_out_of_scope"),
         offset,
     )
     .unwrap();
-    let data: Vec<u8> = vec![1, 2, 3];
+    let data = vec![1, 2, 3];
 
     let location_in_file = writer.append(&data);
-    let res: Vec<u8> = reader.get(location_in_file).unwrap().unwrap();
+    let res = reader.get(location_in_file).unwrap().unwrap();
     assert_eq!(res, data);
 
     drop(writer);
-    let res: Vec<u8> = reader.get(location_in_file).unwrap().unwrap();
+    let res = reader.get(location_in_file).unwrap().unwrap();
     assert_eq!(res, data);
 
     dir.close().unwrap();
