@@ -132,6 +132,12 @@ pub trait BodyStorageReader {
         &self,
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>>;
+
+    /// Returns the number of transactions in the block with the given number.
+    fn get_block_transactions_count(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<usize>>;
 }
 
 type RevertedBlockBody =
@@ -247,6 +253,32 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
         let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         self.get_transactions_in_block(block_number, transaction_outputs_table)
+    }
+
+    fn get_block_transactions_count(
+        &self,
+        block_number: BlockNumber,
+    ) -> StorageResult<Option<usize>> {
+        // After this condition, we know that the block exists, so if something goes wrong is only
+        // because there are no transactions in it.
+        if self.get_body_marker()? <= block_number {
+            return Ok(None);
+        }
+
+        let transactions_table = self.open_table(&self.tables.transaction_idx_to_hash)?;
+        let mut cursor = transactions_table.cursor(&self.txn)?;
+
+        cursor.lower_bound(&TransactionIndex(block_number.next(), TransactionOffsetInBlock(0)))?;
+        let Some((TransactionIndex(received_block_number, last_tx_index), _tx_hash)) =
+            cursor.prev()?
+        else {
+            return Ok(Some(0));
+        };
+        if received_block_number != block_number {
+            return Ok(Some(0));
+        }
+
+        Ok(Some(last_tx_index.0 + 1))
     }
 }
 

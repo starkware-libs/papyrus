@@ -87,7 +87,6 @@ use super::super::transaction::{
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
-    Transaction,
     TransactionOutput,
     TransactionReceipt,
     TransactionStatus,
@@ -413,8 +412,10 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             Ok(transactions_len)
         } else {
             let block_number = get_accepted_block_number(&txn, block_id)?;
-            let transactions: Vec<Transaction> = get_block_txs_by_number(&txn, block_number)?;
-            Ok(transactions.len())
+            Ok(txn
+                .get_block_transactions_count(block_number)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?)
         }
     }
 

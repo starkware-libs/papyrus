@@ -178,6 +178,12 @@ async fn append_body() {
         ])
     );
     assert_eq!(txn.get_block_transaction_outputs(BlockNumber(3)).unwrap(), None);
+
+    // Check block transactions count.
+    assert_eq!(txn.get_block_transactions_count(BlockNumber(0)).unwrap(), Some(1));
+    assert_eq!(txn.get_block_transactions_count(BlockNumber(1)).unwrap(), Some(0));
+    assert_eq!(txn.get_block_transactions_count(BlockNumber(2)).unwrap(), Some(2));
+    assert_eq!(txn.get_block_transactions_count(BlockNumber(3)).unwrap(), None);
 }
 
 #[tokio::test]
