@@ -158,11 +158,14 @@ pub(super) trait BehaviourTrait {
         if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
             match message {
                 protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                    // TODO: handle error once this function is implemented to return one.
                     let Some(_success) = self
                         .store_header_pending_pairing_with_signature(header, outbound_session_id)
                     else {
-                        unreachable!("store_header_pending_pairing_with_signature should allways return Some(())")
+                        // Got two headers in a raw without a signature in between.
+                        return Some(Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::PairingError,
+                        });
                     };
                     None
                 }
@@ -250,9 +253,11 @@ impl BehaviourTrait for Behaviour {
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
     ) -> Option<()> {
-        // TODO: check that there is no header for this session id already and fail if necessary.
-        self.header_pending_pairing.insert(outbound_session_id, header.clone());
-        Some(())
+        if self.header_pending_pairing.insert(outbound_session_id, header.clone()).is_none() {
+            Some(())
+        } else {
+            None
+        }
     }
 
     fn fetch_header_pending_pairing_with_signature(
@@ -394,7 +399,11 @@ impl NetworkBehaviour for Behaviour {
                         }
                     }
                 });
-                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
+                if ignore_event_and_return_pending {
+                    Poll::Pending
+                } else {
+                    Poll::Ready(event)
+                }
             }
             Poll::Pending => Poll::Pending,
         }
