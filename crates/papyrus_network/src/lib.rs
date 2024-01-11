@@ -3,7 +3,7 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod messages;
-pub mod streamed_data_protocol;
+pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
 
