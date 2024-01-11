@@ -30,7 +30,11 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
 
     let merged_swarm = swarm1.merge(swarm2);
     let mut filtered_swarm = TokioStreamExt::filter_map(merged_swarm, |event| {
-        if let SwarmEvent::Behaviour(stream) = event { Some(stream) } else { None }
+        if let SwarmEvent::Behaviour(stream) = event {
+            Some(stream)
+        } else {
+            None
+        }
     });
     (
         TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
@@ -49,7 +53,7 @@ pub(crate) fn dummy_data() -> Vec<protobuf::BasicMessage> {
     ]
 }
 
-impl crate::streamed_data_protocol::Config {
+impl crate::streamed_data::Config {
     pub fn get_test_config() -> Self {
         Self { substream_timeout: Duration::MAX, protocol_name: StreamProtocol::new("/") }
     }
