@@ -13,6 +13,7 @@ use papyrus_network::messages::protobuf::stress_test_message::Msg;
 use papyrus_network::messages::protobuf::{BasicMessage, InboundSessionStart, StressTestMessage};
 use papyrus_network::streamed_data::behaviour::{Behaviour, Event, SessionError};
 use papyrus_network::streamed_data::{Config, InboundSessionId, OutboundSessionId, SessionId};
+use tokio::time::timeout;
 
 fn pretty_size(mut size: f64) -> String {
     for term in ["B", "KB", "MB", "GB"] {
@@ -217,10 +218,21 @@ async fn main() {
     dial_if_requested(&mut swarm, &args);
 
     let mut outbound_session_measurements = HashMap::new();
-    while let Some(event) = swarm.next().await {
+    let mut connected_in_the_past = false;
+    loop {
+        let event = if connected_in_the_past && swarm.network_info().num_peers() == 0 {
+            let maybe_event = timeout(Duration::from_secs(10), swarm.next()).await;
+            let Ok(Some(event)) = maybe_event else {
+                break;
+            };
+            event
+        } else {
+            swarm.next().await.expect("Swarm's event stream should never end")
+        };
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
+                connected_in_the_past = true;
                 create_outbound_sessions(
                     &mut swarm,
                     peer_id,
