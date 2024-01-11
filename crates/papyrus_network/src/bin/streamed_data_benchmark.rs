@@ -190,10 +190,12 @@ async fn main() {
     dial_if_requested(&mut swarm, &args);
 
     let mut outbound_session_measurements = HashMap::new();
+    let mut connected_in_the_past = false;
     while let Some(event) = swarm.next().await {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
+                connected_in_the_past = true;
                 create_outbound_sessions(
                     &mut swarm,
                     peer_id,
@@ -250,6 +252,9 @@ async fn main() {
             _ => {
                 panic!("Unexpected event {:?}", event);
             }
+        }
+        if connected_in_the_past && swarm.network_info().num_peers() == 0 {
+            break;
         }
     }
 }
