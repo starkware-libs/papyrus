@@ -32,7 +32,7 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 bitvec = "1.0.1"
-blockifier = "0.4.0-rc10"
+blockifier = { git = "https://github.com/starkware-libs/blockifier", branch = "yair/logs_over_68787eab" }
 byteorder = "1.4.3"
 cairo-lang-starknet = { git = "https://github.com/starkware-libs/cairo", branch = "elin/ec-op/bump-cairo-vm" }
 cairo-lang-casm = { git = "https://github.com/starkware-libs/cairo", branch = "elin/ec-op/bump-cairo-vm" }
