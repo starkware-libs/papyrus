@@ -138,6 +138,56 @@ fn send_data_to_inbound_session(
     swarm.behaviour_mut().close_session(inbound_session_id.into()).unwrap();
 }
 
+struct InboundSessionMeasurement {
+    start_time: Instant,
+    finish_send_call_time: Option<Instant>,
+}
+
+impl InboundSessionMeasurement {
+    pub fn new() -> Self {
+        Self { start_time: Instant::now(), finish_send_call_time: None }
+    }
+
+    pub fn report_finish_calling_send(&mut self) {
+        self.finish_send_call_time = Some(Instant::now());
+    }
+
+    pub fn print(&self, args: &Args) {
+        let total_time = self.start_time.elapsed();
+        let call_time = self.finish_send_call_time.unwrap() - self.start_time;
+
+        println!("@@@@@@@@@@ Inbound session finished @@@@@@@@@@");
+        println!("Session took {:.3} seconds", total_time.as_secs_f64());
+        println!("Calling send_data took {:.3} seconds", call_time.as_secs_f64());
+
+        println!("---- Total session statistics ----");
+        println!(
+            "{:.2} messages/second",
+            args.num_messages_per_session as f64 / total_time.as_secs_f64()
+        );
+        println!(
+            "{}/second",
+            pretty_size(
+                (args.message_size * args.num_messages_per_session) as f64
+                    / total_time.as_secs_f64()
+            )
+        );
+
+        println!("---- Calling send_data statistics ----");
+        println!(
+            "{:.2} messages/second",
+            args.num_messages_per_session as f64 / call_time.as_secs_f64()
+        );
+        println!(
+            "{}/second",
+            pretty_size(
+                (args.message_size * args.num_messages_per_session) as f64
+                    / call_time.as_secs_f64()
+            )
+        );
+    }
+}
+
 struct OutboundSessionMeasurement {
     start_time: Instant,
     first_message_time: Option<Instant>,
@@ -246,6 +296,7 @@ async fn main() {
     }
 
     let mut outbound_session_measurements = HashMap::new();
+    let mut inbound_session_measurements = HashMap::new();
     let mut connected_in_the_past = false;
     loop {
         let maybe_event = timeout(Duration::from_secs(10), swarm.next()).await;
@@ -267,7 +318,13 @@ async fn main() {
                 );
             }
             SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
+                inbound_session_measurements
+                    .insert(inbound_session_id, InboundSessionMeasurement::new());
                 send_data_to_inbound_session(&mut swarm, inbound_session_id, &args);
+                inbound_session_measurements
+                    .get_mut(&inbound_session_id)
+                    .unwrap()
+                    .report_finish_calling_send();
             }
             SwarmEvent::Behaviour(
                 Event::SessionClosedByRequest {
@@ -278,6 +335,16 @@ async fn main() {
                 },
             ) => {
                 outbound_session_measurements[&outbound_session_id].print();
+            }
+            SwarmEvent::Behaviour(
+                Event::SessionClosedByRequest {
+                    session_id: SessionId::InboundSessionId(inbound_session_id),
+                }
+                | Event::SessionClosedByPeer {
+                    session_id: SessionId::InboundSessionId(inbound_session_id),
+                },
+            ) => {
+                inbound_session_measurements[&inbound_session_id].print(&args);
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
                 match data.msg {
