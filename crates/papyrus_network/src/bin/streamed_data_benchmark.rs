@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::iter;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 
@@ -42,6 +41,10 @@ struct Args {
     #[arg(short, long)]
     dial_address: Option<String>,
 
+    /// Amount of expected inbound sessions.
+    #[arg(short = 'e', long)]
+    num_expected_inbound_sessions: usize,
+
     /// Number of queries to send for each node that we connect to (whether we dialed to it or it
     /// dialed to us).
     #[arg(short = 'q', long, default_value_t)]
@@ -74,37 +77,44 @@ fn create_outbound_sessions(
     }
 }
 
-fn send_data_to_inbound_session(
+fn send_data_to_inbound_sessions(
     swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
-    inbound_session_id: InboundSessionId,
+    inbound_session_to_messages: &mut HashMap<InboundSessionId, Vec<Vec<u8>>>,
     args: &Args,
 ) {
-    swarm
-        .behaviour_mut()
-        .send_data(
-            StressTestMessage {
-                msg: Some(Msg::Start(InboundSessionStart {
-                    num_messages: args.num_messages_per_session,
-                    message_size: args.message_size,
-                })),
-            },
-            inbound_session_id,
-        )
-        .unwrap();
-    for _ in 0..args.num_messages_per_session {
+    for inbound_session_id in inbound_session_to_messages.keys() {
         swarm
             .behaviour_mut()
             .send_data(
                 StressTestMessage {
-                    msg: Some(Msg::Content(
-                        iter::repeat(1u8).take(args.message_size as usize).collect(),
-                    )),
+                    msg: Some(Msg::Start(InboundSessionStart {
+                        num_messages: args.num_messages_per_session,
+                        message_size: args.message_size,
+                    })),
                 },
-                inbound_session_id,
+                *inbound_session_id,
             )
             .unwrap();
     }
-    swarm.behaviour_mut().close_session(inbound_session_id.into()).unwrap();
+    while !inbound_session_to_messages.is_empty() {
+        inbound_session_to_messages.retain(|inbound_session_id, messages| match messages.pop() {
+            Some(message) => {
+                swarm
+                    .behaviour_mut()
+                    .send_data(
+                        StressTestMessage { msg: Some(Msg::Content(message)) },
+                        *inbound_session_id,
+                    )
+                    .unwrap();
+
+                true
+            }
+            None => {
+                swarm.behaviour_mut().close_session((*inbound_session_id).into()).unwrap();
+                false
+            }
+        })
+    }
 }
 
 struct OutboundSessionMeasurement {
@@ -193,7 +203,17 @@ async fn main() {
     }
 
     let mut outbound_session_measurements = HashMap::new();
+    let mut inbound_session_to_messages = HashMap::new();
     let mut connected_in_the_past = false;
+
+    let mut preprepared_messages = (0..args.num_expected_inbound_sessions)
+        .map(|_| {
+            (0..args.num_messages_per_session)
+                .map(|_| vec![1u8; args.message_size as usize])
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+    println!("Preprepared messages for sending");
     loop {
         let maybe_event = timeout(Duration::from_secs(10), swarm.next()).await;
         let Ok(Some(event)) = maybe_event else {
@@ -214,7 +234,19 @@ async fn main() {
                 );
             }
             SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
-                send_data_to_inbound_session(&mut swarm, inbound_session_id, &args);
+                inbound_session_to_messages.insert(
+                    inbound_session_id,
+                    preprepared_messages
+                        .pop()
+                        .expect("There are more inbound sessions than expected"),
+                );
+                if preprepared_messages.is_empty() {
+                    send_data_to_inbound_sessions(
+                        &mut swarm,
+                        &mut inbound_session_to_messages,
+                        &args,
+                    );
+                }
             }
             SwarmEvent::Behaviour(
                 Event::SessionClosedByRequest {
