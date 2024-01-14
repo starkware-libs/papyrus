@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::iter;
 use std::str::FromStr;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use bytes::{Buf, BufMut};
 use clap::Parser;
 use futures::StreamExt;
 use libp2p::identity::Keypair;
@@ -18,6 +20,8 @@ use papyrus_network::streamed_data_protocol::{
     OutboundSessionId,
     SessionId,
 };
+use prost::encoding::{DecodeContext, WireType};
+use prost::{DecodeError, Message};
 use tokio::time::timeout;
 
 fn pretty_size(mut size: f64) -> String {
@@ -65,8 +69,40 @@ struct Args {
     idle_connection_timeout: u64,
 }
 
+#[derive(Debug, Clone)]
+struct WrappedStressTestMessage(Arc<StressTestMessage>);
+
+impl Message for WrappedStressTestMessage {
+    fn encode_raw<B: BufMut>(&self, buf: &mut B) {
+        self.0.encode_raw(buf)
+    }
+    fn merge_field<B: Buf>(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut B,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        Arc::<StressTestMessage>::get_mut(&mut self.0)
+            .unwrap()
+            .merge_field(tag, wire_type, buf, ctx)
+    }
+    fn encoded_len(&self) -> usize {
+        self.0.encoded_len()
+    }
+    fn clear(&mut self) {
+        Arc::<StressTestMessage>::get_mut(&mut self.0).unwrap().clear()
+    }
+}
+
+impl Default for WrappedStressTestMessage {
+    fn default() -> Self {
+        Self(Arc::new(StressTestMessage::default()))
+    }
+}
+
 fn create_outbound_sessions(
-    swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
+    swarm: &mut Swarm<Behaviour<BasicMessage, WrappedStressTestMessage>>,
     peer_id: PeerId,
     outbound_session_measurements: &mut HashMap<OutboundSessionId, OutboundSessionMeasurement>,
     args: &Args,
@@ -80,42 +116,33 @@ fn create_outbound_sessions(
 }
 
 fn send_data_to_inbound_session(
-    swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
+    swarm: &mut Swarm<Behaviour<BasicMessage, WrappedStressTestMessage>>,
     inbound_session_id: InboundSessionId,
     args: &Args,
+    content_message: WrappedStressTestMessage,
 ) {
     swarm
         .behaviour_mut()
         .send_data(
-            StressTestMessage {
+            WrappedStressTestMessage(Arc::new(StressTestMessage {
                 msg: Some(Msg::Start(InboundSessionStart {
                     num_messages: args.num_messages_per_session,
                     message_size: args.message_size,
                 })),
-            },
+            })),
             inbound_session_id,
         )
         .unwrap();
     let segment_size = args.num_messages_per_session / args.num_segments;
     for i in 0..args.num_messages_per_session {
-        swarm
-            .behaviour_mut()
-            .send_data(
-                StressTestMessage {
-                    msg: Some(Msg::Content(
-                        iter::repeat(1u8).take(args.message_size as usize).collect(),
-                    )),
-                },
-                inbound_session_id,
-            )
-            .unwrap();
+        swarm.behaviour_mut().send_data(content_message.clone(), inbound_session_id).unwrap();
         if i % segment_size == 0 {
             swarm
                 .behaviour_mut()
                 .send_data(
-                    StressTestMessage {
+                    WrappedStressTestMessage(Arc::new(StressTestMessage {
                         msg: Some(Msg::SegmentFinished(BasicMessage { number: segment_size })),
-                    },
+                    })),
                     inbound_session_id,
                 )
                 .unwrap();
@@ -128,9 +155,9 @@ fn send_data_to_inbound_session(
         swarm
             .behaviour_mut()
             .send_data(
-                StressTestMessage {
+                WrappedStressTestMessage(Arc::new(StressTestMessage {
                     msg: Some(Msg::SegmentFinished(BasicMessage { number: last_segment_size })),
-                },
+                })),
                 inbound_session_id,
             )
             .unwrap();
@@ -243,14 +270,14 @@ impl OutboundSessionMeasurement {
             message_size: None,
         }
     }
-    pub fn report_first_message(&mut self, inbound_session_start: InboundSessionStart) {
+    pub fn report_first_message(&mut self, inbound_session_start: &InboundSessionStart) {
         self.first_message_time = Some(Instant::now());
         self.current_segment_start_time = self.first_message_time;
         self.num_messages = Some(inbound_session_start.num_messages);
         self.message_size = Some(inbound_session_start.message_size);
     }
 
-    pub fn report_segment_finished(&mut self, basic_message: BasicMessage) {
+    pub fn report_segment_finished(&mut self, basic_message: &BasicMessage) {
         self.segment_measurements.push((
             self.current_segment_start_time
                 .expect("Received SegmentFinished as the first message")
@@ -273,7 +300,7 @@ async fn main() {
         .with_tokio()
         .with_quic()
         .with_behaviour(|_| {
-            Behaviour::<BasicMessage, StressTestMessage>::new(Config {
+            Behaviour::<BasicMessage, WrappedStressTestMessage>::new(Config {
                 substream_timeout: Duration::from_secs(3600),
                 protocol_name: StreamProtocol::new("/papyrus/bench/1"),
             })
@@ -298,6 +325,9 @@ async fn main() {
     let mut outbound_session_measurements = HashMap::new();
     let mut inbound_session_measurements = HashMap::new();
     let mut connected_in_the_past = false;
+    let content_message = WrappedStressTestMessage(Arc::new(StressTestMessage {
+        msg: Some(Msg::Content(iter::repeat(1u8).take(args.message_size as usize).collect())),
+    }));
     loop {
         let maybe_event = timeout(Duration::from_secs(10), swarm.next()).await;
         let Ok(Some(event)) = maybe_event else {
@@ -320,7 +350,12 @@ async fn main() {
             SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
                 inbound_session_measurements
                     .insert(inbound_session_id, InboundSessionMeasurement::new());
-                send_data_to_inbound_session(&mut swarm, inbound_session_id, &args);
+                send_data_to_inbound_session(
+                    &mut swarm,
+                    inbound_session_id,
+                    &args,
+                    content_message.clone(),
+                );
                 inbound_session_measurements
                     .get_mut(&inbound_session_id)
                     .unwrap()
@@ -347,7 +382,7 @@ async fn main() {
                 inbound_session_measurements[&inbound_session_id].print(&args);
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
-                match data.msg {
+                match &data.0.msg {
                     Some(Msg::Start(inbound_session_start)) => {
                         outbound_session_measurements
                             .get_mut(&outbound_session_id)
