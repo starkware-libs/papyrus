@@ -111,6 +111,12 @@ impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
     }
 }
 
+impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
+    fn from(value: starknet_api::block::BlockSignature) -> Self {
+        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
     #[error("Out of range value")]
@@ -131,6 +137,18 @@ impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
         }
+    }
+}
+
+impl From<starknet_api::hash::StarkFelt> for protobuf::Felt252 {
+    fn from(value: starknet_api::hash::StarkFelt) -> Self {
+        Self { elements: value.bytes().to_vec() }
+    }
+}
+
+impl From<starknet_api::block::BlockHash> for protobuf::Hash {
+    fn from(value: starknet_api::block::BlockHash) -> Self {
+        Self { elements: value.0.bytes().to_vec() }
     }
 }
 

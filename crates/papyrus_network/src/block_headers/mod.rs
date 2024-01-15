@@ -30,7 +30,7 @@ pub(crate) enum SessionError {
 #[allow(dead_code)]
 pub(crate) enum Event {
     NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
-    RecievedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
+    ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
     SessionFailed { session_id: SessionId, session_error: SessionError },
     ProtobufConversionError(ProtobufConversionError),
     SessionCompletedSuccessfully { session_id: SessionId },
@@ -62,6 +62,24 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
             }
         } else {
             Err(ProtobufConversionError::MissingField)
+        }
+    }
+}
+
+impl From<BlockQuery> for protobuf::BlockHeadersRequest {
+    fn from(value: BlockQuery) -> Self {
+        protobuf::BlockHeadersRequest {
+            iteration: Some({
+                protobuf::Iteration {
+                    direction: match value.direction {
+                        Direction::Forward => 0,
+                        Direction::Backward => 1,
+                    },
+                    limit: value.limit,
+                    step: value.step,
+                    start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
+                }
+            }),
         }
     }
 }
