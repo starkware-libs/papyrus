@@ -30,6 +30,7 @@ pub struct DummyDBExecutor {
 
 impl DummyDBExecutor {
     #[allow(dead_code)]
+    // TODO: remove allow dead code when possible
     pub fn new() -> Self {
         Self {
             _data: DummyDBExecutor::generate_data(),

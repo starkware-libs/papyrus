@@ -152,7 +152,7 @@ impl From<starknet_api::block::BlockHash> for protobuf::Hash {
     }
 }
 
-impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkFelt {
+impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
@@ -160,8 +160,8 @@ impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkFelt {
             return Err(ProtobufConversionError::BytesDataLengthMismatch);
         }
         felt.copy_from_slice(&value.elements);
-        if let Ok(stark_felt) = Self::new(felt) {
-            Ok(stark_felt)
+        if let Ok(stark_hash) = Self::new(felt) {
+            Ok(stark_hash)
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
         }

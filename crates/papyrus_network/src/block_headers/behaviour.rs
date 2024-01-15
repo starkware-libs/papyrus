@@ -22,6 +22,7 @@ use crate::BlockQuery;
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
 mod behaviour_test;
+
 #[cfg(test)]
 #[path = "flow_test.rs"]
 mod flow_test;
@@ -48,6 +49,7 @@ pub(crate) struct PeerNotConnected(#[from] crate::streamed_data::behaviour::Peer
 
 impl Behaviour {
     #[allow(dead_code)]
+    // TODO: create a generic network config and use that instead of the streamed data one.
     pub fn new(config: Config) -> Self {
         Self {
             streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
@@ -97,18 +99,14 @@ impl Behaviour {
             }
         };
         for header_message in header_messages {
-            self.streamed_data_behaviour
-                .send_data(
-                    protobuf::BlockHeadersResponse {
-                        part: vec![protobuf::BlockHeadersResponsePart {
-                            header_message: Some(header_message.clone()),
-                        }],
-                    },
-                    inbound_session_id,
-                )
-                .or(Err(SessionIdNotFoundError(
-                    streamed_data::behaviour::SessionIdNotFoundError {},
-                )))?;
+            self.streamed_data_behaviour.send_data(
+                protobuf::BlockHeadersResponse {
+                    part: vec![protobuf::BlockHeadersResponsePart {
+                        header_message: Some(header_message.clone()),
+                    }],
+                },
+                inbound_session_id,
+            )?;
             if let protobuf::block_headers_response_part::HeaderMessage::Fin { .. } = header_message
             {
                 // TODO: consider removing fin as a user sent mesages and have the user call
@@ -123,7 +121,7 @@ impl Behaviour {
     /// report the session was closed.
     #[allow(dead_code)]
     pub fn close_inbound_session(&mut self, inbound_session_id: InboundSessionId) {
-        let _newly_inserted = self.inbound_sessions_pending_termination.insert(inbound_session_id);
+        self.inbound_sessions_pending_termination.insert(inbound_session_id);
         let _ = self
             .streamed_data_behaviour
             .close_session(SessionId::InboundSessionId(inbound_session_id));
@@ -144,6 +142,13 @@ trait BehaviourTrait {
     ) -> Result<BlockHeader, SessionError>;
 
     fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId);
+
+    fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event;
+
+    fn handle_outbound_session_closed_by_peer(
+        &mut self,
+        outbound_session_id: OutboundSessionId,
+    ) -> Event;
 
     fn handle_received_data(
         &mut self,
@@ -200,13 +205,6 @@ trait BehaviourTrait {
             })
         }
     }
-
-    fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event;
-
-    fn handle_outbound_session_closed_by_peer(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Event;
 
     fn map_streamed_data_behaviour_event_to_own_event(
         &mut self,

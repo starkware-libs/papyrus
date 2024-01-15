@@ -20,6 +20,7 @@ pub(crate) enum SessionError {
     SessionClosedUnexpectedly,
     #[error("Waiting to complete pairing of header and signature")]
     WaitingToCompletePairing,
+    // TODO: consider separating the case when Fin is an error and when it is not.
     #[error("Received fin")]
     ReceivedFin,
     #[error("Incorrect session id")]
