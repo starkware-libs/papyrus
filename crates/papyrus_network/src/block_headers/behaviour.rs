@@ -27,8 +27,6 @@ mod behaviour_test;
 mod flow_test;
 
 pub(crate) struct Behaviour {
-    // TODO: make this a trait of type "streamed_data_protocol::behaviour::BehaviourTrait" (new
-    // trait to add) so that the test can mock the streamed_data behaviour.
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
@@ -65,8 +63,6 @@ impl Behaviour {
         query: BlockQuery,
         peer_id: PeerId,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        // TODO: keep track of the query id and the session id so that we can map between them for
-        // reputation.
         self.streamed_data_behaviour.send_query(query.into(), peer_id).map_err(|e| e.into())
     }
 
@@ -131,17 +127,6 @@ impl Behaviour {
         let _ = self
             .streamed_data_behaviour
             .close_session(SessionId::InboundSessionId(inbound_session_id));
-    }
-
-    /// Instruct behaviour to close an outbound session. A corresponding event will be emitted when
-    /// the session is closed.
-    #[allow(dead_code)]
-    pub fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId) {
-        let _newly_inserted =
-            self.outbound_sessions_pending_termination.insert(outbound_session_id);
-        let _ = self
-            .streamed_data_behaviour
-            .close_session(SessionId::OutboundSessionId(outbound_session_id));
     }
 }
 
