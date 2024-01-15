@@ -24,32 +24,6 @@ type StreamedDataEvent = streamed_data::GenericEvent<
 >;
 
 #[test]
-#[ignore = "functionality not implemented completely yet"]
-fn test_fin_handling() {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_pending_if_streamed_data_behaviour_poll_is_pending() {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_pending_if_streamed_data_behaviour_poll_is_ready_but_event_mapping_returns_wait_to_complete_pairing()
- {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_ready_if_streamed_data_behaviour_poll_is_ready_and_event_mapping_returns_not_to_wait_to_complete_pairing()
- {
-    unimplemented!()
-}
-
-#[test]
 fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
     let mut behaviour = TestBehaviour::new();
 
