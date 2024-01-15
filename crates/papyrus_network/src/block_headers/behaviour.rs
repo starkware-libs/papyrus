@@ -223,6 +223,7 @@ trait BehaviourTrait {
                 session_error: SessionError::StreamedData(error),
             }),
             streamed_data::GenericEvent::SessionClosedByPeer { session_id } => {
+                // TODO: handle session closed by peer in inbound session as well.
                 let SessionId::OutboundSessionId(outbound_session_id) = session_id else {
                     return Some(Event::SessionFailed {
                         session_id,
@@ -309,6 +310,8 @@ impl BehaviourTrait for Behaviour {
         &mut self,
         outbound_session_id: OutboundSessionId,
     ) -> Event {
+        // TODO: consider the handling of session closing when we have better understanding of the
+        // usage.
         if self.outbound_sessions_pending_termination.remove(&outbound_session_id) {
             Event::SessionCompletedSuccessfully {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
