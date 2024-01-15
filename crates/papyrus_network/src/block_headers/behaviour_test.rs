@@ -404,21 +404,25 @@ impl BehaviourTrait for TestBehaviour {
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<super::BlockHeader> {
+    ) -> Result<super::BlockHeader, SessionError> {
         self.fetch_pending_header_for_session_call_count += 1;
         self.header_pending_pairing
             .remove(&outbound_session_id)
             .and_then(|header| TryInto::<super::BlockHeader>::try_into(header).ok())
+            .ok_or(SessionError::PairingError)
     }
 
     fn store_header_pending_pairing_with_signature(
         &mut self,
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<()> {
+    ) -> Result<(), SessionError> {
         self.store_header_pending_pairing_with_signature_call_count += 1;
-        self.header_pending_pairing.insert(outbound_session_id, header.clone());
-        Some(())
+        self.header_pending_pairing
+            .insert(outbound_session_id, header.clone())
+            .map(|_| ())
+            .xor(Some(()))
+            .ok_or_else(|| SessionError::PairingError)
     }
 }
 
