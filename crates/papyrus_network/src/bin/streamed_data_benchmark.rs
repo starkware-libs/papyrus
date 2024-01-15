@@ -34,8 +34,12 @@ struct Args {
     dial_address: Option<String>,
 
     /// Amount of expected inbound sessions.
-    #[arg(short = 'e', long)]
+    #[arg(short = 'i', long)]
     num_expected_inbound_sessions: usize,
+
+    /// Amount of expected peers to connect to this peer (dial or listener).
+    #[arg(short = 'c', long)]
+    num_expected_connections: usize,
 
     /// Number of queries to send for each node that we connect to (whether we dialed to it or it
     /// dialed to us).
@@ -51,24 +55,30 @@ struct Args {
     message_size: u64,
 
     /// Amount of time (in seconds) to wait until closing an unactive connection.
-    #[arg(short = 't', long, default_value_t = 1)]
+    #[arg(short = 't', long, default_value_t = 10)]
     idle_connection_timeout: u64,
 }
 
-fn create_outbound_sessions(
+fn create_outbound_sessions_if_all_peers_connected(
     swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
     peer_id: PeerId,
     outbound_session_measurements: &mut HashMap<OutboundSessionId, OutboundSessionMeasurement>,
+    peers_pending_outbound_session: &mut Vec<PeerId>,
     args: &Args,
 ) {
-    for number in 0..args.num_queries_per_connection {
-        let outbound_session_id =
-            swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).expect(
-                "There's no connection to a peer immediately after we got a ConnectionEstablished \
-                 event",
-            );
-        outbound_session_measurements
-            .insert(outbound_session_id, OutboundSessionMeasurement::new());
+    peers_pending_outbound_session.push(peer_id);
+    if peers_pending_outbound_session.len() >= args.num_expected_connections {
+        for peer_id in peers_pending_outbound_session {
+            for number in 0..args.num_queries_per_connection {
+                let outbound_session_id =
+                    swarm.behaviour_mut().send_query(BasicMessage { number }, *peer_id).expect(
+                        "There's no connection to a peer immediately after we got a \
+                         ConnectionEstablished event",
+                    );
+                outbound_session_measurements
+                    .insert(outbound_session_id, OutboundSessionMeasurement::new());
+            }
+        }
     }
 }
 
@@ -209,6 +219,8 @@ async fn main() {
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
+
+    let mut peers_pending_outbound_session = Vec::new();
     println!("Preprepared messages for sending");
 
     dial_if_requested(&mut swarm, &args);
@@ -218,10 +230,11 @@ async fn main() {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
                 connected_in_the_past = true;
-                create_outbound_sessions(
+                create_outbound_sessions_if_all_peers_connected(
                     &mut swarm,
                     peer_id,
                     &mut outbound_session_measurements,
+                    &mut peers_pending_outbound_session,
                     &args,
                 );
             }
