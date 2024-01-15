@@ -173,7 +173,10 @@ trait BehaviourTrait {
                     let Some(_success) = self
                         .store_header_pending_pairing_with_signature(header, outbound_session_id)
                     else {
-                        unreachable!("store_header_pending_pairing_with_signature should allways return Some(())")
+                        unreachable!(
+                            "store_header_pending_pairing_with_signature should allways return \
+                             Some(())"
+                        )
                     };
                     None
                 }
