@@ -24,32 +24,6 @@ type StreamedDataEvent = streamed_data::GenericEvent<
 >;
 
 #[test]
-#[ignore = "functionality not implemented completely yet"]
-fn test_fin_handling() {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_pending_if_streamed_data_behaviour_poll_is_pending() {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_pending_if_streamed_data_behaviour_poll_is_ready_but_event_mapping_returns_wait_to_complete_pairing()
- {
-    unimplemented!()
-}
-
-#[tokio::test]
-#[ignore = "functionality not implemented completely yet"]
-async fn poll_is_ready_if_streamed_data_behaviour_poll_is_ready_and_event_mapping_returns_not_to_wait_to_complete_pairing()
- {
-    unimplemented!()
-}
-
-#[test]
 fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
     let mut behaviour = TestBehaviour::new();
 
@@ -404,21 +378,25 @@ impl BehaviourTrait for TestBehaviour {
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<super::BlockHeader> {
+    ) -> Result<super::BlockHeader, SessionError> {
         self.fetch_pending_header_for_session_call_count += 1;
         self.header_pending_pairing
             .remove(&outbound_session_id)
             .and_then(|header| TryInto::<super::BlockHeader>::try_into(header).ok())
+            .ok_or(SessionError::PairingError)
     }
 
     fn store_header_pending_pairing_with_signature(
         &mut self,
         header: protobuf::BlockHeader,
         outbound_session_id: OutboundSessionId,
-    ) -> Option<()> {
+    ) -> Result<(), SessionError> {
         self.store_header_pending_pairing_with_signature_call_count += 1;
-        self.header_pending_pairing.insert(outbound_session_id, header.clone());
-        Some(())
+        self.header_pending_pairing
+            .insert(outbound_session_id, header.clone())
+            .map(|_| ())
+            .xor(Some(()))
+            .ok_or_else(|| SessionError::PairingError)
     }
 }
 
