@@ -73,6 +73,7 @@ pub mod test_utils;
 use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::Duration;
 
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
@@ -97,6 +98,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::{debug, warn};
+use utils::collect_storage_metrics;
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
@@ -128,6 +130,10 @@ pub const STORAGE_VERSION_STATE: Version = Version(10);
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
 pub const STORAGE_VERSION_BLOCKS: Version = Version(10);
+
+// TODO(dvir): add this to config.
+// Duration between updates to the storage metrics (those in the collect_storage_metrics function).
+const STORAGE_METRICS_UPDATE_INTERVAL: Duration = Duration::from_secs(10);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -163,6 +169,10 @@ pub fn open_storage(
         db_reader.clone(),
         &tables.file_offsets,
     )?;
+
+    if storage_config.collect_metrics {
+        collect_storage_metrics(db_reader.clone(), STORAGE_METRICS_UPDATE_INTERVAL);
+    }
 
     let reader = StorageReader {
         db_reader,
@@ -518,6 +528,7 @@ pub struct StorageConfig {
     #[validate]
     pub mmap_file_config: MmapFileConfig,
     pub scope: StorageScope,
+    pub collect_metrics: bool,
 }
 
 impl SerializeConfig for StorageConfig {
@@ -531,6 +542,12 @@ impl SerializeConfig for StorageConfig {
         dumped_config
             .extend(append_sub_config_name(self.mmap_file_config.dump(), "mmap_file_config"));
         dumped_config.extend(append_sub_config_name(self.db_config.dump(), "db_config"));
+        dumped_config.extend([ser_param(
+            "collect_metrics",
+            &self.collect_metrics,
+            "If true, collect additional metrics for the storage.",
+            ParamPrivacyInput::Public,
+        )]);
         dumped_config
     }
 }

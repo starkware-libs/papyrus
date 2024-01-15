@@ -35,7 +35,7 @@ lazy_static! {
             &false,
             "If true, collect metrics for the node.",
         ),
-        vec!["rpc.collect_metrics".to_owned(), "monitoring_gateway.collect_metrics".to_owned()],
+        vec!["rpc.collect_metrics".to_owned(), "monitoring_gateway.collect_metrics".to_owned(), "storage.collect_metrics".to_owned()],
     )];
 }
 

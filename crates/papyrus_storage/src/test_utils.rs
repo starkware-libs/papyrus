@@ -29,6 +29,7 @@ pub fn get_test_config(storage_scope: Option<StorageScope>) -> (StorageConfig, T
             },
             scope: storage_scope,
             mmap_file_config: get_mmap_file_test_config(),
+            collect_metrics: false,
         },
         dir,
     )

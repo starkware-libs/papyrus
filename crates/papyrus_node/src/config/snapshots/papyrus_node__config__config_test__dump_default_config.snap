@@ -164,6 +164,11 @@ expression: dumped_default_config
     "value": "https://alpha-mainnet.starknet.io/",
     "privacy": "Public"
   },
+  "storage.collect_metrics": {
+    "description": "If true, collect additional metrics for the storage.",
+    "value": false,
+    "privacy": "Public"
+  },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN",

@@ -6,15 +6,18 @@ mod utils_test;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufWriter, Write};
+use std::time::Duration;
 
+use metrics::{absolute_counter, gauge};
 use serde::Serialize;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, CompiledClassHash};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
+use tracing::warn;
 
 use crate::compiled_class::CasmStorageReader;
-use crate::db::RO;
+use crate::db::{DbReader, RO};
 use crate::state::StateStorageReader;
 use crate::{open_storage, StorageConfig, StorageError, StorageResult, StorageTxn};
 
@@ -83,4 +86,29 @@ fn dump_declared_classes_table_by_block_range_internal(
     }
     writer.write_all(b"]")?;
     Ok(())
+}
+
+// TODO(dvir): consider adding storage size metrics.
+pub(crate) fn collect_storage_metrics(reader: DbReader, update_interval_time: Duration) {
+    let mut interval = tokio::time::interval(update_interval_time);
+    tokio::spawn(async move {
+        loop {
+            if let Ok(freelist_size) = reader.get_free_pages() {
+                gauge!("storage_free_pages_number", freelist_size as f64);
+            } else {
+                warn!("Failed to get storage freelist size");
+            }
+
+            let info = reader.get_db_info();
+            if let Ok(info) = info {
+                absolute_counter!("storage_last_page_number", info.last_pgno() as u64);
+                absolute_counter!("storage_last_transaction_index", info.last_txnid() as u64);
+                gauge!("storage_num_readers", info.num_readers() as f64);
+            } else {
+                warn!("Failed to get storage info");
+            }
+
+            interval.tick().await;
+        }
+    });
 }

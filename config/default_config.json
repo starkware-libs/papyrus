@@ -149,6 +149,11 @@
     "privacy": "TemporaryValue",
     "value": "https://alpha-mainnet.starknet.io/"
   },
+  "storage.collect_metrics": {
+    "description": "If true, collect additional metrics for the storage.",
+    "pointer_target": "collect_metrics",
+    "privacy": "Public"
+  },
   "storage.db_config.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "pointer_target": "chain_id",
