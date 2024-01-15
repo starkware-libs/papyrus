@@ -642,6 +642,7 @@ fn update_compiled_class_marker<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_declared_classes_latency_seconds")]
 fn write_declared_classes<'env>(
     declared_classes: &IndexMap<ClassHash, ContractClass>,
     txn: &DbTransaction<'env, RW>,
@@ -660,6 +661,7 @@ fn write_declared_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_deprecated_declared_classes_latency_seconds")]
 fn write_deprecated_declared_classes<'env>(
     deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
     txn: &DbTransaction<'env, RW>,
@@ -684,6 +686,7 @@ fn write_deprecated_declared_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_deployed_contracts_latency_seconds")]
 fn write_deployed_contracts<'env>(
     deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -709,6 +712,7 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_nonces_latency_seconds")]
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -721,6 +725,7 @@ fn write_nonces<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_replaced_classes_latency_seconds")]
 fn write_replaced_classes<'env>(
     replaced_classes: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -733,6 +738,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_storage_diffs_latency_seconds")]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,
@@ -759,6 +765,10 @@ fn write_storage_diffs<'env>(
         times.first().unwrap().as_secs_f64(),
         avg_time.as_secs_f64()
     );
+
+    for (i, time) in times.iter().enumerate() {
+        debug!("<{block_number}, 555, 444, 222> {i}: {time:?}");
+    }
     Ok(())
 }
 
