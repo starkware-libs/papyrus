@@ -14,6 +14,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, CompiledClassHash};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
+use tokio::task::JoinHandle;
 use tracing::warn;
 
 use crate::compiled_class::CasmStorageReader;
@@ -89,7 +90,10 @@ fn dump_declared_classes_table_by_block_range_internal(
 }
 
 // TODO(dvir): consider adding storage size metrics.
-pub(crate) fn collect_storage_metrics(reader: DbReader, update_interval_time: Duration) {
+pub(crate) fn collect_storage_metrics(
+    reader: DbReader,
+    update_interval_time: Duration,
+) -> JoinHandle<()> {
     let mut interval = tokio::time::interval(update_interval_time);
     tokio::spawn(async move {
         loop {
@@ -110,5 +114,5 @@ pub(crate) fn collect_storage_metrics(reader: DbReader, update_interval_time: Du
 
             interval.tick().await;
         }
-    });
+    })
 }
