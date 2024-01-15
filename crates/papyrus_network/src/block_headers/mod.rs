@@ -1,11 +1,8 @@
 pub mod behaviour;
-#[cfg(test)]
-#[path = "behaviour_test.rs"]
-mod behaviour_test;
 
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
-use starknet_api::hash::StarkFelt;
+use starknet_api::crypto::Signature;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
@@ -33,7 +30,7 @@ pub(crate) enum SessionError {
 #[allow(dead_code)]
 pub(crate) enum Event {
     NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
-    RecievedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
+    ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
     SessionFailed { session_id: SessionId, session_error: SessionError },
     ProtobufConversionError(ProtobufConversionError),
     SessionCompletedSuccessfully { session_id: SessionId },
@@ -69,10 +66,22 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     }
 }
 
-#[derive(Debug)]
-pub struct Signature {
-    pub r: StarkFelt,
-    pub s: StarkFelt,
+impl From<BlockQuery> for protobuf::BlockHeadersRequest {
+    fn from(value: BlockQuery) -> Self {
+        protobuf::BlockHeadersRequest {
+            iteration: Some({
+                protobuf::Iteration {
+                    direction: match value.direction {
+                        Direction::Forward => 0,
+                        Direction::Backward => 1,
+                    },
+                    limit: value.limit,
+                    step: value.step,
+                    start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
+                }
+            }),
+        }
+    }
 }
 
 // TODO(nevo): decide if we need this struct or we can covert the protobuf directly to starknet api
@@ -130,4 +139,15 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
 pub struct BlockHeaderData {
     pub block_header: BlockHeader,
     pub signatures: Vec<Signature>,
+}
+
+impl TryFrom<protobuf::Signatures> for Vec<Signature> {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Signatures) -> Result<Self, Self::Error> {
+        let mut signatures = Vec::with_capacity(value.signatures.len());
+        for signature in value.signatures {
+            signatures.push(signature.try_into()?);
+        }
+        Ok(signatures)
+    }
 }

@@ -11,13 +11,15 @@ mod test_utils;
 
 use starknet_api::block::BlockNumber;
 
-#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug))]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Forward,
     Backward,
 }
 
-#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug))]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct BlockQuery {
     pub start_block: BlockNumber,
     pub direction: Direction,

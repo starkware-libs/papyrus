@@ -111,6 +111,12 @@ impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
     }
 }
 
+impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
+    fn from(value: starknet_api::block::BlockSignature) -> Self {
+        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
+    }
+}
+
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
     #[error("Out of range value")]
@@ -131,6 +137,18 @@ impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
         }
+    }
+}
+
+impl From<starknet_api::hash::StarkFelt> for protobuf::Felt252 {
+    fn from(value: starknet_api::hash::StarkFelt) -> Self {
+        Self { elements: value.bytes().to_vec() }
+    }
+}
+
+impl From<starknet_api::block::BlockHash> for protobuf::Hash {
+    fn from(value: starknet_api::block::BlockHash) -> Self {
+        Self { elements: value.0.bytes().to_vec() }
     }
 }
 
@@ -166,6 +184,33 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
             }
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
+        }
+    }
+}
+
+pub trait TestInstance {
+    fn test_instance() -> Self;
+}
+
+impl TestInstance for protobuf::BlockHeader {
+    fn test_instance() -> Self {
+        Self {
+            number: 1,
+            parent_header: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
+            sequencer_address: Some(protobuf::Address { elements: [0].repeat(32).to_vec() }),
+            ..Default::default()
+        }
+    }
+}
+
+impl TestInstance for protobuf::Signatures {
+    fn test_instance() -> Self {
+        Self {
+            block: Some(protobuf::BlockId { number: 1, header: None }),
+            signatures: vec![protobuf::ConsensusSignature {
+                r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+                s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+            }],
         }
     }
 }
