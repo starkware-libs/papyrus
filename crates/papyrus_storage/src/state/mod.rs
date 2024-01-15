@@ -739,11 +739,26 @@ fn write_storage_diffs<'env>(
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
 ) -> StorageResult<()> {
+    let mut capacity = 0;
+    for (_, storage_entries) in storage_diffs {
+        capacity += storage_entries.len();
+    }
+
+    let mut times = Vec::with_capacity(capacity);
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
+            let now = std::time::Instant::now();
             storage_table.upsert(txn, &(*address, *key, block_number), value)?;
+            let elapsed = now.elapsed();
+            times.push(elapsed);
         }
     }
+    let avg_time = times.iter().skip(1).sum::<std::time::Duration>() / (times.len() as u32 - 1);
+    debug!(
+        "<{block_number}, 555, 444, 111> First: {:?}, average : {:?}",
+        times.first().unwrap().as_secs_f64(),
+        avg_time.as_secs_f64()
+    );
     Ok(())
 }
 
