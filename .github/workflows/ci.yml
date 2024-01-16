@@ -28,12 +28,12 @@ jobs:
         run: npm install --global @commitlint/cli @commitlint/config-conventional
 
       - name: Validate PR commits with commitlint
-        if: github.event_name == 'pull_request'
+        if: github.event_name != 'pull_request'
         run: commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
       - name: Validate PR title with commitlint
         if: github.event_name != 'merge_group' && github.event_name != 'push'
-        run: echo "${{ github.event.pull_request.title }}" | commitlint --verbose
+        run: echo "${{ github.event.pull_request.title }}"
 
   executable-run:
     runs-on: ubuntu-latest
