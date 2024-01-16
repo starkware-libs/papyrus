@@ -15,7 +15,7 @@ use crate::{BlockQuery, Direction};
 
 #[tokio::test]
 async fn one_sends_to_the_other() {
-    let mut db_executor = db_executor::DummyDBExecutor::new();
+    let mut db_executor = db_executor::dummy_executor::DummyDBExecutor::new();
     let mut swarms_stream = create_fully_connected_swarms_stream(2, || {
         Behaviour::new(Config {
             substream_timeout: Duration::from_secs(60),
