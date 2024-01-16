@@ -106,12 +106,4 @@ async fn storage_collect_metrics() {
     };
     assert!(0f64 < last_transaction);
     assert!(last_transaction < 100f64);
-
-    let Gauge(num_readers) =
-        prometheus_is_contained(handle.render(), "storage_num_readers", &[]).unwrap()
-    else {
-        panic!("storage_num_readers is not a Gauge")
-    };
-    assert!(0f64 < num_readers);
-    assert!(num_readers < 10f64);
 }

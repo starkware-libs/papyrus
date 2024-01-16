@@ -15,7 +15,7 @@ use starknet_api::core::{ChainId, ClassHash, CompiledClassHash};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 use tokio::task::JoinHandle;
-use tracing::warn;
+use tracing::{debug, debug_span, warn, Instrument};
 
 use crate::compiled_class::CasmStorageReader;
 use crate::db::{DbReader, RO};
@@ -95,24 +95,28 @@ pub(crate) fn collect_storage_metrics(
     update_interval_time: Duration,
 ) -> JoinHandle<()> {
     let mut interval = tokio::time::interval(update_interval_time);
-    tokio::spawn(async move {
-        loop {
-            if let Ok(freelist_size) = reader.get_free_pages() {
-                gauge!("storage_free_pages_number", freelist_size as f64);
-            } else {
-                warn!("Failed to get storage freelist size");
-            }
+    let span = debug_span!("collect_storage_metrics");
+    tokio::spawn(
+        async move {
+            loop {
+                debug!("collecting storage metrics");
+                if let Ok(freelist_size) = reader.get_free_pages() {
+                    gauge!("storage_free_pages_number", freelist_size as f64);
+                } else {
+                    warn!("Failed to get storage freelist size");
+                }
 
-            let info = reader.get_db_info();
-            if let Ok(info) = info {
-                absolute_counter!("storage_last_page_number", info.last_pgno() as u64);
-                absolute_counter!("storage_last_transaction_index", info.last_txnid() as u64);
-                gauge!("storage_num_readers", info.num_readers() as f64);
-            } else {
-                warn!("Failed to get storage info");
-            }
+                let info = reader.get_db_info();
+                if let Ok(info) = info {
+                    absolute_counter!("storage_last_page_number", info.last_pgno() as u64);
+                    absolute_counter!("storage_last_transaction_index", info.last_txnid() as u64);
+                } else {
+                    warn!("Failed to get storage info");
+                }
 
-            interval.tick().await;
+                interval.tick().await;
+            }
         }
-    })
+        .instrument(span),
+    )
 }
