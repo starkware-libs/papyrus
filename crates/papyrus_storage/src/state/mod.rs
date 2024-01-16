@@ -606,8 +606,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             )),
         ))
     }
-
-    #[instrument(level = "debug", skip(self, storage_diffs))]
     fn write_additional_state_diff_data(
         self,
         block_number: BlockNumber,
