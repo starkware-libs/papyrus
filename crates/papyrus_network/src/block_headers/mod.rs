@@ -1,5 +1,6 @@
 pub mod behaviour;
 
+use prost_types::Timestamp;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::crypto::Signature;
@@ -150,5 +151,31 @@ impl TryFrom<protobuf::Signatures> for Vec<Signature> {
             signatures.push(signature.try_into()?);
         }
         Ok(signatures)
+    }
+}
+
+impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
+    fn from(value: starknet_api::block::BlockHeader) -> Self {
+        Self {
+            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
+            number: value.block_number.0,
+            sequencer_address: Some(protobuf::Address {
+                elements: value.sequencer.0.key().bytes().to_vec(),
+            }),
+            // TODO: fix timestamp conversion and add missing fields.
+            time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
+            state_diffs: None,
+            state: None,
+            proof_fact: None,
+            transactions: None,
+            events: None,
+            receipts: None,
+        }
+    }
+}
+
+impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
+    fn from(value: starknet_api::block::BlockSignature) -> Self {
+        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
     }
 }
