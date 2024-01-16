@@ -9,7 +9,6 @@ use std::io;
 
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
-use prost_types::Timestamp;
 use unsigned_varint::encode::usize_buffer;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
@@ -89,32 +88,6 @@ pub async fn write_usize<Stream: AsyncWrite + Unpin>(
     io.write_all(&buffer[..encoded_len]).await?;
 
     Ok(())
-}
-
-impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
-    fn from(value: starknet_api::block::BlockHeader) -> Self {
-        Self {
-            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
-            number: value.block_number.0,
-            sequencer_address: Some(protobuf::Address {
-                elements: value.sequencer.0.key().bytes().to_vec(),
-            }),
-            // TODO: fix timestamp conversion and add missing fields.
-            time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
-            state_diffs: None,
-            state: None,
-            proof_fact: None,
-            transactions: None,
-            events: None,
-            receipts: None,
-        }
-    }
-}
-
-impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
-    fn from(value: starknet_api::block::BlockSignature) -> Self {
-        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
-    }
 }
 
 #[derive(thiserror::Error, Debug)]
