@@ -1962,15 +1962,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95b3f3e67048839cb0d0781f445682a35113da7121f7c949db0e2be96a4fbece"
-dependencies = [
- "log",
-]
-
-[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3718,16 +3709,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "memory-stats"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34f79cf9964c5c9545493acda1263f1912f8d2c56c8a2ffee2606cb960acaacc"
-dependencies = [
- "libc",
- "winapi",
-]
-
-[[package]]
 name = "metrics"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4534,7 +4515,6 @@ dependencies = [
  "integer-encoding",
  "libmdbx",
  "memmap2",
- "memory-stats",
  "metrics",
  "num-bigint",
  "num-traits 0.2.17",
@@ -4553,7 +4533,6 @@ dependencies = [
  "starknet_api",
  "tempfile",
  "test-case",
- "test-log",
  "test_utils",
  "thiserror",
  "tokio",
@@ -6443,27 +6422,6 @@ dependencies = [
  "quote",
  "syn 2.0.39",
  "test-case-core",
-]
-
-[[package]]
-name = "test-log"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6159ab4116165c99fc88cce31f99fa2c9dbe08d3691cb38da02fc3b45f357d2b"
-dependencies = [
- "env_logger",
- "test-log-macros",
-]
-
-[[package]]
-name = "test-log-macros"
-version = "0.2.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ba277e77219e9eea169e8508942db1bf5d8a41ff2db9b20aab5a5aadc9fa25d"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.39",
 ]
 
 [[package]]

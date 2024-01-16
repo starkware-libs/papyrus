@@ -146,6 +146,15 @@ where
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
     ) -> StorageResult<Self>;
 
+    /// Writes additional state diff data to the storage.
+    fn write_additional_state_diff_data(
+        self,
+        _block_number: BlockNumber,
+        _storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    ) -> StorageResult<Self> {
+        unreachable!("Shouldn't get here.");
+    }
+
     /// Removes a state diff from the storage and returns the removed data.
     fn revert_state_diff(
         self,
@@ -597,6 +606,17 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             )),
         ))
     }
+
+    #[instrument(level = "debug", skip(self, storage_diffs))]
+    fn write_additional_state_diff_data(
+        self,
+        block_number: BlockNumber,
+        storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    ) -> StorageResult<Self> {
+        let storage_table = self.open_table(&self.tables.contract_storage)?;
+        write_storage_diffs(storage_diffs, &self.txn, block_number, &storage_table)?;
+        Ok(self)
+    }
 }
 
 fn update_marker<'env>(
@@ -759,12 +779,19 @@ fn write_storage_diffs<'env>(
             times.push(elapsed);
         }
     }
-    let avg_time = times.iter().skip(1).sum::<std::time::Duration>() / (times.len() as u32 - 1);
-    debug!(
-        "<{block_number}, 555, 444, 111> First: {:?}, average : {:?}",
-        times.first().unwrap().as_secs_f64(),
-        avg_time.as_secs_f64()
-    );
+    let avg_time = times.iter().sum::<std::time::Duration>() / (times.len() as u32);
+    debug!("<{block_number}, 555, 444, 111> average time: {:?}", avg_time.as_secs_f64());
+
+    let mut i = 0;
+    for (address, storage_entries) in storage_diffs {
+        for (key, value) in storage_entries {
+            debug!(
+                "<{block_number}, 555, 444, 222> {i}: {:?} [{address:?}, {key:?}, {value}]",
+                times.get(i).unwrap()
+            );
+            i += 1;
+        }
+    }
 
     for (i, time) in times.iter().enumerate() {
         debug!("<{block_number}, 555, 444, 222> {i}: {time:?}");
