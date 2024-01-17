@@ -10,7 +10,7 @@ use crate::streamed_data::{self, SessionId};
 use crate::{BlockQuery, Direction};
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum SessionError {
+pub enum SessionError {
     #[error(transparent)]
     StreamedData(#[from] streamed_data::behaviour::SessionError),
     #[error("Incompatible data error")]
@@ -30,7 +30,7 @@ pub(crate) enum SessionError {
 
 #[cfg_attr(test, derive(Debug))]
 #[allow(dead_code)]
-pub(crate) enum Event {
+pub enum Event {
     NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
     ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
     SessionFailed { session_id: SessionId, session_error: SessionError },

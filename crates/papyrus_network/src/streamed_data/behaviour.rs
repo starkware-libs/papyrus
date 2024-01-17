@@ -34,6 +34,7 @@ use super::{
     QueryBound,
     SessionId,
 };
+use crate::PapyrusBehaviour;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -119,8 +120,8 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     next_inbound_session_id: Arc<AtomicUsize>,
 }
 
-impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
-    pub fn new(config: Config) -> Self {
+impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, Data> {
+    fn new(config: Config) -> Self {
         Self {
             config,
             pending_events: Default::default(),
@@ -131,7 +132,9 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             next_inbound_session_id: Arc::new(Default::default()),
         }
     }
+}
 
+impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
     pub fn send_query(
