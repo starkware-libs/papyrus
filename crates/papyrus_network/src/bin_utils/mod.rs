@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use libp2p::identity::Keypair;
+use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::{Multiaddr, Swarm, SwarmBuilder};
 
 use crate::streamed_data::Config;
@@ -32,4 +33,15 @@ where
         .listen_on(listen_address.clone())
         .unwrap_or_else(|_| panic!("Error while binding to {}", listen_address));
     swarm
+}
+
+pub fn dial<Behaviour>(swarm: &mut Swarm<Behaviour>, dial_address_str: &str)
+where
+    Behaviour: PapyrusBehaviour,
+{
+    let dial_address = Multiaddr::from_str(dial_address_str)
+        .unwrap_or_else(|_| panic!("Unable to parse address {}", dial_address_str));
+    swarm
+        .dial(DialOpts::unknown_peer_id().address(dial_address).build())
+        .unwrap_or_else(|_| panic!("Error while dialing {}", dial_address_str));
 }
