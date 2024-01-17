@@ -117,6 +117,7 @@ use crate::db::{
 };
 use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
+pub use crate::utils::collect_storage_metrics;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
 /// The current version of the storage state code.

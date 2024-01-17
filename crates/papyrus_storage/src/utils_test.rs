@@ -2,13 +2,16 @@ use std::collections::HashMap;
 use std::fs;
 
 use indexmap::indexmap;
+use metrics_exporter_prometheus::PrometheusBuilder;
 use pretty_assertions::assert_eq;
+use prometheus_parse::Value::{Counter, Gauge};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff};
+use test_utils::prometheus_is_contained;
 
-// use super::dump_table_to_file;
+use super::collect_storage_metrics;
 use crate::state::StateStorageWriter;
 use crate::test_utils::get_test_storage;
 use crate::utils::{dump_declared_classes_table_by_block_range_internal, DumpDeclaredClass};
@@ -69,4 +72,38 @@ fn test_dump_declared_classes() {
         },
     ];
     assert_eq!(file_content, serde_json::to_string(&expected_declared_classes).unwrap());
+}
+
+#[tokio::test]
+async fn storage_collect_metrics() {
+    let ((reader, _writer), _temp_dir) = get_test_storage();
+
+    let update_interval_time = std::time::Duration::from_micros(1);
+    collect_storage_metrics(reader, update_interval_time);
+    let handle = PrometheusBuilder::new().install_recorder().unwrap();
+    tokio::time::sleep(update_interval_time).await;
+
+    let Gauge(free_pages) =
+        prometheus_is_contained(handle.render(), "storage_free_pages_number", &[]).unwrap()
+    else {
+        panic!("storage_free_pages_number is not a Gauge")
+    };
+    // TODO(dvir): add an upper limit when the bug in the binding freelist function will be fixed.
+    assert!(0f64 < free_pages);
+
+    let Counter(last_page) =
+        prometheus_is_contained(handle.render(), "storage_last_page_number", &[]).unwrap()
+    else {
+        panic!("storage_last_page_number is not a Counter")
+    };
+    assert!(0f64 < last_page);
+    assert!(last_page < 1000f64);
+
+    let Counter(last_transaction) =
+        prometheus_is_contained(handle.render(), "storage_last_transaction_index", &[]).unwrap()
+    else {
+        panic!("storage_last_transaction_index is not a Counter")
+    };
+    assert!(0f64 < last_transaction);
+    assert!(last_transaction < 100f64);
 }
