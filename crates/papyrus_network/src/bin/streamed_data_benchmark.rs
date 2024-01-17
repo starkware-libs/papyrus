@@ -5,10 +5,10 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 use futures::StreamExt;
-use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::SwarmEvent;
-use libp2p::{Multiaddr, StreamProtocol, Swarm, SwarmBuilder};
+use libp2p::{Multiaddr, StreamProtocol, Swarm};
+use papyrus_network::bin_utils::build_swarm;
 use papyrus_network::messages::protobuf::stress_test_message::Msg;
 use papyrus_network::messages::protobuf::{BasicMessage, InboundSessionStart, StressTestMessage};
 use papyrus_network::streamed_data::behaviour::{Behaviour, Event, SessionError};
@@ -116,31 +116,6 @@ fn print_outbound_session_metrics(elapsed: Duration, num_messages: u64, message_
     );
 }
 
-fn build_swarm(args: &Args) -> Swarm<Behaviour<BasicMessage, StressTestMessage>> {
-    let listen_address = Multiaddr::from_str(&args.listen_address)
-        .unwrap_or_else(|_| panic!("Unable to parse address {}", args.listen_address));
-
-    let key_pair = Keypair::generate_ed25519();
-    let mut swarm = SwarmBuilder::with_existing_identity(key_pair)
-        .with_tokio()
-        .with_quic()
-        .with_behaviour(|_| {
-            Behaviour::<BasicMessage, StressTestMessage>::new(Config {
-                substream_timeout: Duration::from_secs(3600),
-                protocol_name: StreamProtocol::new("/papyrus/bench/1"),
-            })
-        })
-        .expect("Error while building the swarm")
-        .with_swarm_config(|cfg| {
-            cfg.with_idle_connection_timeout(Duration::from_secs(args.idle_connection_timeout))
-        })
-        .build();
-    swarm
-        .listen_on(listen_address)
-        .unwrap_or_else(|_| panic!("Error while binding to {}", args.listen_address));
-    swarm
-}
-
 fn dial_if_requested(swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>, args: &Args) {
     if let Some(dial_address_str) = args.dial_address.as_ref() {
         let dial_address = Multiaddr::from_str(dial_address_str)
@@ -155,7 +130,11 @@ fn dial_if_requested(swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage
 async fn main() {
     let args = Args::parse();
 
-    let mut swarm = build_swarm(&args);
+    let config = Config {
+        substream_timeout: Duration::from_secs(3600),
+        protocol_name: StreamProtocol::new("/papyrus/bench/1"),
+    };
+    let mut swarm = build_swarm(args.listen_address.clone(), args.idle_connection_timeout, config);
     dial_if_requested(&mut swarm, &args);
 
     let mut outbound_session_measurements = HashMap::new();
