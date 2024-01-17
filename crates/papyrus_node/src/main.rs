@@ -2,8 +2,10 @@
 mod main_test;
 
 use std::env::args;
+use std::future;
 use std::process::exit;
 use std::sync::Arc;
+use std::time::Duration;
 
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
@@ -33,8 +35,21 @@ use tracing_subscriber::{fmt, EnvFilter};
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
+// TODO(dvir): add this to config.
+// Duration between updates to the storage metrics (those in the collect_storage_metrics function).
+const STORAGE_METRICS_UPDATE_INTERVAL: Duration = Duration::from_secs(10);
+
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.clone())?;
+
+    let storage_metrics_handle = if config.monitoring_gateway.collect_metrics {
+        papyrus_storage::collect_storage_metrics(
+            storage_reader.clone(),
+            STORAGE_METRICS_UPDATE_INTERVAL,
+        )
+    } else {
+        tokio::spawn(future::pending())
+    };
 
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
@@ -81,6 +96,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let sync_handle = tokio::spawn(sync_future);
 
     tokio::select! {
+        res = storage_metrics_handle => {
+            error!("collecting storage metrics stopped.");
+            res?
+        }
         res = server_handle_future => {
             error!("RPC server stopped.");
             res?

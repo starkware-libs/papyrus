@@ -33,6 +33,7 @@ serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
+tokio.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
 
@@ -40,9 +41,11 @@ validator = { workspace = true, features = ["derive"] }
 assert_matches.workspace = true
 camelpaste.workspace = true
 insta = { workspace = true, features = ["yaml"] }
+metrics-exporter-prometheus.workspace = true
 num-traits.workspace = true
 paste.workspace = true
 pretty_assertions.workspace = true
+prometheus-parse.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 schemars = { workspace = true, features = ["preserve_order"] }
