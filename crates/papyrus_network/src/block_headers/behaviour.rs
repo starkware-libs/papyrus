@@ -3,7 +3,12 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
-    ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm,
+    ConnectionDenied,
+    ConnectionHandler,
+    ConnectionId,
+    FromSwarm,
+    NetworkBehaviour,
+    ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 
@@ -394,11 +399,7 @@ impl NetworkBehaviour for Behaviour {
                         }
                     }
                 });
-                if ignore_event_and_return_pending {
-                    Poll::Pending
-                } else {
-                    Poll::Ready(event)
-                }
+                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
             }
             Poll::Pending => Poll::Pending,
         }

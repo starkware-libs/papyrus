@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 use std::iter;
-use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
 use futures::StreamExt;
-use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::SwarmEvent;
-use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
-use papyrus_network::bin_utils::build_swarm;
+use libp2p::{PeerId, StreamProtocol, Swarm};
+use papyrus_network::bin_utils::{build_swarm, dial};
 use papyrus_network::messages::protobuf::stress_test_message::Msg;
 use papyrus_network::messages::protobuf::{BasicMessage, InboundSessionStart, StressTestMessage};
 use papyrus_network::streamed_data::behaviour::{Behaviour, Event, SessionError};
@@ -168,12 +166,8 @@ impl OutboundSessionMeasurement {
 }
 
 fn dial_if_requested(swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>, args: &Args) {
-    if let Some(dial_address_str) = args.dial_address.as_ref() {
-        let dial_address = Multiaddr::from_str(dial_address_str)
-            .unwrap_or_else(|_| panic!("Unable to parse address {}", dial_address_str));
-        swarm
-            .dial(DialOpts::unknown_peer_id().address(dial_address).build())
-            .unwrap_or_else(|_| panic!("Error while dialing {}", dial_address_str));
+    if let Some(dial_address) = args.dial_address.as_ref() {
+        dial(swarm, dial_address);
     }
 }
 

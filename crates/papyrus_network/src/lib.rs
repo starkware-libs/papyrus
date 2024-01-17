@@ -6,6 +6,7 @@ pub mod bin_utils;
 pub mod block_headers;
 mod db_executor;
 pub mod messages;
+pub mod network_manager;
 pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
