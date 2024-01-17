@@ -15,15 +15,13 @@ use libp2p::swarm::NetworkBehaviour;
 use starknet_api::block::BlockNumber;
 use streamed_data::Config;
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Forward,
     Backward,
 }
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BlockQuery {
     pub start_block: BlockNumber,
     pub direction: Direction,
