@@ -8,11 +8,11 @@ use futures::StreamExt;
 use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::SwarmEvent;
-use libp2p::{Multiaddr, StreamProtocol, Swarm, SwarmBuilder};
+use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm, SwarmBuilder};
 use papyrus_network::messages::protobuf::stress_test_message::Msg;
 use papyrus_network::messages::protobuf::{BasicMessage, InboundSessionStart, StressTestMessage};
 use papyrus_network::streamed_data::behaviour::{Behaviour, Event, SessionError};
-use papyrus_network::streamed_data::{Config, InboundSessionId, SessionId};
+use papyrus_network::streamed_data::{Config, InboundSessionId, OutboundSessionId, SessionId};
 
 fn pretty_size(mut size: f64) -> String {
     for term in ["B", "KB", "MB", "GB"] {
@@ -22,13 +22,6 @@ fn pretty_size(mut size: f64) -> String {
         size /= 1024.0;
     }
     format!("{:.2} TB", size)
-}
-
-// TODO(shahak) extract to other file.
-struct OutboundSessionMeasurement {
-    pub start_time: Instant,
-    pub num_messages: u64,
-    pub message_size: u64,
 }
 
 /// A node that benchmarks the throughput of messages sent/received.
@@ -59,6 +52,30 @@ struct Args {
     /// Amount of time (in seconds) to wait until closing an unactive connection.
     #[arg(short = 't', long, default_value_t = 1)]
     idle_connection_timeout: u64,
+}
+
+fn create_outbound_sessions(
+    swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
+    peer_id: PeerId,
+    outbound_session_measurements: &mut HashMap<OutboundSessionId, OutboundSessionMeasurement>,
+    args: &Args,
+) {
+    for number in 0..args.num_queries_per_connection {
+        let outbound_session_id =
+            swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).expect(
+                "There's no connection to a peer immediately after we got a ConnectionEstablished \
+                 event",
+            );
+        outbound_session_measurements.insert(
+            outbound_session_id,
+            OutboundSessionMeasurement {
+                start_time: Instant::now(),
+                first_message_time: None,
+                num_messages: None,
+                message_size: None,
+            },
+        );
+    }
 }
 
 fn send_data_to_inbound_session(
@@ -100,20 +117,54 @@ fn send_data_to_inbound_session(
     });
 }
 
-fn print_outbound_session_metrics(elapsed: Duration, num_messages: u64, message_size: u64) {
-    println!("---------- Outbound session finished ----------");
-    println!(
-        "Session had {} messages of size {}. In total {}",
-        num_messages,
-        pretty_size(message_size as f64),
-        pretty_size((message_size * num_messages) as f64),
-    );
-    println!("Session took {:.3} seconds", elapsed.as_secs_f64());
-    println!("{:.2} messages/second", num_messages as f64 / elapsed.as_secs_f64());
-    println!(
-        "{}/second",
-        pretty_size((message_size * num_messages) as f64 / elapsed.as_secs_f64())
-    );
+// TODO(shahak) extract to other file.
+struct OutboundSessionMeasurement {
+    pub start_time: Instant,
+    pub first_message_time: Option<Instant>,
+    pub num_messages: Option<u64>,
+    pub message_size: Option<u64>,
+}
+
+impl OutboundSessionMeasurement {
+    pub fn print(&self) {
+        let Some(first_message_time) = self.first_message_time else {
+            println!(
+                "An outbound session finished with no messages, skipping time measurements display"
+            );
+            return;
+        };
+        let messages_elapsed = first_message_time.elapsed();
+        let elapsed = self.start_time.elapsed();
+        let num_messages = self.num_messages.expect(
+            "OutboundSessionMeasurement's first_message_time field was set while the num_messages \
+             field wasn't set",
+        );
+        let message_size = self.message_size.expect(
+            "OutboundSessionMeasurement's first_message_time field was set while the message_size \
+             field wasn't set",
+        );
+        println!("---------- Outbound session finished ----------");
+        println!(
+            "Session had {} messages of size {}. In total {}",
+            num_messages,
+            pretty_size(message_size as f64),
+            pretty_size((message_size * num_messages) as f64),
+        );
+        println!("Session took {:.3} seconds", elapsed.as_secs_f64());
+        println!("Message sending took {:.3} seconds", messages_elapsed.as_secs_f64());
+        println!("---- Total session statistics ----");
+        println!("{:.2} messages/second", num_messages as f64 / elapsed.as_secs_f64());
+        println!(
+            "{}/second",
+            pretty_size((message_size * num_messages) as f64 / elapsed.as_secs_f64())
+        );
+        println!("---- Message sending statistics ----");
+        println!("{:.2} messages/second", num_messages as f64 / messages_elapsed.as_secs_f64());
+        println!(
+            "{}/second",
+            pretty_size((message_size * num_messages) as f64 / messages_elapsed.as_secs_f64())
+        );
+    }
 }
 
 fn build_swarm(args: &Args) -> Swarm<Behaviour<BasicMessage, StressTestMessage>> {
@@ -163,12 +214,12 @@ async fn main() {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
-                for number in 0..args.num_queries_per_connection {
-                    swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).expect(
-                        "There's no connection to a peer immediately after we got a \
-                         ConnectionEstablished event",
-                    );
-                }
+                create_outbound_sessions(
+                    &mut swarm,
+                    peer_id,
+                    &mut outbound_session_measurements,
+                    &args,
+                );
             }
             SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
                 send_data_to_inbound_session(&mut swarm, inbound_session_id, &args);
@@ -176,23 +227,22 @@ async fn main() {
             SwarmEvent::Behaviour(Event::SessionClosedByPeer {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
             }) => {
-                let OutboundSessionMeasurement { start_time, num_messages, message_size } =
-                    outbound_session_measurements[&outbound_session_id];
-                print_outbound_session_metrics(start_time.elapsed(), num_messages, message_size);
+                outbound_session_measurements[&outbound_session_id].print();
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
                 if let Some(Msg::Start(InboundSessionStart { num_messages, message_size })) =
                     data.msg
                 {
-                    outbound_session_measurements.insert(
-                        outbound_session_id,
-                        OutboundSessionMeasurement {
-                            start_time: Instant::now(),
-                            num_messages,
-                            message_size,
-                        },
-                    );
+                    let measurement = outbound_session_measurements
+                        .get_mut(&outbound_session_id)
+                        .expect("Received data on non-existing outbound session");
+                    measurement.first_message_time = Some(Instant::now());
+                    measurement.num_messages = Some(num_messages);
+                    measurement.message_size = Some(message_size);
                 }
+            }
+            SwarmEvent::OutgoingConnectionError { .. } => {
+                dial_if_requested(&mut swarm, &args);
             }
             SwarmEvent::Behaviour(Event::SessionFailed {
                 session_id,
@@ -210,8 +260,10 @@ async fn main() {
             }) => {
                 println!("Session {:?} failed on {}", session_id, io_error.kind());
             }
-            SwarmEvent::OutgoingConnectionError { .. } => {
-                dial_if_requested(&mut swarm, &args);
+            SwarmEvent::Behaviour(Event::SessionClosedByPeer {
+                session_id: SessionId::InboundSessionId(inbound_session_id),
+            }) => {
+                println!("Outbound peer closed before us in session {:?}", inbound_session_id);
             }
             SwarmEvent::NewListenAddr { .. }
             | SwarmEvent::IncomingConnection { .. }
