@@ -28,7 +28,7 @@ pub enum SessionError {
     IncorrectSessionId,
 }
 
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 #[allow(dead_code)]
 pub enum Event {
     NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
@@ -137,7 +137,7 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
         Ok(BlockHeader { parent_header, number: BlockNumber(value.number), sequencer_address })
     }
 }
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 pub struct BlockHeaderData {
     pub block_header: BlockHeader,
     pub signatures: Vec<Signature>,
