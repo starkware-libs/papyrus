@@ -36,7 +36,7 @@ use super::{
 };
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum SessionError {
+pub enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
@@ -97,19 +97,19 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
     }
 }
 
-pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
+pub type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
 #[derive(thiserror::Error, Debug)]
 #[error("The given session ID doesn't exist.")]
-pub(crate) struct SessionIdNotFoundError;
+pub struct SessionIdNotFoundError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("We are not connected to the given peer. Dial to the given peer and try again.")]
-pub(crate) struct PeerNotConnected;
+pub struct PeerNotConnected;
 
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
-pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
+pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     config: Config,
     pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
