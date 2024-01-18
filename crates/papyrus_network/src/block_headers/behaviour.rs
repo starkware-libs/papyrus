@@ -69,7 +69,6 @@ impl Behaviour {
 
     /// Send data to the session that is mapped to this query id.
     /// return false if the query id is not mapped to any session.
-    #[allow(dead_code)]
     pub fn send_data(
         &mut self,
         data: Data,

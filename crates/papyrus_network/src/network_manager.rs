@@ -60,8 +60,18 @@ impl NetworkManager {
         }
     }
 
-    fn handle_db_executor_result(&mut self, _res: (QueryId, Data)) {
-        unimplemented!("handle_db_executor_result")
+    fn handle_db_executor_result(&mut self, (query_id, data): (QueryId, Data)) {
+        if let Some(inbound_session_id) = self.query_id_to_inbound_session.get(&query_id) {
+            let inbound_session_id = *inbound_session_id;
+            if let Data::Fin = data {
+                self.query_id_to_inbound_session.remove(&query_id);
+            }
+            if self.swarm.behaviour_mut().send_data(data, inbound_session_id).is_err() {
+                panic!("Failed to send data to inbound session");
+            }
+        } else {
+            panic!("Received data for unknown query id: {query_id:?}");
+        }
     }
 
     fn handle_behaviour_event(&mut self, event: Event) {
