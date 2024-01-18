@@ -1,8 +1,8 @@
 pub mod behaviour;
 
 use prost_types::Timestamp;
-use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ContractAddress;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
+use starknet_api::core::GlobalRoot;
 use starknet_api::crypto::Signature;
 
 use crate::messages::{protobuf, ProtobufConversionError};
@@ -86,22 +86,6 @@ impl From<BlockQuery> for protobuf::BlockHeadersRequest {
     }
 }
 
-// TODO(nevo): decide if we need this struct or we can covert the protobuf directly to starknet api
-// BlockHeader.
-#[derive(Debug)]
-pub struct BlockHeader {
-    pub parent_header: BlockHash,
-    pub number: BlockNumber,
-    // pub time: BlockTimestamp,
-    pub sequencer_address: ContractAddress,
-    // pub state_diffs: Option<Merkle>,
-    // pub state: Option<Patricia>,
-    // pub proof_fact: Option<Hash>,
-    // pub transactions: Option<Merkle>,
-    // pub events: Option<Merkle>,
-    // pub receipts: Option<Merkle>,
-}
-
 impl TryFrom<protobuf::ConsensusSignature> for Signature {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::ConsensusSignature) -> Result<Self, Self::Error> {
@@ -120,23 +104,44 @@ impl TryFrom<protobuf::ConsensusSignature> for Signature {
 impl TryFrom<protobuf::BlockHeader> for BlockHeader {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::BlockHeader) -> Result<Self, Self::Error> {
-        let parent_header = match value.parent_header {
-            Some(parent_header) => {
-                if let Ok(hash) = parent_header.try_into() {
-                    Ok(BlockHash(hash))
-                } else {
-                    Err(ProtobufConversionError::MissingField)
-                }
-            }
-            None => return Err(ProtobufConversionError::MissingField),
-        }?;
-        let sequencer_address = match value.sequencer_address {
-            Some(sequencer_address) => sequencer_address.try_into(),
-            None => return Err(ProtobufConversionError::MissingField),
-        }?;
-        Ok(BlockHeader { parent_header, number: BlockNumber(value.number), sequencer_address })
+        let parent_header = value
+            .parent_header
+            .and_then(|parent_header| parent_header.try_into().map(BlockHash).ok())
+            .ok_or(ProtobufConversionError::MissingField)?;
+
+        let sequencer_address = value
+            .sequencer_address
+            .and_then(|sequencer_address| sequencer_address.try_into().ok())
+            .ok_or(ProtobufConversionError::MissingField)?;
+
+        let timestamp = value
+            .time
+            .and_then(|timestamp| {
+                timestamp.seconds.try_into().map(starknet_api::block::BlockTimestamp).ok()
+            })
+            .ok_or(ProtobufConversionError::MissingField)?;
+
+        let state_root = value
+            .state
+            .and_then(|state_root| {
+                state_root.root.and_then(|root_hash| root_hash.try_into().map(GlobalRoot).ok())
+            })
+            .ok_or(ProtobufConversionError::MissingField)?;
+
+        Ok(BlockHeader {
+            parent_hash: parent_header,
+            block_number: BlockNumber(value.number),
+            sequencer: sequencer_address,
+            timestamp,
+            state_root,
+            // TODO: add missing fields.
+            block_hash: BlockHash::default(),
+            eth_l1_gas_price: GasPrice::default(),
+            strk_l1_gas_price: GasPrice::default(),
+        })
     }
 }
+
 #[derive(Debug)]
 pub struct BlockHeaderData {
     pub block_header: BlockHeader,
@@ -154,18 +159,22 @@ impl TryFrom<protobuf::Signatures> for Vec<Signature> {
     }
 }
 
-impl From<starknet_api::block::BlockHeader> for protobuf::BlockHeader {
-    fn from(value: starknet_api::block::BlockHeader) -> Self {
+impl From<BlockHeader> for protobuf::BlockHeader {
+    fn from(value: BlockHeader) -> Self {
         Self {
             parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
             number: value.block_number.0,
             sequencer_address: Some(protobuf::Address {
                 elements: value.sequencer.0.key().bytes().to_vec(),
             }),
-            // TODO: fix timestamp conversion and add missing fields.
+            state: Some(protobuf::Patricia {
+                root: Some(protobuf::Hash { elements: value.state_root.0.bytes().to_vec() }),
+                height: 0,
+            }),
+            // TODO: fix timestamp conversion and
             time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
+            // TODO: add missing fields.
             state_diffs: None,
-            state: None,
             proof_fact: None,
             transactions: None,
             events: None,
