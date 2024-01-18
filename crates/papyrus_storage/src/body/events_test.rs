@@ -20,6 +20,7 @@ use crate::body::events::{
     ThinTransactionOutput,
 };
 use crate::body::{BodyStorageWriter, TransactionIndex};
+use crate::db::table_types::Table;
 use crate::header::HeaderStorageWriter;
 use crate::test_utils::get_test_storage;
 

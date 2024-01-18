@@ -61,19 +61,21 @@ use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::{NoVersionValueWrapper, StorageSerde};
+use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type TransactionsTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<Transaction>>;
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<Transaction>, SimpleTable>;
 type TransactionOutputsTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>>;
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
-    TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>>;
+    TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type TransactionIdxToHashTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<TransactionHash>>;
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<TransactionHash>, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
-type EventsTable<'env> = TableHandle<'env, EventsTableKey, NoVersionValueWrapper<EventContent>>;
+type EventsTable<'env> =
+    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<EventContent>, SimpleTable>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -289,7 +291,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     fn get_transactions_in_block<V: StorageSerde + Debug>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, NoVersionValueWrapper<V>>,
+        table: TableHandle<'env, TransactionIndex, NoVersionValueWrapper<V>, SimpleTable>,
     ) -> StorageResult<Option<Vec<V>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
