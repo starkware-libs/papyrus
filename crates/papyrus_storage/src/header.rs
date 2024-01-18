@@ -45,11 +45,12 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use tracing::debug;
 
 use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
 
 type BlockHashToNumberTable<'env> =
-    TableHandle<'env, BlockHash, NoVersionValueWrapper<BlockNumber>>;
+    TableHandle<'env, BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
 
 /// Interface for reading data related to the block headers.
 pub trait HeaderStorageReader {

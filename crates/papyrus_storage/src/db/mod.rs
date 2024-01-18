@@ -19,6 +19,7 @@ pub mod db_stats;
 // TODO(yair): Make the serialization module pub(crate).
 #[doc(hidden)]
 pub mod serialization;
+pub(crate) mod table_types;
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -28,7 +29,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Cursor, Geometry, PageSize, TableFlags, WriteFlags, WriteMap};
+use libmdbx::{Geometry, PageSize, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::{validate_ascii, validate_path_exists};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -37,6 +38,8 @@ use starknet_api::core::ChainId;
 use validator::Validate;
 
 use self::serialization::{Key, ValueSerde};
+use self::table_types::{DbCursor, DbCursorTrait};
+use crate::db::table_types::TableType;
 
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 19;
@@ -240,16 +243,6 @@ impl DbWriter {
     pub(crate) fn begin_rw_txn(&mut self) -> DbResult<DbWriteTransaction<'_>> {
         Ok(DbWriteTransaction { txn: self.env.begin_rw_txn()? })
     }
-
-    pub(crate) fn create_table<K: Key + Debug, V: ValueSerde + Debug>(
-        &mut self,
-        name: &'static str,
-    ) -> DbResult<TableIdentifier<K, V>> {
-        let txn = self.env.begin_rw_txn()?;
-        txn.create_table(Some(name), TableFlags::empty())?;
-        txn.commit()?;
-        Ok(TableIdentifier { name, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
 }
 
 type DbWriteTransaction<'env> = DbTransaction<'env, RW>;
@@ -272,166 +265,56 @@ pub(crate) struct DbTransaction<'env, Mode: TransactionKind> {
 }
 
 impl<'a, Mode: TransactionKind> DbTransaction<'a, Mode> {
-    pub fn open_table<'env, K: Key + Debug, V: ValueSerde + Debug>(
+    pub fn open_table<'env, K: Key + Debug, V: ValueSerde + Debug, T: TableType>(
         &'env self,
-        table_id: &TableIdentifier<K, V>,
-    ) -> DbResult<TableHandle<'env, K, V>> {
+        table_id: &TableIdentifier<K, V, T>,
+    ) -> DbResult<TableHandle<'env, K, V, T>> {
         let database = self.txn.open_table(Some(table_id.name))?;
         Ok(TableHandle {
             database,
             name: table_id.name,
             _key_type: PhantomData {},
             _value_type: PhantomData {},
+            _table_type: PhantomData {},
         })
     }
 }
-pub(crate) struct TableIdentifier<K: Key + Debug, V: ValueSerde + Debug> {
+pub(crate) struct TableIdentifier<K: Key + Debug, V: ValueSerde + Debug, T: TableType> {
     pub(crate) name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
+    _table_type: PhantomData<T>,
 }
 
-pub(crate) struct TableHandle<'env, K: Key + Debug, V: ValueSerde + Debug> {
+pub(crate) struct TableHandle<'env, K: Key + Debug, V: ValueSerde + Debug, T: TableType> {
     database: libmdbx::Table<'env>,
     name: &'static str,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
-}
-
-impl<'env, 'txn, K: Key + Debug, V: ValueSerde + Debug> TableHandle<'env, K, V> {
-    pub(crate) fn cursor<Mode: TransactionKind>(
-        &'env self,
-        txn: &'txn DbTransaction<'env, Mode>,
-    ) -> DbResult<DbCursor<'txn, Mode, K, V>> {
-        let cursor = txn.txn.cursor(&self.database)?;
-        Ok(DbCursor { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} })
-    }
-
-    pub(crate) fn get<Mode: TransactionKind>(
-        &'env self,
-        txn: &'env DbTransaction<'env, Mode>,
-        key: &K,
-    ) -> DbResult<Option<V::Value>> {
-        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
-        let bin_key = key.serialize()?;
-        let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
-            return Ok(None);
-        };
-        let value = V::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-        Ok(Some(value))
-    }
-
-    pub(crate) fn upsert(
-        &'env self,
-        txn: &DbTransaction<'env, RW>,
-        key: &K,
-        value: &V::Value,
-    ) -> DbResult<()> {
-        let data = V::serialize(value)?;
-        let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
-        Ok(())
-    }
-
-    pub(crate) fn insert(
-        &'env self,
-        txn: &DbTransaction<'env, RW>,
-        key: &K,
-        value: &V::Value,
-    ) -> DbResult<()> {
-        let data = V::serialize(value)?;
-        let bin_key = key.serialize()?;
-        txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE).map_err(|err| {
-            match err {
-                libmdbx::Error::KeyExist => {
-                    DbError::KeyAlreadyExists(KeyAlreadyExistsError::new(self.name, key, value))
-                }
-                _ => err.into(),
-            }
-        })?;
-        Ok(())
-    }
-
-    #[allow(dead_code)]
-    pub(crate) fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &K) -> DbResult<()> {
-        let bin_key = key.serialize()?;
-        txn.txn.del(&self.database, bin_key, None)?;
-        Ok(())
-    }
-}
-
-pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: Key, V: ValueSerde> {
-    cursor: Cursor<'txn, Mode::Internal>,
-    _key_type: PhantomData<K>,
-    _value_type: PhantomData<V>,
-}
-
-impl<'txn, Mode: TransactionKind, K: Key, V: ValueSerde> DbCursor<'txn, Mode, K, V> {
-    pub(crate) fn prev(&mut self) -> DbResult<Option<(K, V::Value)>> {
-        let prev_cursor_res = self.cursor.prev::<DbKeyType<'_>, DbValueType<'_>>()?;
-        match prev_cursor_res {
-            None => Ok(None),
-            Some((key_bytes, value_bytes)) => {
-                let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::InnerDeserialization)?;
-                Ok(Some((key, value)))
-            }
-        }
-    }
-
-    #[allow(clippy::should_implement_trait)]
-    pub(crate) fn next(&mut self) -> DbResult<Option<(K, V::Value)>> {
-        let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
-        match prev_cursor_res {
-            None => Ok(None),
-            Some((key_bytes, value_bytes)) => {
-                let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::InnerDeserialization)?;
-                Ok(Some((key, value)))
-            }
-        }
-    }
-
-    /// Position at first key greater than or equal to specified key.
-    pub(crate) fn lower_bound(&mut self, key: &K) -> DbResult<Option<(K, V::Value)>> {
-        let key_bytes = key.serialize()?;
-        let prev_cursor_res =
-            self.cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
-        match prev_cursor_res {
-            None => Ok(None),
-            Some((key_bytes, value_bytes)) => {
-                let key =
-                    K::deserialize(&mut key_bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-                let value = V::deserialize(&mut value_bytes.as_ref())
-                    .ok_or(DbError::InnerDeserialization)?;
-                Ok(Some((key, value)))
-            }
-        }
-    }
+    _table_type: PhantomData<T>,
 }
 
 /// Iterator for iterating over a DB table
-pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde> {
-    cursor: &'cursor mut DbCursor<'txn, Mode, K, V>,
+pub(crate) struct DbIter<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde, T: TableType>
+{
+    cursor: &'cursor mut DbCursor<'txn, Mode, K, V, T>,
     _key_type: PhantomData<K>,
     _value_type: PhantomData<V>,
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde>
-    DbIter<'cursor, 'txn, Mode, K, V>
+impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde, T: TableType>
+    DbIter<'cursor, 'txn, Mode, K, V, T>
 {
     #[allow(dead_code)]
-    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V>) -> Self {
+    pub(crate) fn new(cursor: &'cursor mut DbCursor<'txn, Mode, K, V, T>) -> Self {
         Self { cursor, _key_type: PhantomData {}, _value_type: PhantomData {} }
     }
 }
 
-impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde> Iterator
-    for DbIter<'cursor, 'txn, Mode, K, V>
+impl<'cursor, 'txn, Mode: TransactionKind, K: Key, V: ValueSerde, T: TableType> Iterator
+    for DbIter<'cursor, 'txn, Mode, K, V, T>
+where
+    DbCursor<'txn, Mode, K, V, T>: DbCursorTrait<Key = K, Value = V>,
 {
     type Item = DbResult<(K, V::Value)>;
 

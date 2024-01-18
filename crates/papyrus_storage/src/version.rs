@@ -4,6 +4,7 @@ mod version_test;
 
 use std::fmt::Display;
 
+use crate::db::table_types::Table;
 use crate::db::{TransactionKind, RW};
 use crate::{StorageError, StorageResult, StorageTxn};
 

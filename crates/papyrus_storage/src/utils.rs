@@ -14,6 +14,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
 
 use crate::compiled_class::CasmStorageReader;
+use crate::db::table_types::Table;
 use crate::db::RO;
 use crate::state::StateStorageReader;
 use crate::{open_storage, StorageConfig, StorageError, StorageResult, StorageTxn};

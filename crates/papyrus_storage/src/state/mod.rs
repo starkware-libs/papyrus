@@ -65,6 +65,7 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use tracing::debug;
 
 use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -78,21 +79,34 @@ use crate::{
     StorageTxn,
 };
 
-type FileOffsetTable<'env> = TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>>;
+type FileOffsetTable<'env> =
+    TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>;
 type DeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>>;
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>;
 type DeclaredClassesBlockTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>>;
-type DeprecatedDeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>>;
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
+type DeprecatedDeclaredClassesTable<'env> = TableHandle<
+    'env,
+    ClassHash,
+    NoVersionValueWrapper<IndexedDeprecatedContractClass>,
+    SimpleTable,
+>;
 type CompiledClassesTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>>;
-type DeployedContractsTable<'env> =
-    TableHandle<'env, (ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>>;
-type ContractStorageTable<'env> =
-    TableHandle<'env, (ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>>;
+    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>;
+type DeployedContractsTable<'env> = TableHandle<
+    'env,
+    (ContractAddress, BlockNumber),
+    NoVersionValueWrapper<ClassHash>,
+    SimpleTable,
+>;
+type ContractStorageTable<'env> = TableHandle<
+    'env,
+    (ContractAddress, StorageKey, BlockNumber),
+    NoVersionValueWrapper<StarkFelt>,
+    SimpleTable,
+>;
 type NoncesTable<'env> =
-    TableHandle<'env, (ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>>;
+    TableHandle<'env, (ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>, SimpleTable>;
 
 /// Interface for reading data related to the state.
 // Structure of state data:
@@ -609,7 +623,12 @@ fn update_marker<'env>(
 fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, NoVersionValueWrapper<LocationInFile>>,
+    state_diffs_table: &'env TableHandle<
+        '_,
+        BlockNumber,
+        NoVersionValueWrapper<LocationInFile>,
+        SimpleTable,
+    >,
     file_handlers: &FileHandlers<RW>,
 ) -> StorageResult<()> {
     let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
