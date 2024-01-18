@@ -190,12 +190,19 @@ trait BehaviourTrait {
                         outbound_session_id,
                     })
                 }
-                protobuf::block_headers_response_part::HeaderMessage::Fin(_) => {
+                protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
+                    error,
+                }) => {
                     self.close_outbound_session(outbound_session_id);
-                    Some(Event::SessionFailed {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
-                        session_error: SessionError::ReceivedFin,
-                    })
+                    match error {
+                        None => Some(Event::SessionCompletedSuccessfully {
+                            session_id: outbound_session_id.into(),
+                        }),
+                        Some(error) => Some(Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: SessionError::ReceivedFin(error),
+                        }),
+                    }
                 }
             }
         } else {
