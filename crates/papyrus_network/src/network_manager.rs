@@ -20,6 +20,7 @@ pub struct NetworkManager {
 
 impl NetworkManager {
     // TODO: add tests for this struct.
+    // TODO: make sure errors are handled and not just paniced.
     pub fn new(swarm: Swarm<Behaviour>) -> Self {
         Self {
             swarm,
@@ -60,8 +61,18 @@ impl NetworkManager {
         }
     }
 
-    fn handle_db_executor_result(&mut self, _res: (QueryId, Data)) {
-        unimplemented!("handle_db_executor_result")
+    fn handle_db_executor_result(&mut self, (query_id, data): (QueryId, Data)) {
+        let inbound_session_id = *self
+            .query_id_to_inbound_session
+            .get(&query_id)
+            .expect("Received data for unknown query id: {query_id:?}");
+        if let Data::Fin = data {
+            self.query_id_to_inbound_session.remove(&query_id);
+        }
+        self.swarm
+            .behaviour_mut()
+            .send_data(data, inbound_session_id)
+            .expect("Failed to send data to inbound session");
     }
 
     fn handle_behaviour_event(&mut self, event: Event) {
