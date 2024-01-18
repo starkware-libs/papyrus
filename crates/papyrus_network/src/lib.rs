@@ -6,6 +6,7 @@ pub mod bin_utils;
 pub mod block_headers;
 mod db_executor;
 pub mod messages;
+pub mod network_manager;
 pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
@@ -14,15 +15,13 @@ use libp2p::swarm::NetworkBehaviour;
 use starknet_api::block::BlockNumber;
 use streamed_data::Config;
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Forward,
     Backward,
 }
 
-#[cfg_attr(test, derive(Debug))]
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BlockQuery {
     pub start_block: BlockNumber,
     pub direction: Direction,
