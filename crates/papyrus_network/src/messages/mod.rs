@@ -9,6 +9,7 @@ use std::io;
 
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
+use prost_types::Timestamp;
 use unsigned_varint::encode::usize_buffer;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
@@ -171,6 +172,11 @@ impl TestInstance for protobuf::BlockHeader {
             number: 1,
             parent_header: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
             sequencer_address: Some(protobuf::Address { elements: [0].repeat(32).to_vec() }),
+            time: Some(Timestamp { seconds: 1, nanos: 0 }),
+            state: Some(protobuf::Patricia {
+                root: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
+                height: 0,
+            }),
             ..Default::default()
         }
     }

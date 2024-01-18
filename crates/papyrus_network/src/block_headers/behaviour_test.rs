@@ -6,7 +6,7 @@ use assert_matches::assert_matches;
 use futures::Stream;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::hash::StarkFelt;
 
 use super::super::Event;
@@ -111,7 +111,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
-                if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
+                if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
             assert_eq!(outbound_session_id, session_id);
@@ -198,7 +198,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
-                if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
+                if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
             assert_eq!(outbound_session_id_b, session_id);
@@ -224,7 +224,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data, BlockHeaderData { block_header, signatures}
-                if block_header.number == BlockNumber(1) && signatures.len() == 1 &&
+                if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
             assert_eq!(outbound_session_id_a, session_id);
@@ -378,11 +378,11 @@ impl BehaviourTrait for TestBehaviour {
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
-    ) -> Result<super::BlockHeader, SessionError> {
+    ) -> Result<BlockHeader, SessionError> {
         self.fetch_pending_header_for_session_call_count += 1;
         self.header_pending_pairing
             .remove(&outbound_session_id)
-            .and_then(|header| TryInto::<super::BlockHeader>::try_into(header).ok())
+            .and_then(|header| TryInto::<BlockHeader>::try_into(header).ok())
             .ok_or(SessionError::PairingError)
     }
 
