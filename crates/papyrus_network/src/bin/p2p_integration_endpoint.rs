@@ -37,6 +37,6 @@ async fn main() {
     if let Some(dial_address) = args.dial_address.as_ref() {
         dial(&mut swarm, dial_address);
     }
-    let network_manager = network_manager::NetworkManager::new(swarm);
+    let mut network_manager = network_manager::NetworkManager::new(swarm);
     network_manager.run().await;
 }
