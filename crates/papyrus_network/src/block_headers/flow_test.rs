@@ -1,6 +1,5 @@
 use std::time::Duration;
 
-use assert_matches::assert_matches;
 use futures::{select, FutureExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
 use libp2p::StreamProtocol;
@@ -86,14 +85,9 @@ async fn one_sends_to_the_other() {
                         assert_eq!(outbound_session_id, cur_outbound_session_id);
                         data_counter += 1;
                     },
-                    SwarmEvent::Behaviour(Event::SessionFailed { session_error, .. }) => {
-                        assert_matches!(session_error, super::SessionError::ReceivedFin);
-                        assert_eq!(data_counter, number_of_blocks);
-                        data_counter += 1;
-                    },
                     SwarmEvent::Behaviour(Event::SessionCompletedSuccessfully { .. }) => {
                         // Once all data is sent the inbound session is closed.
-                        assert_eq!(data_counter, number_of_blocks+1);
+                        assert_eq!(data_counter, number_of_blocks);
                         break;
                     },
                     _ => panic!("Unexpected event: {:?}", event),

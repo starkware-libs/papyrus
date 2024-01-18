@@ -23,7 +23,7 @@ pub enum SessionError {
     WaitingToCompletePairing,
     // TODO: consider separating the case when Fin is an error and when it is not.
     #[error("Received fin")]
-    ReceivedFin,
+    ReceivedFin(i32),
     #[error("Incorrect session id")]
     IncorrectSessionId,
 }
