@@ -17,7 +17,7 @@ use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::BlockQuery;
+use crate::{BlockQuery, PapyrusBehaviour};
 
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
@@ -27,7 +27,7 @@ mod behaviour_test;
 #[path = "flow_test.rs"]
 mod flow_test;
 
-pub(crate) struct Behaviour {
+pub struct Behaviour {
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
@@ -39,18 +39,15 @@ pub(crate) struct Behaviour {
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) struct SessionIdNotFoundError(
-    #[from] crate::streamed_data::behaviour::SessionIdNotFoundError,
-);
+pub struct SessionIdNotFoundError(#[from] crate::streamed_data::behaviour::SessionIdNotFoundError);
 
 #[derive(thiserror::Error, Debug)]
 #[error(transparent)]
-pub(crate) struct PeerNotConnected(#[from] crate::streamed_data::behaviour::PeerNotConnected);
+pub struct PeerNotConnected(#[from] crate::streamed_data::behaviour::PeerNotConnected);
 
-impl Behaviour {
+impl PapyrusBehaviour for Behaviour {
     #[allow(dead_code)]
-    // TODO: create a generic network config and use that instead of the streamed data one.
-    pub fn new(config: Config) -> Self {
+    fn new(config: Config) -> Self {
         Self {
             streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
             header_pending_pairing: HashMap::new(),
@@ -58,7 +55,9 @@ impl Behaviour {
             inbound_sessions_pending_termination: HashSet::new(),
         }
     }
+}
 
+impl Behaviour {
     #[allow(dead_code)]
     pub fn send_query(
         &mut self,
@@ -70,7 +69,6 @@ impl Behaviour {
 
     /// Send data to the session that is mapped to this query id.
     /// return false if the query id is not mapped to any session.
-    #[allow(dead_code)]
     pub fn send_data(
         &mut self,
         data: Data,
