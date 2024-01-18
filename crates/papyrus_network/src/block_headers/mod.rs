@@ -10,7 +10,7 @@ use crate::streamed_data::{self, SessionId};
 use crate::{BlockQuery, Direction};
 
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum SessionError {
+pub enum SessionError {
     #[error(transparent)]
     StreamedData(#[from] streamed_data::behaviour::SessionError),
     #[error("Incompatible data error")]
@@ -28,9 +28,9 @@ pub(crate) enum SessionError {
     IncorrectSessionId,
 }
 
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 #[allow(dead_code)]
-pub(crate) enum Event {
+pub enum Event {
     NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
     ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
     SessionFailed { session_id: SessionId, session_error: SessionError },
@@ -137,7 +137,7 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
         Ok(BlockHeader { parent_header, number: BlockNumber(value.number), sequencer_address })
     }
 }
-#[cfg_attr(test, derive(Debug))]
+#[derive(Debug)]
 pub struct BlockHeaderData {
     pub block_header: BlockHeader,
     pub signatures: Vec<Signature>,

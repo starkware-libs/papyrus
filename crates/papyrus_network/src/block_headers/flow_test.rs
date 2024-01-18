@@ -11,7 +11,7 @@ use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor};
 use crate::streamed_data::Config;
 use crate::test_utils::create_fully_connected_swarms_stream;
-use crate::{BlockQuery, Direction};
+use crate::{BlockQuery, Direction, PapyrusBehaviour};
 
 #[tokio::test]
 async fn one_sends_to_the_other() {
