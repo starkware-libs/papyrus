@@ -4,7 +4,7 @@ use std::task::Poll;
 
 use futures::Stream;
 
-use super::{DBExecutor, Data, QueryId};
+use super::{DBExecutor, DBExecutorError, Data, QueryId};
 use crate::messages::protobuf;
 use crate::BlockQuery;
 
@@ -56,6 +56,17 @@ impl DBExecutor for DummyDBExecutor {
             .iter_mut()
             .next()
             .map(|(query_id, (query, read_blocks_counter))| (*query_id, query, read_blocks_counter))
+    }
+
+    fn fetch_data(
+        &mut self,
+        _query: BlockQuery,
+        _read_blocks_counter: u64,
+    ) -> Result<Data, DBExecutorError> {
+        Ok(Data::BlockHeaderAndSignature {
+            header: Default::default(),
+            signature: Default::default(),
+        })
     }
 }
 
