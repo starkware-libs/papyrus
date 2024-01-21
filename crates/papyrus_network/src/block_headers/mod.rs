@@ -31,11 +31,22 @@ pub enum SessionError {
 #[derive(Debug)]
 #[allow(dead_code)]
 pub enum Event {
-    NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
-    ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
-    SessionFailed { session_id: SessionId, session_error: SessionError },
+    NewInboundQuery {
+        query: BlockQuery,
+        inbound_session_id: streamed_data::InboundSessionId,
+    },
+    ReceivedData {
+        data: Vec<BlockHeaderData>,
+        outbound_session_id: streamed_data::OutboundSessionId,
+    },
+    SessionFailed {
+        session_id: SessionId,
+        session_error: SessionError,
+    },
     ProtobufConversionError(ProtobufConversionError),
-    SessionCompletedSuccessfully { session_id: SessionId },
+    SessionCompletedSuccessfully {
+        session_id: SessionId,
+    },
 }
 
 impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
