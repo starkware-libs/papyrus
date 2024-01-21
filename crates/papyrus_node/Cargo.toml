@@ -39,6 +39,7 @@ url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
+metrics-exporter-prometheus.workspace = true
 pretty_assertions.workspace = true
 insta = { workspace = true, features = ["json"] }
 tempfile.workspace = true

@@ -11,8 +11,7 @@ use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff};
 use test_utils::prometheus_is_contained;
 
-use super::collect_storage_metrics;
-// use super::dump_table_to_file;
+use super::update_storage_metrics;
 use crate::state::StateStorageWriter;
 use crate::test_utils::get_test_storage;
 use crate::utils::{dump_declared_classes_table_by_block_range_internal, DumpDeclaredClass};
@@ -75,14 +74,18 @@ fn test_dump_declared_classes() {
     assert_eq!(file_content, serde_json::to_string(&expected_declared_classes).unwrap());
 }
 
-#[tokio::test]
-async fn storage_collect_metrics() {
+#[test]
+fn update_storage_metrics_test() {
     let ((reader, _writer), _temp_dir) = get_test_storage();
-
-    let update_interval_time = std::time::Duration::from_micros(1);
-    collect_storage_metrics(reader, update_interval_time);
     let handle = PrometheusBuilder::new().install_recorder().unwrap();
-    tokio::time::sleep(update_interval_time).await;
+
+    assert!(prometheus_is_contained(handle.render(), "storage_free_pages_number", &[]).is_none());
+    assert!(prometheus_is_contained(handle.render(), "storage_last_page_number", &[]).is_none());
+    assert!(
+        prometheus_is_contained(handle.render(), "storage_last_transaction_index", &[]).is_none()
+    );
+
+    update_storage_metrics(&reader).unwrap();
 
     let Gauge(free_pages) =
         prometheus_is_contained(handle.render(), "storage_free_pages_number", &[]).unwrap()

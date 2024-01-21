@@ -33,7 +33,6 @@ serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
-tokio.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
 

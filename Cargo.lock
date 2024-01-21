@@ -5597,6 +5597,7 @@ dependencies = [
  "jsonrpsee",
  "lazy_static",
  "libmdbx",
+ "metrics-exporter-prometheus",
  "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
