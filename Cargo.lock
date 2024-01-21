@@ -5679,6 +5679,7 @@ dependencies = [
  "libp2p",
  "libp2p-swarm-test",
  "mockall",
+ "papyrus_storage",
  "pretty_assertions",
  "prost",
  "prost-build",

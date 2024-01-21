@@ -4,6 +4,7 @@ use futures::future::{select, Either};
 use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::Swarm;
+use papyrus_storage::StorageReader;
 use tracing::debug;
 
 use crate::block_headers::behaviour::Behaviour;
@@ -13,18 +14,17 @@ use crate::streamed_data::InboundSessionId;
 
 pub struct NetworkManager {
     swarm: Swarm<Behaviour>,
-    // TODO: migrate to a real executor once we have one.
-    db_executor: db_executor::dummy_executor::DummyDBExecutor,
+    db_executor: db_executor::BlockHeaderDBExecutor,
     query_id_to_inbound_session: HashMap<QueryId, InboundSessionId>,
 }
 
 impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
-    pub fn new(swarm: Swarm<Behaviour>) -> Self {
+    pub fn new(swarm: Swarm<Behaviour>, storage_reader: StorageReader) -> Self {
         Self {
             swarm,
-            db_executor: db_executor::dummy_executor::DummyDBExecutor::new(),
+            db_executor: db_executor::BlockHeaderDBExecutor::new(storage_reader),
             query_id_to_inbound_session: HashMap::new(),
         }
     }

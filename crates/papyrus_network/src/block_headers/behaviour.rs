@@ -77,11 +77,11 @@ impl Behaviour {
     ) -> Result<(), SessionIdNotFoundError> {
         let header_messages = match data {
             Data::BlockHeaderAndSignature { header, signature } => {
-                vec![
-                    protobuf::block_headers_response_part::HeaderMessage::Header(
-                        header.clone().into(),
-                    ),
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
+                let mut res = vec![protobuf::block_headers_response_part::HeaderMessage::Header(
+                    header.clone().into(),
+                )];
+                if let Some(signature) = signature {
+                    res.push(protobuf::block_headers_response_part::HeaderMessage::Signatures(
                         protobuf::Signatures {
                             signatures: vec![signature.into()],
                             block: Some(protobuf::BlockId {
@@ -89,8 +89,9 @@ impl Behaviour {
                                 header: Some(header.block_hash.into()),
                             }),
                         },
-                    ),
-                ]
+                    ));
+                }
+                res
             }
             Data::Fin { .. } => {
                 // TODO: handle different Fin messages
