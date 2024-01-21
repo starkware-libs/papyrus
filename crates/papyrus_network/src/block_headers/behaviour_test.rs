@@ -133,8 +133,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Some(Event::SessionFailed {session_id, session_error}) => {
-            assert_matches!(session_error, SessionError::ReceivedFin);
+        Some(Event::SessionCompletedSuccessfully {session_id}) => {
             assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
         }
     );

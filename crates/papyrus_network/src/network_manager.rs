@@ -93,9 +93,8 @@ impl NetworkManager {
             Event::ProtobufConversionError(_) => {
                 unimplemented!("ProtobufConversionError");
             }
-            Event::SessionCompletedSuccessfully { .. } => {
-                // TODO: consider removing this event.
-                unimplemented!("SessionCompletedSuccessfully");
+            Event::SessionCompletedSuccessfully { session_id } => {
+                debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }
     }

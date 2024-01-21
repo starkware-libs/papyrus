@@ -21,9 +21,9 @@ pub enum SessionError {
     SessionClosedUnexpectedly,
     #[error("Waiting to complete pairing of header and signature")]
     WaitingToCompletePairing,
-    // TODO: consider separating the case when Fin is an error and when it is not.
+    // TODO: cast the i32 to the enum value of the error it represents.
     #[error("Received fin")]
-    ReceivedFin,
+    ReceivedFin(i32),
     #[error("Incorrect session id")]
     IncorrectSessionId,
 }
