@@ -1,4 +1,5 @@
 use human_bytes::human_bytes;
+use libmdbx::Info;
 use serde::{Deserialize, Serialize};
 
 use super::{DbReader, DbResult};
@@ -74,6 +75,19 @@ impl DbReader {
             page_size: stat.page_size().into(),
             freelist_size: self.env.freelist()?,
         })
+    }
+
+    // Returns information about the database.
+    pub(crate) fn get_db_info(&self) -> DbResult<Info> {
+        Ok(self.env.info()?)
+    }
+
+    // Returns the the number of free pages in the database.
+    // NOTICE: currently, this function will return a garbage value due to a bug in the binding
+    // freelist function.
+    // TODO(dvir): bump libmdbx version when the bug is fixed.
+    pub(crate) fn get_free_pages(&self) -> DbResult<usize> {
+        Ok(self.env.freelist()?)
     }
 }
 
