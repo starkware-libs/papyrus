@@ -3,12 +3,7 @@ use std::task::{Context, Poll};
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
-    ConnectionDenied,
-    ConnectionHandler,
-    ConnectionId,
-    FromSwarm,
-    NetworkBehaviour,
-    ToSwarm,
+    ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
 use starknet_api::block::BlockHeader;
@@ -154,18 +149,37 @@ trait BehaviourTrait {
         data: protobuf::BlockHeadersResponse,
         outbound_session_id: OutboundSessionId,
     ) -> Option<Event> {
-        // TODO: handle getting more then one message part in the response.
-        if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
+        if data.part.is_empty() {
+            return Some(Event::SessionFailed {
+                session_id: outbound_session_id.into(),
+                session_error: SessionError::IncompatibleDataError,
+            });
+        }
+        let mut received_data = Vec::new();
+        let mut got_header = false;
+        for message in data.part {
+            let Some(message) = message.header_message.clone() else {
+                return Some(Event::SessionFailed {
+                    session_id: outbound_session_id.into(),
+                    session_error: SessionError::IncompatibleDataError,
+                });
+            };
             match message {
                 // TODO: consider if two consecutive headers is an error or not and what it the
                 // right way to handle it.
-                protobuf::block_headers_response_part::HeaderMessage::Header(header) => self
-                    .store_header_pending_pairing_with_signature(header, outbound_session_id)
-                    .err()
-                    .map(|e| Event::SessionFailed {
-                        session_id: outbound_session_id.into(),
-                        session_error: e,
-                    }),
+                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
+                    let event = self
+                        .store_header_pending_pairing_with_signature(header, outbound_session_id)
+                        .err()
+                        .map(|e| Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: e,
+                        });
+                    if let Some(event) = event {
+                        return Some(event);
+                    }
+                    got_header = true;
+                }
                 protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
                     let block_header = match self
                         .fetch_header_pending_pairing_with_signature(outbound_session_id)
@@ -184,31 +198,33 @@ trait BehaviourTrait {
                             session_error: SessionError::IncompatibleDataError,
                         });
                     };
-                    Some(Event::ReceivedData {
-                        data: BlockHeaderData { block_header, signatures },
-                        outbound_session_id,
-                    })
+                    received_data.push(BlockHeaderData { block_header, signatures });
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
                     error,
                 }) => {
+                    // TODO: try to come up with a solution to mark successful session when multiple parts and no error fin is received.
                     self.close_outbound_session(outbound_session_id);
-                    match error {
-                        None => Some(Event::SessionCompletedSuccessfully {
-                            session_id: outbound_session_id.into(),
-                        }),
-                        Some(error) => Some(Event::SessionFailed {
+                    if let Some(error) = error {
+                        return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
                             session_error: SessionError::ReceivedFin(error),
-                        }),
-                    }
+                        });
+                    };
                 }
-            }
-        } else {
-            Some(Event::SessionFailed {
-                session_id: outbound_session_id.into(),
-                session_error: SessionError::IncompatibleDataError,
+            };
+        }
+        if !received_data.is_empty() {
+            // TODO: add test for flows that return more then one data piece in the same event.
+            Some(Event::ReceivedData {
+                data: received_data,
+                outbound_session_id: outbound_session_id.into(),
             })
+        } else if got_header {
+            None
+        } else {
+            // This is a specific case where we get only one message part which is a non error fin.
+            Some(Event::SessionCompletedSuccessfully { session_id: outbound_session_id.into() })
         }
     }
 
@@ -406,7 +422,11 @@ impl NetworkBehaviour for Behaviour {
                         }
                     }
                 });
-                if ignore_event_and_return_pending { Poll::Pending } else { Poll::Ready(event) }
+                if ignore_event_and_return_pending {
+                    Poll::Pending
+                } else {
+                    Poll::Ready(event)
+                }
             }
             Poll::Pending => Poll::Pending,
         }
