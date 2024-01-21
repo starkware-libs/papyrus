@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
-use libp2p::{Multiaddr, Swarm, SwarmBuilder};
+use libp2p::{noise, yamux, Multiaddr, Swarm, SwarmBuilder};
 
 use crate::streamed_data::Config;
 use crate::PapyrusBehaviour;
@@ -22,6 +22,8 @@ where
     let key_pair = Keypair::generate_ed25519();
     let mut swarm = SwarmBuilder::with_existing_identity(key_pair)
         .with_tokio()
+        .with_tcp(Default::default(), noise::Config::new, yamux::Config::default)
+        .expect("Error building TCP transport")
         .with_quic()
         .with_behaviour(|_| Behaviour::new(config))
         .expect("Error while building the swarm")

@@ -64,15 +64,8 @@ fn create_outbound_sessions(
                 "There's no connection to a peer immediately after we got a ConnectionEstablished \
                  event",
             );
-        outbound_session_measurements.insert(
-            outbound_session_id,
-            OutboundSessionMeasurement {
-                start_time: Instant::now(),
-                first_message_time: None,
-                num_messages: None,
-                message_size: None,
-            },
-        );
+        outbound_session_measurements
+            .insert(outbound_session_id, OutboundSessionMeasurement::new());
     }
 }
 
@@ -117,10 +110,10 @@ fn send_data_to_inbound_session(
 
 // TODO(shahak) extract to other file.
 struct OutboundSessionMeasurement {
-    pub start_time: Instant,
-    pub first_message_time: Option<Instant>,
-    pub num_messages: Option<u64>,
-    pub message_size: Option<u64>,
+    start_time: Instant,
+    first_message_time: Option<Instant>,
+    num_messages: Option<u64>,
+    message_size: Option<u64>,
 }
 
 impl OutboundSessionMeasurement {
@@ -141,7 +134,7 @@ impl OutboundSessionMeasurement {
             "OutboundSessionMeasurement's first_message_time field was set while the message_size \
              field wasn't set",
         );
-        println!("---------- Outbound session finished ----------");
+        println!("########## Outbound session finished ##########");
         println!(
             "Session had {} messages of size {}. In total {}",
             num_messages,
@@ -162,6 +155,20 @@ impl OutboundSessionMeasurement {
             "{}/second",
             pretty_size((message_size * num_messages) as f64 / messages_elapsed.as_secs_f64())
         );
+    }
+
+    pub fn new() -> Self {
+        Self {
+            start_time: Instant::now(),
+            first_message_time: None,
+            num_messages: None,
+            message_size: None,
+        }
+    }
+    pub fn report_first_message(&mut self, inbound_session_start: InboundSessionStart) {
+        self.first_message_time = Some(Instant::now());
+        self.num_messages = Some(inbound_session_start.num_messages);
+        self.message_size = Some(inbound_session_start.message_size);
     }
 }
 
@@ -203,15 +210,11 @@ async fn main() {
                 outbound_session_measurements[&outbound_session_id].print();
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
-                if let Some(Msg::Start(InboundSessionStart { num_messages, message_size })) =
-                    data.msg
-                {
-                    let measurement = outbound_session_measurements
+                if let Some(Msg::Start(inbound_session_start)) = data.msg {
+                    outbound_session_measurements
                         .get_mut(&outbound_session_id)
-                        .expect("Received data on non-existing outbound session");
-                    measurement.first_message_time = Some(Instant::now());
-                    measurement.num_messages = Some(num_messages);
-                    measurement.message_size = Some(message_size);
+                        .expect("Received data on non-existing outbound session")
+                        .report_first_message(inbound_session_start);
                 }
             }
             SwarmEvent::OutgoingConnectionError { .. } => {
