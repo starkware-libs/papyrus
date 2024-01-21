@@ -11,8 +11,9 @@ use libp2p::swarm::{
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId};
+use starknet_api::block::BlockHeader;
 
-use super::{BlockHeader, BlockHeaderData, Event, SessionError};
+use super::{BlockHeaderData, Event, SessionError};
 use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
