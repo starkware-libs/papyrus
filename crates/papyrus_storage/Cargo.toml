@@ -19,6 +19,7 @@ flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
+lazy_static.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 memmap2.workspace = true
 metrics.workspace = true
@@ -35,6 +36,8 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+zstd = {workspace = true, features = ["experimental"]}
+once_cell.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true

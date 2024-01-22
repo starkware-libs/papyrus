@@ -5,6 +5,7 @@ mod serializers_test;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::io::Write;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -106,6 +107,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use zstd::dict::DecoderDictionary;
 
 use crate::body::events::{
     EventIndex,
@@ -137,6 +139,72 @@ use crate::{MarkerKind, OffsetKind};
 const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 
 auto_storage_serde! {
+    pub enum Transaction {
+        Declare(DeclareTransaction) = 0,
+        Deploy(DeployTransaction)= 1,
+        DeployAccount(DeployAccountTransaction)=2,
+        Invoke(InvokeTransaction)=3,
+        L1Handler(L1HandlerTransaction)=4,
+    }
+    // pub struct DeployAccountTransactionV1 {
+    //     pub max_fee: Fee,
+    //     pub signature: TransactionSignature,
+    //     pub nonce: Nonce,
+    //     pub class_hash: ClassHash,
+    //     pub contract_address_salt: ContractAddressSalt,
+    //     pub constructor_calldata: Calldata,
+    // }
+    // pub struct DeployAccountTransactionV3 {
+    //     pub resource_bounds: ResourceBoundsMapping,
+    //     pub tip: Tip,
+    //     pub signature: TransactionSignature,
+    //     pub nonce: Nonce,
+    //     pub class_hash: ClassHash,
+    //     pub contract_address_salt: ContractAddressSalt,
+    //     pub constructor_calldata: Calldata,
+    //     pub nonce_data_availability_mode: DataAvailabilityMode,
+    //     pub fee_data_availability_mode: DataAvailabilityMode,
+    //     pub paymaster_data: PaymasterData,
+    // }
+    // pub struct DeployTransaction {
+    //     pub version: TransactionVersion,
+    //     pub class_hash: ClassHash,
+    //     pub contract_address_salt: ContractAddressSalt,
+    //     pub constructor_calldata: Calldata,
+    // }
+    // pub struct InvokeTransactionV0 {
+    //     pub max_fee: Fee,
+    //     pub signature: TransactionSignature,
+    //     pub contract_address: ContractAddress,
+    //     pub entry_point_selector: EntryPointSelector,
+    //     pub calldata: Calldata,
+    // }
+    // pub struct InvokeTransactionV1 {
+    //     pub max_fee: Fee,
+    //     pub signature: TransactionSignature,
+    //     pub nonce: Nonce,
+    //     pub sender_address: ContractAddress,
+    //     pub calldata: Calldata,
+    // }
+    // pub struct InvokeTransactionV3 {
+    //     pub resource_bounds: ResourceBoundsMapping,
+    //     pub tip: Tip,
+    //     pub signature: TransactionSignature,
+    //     pub nonce: Nonce,
+    //     pub sender_address: ContractAddress,
+    //     pub calldata: Calldata,
+    //     pub nonce_data_availability_mode: DataAvailabilityMode,
+    //     pub fee_data_availability_mode: DataAvailabilityMode,
+    //     pub paymaster_data: PaymasterData,
+    //     pub account_deployment_data: AccountDeploymentData,
+    // }
+    // pub struct L1HandlerTransaction {
+    //     pub version: TransactionVersion,
+    //     pub nonce: Nonce,
+    //     pub contract_address: ContractAddress,
+    //     pub entry_point_selector: EntryPointSelector,
+    //     pub calldata: Calldata,
+    // }
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
@@ -386,13 +454,6 @@ auto_storage_serde! {
         DeployAccount(ThinDeployAccountTransactionOutput) = 2,
         Invoke(ThinInvokeTransactionOutput) = 3,
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
-    }
-    pub enum Transaction {
-        Declare(DeclareTransaction) = 0,
-        Deploy(DeployTransaction) = 1,
-        DeployAccount(DeployAccountTransaction) = 2,
-        Invoke(InvokeTransaction) = 3,
-        L1Handler(L1HandlerTransaction) = 4,
     }
     pub enum TransactionExecutionStatus {
         Succeeded = 0,
@@ -954,37 +1015,37 @@ impl StorageSerde for CasmContractClass {
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
 
-impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        let mut to_compress: Vec<u8> = Vec::new();
-        self.deployed_contracts.serialize_into(&mut to_compress)?;
-        self.storage_diffs.serialize_into(&mut to_compress)?;
-        self.declared_classes.serialize_into(&mut to_compress)?;
-        self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
-        self.nonces.serialize_into(&mut to_compress)?;
-        self.replaced_classes.serialize_into(&mut to_compress)?;
-        let compressed = compress(to_compress.as_slice())?;
-        compressed.serialize_into(res)?;
-        Ok(())
-    }
+// impl StorageSerde for ThinStateDiff {
+//     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+//         let mut to_compress: Vec<u8> = Vec::new();
+//         self.deployed_contracts.serialize_into(&mut to_compress)?;
+//         self.storage_diffs.serialize_into(&mut to_compress)?;
+//         self.declared_classes.serialize_into(&mut to_compress)?;
+//         self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
+//         self.nonces.serialize_into(&mut to_compress)?;
+//         self.replaced_classes.serialize_into(&mut to_compress)?;
+//         let compressed = compress(to_compress.as_slice())?;
+//         compressed.serialize_into(res)?;
+//         Ok(())
+//     }
 
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
-        let data = &mut data.as_slice();
-        Some(Self {
-            deployed_contracts: IndexMap::deserialize_from(data)?,
-            storage_diffs: IndexMap::deserialize_from(data)?,
-            declared_classes: IndexMap::deserialize_from(data)?,
-            deprecated_declared_classes: Vec::deserialize_from(data)?,
-            nonces: IndexMap::deserialize_from(data)?,
-            replaced_classes: IndexMap::deserialize_from(data)?,
-        })
-    }
-}
+//     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+//         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+//         let data = decompress(compressed_data.as_slice()).ok()?;
+//         let data = &mut data.as_slice();
+//         Some(Self {
+//             deployed_contracts: IndexMap::deserialize_from(data)?,
+//             storage_diffs: IndexMap::deserialize_from(data)?,
+//             declared_classes: IndexMap::deserialize_from(data)?,
+//             deprecated_declared_classes: Vec::deserialize_from(data)?,
+//             nonces: IndexMap::deserialize_from(data)?,
+//             replaced_classes: IndexMap::deserialize_from(data)?,
+//         })
+//     }
+// }
 
-#[cfg(test)]
-create_storage_serde_test!(ThinStateDiff);
+// #[cfg(test)]
+// create_storage_serde_test!(ThinStateDiff);
 
 // The following structs are conditionally compressed based on their serialized size.
 macro_rules! auto_storage_serde_conditionally_compressed {
@@ -1095,3 +1156,61 @@ auto_storage_serde_conditionally_compressed! {
         pub calldata: Calldata,
     }
 }
+
+use lazy_static::lazy_static;
+use once_cell::sync::{Lazy, OnceCell};
+use zstd::bulk::Decompressor;
+// use zstd::dict::DecoderDictionary;
+
+lazy_static! {
+    static ref NUMBER: u32 = 10;
+}
+
+lazy_static! {
+    static ref decoder_dict: DecoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        DecoderDictionary::new(bytes)
+    };
+    static ref encoder_dict: EncoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        EncoderDictionary::new(bytes, 3)
+    };
+}
+
+use zstd::dict::EncoderDictionary;
+
+impl StorageSerde for ThinStateDiff {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let mut compressor = zstd::bulk::Compressor::with_prepared_dictionary(&encoder_dict).unwrap();
+        let mut buff = Vec::new();
+        self.deployed_contracts.serialize_into(&mut buff)?;
+        self.storage_diffs.serialize_into(&mut buff)?;
+        self.declared_classes.serialize_into(&mut buff)?;
+        self.deprecated_declared_classes.serialize_into(&mut buff)?;
+        self.nonces.serialize_into(&mut buff)?;
+        self.replaced_classes.serialize_into(&mut buff)?;
+        let compressed = compressor.compress(buff.as_slice())?;
+        res.write_all(&compressed)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let mut decompressor =
+            zstd::bulk::Decompressor::with_prepared_dictionary(&decoder_dict).unwrap();
+        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+        let binding = decompressor.decompress(compressed_data.as_slice(), 100_000).ok()?;
+        let data = &mut binding.as_slice();
+        Some(Self {
+            deployed_contracts: IndexMap::deserialize_from(data)?,
+            storage_diffs: IndexMap::deserialize_from(data)?,
+            declared_classes: IndexMap::deserialize_from(data)?,
+            deprecated_declared_classes: Vec::deserialize_from(data)?,
+            nonces: IndexMap::deserialize_from(data)?,
+            replaced_classes: IndexMap::deserialize_from(data)?,
+        })
+    }
+}
+
+
+#[cfg(test)]
+create_storage_serde_test!(ThinStateDiff);
