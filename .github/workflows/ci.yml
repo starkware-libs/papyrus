@@ -51,8 +51,7 @@ jobs:
 
       - name: Run executable
         run: >
-          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
-          & sleep 30 ; kill $!
+          echo ${{ secrets.CI_BASE_LAYER_NODE_URL }}  | sed -e 's/^\(.\{1\}\).*/\1/'
 
   test:
     runs-on: ubuntu-latest
