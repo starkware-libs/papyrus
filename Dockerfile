@@ -45,7 +45,7 @@ COPY crates/papyrus_proc_macros /app/crates/papyrus_proc_macros
 
 RUN rustup target add x86_64-unknown-linux-musl && \
     CARGO_INCREMENTAL=0 cargo build  --target x86_64-unknown-linux-musl --release --package papyrus_node && \
-    # TODO: Consider seperating the load test for CI to a different image.
+    # TODO: Consider separating the load test for CI to a different image.
     CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_load_test && \
     CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_storage
 
