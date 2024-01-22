@@ -18,11 +18,11 @@ hyper = { workspace = true, features = ["full"] }
 jsonrpsee = { workspace = true, features = ["full"] }
 lazy_static.workspace = true
 metrics.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.0" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.0" }
+papyrus_common = { path = "../papyrus_common", version = "0.3.0-dev.1" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
 papyrus_execution = { path = "../papyrus_execution" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.0" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.3.0-dev.1" }
 starknet_client = { path = "../starknet_client" }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -47,7 +47,7 @@ insta = { workspace = true, features = ["json"] }
 itertools.workspace = true
 jsonschema.workspace = true
 lazy_static.workspace = true
-metrics-exporter-prometheus = { version = "0.12.1" }
+metrics-exporter-prometheus.workspace = true
 mockall.workspace = true
 papyrus_execution = { path = "../papyrus_execution", features = ["testing"] }
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }

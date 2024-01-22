@@ -2,8 +2,10 @@
 mod main_test;
 
 use std::env::args;
+use std::future;
 use std::process::exit;
 use std::sync::Arc;
+use std::time::Duration;
 
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
@@ -14,7 +16,7 @@ use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_rpc::run_server;
-use papyrus_storage::{open_storage, StorageReader, StorageWriter};
+use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
 use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
 use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::sources::pending::PendingSource;
@@ -25,16 +27,27 @@ use starknet_api::stark_felt;
 use starknet_client::reader::objects::pending_data::PendingBlock;
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
+use tokio::task::JoinHandle;
 use tracing::metadata::LevelFilter;
-use tracing::{error, info};
+use tracing::{debug_span, error, info, warn, Instrument};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 
+// TODO(dvir): add this to config.
+// Duration between updates to the storage metrics (those in the collect_storage_metrics function).
+const STORAGE_METRICS_UPDATE_INTERVAL: Duration = Duration::from_secs(10);
+
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.clone())?;
+
+    let storage_metrics_handle = if config.monitoring_gateway.collect_metrics {
+        spawn_storage_metrics_collector(storage_reader.clone(), STORAGE_METRICS_UPDATE_INTERVAL)
+    } else {
+        tokio::spawn(future::pending())
+    };
 
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
@@ -81,6 +94,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let sync_handle = tokio::spawn(sync_future);
 
     tokio::select! {
+        res = storage_metrics_handle => {
+            error!("collecting storage metrics stopped.");
+            res?
+        }
         res = server_handle_future => {
             error!("RPC server stopped.");
             res?
@@ -139,6 +156,23 @@ fn configure_tracing() {
     // This sets a single subscriber to all of the threads. We may want to implement different
     // subscriber for some threads and use set_global_default instead of init.
     tracing_subscriber::registry().with(fmt_layer).with(level_filter_layer).init();
+}
+
+fn spawn_storage_metrics_collector(
+    storage_reader: StorageReader,
+    update_interval: Duration,
+) -> JoinHandle<()> {
+    tokio::spawn(
+        async move {
+            loop {
+                if let Err(error) = update_storage_metrics(&storage_reader) {
+                    warn!("Failed to update storage metrics: {error}");
+                }
+                tokio::time::sleep(update_interval).await;
+            }
+        }
+        .instrument(debug_span!("collect_storage_metrics")),
+    )
 }
 
 #[tokio::main]

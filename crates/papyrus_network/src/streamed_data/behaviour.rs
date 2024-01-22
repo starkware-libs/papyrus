@@ -20,10 +20,9 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     NotifyHandler,
-    StreamProtocol,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
 use super::{
@@ -35,17 +34,19 @@ use super::{
     QueryBound,
     SessionId,
 };
+use crate::PapyrusBehaviour;
 
 #[derive(thiserror::Error, Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
-pub(crate) enum SessionError {
+pub enum SessionError {
     #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
     Timeout { substream_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
+    #[allow(dead_code)]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    #[error("In an inbound session, remote peer sent data after sending the query.")]
+    OtherOutboundPeerSentData,
     // If there's a connection with a single session and it was closed because of another reason,
     // we might get ConnectionClosed instead of that reason because the swarm automatically closes
     // a connection that has no sessions. If this is a problem, set the swarm's
@@ -83,6 +84,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
                 session_id,
                 error: SessionError::RemoteDoesntSupportProtocol { protocol_name },
             },
+            GenericEvent::SessionFailed {
+                session_id,
+                error: HandlerSessionError::OtherOutboundPeerSentData,
+            } => Self::SessionFailed { session_id, error: SessionError::OtherOutboundPeerSentData },
             GenericEvent::SessionClosedByRequest { session_id } => {
                 Self::SessionClosedByRequest { session_id }
             }
@@ -93,19 +98,19 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
     }
 }
 
-pub(crate) type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
+pub type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
 
 #[derive(thiserror::Error, Debug)]
 #[error("The given session ID doesn't exist.")]
-pub(crate) struct SessionIdNotFoundError;
+pub struct SessionIdNotFoundError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("We are not connected to the given peer. Dial to the given peer and try again.")]
-pub(crate) struct PeerNotConnected;
+pub struct PeerNotConnected;
 
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
-pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
+pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     config: Config,
     pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
@@ -115,10 +120,8 @@ pub(crate) struct Behaviour<Query: QueryBound, Data: DataBound> {
     next_inbound_session_id: Arc<AtomicUsize>,
 }
 
-// TODO(shahak) remove allow dead code.
-#[allow(dead_code)]
-impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
-    pub fn new(config: Config) -> Self {
+impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, Data> {
+    fn new(config: Config) -> Self {
         Self {
             config,
             pending_events: Default::default(),
@@ -129,7 +132,9 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             next_inbound_session_id: Arc::new(Default::default()),
         }
     }
+}
 
+impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
     pub fn send_query(

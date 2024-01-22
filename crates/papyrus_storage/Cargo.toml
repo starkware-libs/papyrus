@@ -24,8 +24,8 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.0" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-dev.1" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -40,9 +40,11 @@ validator = { workspace = true, features = ["derive"] }
 assert_matches.workspace = true
 camelpaste.workspace = true
 insta = { workspace = true, features = ["yaml"] }
+metrics-exporter-prometheus.workspace = true
 num-traits.workspace = true
 paste.workspace = true
 pretty_assertions.workspace = true
+prometheus-parse.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 schemars = { workspace = true, features = ["preserve_order"] }

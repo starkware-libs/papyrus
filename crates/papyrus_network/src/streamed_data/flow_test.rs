@@ -11,8 +11,9 @@ use libp2p::{PeerId, Swarm};
 use super::behaviour::{Behaviour, Event};
 use super::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::messages::protobuf;
-use crate::streamed_data_protocol::Config;
+use crate::streamed_data::Config;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
+use crate::PapyrusBehaviour;
 
 const NUM_PEERS: usize = 3;
 const NUM_MESSAGES_PER_SESSION: usize = 5;
