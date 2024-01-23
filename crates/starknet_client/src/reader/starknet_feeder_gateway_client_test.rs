@@ -15,7 +15,9 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
     PatriciaKey,
+    SequencerPublicKey,
 };
+use starknet_api::crypto::PublicKey;
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -581,4 +583,26 @@ async fn get_block_signature_unknown_block() {
     let block_signature = starknet_client.block_signature(BlockNumber(999999)).await.unwrap();
     mock_no_block.assert();
     assert!(block_signature.is_none());
+}
+
+#[tokio::test]
+async fn get_sequencer_public_key() {
+    let starknet_client = StarknetFeederGatewayClient::new(
+        &mockito::server_url(),
+        None,
+        NODE_VERSION,
+        get_test_config(),
+    )
+    .unwrap();
+
+    let expected_sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x1")));
+
+    let mock_key = mock("GET", "/feeder_gateway/get_public_key")
+        .with_status(200)
+        .with_body(serde_json::to_string(&expected_sequencer_pub_key).unwrap())
+        .create();
+
+    let pub_key = starknet_client.sequencer_pub_key().await.unwrap();
+    mock_key.assert();
+    assert_eq!(pub_key, expected_sequencer_pub_key);
 }

@@ -265,5 +265,10 @@ expression: dumped_default_config
       "$serde_json::private::Number": "1000"
     },
     "privacy": "Public"
+  },
+  "sync.verify_blocks": {
+    "description": "Whether to verify incoming blocks.",
+    "value": true,
+    "privacy": "Public"
   }
 }
