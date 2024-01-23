@@ -27,7 +27,7 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::core::{ClassHash, CompiledClassHash, SequencerPublicKey};
 use starknet_api::crypto::Signature;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
@@ -189,6 +189,8 @@ pub trait CentralSourceTrait {
         &self,
         class_hash: ClassHash,
     ) -> Result<CasmContractClass, CentralError>;
+
+    async fn get_sequencer_pub_key(&self) -> Result<SequencerPublicKey, CentralError>;
 }
 
 pub(crate) type BlocksStream<'a> =
@@ -381,6 +383,10 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             Ok(None) => Err(CentralError::CompiledClassNotFound { class_hash }),
             Err(err) => Err(CentralError::ClientError(Arc::new(err))),
         }
+    }
+
+    async fn get_sequencer_pub_key(&self) -> Result<SequencerPublicKey, CentralError> {
+        Ok(self.starknet_client.sequencer_pub_key().await.map_err(Arc::new)?)
     }
 }
 
