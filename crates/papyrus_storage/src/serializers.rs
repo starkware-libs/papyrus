@@ -1062,24 +1062,36 @@ macro_rules! auto_storage_serde_conditionally_compressed {
                 $(
                     self.$field.serialize_into(&mut to_compress)?;
                 )*
-                if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
-                    IsCompressed::Yes.serialize_into(res)?;
-                    let compressed = compress(to_compress.as_slice())?;
-                    compressed.serialize_into(res)?;
-                } else {
-                    IsCompressed::No.serialize_into(res)?;
-                    to_compress.serialize_into(res)?;
-                }
+                let mut compressor =
+                    zstd::bulk::Compressor::with_prepared_dictionary(&transactions_encoder_dict).unwrap();
+                let compressed: Vec<u8> = compressor.compress(to_compress.as_slice())?;
+                compressed.serialize_into(res)?;
                 Ok(())
+                // if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
+                //     IsCompressed::Yes.serialize_into(res)?;
+                //     let compressed = compress(to_compress.as_slice())?;
+                //     compressed.serialize_into(res)?;
+                // } else {
+                //     IsCompressed::No.serialize_into(res)?;
+                //     to_compress.serialize_into(res)?;
+                // }
+                // Ok(())
             }
             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-                let is_compressed = IsCompressed::deserialize_from(bytes)?;
-                let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-                let data = match is_compressed {
-                    IsCompressed::No => maybe_compressed_data,
-                    IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
-                };
-                let data = &mut data.as_slice();
+                // let is_compressed = IsCompressed::deserialize_from(bytes)?;
+                // let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+                // let data = match is_compressed {
+                //     IsCompressed::No => maybe_compressed_data,
+                //     IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
+                // };
+                let mut decompressor =
+                zstd::bulk::Decompressor::with_prepared_dictionary(&transactions_decoder_dict).unwrap();
+                let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+
+                let binding = decompressor.decompress(compressed_data.as_slice(), 100_000).ok()?;
+                let data = &mut binding.as_slice();
+
+                // let data = &mut data.as_slice();
                 Some(Self {
                     $(
                         $field: <$ty>::deserialize_from(data)?,
@@ -1172,12 +1184,22 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref decoder_dict: DecoderDictionary<'static> = {
-        let bytes = include_bytes!("../../../../../state_diff_dict.dat");
+    static ref state_diff_decoder_dict: DecoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/state_diff_dict.dat");
         DecoderDictionary::new(bytes)
     };
-    static ref encoder_dict: EncoderDictionary<'static> = {
-        let bytes = include_bytes!("../../../../../state_diff_dict.dat");
+    static ref state_diff_encoder_dict: EncoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        EncoderDictionary::new(bytes, 3)
+    };
+
+
+    static ref transactions_decoder_dict: DecoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/transactions_dict.dat");
+        DecoderDictionary::new(bytes)
+    };
+    static ref transactions_encoder_dict: EncoderDictionary<'static> = {
+        let bytes = include_bytes!("../resources/transactions_dict.dat");
         EncoderDictionary::new(bytes, 3)
     };
 }
@@ -1187,7 +1209,7 @@ use zstd::dict::EncoderDictionary;
 impl StorageSerde for ThinStateDiff {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         let mut compressor =
-            zstd::bulk::Compressor::with_prepared_dictionary(&encoder_dict).unwrap();
+            zstd::bulk::Compressor::with_prepared_dictionary(&state_diff_encoder_dict).unwrap();
         let mut buff = Vec::new();
         self.deployed_contracts.serialize_into(&mut buff)?;
         self.storage_diffs.serialize_into(&mut buff)?;
@@ -1202,7 +1224,7 @@ impl StorageSerde for ThinStateDiff {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let mut decompressor =
-            zstd::bulk::Decompressor::with_prepared_dictionary(&decoder_dict).unwrap();
+            zstd::bulk::Decompressor::with_prepared_dictionary(&state_diff_decoder_dict).unwrap();
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
 
         let binding = decompressor.decompress(compressed_data.as_slice(), 100_000).ok()?;
