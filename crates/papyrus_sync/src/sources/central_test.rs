@@ -19,7 +19,9 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
     PatriciaKey,
+    SequencerPublicKey,
 };
+use starknet_api::crypto::PublicKey;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
@@ -570,6 +572,26 @@ async fn get_compiled_class() {
     // Repeating the call to see that source doesn't call the client and gets the result from
     // cache.
     assert_eq!(central_source.get_compiled_class(class_hash).await.unwrap(), compiled_class);
+}
+
+#[tokio::test]
+async fn get_sequencer_pub_key() {
+    let mut mock = MockStarknetReader::new();
+
+    let sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x123")));
+    mock.expect_sequencer_pub_key().times(1).return_once(move || Ok(sequencer_pub_key));
+
+    let ((reader, _), _temp_dir) = get_test_storage();
+    let central_source = GenericCentralSource {
+        concurrent_requests: TEST_CONCURRENT_REQUESTS,
+        starknet_client: Arc::new(mock),
+        storage_reader: reader,
+        state_update_stream_config: state_update_stream_config_for_test(),
+        class_cache: get_test_class_cache(),
+        compiled_class_cache: get_test_compiled_class_cache(),
+    };
+
+    assert_eq!(central_source.get_sequencer_pub_key().await.unwrap(), sequencer_pub_key);
 }
 
 fn state_update_stream_config_for_test() -> StateUpdateStreamConfig {

@@ -15,7 +15,7 @@ use mockall::automock;
 use papyrus_common::pending_classes::ApiContractClass;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
-use starknet_api::core::ClassHash;
+use starknet_api::core::{ClassHash, SequencerPublicKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
@@ -110,6 +110,8 @@ pub trait StarknetReader {
         &self,
         block_number: BlockNumber,
     ) -> ReaderClientResult<Option<BlockSignatureData>>;
+
+    async fn sequencer_pub_key(&self) -> ReaderClientResult<SequencerPublicKey>;
 }
 
 /// A client for the [`Starknet`] feeder gateway.
@@ -129,6 +131,7 @@ struct StarknetUrls {
     get_pending_data: Url,
     feeder_gateway_is_alive: Url,
     get_block_signature: Url,
+    get_sequencer_pub_key: Url,
 }
 
 const GET_BLOCK_URL: &str = "feeder_gateway/get_block";
@@ -144,6 +147,7 @@ const INCLUDE_BLOCK: &str = "includeBlock";
 const FEEDER_GATEWAY_IS_ALIVE: &str = "feeder_gateway/is_alive";
 const FEEDER_GATEWAY_ALIVE_RESPONSE: &str = "FeederGateway is alive!";
 const GET_BLOCK_SIGNATURE_URL: &str = "feeder_gateway/get_signature";
+const GET_SEQUENCER_PUB_KEY_URL: &str = "feeder_gateway/get_public_key";
 
 impl StarknetUrls {
     fn new(url_str: &str) -> Result<Self, ClientCreationError> {
@@ -174,6 +178,7 @@ impl StarknetUrls {
                 .clone(),
             feeder_gateway_is_alive: base_url.join(FEEDER_GATEWAY_IS_ALIVE)?,
             get_block_signature: base_url.join(GET_BLOCK_SIGNATURE_URL)?,
+            get_sequencer_pub_key: base_url.join(GET_SEQUENCER_PUB_KEY_URL)?,
         })
     }
 }
@@ -210,7 +215,7 @@ impl StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::BlockNotFound,
+            Some(KnownStarknetErrorCode::BlockNotFound),
             format!("Failed to get block number {block_number:?} from starknet server."),
         )
     }
@@ -247,7 +252,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::UndeclaredClass,
+            Some(KnownStarknetErrorCode::UndeclaredClass),
             format!("Failed to get class with hash {class_hash:?} from starknet server."),
         )
     }
@@ -262,7 +267,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::BlockNotFound,
+            Some(KnownStarknetErrorCode::BlockNotFound),
             format!(
                 "Failed to get state update for block number {block_number} from starknet server."
             ),
@@ -333,7 +338,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::UndeclaredClass,
+            Some(KnownStarknetErrorCode::UndeclaredClass),
             format!("Failed to get compiled class with hash {class_hash:?} from starknet server."),
         )
     }
@@ -343,7 +348,7 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(self.urls.get_pending_data.clone()).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::BlockNotFound,
+            Some(KnownStarknetErrorCode::BlockNotFound),
             "Failed to get pending data from starknet server.".to_string(),
         )
     }
@@ -365,9 +370,20 @@ impl StarknetReader for StarknetFeederGatewayClient {
         let response = self.request_with_retry_url(url).await;
         load_object_from_response(
             response,
-            KnownStarknetErrorCode::BlockNotFound,
+            Some(KnownStarknetErrorCode::BlockNotFound),
             format!("Failed to get signature for block {block_number:?} from starknet server."),
         )
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    async fn sequencer_pub_key(&self) -> ReaderClientResult<SequencerPublicKey> {
+        let response = self.request_with_retry_url(self.urls.get_sequencer_pub_key.clone()).await;
+        load_object_from_response(
+            response,
+            None,
+            "Failed to get sequencer public key from starknet server.".to_string(),
+        )
+        .map(|option| option.expect("Sequencer public key should not be None."))
     }
 }
 
@@ -375,22 +391,25 @@ impl StarknetReader for StarknetFeederGatewayClient {
 /// `none_error_code`, return None. If there was a different error, log `error_message`.
 fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     response: ReaderClientResult<String>,
-    none_error_code: KnownStarknetErrorCode,
+    none_error_code: Option<KnownStarknetErrorCode>,
     error_message: String,
 ) -> ReaderClientResult<Option<Object>> {
-    match response {
-        Ok(raw_object) => {
+    match (response, none_error_code) {
+        (Ok(raw_object), _) => {
             let result = serde_json::from_str(&raw_object);
-            if result.is_err() {
-                error!("Failed to deserialize {raw_object:?}");
+            if let Err(err) = &result {
+                error!("Failed to deserialize {raw_object:?}. Error: {err}");
             }
             Ok(Some(result?))
         }
-        Err(ReaderClientError::ClientError(ClientError::StarknetError(StarknetError {
-            code: StarknetErrorCode::KnownErrorCode(error_code),
-            message: _,
-        }))) if error_code == none_error_code => Ok(None),
-        Err(err) => {
+        (
+            Err(ReaderClientError::ClientError(ClientError::StarknetError(StarknetError {
+                code: StarknetErrorCode::KnownErrorCode(error_code),
+                message: _,
+            }))),
+            Some(none_error_code),
+        ) if error_code == none_error_code => Ok(None),
+        (Err(err), _) => {
             debug!(error_message);
             Err(err)
         }
