@@ -4,6 +4,7 @@ mod serializers_test;
 
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
+use std::env;
 use std::hash::Hash;
 use std::io::Write;
 use std::ops::Deref;
@@ -23,6 +24,8 @@ use integer_encoding::*;
 use num_bigint::BigUint;
 use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
+// use rand::Rng;
+// use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{
     BlockHash,
     BlockHeader,
@@ -107,8 +110,10 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+// use test_utils::{get_rng};
 use zstd::dict::DecoderDictionary;
 
+// use crate::test_utils::get_test_config;
 use crate::body::events::{
     EventIndex,
     ThinDeclareTransactionOutput,
@@ -1168,11 +1173,11 @@ lazy_static! {
 
 lazy_static! {
     static ref decoder_dict: DecoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        let bytes = include_bytes!("../../../../../state_diff_dict.dat");
         DecoderDictionary::new(bytes)
     };
     static ref encoder_dict: EncoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        let bytes = include_bytes!("../../../../../state_diff_dict.dat");
         EncoderDictionary::new(bytes, 3)
     };
 }
@@ -1181,7 +1186,8 @@ use zstd::dict::EncoderDictionary;
 
 impl StorageSerde for ThinStateDiff {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        let mut compressor = zstd::bulk::Compressor::with_prepared_dictionary(&encoder_dict).unwrap();
+        let mut compressor =
+            zstd::bulk::Compressor::with_prepared_dictionary(&encoder_dict).unwrap();
         let mut buff = Vec::new();
         self.deployed_contracts.serialize_into(&mut buff)?;
         self.storage_diffs.serialize_into(&mut buff)?;
@@ -1189,8 +1195,8 @@ impl StorageSerde for ThinStateDiff {
         self.deprecated_declared_classes.serialize_into(&mut buff)?;
         self.nonces.serialize_into(&mut buff)?;
         self.replaced_classes.serialize_into(&mut buff)?;
-        let compressed = compressor.compress(buff.as_slice())?;
-        res.write_all(&compressed)?;
+        let compressed: Vec<u8> = compressor.compress(buff.as_slice())?;
+        compressed.serialize_into(res)?;
         Ok(())
     }
 
@@ -1198,6 +1204,7 @@ impl StorageSerde for ThinStateDiff {
         let mut decompressor =
             zstd::bulk::Decompressor::with_prepared_dictionary(&decoder_dict).unwrap();
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+
         let binding = decompressor.decompress(compressed_data.as_slice(), 100_000).ok()?;
         let data = &mut binding.as_slice();
         Some(Self {
@@ -1211,6 +1218,73 @@ impl StorageSerde for ThinStateDiff {
     }
 }
 
+// fn regular_ser(state_diff: &ThinStateDiff) -> Vec<u8>{
+//     let mut buff = Vec::new();
+//     state_diff.deployed_contracts.serialize_into(&mut buff).unwrap();
+//     state_diff.storage_diffs.serialize_into(&mut buff).unwrap();
+//     state_diff.declared_classes.serialize_into(&mut buff).unwrap();
+//     state_diff.deprecated_declared_classes.serialize_into(&mut buff).unwrap();
+//     state_diff.nonces.serialize_into(&mut buff).unwrap();
+//     state_diff.replaced_classes.serialize_into(&mut buff).unwrap();
+//     buff
+// }
+
+// fn regular_des(bytes: Vec<u8>) -> ThinStateDiff{
+//     let mut data = bytes.as_slice();
+//     ThinStateDiff{
+//         deployed_contracts: IndexMap::deserialize_from(&mut data).unwrap(),
+//         storage_diffs: IndexMap::deserialize_from(&mut data).unwrap(),
+//         declared_classes: IndexMap::deserialize_from(&mut data).unwrap(),
+//         deprecated_declared_classes: Vec::deserialize_from(&mut data).unwrap(),
+//         nonces: IndexMap::deserialize_from(&mut data).unwrap(),
+//         replaced_classes: IndexMap::deserialize_from(&mut data).unwrap(),
+//     }
+// }
 
 #[cfg(test)]
 create_storage_serde_test!(ThinStateDiff);
+
+// #[test]
+// fn my_test(){
+//     // let rng= &mut rand::thread_rng();
+//     let state_diff=ThinStateDiff{
+//         deployed_contracts: IndexMap::new(),
+//         storage_diffs: IndexMap::new(),
+//         declared_classes: IndexMap::new(),
+//         deprecated_declared_classes: Vec::new(),
+//         nonces: IndexMap::new(),
+//         replaced_classes: IndexMap::new(),
+//     };
+//     println!("{state_diff:?}");
+//     let ser=regular_ser(&state_diff);
+//     println!("ser:\n{ser:?}");
+//     let mut compressor =
+// zstd::bulk::Compressor::with_prepared_dictionary(&encoder_dict).unwrap();
+//     let compressed=compressor.compress(ser.as_slice()).unwrap();
+//     println!("compressed:\n{compressed:?}");
+//     let mut decompressor =
+//             zstd::bulk::Decompressor::with_prepared_dictionary(&decoder_dict).unwrap();
+//     let binding = decompressor.decompress(compressed.as_slice(), 100_000).unwrap();
+//     println!("binding:\n{binding:?}");
+//     let data = &mut binding.as_slice();
+//     println!("data:\n{data:?}");
+//     let state_diff2=regular_des(data.to_vec());
+//     println!("{state_diff2:?}");
+//     assert_eq!(state_diff,state_diff2);
+// }
+
+// use rand;
+
+// pub fn get_rng() -> ChaCha8Rng {
+//     let seed: u64 = match env::var("SEED") {
+//         Ok(seed_str) => seed_str.parse().unwrap(),
+//         _ => rand::thread_rng().gen(),
+//     };
+//     // Will be printed if the test failed.
+//     println!("Testing with seed: {seed:?}");
+//     // Create a new PRNG using a u64 seed. This is a convenience-wrapper around from_seed.
+//     // It is designed such that low Hamming Weight numbers like 0 and 1 can be used and
+//     // should still result in good, independent seeds to the returned PRNG.
+//     // This is not suitable for cryptography purposes.
+//     ChaCha8Rng::seed_from_u64(seed)
+// }
