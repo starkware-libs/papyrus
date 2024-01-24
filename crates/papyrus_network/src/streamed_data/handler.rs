@@ -28,11 +28,7 @@ use libp2p::swarm::{
 use libp2p::PeerId;
 use tracing::{debug, warn};
 
-use self::inbound_session::{
-    FinishReason as InboundFinishReason,
-    InboundSession,
-    InboundSessionError,
-};
+use self::inbound_session::InboundSession;
 use self::outbound_session::{FinishReason as OutboundFinishReason, OutboundSession};
 use super::protocol::{InboundProtocol, OutboundProtocol};
 use super::{
@@ -64,6 +60,7 @@ pub enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
     RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    // TODO(shahak) erase this.
     #[error("In an inbound session, remote peer sent data after sending the query.")]
     OtherOutboundPeerSentData,
 }
@@ -111,35 +108,26 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
         pending_events: &mut VecDeque<HandlerEvent<Self>>,
         cx: &mut Context<'_>,
     ) -> bool {
-        let Poll::Ready(finish_reason) = inbound_session.poll_unpin(cx) else {
-            let is_session_finished = false;
-            return is_session_finished;
-        };
-        match finish_reason {
-            InboundFinishReason::Error(InboundSessionError::IO(io_error)) => {
+        match inbound_session.poll_unpin(cx) {
+            Poll::Ready(Err(io_error)) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     ToBehaviourEvent::SessionFailed {
                         session_id: inbound_session_id.into(),
                         error: SessionError::IOError(io_error),
                     },
                 ));
+                true
             }
-            InboundFinishReason::Error(InboundSessionError::OtherPeerSentData) => {
+            Poll::Ready(Ok(())) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionFailed {
+                    ToBehaviourEvent::SessionClosedByRequest {
                         session_id: inbound_session_id.into(),
-                        error: SessionError::OtherOutboundPeerSentData,
                     },
                 ));
+                true
             }
-            InboundFinishReason::OtherPeerClosed => {
-                pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionClosedByPeer { session_id: inbound_session_id.into() },
-                ));
-            }
-            InboundFinishReason::Closed => {}
+            Poll::Pending => false,
         }
-        true
     }
 }
 
@@ -288,11 +276,6 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 session_id: SessionId::InboundSessionId(inbound_session_id),
             } => {
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
-                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionClosedByRequest {
-                        session_id: inbound_session_id.into(),
-                    },
-                ));
             }
             RequestFromBehaviourEvent::CloseSession {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
