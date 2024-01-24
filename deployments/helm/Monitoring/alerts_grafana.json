@@ -87,7 +87,7 @@
     {
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "gridPos": {
         "h": 27,
@@ -159,7 +159,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "",
       "fill": 1,
@@ -200,10 +200,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"NAMESPACE\"} - papyrus_header_marker{kubernetes_namespace=\"NAMESPACE\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"test\"} - papyrus_header_marker{kubernetes_namespace=\"test\"}",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -290,7 +290,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "",
       "fill": 1,
@@ -331,10 +331,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"NAMESPACE\"} - papyrus_body_marker{kubernetes_namespace=\"NAMESPACE\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"test\"} - papyrus_body_marker{kubernetes_namespace=\"test\"}",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -421,7 +421,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "",
       "fill": 1,
@@ -462,10 +462,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"NAMESPACE\"} - papyrus_state_marker{kubernetes_namespace=\"NAMESPACE\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"test\"} - papyrus_state_marker{kubernetes_namespace=\"test\"}",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -552,7 +552,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "",
       "fill": 1,
@@ -593,10 +593,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"NAMESPACE\"} - papyrus_compiled_class_marker{kubernetes_namespace=\"NAMESPACE\"}",
+          "expr": "papyrus_central_block_marker{kubernetes_namespace=\"test\"} - papyrus_compiled_class_marker{kubernetes_namespace=\"test\"}",
           "legendFormat": "{{pod}}",
           "range": true,
           "refId": "A"
@@ -679,7 +679,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "Rate of requests for methods that change Starknet",
       "fieldConfig": {
@@ -753,10 +753,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rate(sum(rpc_incoming_requests{kubernetes_namespace=\"NAMESPACE\", method=~\"addDeclareTransaction|addDeployAccountTransaction|addInvokeTransaction\"})[10m:])",
+          "expr": "rate(sum(rpc_incoming_requests{kubernetes_namespace=\"test\", method=~\"addDeclareTransaction|addDeployAccountTransaction|addInvokeTransaction\"})[10m:])",
           "legendFormat": "Incoming requests rate (in 10 mins)",
           "range": true,
           "refId": "A"
@@ -811,7 +811,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "Rate of requests for methods that query Starknet",
       "fieldConfig": {
@@ -885,10 +885,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rate(sum(rpc_incoming_requests{kubernetes_namespace=\"NAMESPACE\", method!~\"addDeclareTransaction|addDeployAccountTransaction|addInvokeTransaction\"})[10m:])",
+          "expr": "rate(sum(rpc_incoming_requests{kubernetes_namespace=\"test\", method!~\"addDeclareTransaction|addDeployAccountTransaction|addInvokeTransaction\"})[10m:])",
           "legendFormat": "Incoming requests rate (in 10 mins)",
           "range": true,
           "refId": "A"
@@ -947,7 +947,7 @@
       "dashes": false,
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "description": "",
       "fill": 1,
@@ -988,10 +988,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "max(rate(papyrus_central_block_marker{kubernetes_namespace=\"NAMESPACE\"}[4m])*225)",
+          "expr": "max(rate(papyrus_central_block_marker{kubernetes_namespace=\"test\"}[4m])*225)",
           "legendFormat": "Number of Blocks",
           "range": true,
           "refId": "A"
@@ -1087,7 +1087,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1160,10 +1160,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addDeclareTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addDeclareTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1218,7 +1218,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1307,10 +1307,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addDeclareTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addDeclareTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1365,7 +1365,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1438,10 +1438,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addDeployAccountTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addDeployAccountTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1496,7 +1496,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1585,10 +1585,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addDeployAccountTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addDeployAccountTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1643,7 +1643,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1716,10 +1716,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addInvokeTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addInvokeTransaction\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1774,7 +1774,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -1863,10 +1863,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"addInvokeTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"addInvokeTransaction\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -1934,7 +1934,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2019,10 +2019,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"blockHashAndNumber\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"blockHashAndNumber\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2077,7 +2077,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2166,10 +2166,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"blockHashAndNumber\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"blockHashAndNumber\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2224,7 +2224,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2313,10 +2313,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"blockNumber\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"blockNumber\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2371,7 +2371,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2460,10 +2460,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"blockNumber\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"blockNumber\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2518,7 +2518,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2607,10 +2607,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockTransactionCount\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockTransactionCount\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2665,7 +2665,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2754,10 +2754,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockTransactionCount\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockTransactionCount\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2812,7 +2812,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -2901,10 +2901,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockWithTxHashes\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockWithTxHashes\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -2959,7 +2959,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3048,10 +3048,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockWithTxHashes\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockWithTxHashes\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3106,7 +3106,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3195,10 +3195,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockWithTxs\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockWithTxs\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3253,7 +3253,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3342,10 +3342,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getBlockWithTxs\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getBlockWithTxs\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3413,7 +3413,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3502,10 +3502,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionByBlockIdAndIndex\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionByBlockIdAndIndex\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3560,7 +3560,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3649,10 +3649,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionByBlockIdAndIndex\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionByBlockIdAndIndex\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3707,7 +3707,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3796,10 +3796,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionByHash\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionByHash\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -3854,7 +3854,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -3943,10 +3943,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionByHash\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionByHash\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4001,7 +4001,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4090,10 +4090,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionReceipt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionReceipt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4148,7 +4148,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4237,10 +4237,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getTransactionReceipt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getTransactionReceipt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4295,7 +4295,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4368,10 +4368,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"pendingTransactions\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"pendingTransactions\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4426,7 +4426,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4499,10 +4499,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"pendingTransactions\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"pendingTransactions\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4570,7 +4570,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4659,10 +4659,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClass\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClass\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4717,7 +4717,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4806,10 +4806,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClass\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClass\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -4864,7 +4864,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -4953,10 +4953,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClassAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClassAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5011,7 +5011,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5100,10 +5100,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClassAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClassAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5158,7 +5158,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5247,10 +5247,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClassHashAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClassHashAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5305,7 +5305,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5394,10 +5394,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getClassHashAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getClassHashAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5465,7 +5465,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5538,10 +5538,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"call\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"call\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5596,7 +5596,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5685,10 +5685,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"call\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"call\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5743,7 +5743,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5832,10 +5832,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"chainId\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"chainId\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -5890,7 +5890,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -5979,10 +5979,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"chainId\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"chainId\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6037,7 +6037,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6110,10 +6110,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"estimateFee\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"estimateFee\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6168,7 +6168,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6257,10 +6257,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"estimateFee\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"estimateFee\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6315,7 +6315,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6404,10 +6404,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getNonce\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getNonce\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6462,7 +6462,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6551,10 +6551,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getNonce\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getNonce\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6609,7 +6609,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6698,10 +6698,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getEvents\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getEvents\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6756,7 +6756,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6845,10 +6845,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getEvents\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getEvents\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -6903,7 +6903,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -6992,10 +6992,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getStorageAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getStorageAt\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7050,7 +7050,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -7139,10 +7139,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getStorageAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getStorageAt\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7197,7 +7197,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -7286,10 +7286,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getStateUpdate\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getStateUpdate\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7344,7 +7344,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -7433,10 +7433,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"getStateUpdate\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"getStateUpdate\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7491,7 +7491,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -7580,10 +7580,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"syncing\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"syncing\",version=\"OLD_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7638,7 +7638,7 @@
       },
       "datasource": {
         "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
+        "uid": "ALONS_TEST_PROM"
       },
       "fieldConfig": {
         "defaults": {
@@ -7727,10 +7727,10 @@
         {
           "datasource": {
             "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
+            "uid": "ALONS_TEST_PROM"
           },
           "editorMode": "code",
-          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"NAMESPACE\", method=\"syncing\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
+          "expr": "rpc_request_latency_seconds{kubernetes_namespace=\"test\", method=\"syncing\",version=\"NEW_VERSION\",quantile=\"0.95\"}",
           "legendFormat": "Latency (seconds)",
           "range": true,
           "refId": "A"
@@ -7761,8 +7761,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "NAMESPACE",
-  "uid": "NAMESPACE",
+  "title": "test",
+  "uid": "test",
   "version": 58,
   "weekStart": ""
 }
