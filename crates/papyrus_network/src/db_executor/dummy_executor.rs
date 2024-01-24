@@ -71,7 +71,7 @@ impl Stream for DummyDBExecutor {
                     *read_blocks_counter += 1;
                     Some((*query_id, Data::Fin))
                 }
-                Ordering::Greater => None,
+                Ordering::Greater => return Poll::Pending,
             };
             Poll::Ready(res)
         } else {
