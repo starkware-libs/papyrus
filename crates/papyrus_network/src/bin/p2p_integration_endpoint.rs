@@ -30,7 +30,7 @@ async fn main() {
 
     let config = Config {
         substream_timeout: Duration::from_secs(3600),
-        protocol_name: StreamProtocol::new("/papyrus/integration/1"),
+        protocol_name: StreamProtocol::new("/core/headers-sync/1"),
     };
     let mut swarm: Swarm<Behaviour> =
         build_swarm(args.listen_address.clone(), args.idle_connection_timeout, config);
