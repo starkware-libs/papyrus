@@ -154,18 +154,35 @@ trait BehaviourTrait {
         data: protobuf::BlockHeadersResponse,
         outbound_session_id: OutboundSessionId,
     ) -> Option<Event> {
-        // TODO: handle getting more then one message part in the response.
-        if let Some(message) = data.part.first().and_then(|part| part.header_message.clone()) {
+        if data.part.is_empty() {
+            return Some(Event::SessionFailed {
+                session_id: outbound_session_id.into(),
+                session_error: SessionError::IncompatibleDataError,
+            });
+        }
+        let mut data_received = Vec::new();
+        for message in data.part {
+            let Some(message) = message.header_message.clone() else {
+                return Some(Event::SessionFailed {
+                    session_id: outbound_session_id.into(),
+                    session_error: SessionError::IncompatibleDataError,
+                });
+            };
             match message {
                 // TODO: consider if two consecutive headers is an error or not and what it the
                 // right way to handle it.
-                protobuf::block_headers_response_part::HeaderMessage::Header(header) => self
-                    .store_header_pending_pairing_with_signature(header, outbound_session_id)
-                    .err()
-                    .map(|e| Event::SessionFailed {
-                        session_id: outbound_session_id.into(),
-                        session_error: e,
-                    }),
+                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
+                    let event = self
+                        .store_header_pending_pairing_with_signature(header, outbound_session_id)
+                        .err()
+                        .map(|e| Event::SessionFailed {
+                            session_id: outbound_session_id.into(),
+                            session_error: e,
+                        });
+                    if let Some(event) = event {
+                        return Some(event);
+                    }
+                }
                 protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
                     let block_header = match self
                         .fetch_header_pending_pairing_with_signature(outbound_session_id)
@@ -184,31 +201,28 @@ trait BehaviourTrait {
                             session_error: SessionError::IncompatibleDataError,
                         });
                     };
-                    Some(Event::ReceivedData {
-                        data: BlockHeaderData { block_header, signatures },
-                        outbound_session_id,
-                    })
+                    data_received.push(BlockHeaderData { block_header, signatures });
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
                     error,
                 }) => {
+                    // Close outboud session will eventually cause the streamed data
+                    // behaviour to emit a session closed by request event.
                     self.close_outbound_session(outbound_session_id);
-                    match error {
-                        None => Some(Event::SessionCompletedSuccessfully {
-                            session_id: outbound_session_id.into(),
-                        }),
-                        Some(error) => Some(Event::SessionFailed {
+                    if let Some(error) = error {
+                        return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
                             session_error: SessionError::ReceivedFin(error),
-                        }),
-                    }
+                        });
+                    };
                 }
-            }
+            };
+        }
+        if !data_received.is_empty() {
+            // TODO: add test for flows that return more then one data piece in the same event.
+            Some(Event::ReceivedData { data: data_received, outbound_session_id })
         } else {
-            Some(Event::SessionFailed {
-                session_id: outbound_session_id.into(),
-                session_error: SessionError::IncompatibleDataError,
-            })
+            None
         }
     }
 
