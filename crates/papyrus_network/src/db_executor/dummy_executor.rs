@@ -1,10 +1,8 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::Poll;
 
 use futures::Stream;
-use starknet_api::block::{BlockHeader, BlockSignature};
 
 use super::{DBExecutor, Data, QueryId};
 use crate::messages::protobuf;
@@ -45,46 +43,29 @@ impl DummyDBExecutor {
     }
 }
 
-impl Stream for DummyDBExecutor {
-    type Item = (QueryId, Data);
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        if let Some((query_id, (query, read_blocks_counter))) =
-            unpinned_self.query_id_to_query_and_read_blocks_counter.iter_mut().next()
-        {
-            let res = match (*read_blocks_counter).cmp(&query.limit) {
-                Ordering::Less => {
-                    *read_blocks_counter += 1;
-                    Some((
-                        *query_id,
-                        Data::BlockHeaderAndSignature {
-                            header: BlockHeader::default(),
-                            signature: BlockSignature::default(),
-                        },
-                    ))
-                }
-                Ordering::Equal => {
-                    *read_blocks_counter += 1;
-                    Some((*query_id, Data::Fin))
-                }
-                Ordering::Greater => None,
-            };
-            Poll::Ready(res)
-        } else {
-            Poll::Pending
-        }
-    }
-}
-
 impl DBExecutor for DummyDBExecutor {
     fn register_query(&mut self, query: BlockQuery) -> QueryId {
         let query_id = QueryId(self.query_conter);
         self.query_conter += 1;
         self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, 0));
         query_id
+    }
+
+    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut u64)> {
+        self.query_id_to_query_and_read_blocks_counter
+            .iter_mut()
+            .next()
+            .map(|(query_id, (query, read_blocks_counter))| (*query_id, query, read_blocks_counter))
+    }
+}
+
+impl Stream for DummyDBExecutor {
+    type Item = (QueryId, Data);
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        self.poll_func(cx)
     }
 }

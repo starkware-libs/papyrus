@@ -1,9 +1,6 @@
 use std::collections::HashMap;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 use assert_matches::assert_matches;
-use futures::Stream;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHeader, BlockNumber};
@@ -12,7 +9,6 @@ use starknet_api::hash::StarkFelt;
 use super::super::Event;
 use super::BehaviourTrait;
 use crate::block_headers::{BlockHeaderData, SessionError};
-use crate::db_executor::{DBExecutor, Data, QueryId};
 use crate::messages::{protobuf, ProtobufConversionError, TestInstance};
 use crate::streamed_data::{self, OutboundSessionId, SessionId};
 use crate::BlockQuery;
@@ -396,21 +392,5 @@ impl BehaviourTrait for TestBehaviour {
             .map(|_| ())
             .xor(Some(()))
             .ok_or_else(|| SessionError::PairingError)
-    }
-}
-
-struct TestDBExecutor {}
-
-impl Stream for TestDBExecutor {
-    type Item = (QueryId, Data);
-
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Pending
-    }
-}
-
-impl DBExecutor for TestDBExecutor {
-    fn register_query(&mut self, _query: BlockQuery) -> QueryId {
-        QueryId(1)
     }
 }
