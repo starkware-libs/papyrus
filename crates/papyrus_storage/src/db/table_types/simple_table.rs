@@ -57,7 +57,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
     fn cursor<'txn, Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
-    ) -> DbResult<DbCursor<'txn, Mode, Self::Key, V, SimpleTable>> {
+    ) -> DbResult<DbCursor<'txn, Mode, Self::Key, Self::Value, SimpleTable>> {
         let cursor = txn.txn.cursor(&self.database)?;
         Ok(DbCursor {
             cursor,
@@ -141,7 +141,6 @@ impl<'txn, Mode: TransactionKind, K: KeyTrait + Debug, V: ValueSerde + Debug> Db
         }
     }
 
-    #[allow(clippy::should_implement_trait)]
     fn next(&mut self) -> DbResult<Option<(K, <Self::Value as ValueSerde>::Value)>> {
         let prev_cursor_res = self.cursor.next::<DbKeyType<'_>, DbValueType<'_>>()?;
         match prev_cursor_res {

@@ -1,10 +1,15 @@
 use super::{Table, TableType};
-use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, StorageSerdeError};
 use crate::db::table_types::{DbCursor, DbCursorTrait};
 use crate::db::{DbReader, DbWriter, TableHandle, TableIdentifier, RO};
+use crate::serializers::auto_storage_serde;
 
 type TableKey = (u32, u32);
 type TableValue = NoVersionValueWrapper<u32>;
+
+auto_storage_serde! {
+    (u32, u32);
+}
 
 pub(crate) fn table_test<T: TableType>(
     table_id: TableIdentifier<TableKey, TableValue, T>,

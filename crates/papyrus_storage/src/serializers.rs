@@ -452,7 +452,6 @@ auto_storage_serde! {
     (ContractAddress, StorageKey, BlockNumber);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
-    (u32, u32);
 }
 
 ////////////////////////////////////////////////////////////////////////
