@@ -1,9 +1,6 @@
 use std::collections::HashMap;
-use std::pin::Pin;
-use std::task::{Context, Poll};
 
 use assert_matches::assert_matches;
-use futures::Stream;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHeader, BlockNumber};
@@ -12,7 +9,6 @@ use starknet_api::hash::StarkFelt;
 use super::super::Event;
 use super::BehaviourTrait;
 use crate::block_headers::{BlockHeaderData, SessionError};
-use crate::db_executor::{DBExecutor, Data, QueryId};
 use crate::messages::{protobuf, ProtobufConversionError, TestInstance};
 use crate::streamed_data::{self, OutboundSessionId, SessionId};
 use crate::BlockQuery;
@@ -110,7 +106,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -131,12 +127,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
         },
     };
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::SessionCompletedSuccessfully {session_id}) => {
-            assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
-        }
-    );
+    assert_matches!(res_event, None);
     assert_eq!(behaviour.close_outbound_session_call_count, 1);
 
     // Make sure no function was called unexpectedly
@@ -196,7 +187,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -222,7 +213,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -396,21 +387,5 @@ impl BehaviourTrait for TestBehaviour {
             .map(|_| ())
             .xor(Some(()))
             .ok_or_else(|| SessionError::PairingError)
-    }
-}
-
-struct TestDBExecutor {}
-
-impl Stream for TestDBExecutor {
-    type Item = (QueryId, Data);
-
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Pending
-    }
-}
-
-impl DBExecutor for TestDBExecutor {
-    fn register_query(&mut self, _query: BlockQuery) -> QueryId {
-        QueryId(1)
     }
 }
