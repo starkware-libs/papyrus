@@ -6,6 +6,7 @@ repository.workspace = true
 license-file.workspace = true
 
 [dependencies]
+async-stream.workspace = true
 bytes.workspace = true
 clap = { workspace = true, features = ["derive"] }
 defaultmap.workspace = true

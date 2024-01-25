@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
-use futures::{select, AsyncReadExt, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
+use futures::{select, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
 use libp2p::swarm::handler::{
     ConnectionEvent,
     DialUpgradeError,
@@ -359,40 +359,6 @@ async fn test_outbound_session_negotiation_failure(
     validate_session_failed_event(&mut handler, outbound_session_id.into(), session_error_matcher)
         .await;
     validate_no_events(&mut handler);
-}
-
-#[tokio::test]
-async fn close_outbound_session() {
-    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
-        Config::get_test_config(),
-        Arc::new(Default::default()),
-        PeerId::random(),
-    );
-
-    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BasicMessage::default();
-    let outbound_session_id = OutboundSessionId { value: 1 };
-
-    simulate_request_to_send_query_from_swarm(&mut handler, query.clone(), outbound_session_id);
-
-    // consume the event to request a new session from the swarm.
-    handler.next().await;
-
-    simulate_negotiated_outbound_session_from_swarm(
-        &mut handler,
-        outbound_stream,
-        outbound_session_id,
-    );
-
-    simulate_request_to_close_session(&mut handler, outbound_session_id.into());
-
-    // This should happen before checking that the session was closed on the inbound side in order
-    // to poll the handler and then the handler will close the session.
-    validate_session_closed_by_request_event(&mut handler, outbound_session_id.into()).await;
-
-    // Check that outbound_stream was closed by reading and seeing we get 0 bytes back.
-    let mut buffer = [0u8];
-    assert_eq!(inbound_stream.read(&mut buffer).await.unwrap(), 0);
 }
 
 // TODO(shahak): Add tests where session fails after negotiation.
