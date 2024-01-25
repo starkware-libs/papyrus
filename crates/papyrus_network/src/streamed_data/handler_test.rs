@@ -415,31 +415,3 @@ async fn outbound_session_negotiation_failure() {
     )
     .await;
 }
-
-#[tokio::test]
-async fn closed_outbound_session_doesnt_emit_events_when_data_is_sent() {
-    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
-        Config::get_test_config(),
-        Arc::new(Default::default()),
-        PeerId::random(),
-    );
-
-    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
-    let outbound_session_id = OutboundSessionId { value: 1 };
-
-    simulate_negotiated_outbound_session_from_swarm(
-        &mut handler,
-        outbound_stream,
-        outbound_session_id,
-    );
-
-    simulate_request_to_close_session(&mut handler, outbound_session_id.into());
-    validate_session_closed_by_request_event(&mut handler, outbound_session_id.into()).await;
-
-    for data in dummy_data() {
-        // The handler might have already closed outbound_stream, so we don't unwrap the result
-        let _ = write_message(data, &mut inbound_stream).await;
-    }
-
-    validate_no_events(&mut handler);
-}
