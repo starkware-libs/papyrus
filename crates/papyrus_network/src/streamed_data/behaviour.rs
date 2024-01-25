@@ -178,6 +178,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Instruct behaviour to close session. A corresponding SessionClosedByRequest event will be
     /// reported when the session is closed.
+    // TODO(shahak) allow only for inbound sessions
     pub fn close_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
             self.get_peer_id_and_connection_id_from_session_id(session_id)?;

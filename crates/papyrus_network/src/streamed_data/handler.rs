@@ -266,15 +266,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
             }
             RequestFromBehaviourEvent::CloseSession {
-                session_id: SessionId::OutboundSessionId(outbound_session_id),
-            } => {
-                self.id_to_outbound_session.remove(&outbound_session_id);
-                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionClosedByRequest {
-                        session_id: outbound_session_id.into(),
-                    },
-                ));
-            }
+                session_id: SessionId::OutboundSessionId(_outbound_session_id),
+            } => {}
         }
     }
 
