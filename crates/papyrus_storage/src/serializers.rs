@@ -1185,21 +1185,21 @@ lazy_static! {
 
 lazy_static! {
     static ref state_diff_decoder_dict: DecoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        let bytes = include_bytes!("./state_diff_dict.dat");
         DecoderDictionary::new(bytes)
     };
     static ref state_diff_encoder_dict: EncoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/state_diff_dict.dat");
+        let bytes = include_bytes!("./state_diff_dict.dat");
         EncoderDictionary::new(bytes, 3)
     };
 
 
     static ref transactions_decoder_dict: DecoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/transactions_dict.dat");
+        let bytes = include_bytes!("./transactions_dict.dat");
         DecoderDictionary::new(bytes)
     };
     static ref transactions_encoder_dict: EncoderDictionary<'static> = {
-        let bytes = include_bytes!("../resources/transactions_dict.dat");
+        let bytes = include_bytes!("./transactions_dict.dat");
         EncoderDictionary::new(bytes, 3)
     };
 }
