@@ -7,6 +7,7 @@ pub mod protobuf {
 
 use std::io;
 
+use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
 use unsigned_varint::encode::usize_buffer;
@@ -15,21 +16,33 @@ pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
 
 pub async fn write_message<T: Message, Stream: AsyncWrite + Unpin>(
     message: T,
-    mut io: Stream,
+    io: &mut Stream,
 ) -> Result<(), io::Error> {
     let message_vec = message.encode_to_vec();
     // This code is based on write_length_prefixed from libp2p v0.52 which was erased in v0.53.
-    write_usize(&mut io, message_vec.len()).await?;
+    write_usize(io, message_vec.len()).await?;
     io.write_all(&message_vec).await?;
-    io.flush().await?;
+    Ok(())
+}
+
+pub async fn write_message_without_length_prefix<T: Message, Stream: AsyncWrite + Unpin>(
+    message: T,
+    // We require `io` to be WriteHalf<Stream> and not Stream in order to ensure it's not a
+    // reference.
+    // We want to ensure it's not a reference because this function will make it unusable
+    mut io: WriteHalf<Stream>,
+) -> Result<(), io::Error> {
+    let message_vec = message.encode_to_vec();
+    io.write_all(&message_vec).await?;
+    io.close().await?;
     Ok(())
 }
 
 pub async fn read_message<T: Message + Default, Stream: AsyncRead + Unpin>(
-    mut io: Stream,
+    io: &mut Stream,
 ) -> Result<Option<T>, io::Error> {
     // This code is based on read_length_prefixed from libp2p v0.52 which was erased in v0.53.
-    let Some(message_len) = read_usize(&mut io).await? else { return Ok(None) };
+    let Some(message_len) = read_usize(io).await? else { return Ok(None) };
     if message_len > MAX_MESSAGE_SIZE {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -44,10 +57,21 @@ pub async fn read_message<T: Message + Default, Stream: AsyncRead + Unpin>(
     Ok(Some(T::decode(buf.as_slice())?))
 }
 
+pub async fn read_message_without_length_prefix<T: Message + Default, Stream: AsyncRead + Unpin>(
+    // We require `io` to be ReadHalf<Stream> and not Stream in order to ensure it's not a
+    // reference.
+    // We want to ensure it's not a reference because this function will make it unusable
+    mut io: ReadHalf<Stream>,
+) -> Result<T, io::Error> {
+    let mut buf = vec![];
+    io.read_to_end(&mut buf).await?;
+    Ok(T::decode(buf.as_slice())?)
+}
+
 // This code is based on read_varint from libp2p v0.52 which was erased in v0.53. The difference
 // from there is that here we return None if we have EOF before starting to read.
 pub async fn read_usize<Stream: AsyncRead + Unpin>(
-    mut io: Stream,
+    io: &mut Stream,
 ) -> Result<Option<usize>, io::Error> {
     let mut buffer = unsigned_varint::encode::usize_buffer();
     let mut buffer_len = 0;
@@ -80,7 +104,7 @@ pub async fn read_usize<Stream: AsyncRead + Unpin>(
 
 // This code is based on write_varint from libp2p v0.52 which was erased in v0.53.
 pub async fn write_usize<Stream: AsyncWrite + Unpin>(
-    mut io: Stream,
+    io: &mut Stream,
     num: usize,
 ) -> Result<(), io::Error> {
     let mut buffer = usize_buffer();

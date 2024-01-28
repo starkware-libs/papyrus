@@ -6,7 +6,7 @@ use std::task::{Context, Poll, Waker};
 
 use futures::future::BoxFuture;
 use futures::io::WriteHalf;
-use futures::{AsyncReadExt, AsyncWriteExt, FutureExt};
+use futures::{AsyncWriteExt, FutureExt};
 use libp2p::swarm::Stream;
 use replace_with::replace_with_or_abort;
 
@@ -31,11 +31,10 @@ enum WriteMessageTask {
 }
 
 impl<Data: DataBound> InboundSession<Data> {
-    pub fn new(stream: Stream) -> Self {
-        let (_read_half, write_half) = stream.split();
+    pub fn new(write_stream: WriteHalf<Stream>) -> Self {
         Self {
             pending_messages: Default::default(),
-            current_task: WriteMessageTask::Waiting(write_half),
+            current_task: WriteMessageTask::Waiting(write_stream),
             wakers_waiting_for_new_message: Default::default(),
         }
     }
@@ -54,23 +53,23 @@ impl<Data: DataBound> InboundSession<Data> {
 
     pub fn start_closing(&mut self) {
         replace_with_or_abort(&mut self.current_task, |current_task| {
-            let WriteMessageTask::Waiting(mut stream) = current_task else {
+            let WriteMessageTask::Waiting(mut write_stream) = current_task else {
                 panic!("Called start_closing while not waiting.");
             };
-            WriteMessageTask::Closing(async move { stream.close().await }.boxed())
+            WriteMessageTask::Closing(async move { write_stream.close().await }.boxed())
         })
     }
 
     fn handle_waiting(&mut self, cx: &mut Context<'_>) {
         if let Some(data) = self.pending_messages.pop_front() {
             replace_with_or_abort(&mut self.current_task, |current_task| {
-                let WriteMessageTask::Waiting(mut stream) = current_task else {
+                let WriteMessageTask::Waiting(mut write_stream) = current_task else {
                     panic!("Called handle_waiting while not waiting.");
                 };
                 WriteMessageTask::Running(
                     async move {
-                        write_message(data, &mut stream).await?;
-                        Ok(stream)
+                        write_message(data, &mut write_stream).await?;
+                        Ok(write_stream)
                     }
                     .boxed(),
                 )
@@ -86,8 +85,8 @@ impl<Data: DataBound> InboundSession<Data> {
         };
         match fut.poll_unpin(cx) {
             Poll::Pending => None,
-            Poll::Ready(Ok(stream)) => {
-                self.current_task = WriteMessageTask::Waiting(stream);
+            Poll::Ready(Ok(write_stream)) => {
+                self.current_task = WriteMessageTask::Waiting(write_stream);
                 None
             }
             Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
