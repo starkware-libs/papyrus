@@ -49,6 +49,13 @@ pub enum RequestFromBehaviourEvent<Query, Data> {
     CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
     SendData { data: Data, inbound_session_id: InboundSessionId },
     CloseSession { session_id: SessionId },
+    DropOutboundSession { outbound_session_id: OutboundSessionId },
+}
+
+#[derive(Debug)]
+pub enum RequestToBehaviourEvent<Query: QueryBound, Data: DataBound> {
+    GenerateEvent(GenericEvent<Query, Data, SessionError>),
+    NotifyOutboundSessionDropped { outbound_session_id: OutboundSessionId },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -66,8 +73,6 @@ pub enum SessionError {
     OtherOutboundPeerSentData,
 }
 
-pub type ToBehaviourEvent<Query, Data> = GenericEvent<Query, Data, SessionError>;
-
 type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::OutboundProtocol,
     <H as ConnectionHandler>::OutboundOpenInfo,
@@ -83,6 +88,7 @@ pub struct Handler<Query: QueryBound, Data: DataBound> {
     id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
     pending_events: VecDeque<HandlerEvent<Self>>,
     inbound_sessions_marked_to_end: HashSet<InboundSessionId>,
+    dropped_outbound_sessions_non_negotiated: HashSet<OutboundSessionId>,
 }
 
 impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
@@ -98,6 +104,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
             id_to_outbound_session: Default::default(),
             pending_events: Default::default(),
             inbound_sessions_marked_to_end: Default::default(),
+            dropped_outbound_sessions_non_negotiated: Default::default(),
         }
     }
 
@@ -112,18 +119,18 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
         match inbound_session.poll_unpin(cx) {
             Poll::Ready(Err(io_error)) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionFailed {
+                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
                         session_id: inbound_session_id.into(),
                         error: SessionError::IOError(io_error),
-                    },
+                    }),
                 ));
                 true
             }
             Poll::Ready(Ok(())) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionClosedByRequest {
+                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByRequest {
                         session_id: inbound_session_id.into(),
-                    },
+                    }),
                 ));
                 true
             }
@@ -134,7 +141,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
 
 impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Data> {
     type FromBehaviour = RequestFromBehaviourEvent<Query, Data>;
-    type ToBehaviour = ToBehaviourEvent<Query, Data>;
+    type ToBehaviour = RequestToBehaviourEvent<Query, Data>;
     type InboundProtocol = InboundProtocol<Query>;
     type OutboundProtocol = OutboundProtocol<Query>;
     type InboundOpenInfo = InboundSessionId;
@@ -187,27 +194,27 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             match outbound_session.poll_next_unpin(cx) {
                 Poll::Ready(Some(Ok(data))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::ReceivedData {
+                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
                             outbound_session_id: *outbound_session_id,
                             data,
-                        },
+                        }),
                     ));
                     true
                 }
                 Poll::Ready(Some(Err(io_error))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::SessionFailed {
+                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
                             session_id: SessionId::OutboundSessionId(*outbound_session_id),
                             error: SessionError::IOError(io_error),
-                        },
+                        }),
                     ));
                     false
                 }
                 Poll::Ready(None) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        ToBehaviourEvent::SessionClosedByPeer {
+                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByPeer {
                             session_id: SessionId::OutboundSessionId(*outbound_session_id),
-                        },
+                        }),
                     ));
                     false
                 }
@@ -268,6 +275,14 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             RequestFromBehaviourEvent::CloseSession {
                 session_id: SessionId::OutboundSessionId(_outbound_session_id),
             } => {}
+            RequestFromBehaviourEvent::DropOutboundSession { outbound_session_id } => {
+                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    RequestToBehaviourEvent::NotifyOutboundSessionDropped { outbound_session_id },
+                ));
+                if self.id_to_outbound_session.remove(&outbound_session_id).is_none() {
+                    self.dropped_outbound_sessions_non_negotiated.insert(outbound_session_id);
+                }
+            }
         }
     }
 
@@ -286,6 +301,9 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 protocol: mut read_stream,
                 info: outbound_session_id,
             }) => {
+                if self.dropped_outbound_sessions_non_negotiated.remove(&outbound_session_id) {
+                    return;
+                }
                 self.id_to_outbound_session.insert(
                     outbound_session_id,
                     stream! {
@@ -311,11 +329,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 info: inbound_session_id,
             }) => {
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::NewInboundSession {
+                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::NewInboundSession {
                         query,
                         inbound_session_id,
                         peer_id: self.peer_id,
-                    },
+                    }),
                 ));
                 self.id_to_inbound_session
                     .insert(inbound_session_id, InboundSession::new(write_stream));
@@ -339,10 +357,10 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                     StreamUpgradeError::Io(error) => SessionError::IOError(error),
                 };
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    ToBehaviourEvent::SessionFailed {
+                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
                         session_id: outbound_session_id.into(),
                         error: session_error,
-                    },
+                    }),
                 ));
             }
             // We don't need to handle a ListenUpgradeError because an inbound session is created
