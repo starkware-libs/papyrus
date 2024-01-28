@@ -1192,8 +1192,6 @@ lazy_static! {
         let bytes = include_bytes!("./state_diff_dict.dat");
         EncoderDictionary::new(bytes, 3)
     };
-
-
     static ref transactions_decoder_dict: DecoderDictionary<'static> = {
         let bytes = include_bytes!("./transactions_dict.dat");
         DecoderDictionary::new(bytes)
@@ -1227,7 +1225,8 @@ impl StorageSerde for ThinStateDiff {
             zstd::bulk::Decompressor::with_prepared_dictionary(&state_diff_decoder_dict).unwrap();
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
 
-        let binding = decompressor.decompress(compressed_data.as_slice(), 100_000).ok()?;
+        let binding =
+            decompressor.decompress(compressed_data.as_slice(), 1000_000_000).ok()?;
         let data = &mut binding.as_slice();
         Some(Self {
             deployed_contracts: IndexMap::deserialize_from(data)?,
@@ -1239,6 +1238,34 @@ impl StorageSerde for ThinStateDiff {
         })
     }
 }
+// impl StorageSerde for ThinStateDiff {
+//     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+//         let mut to_compress: Vec<u8> = Vec::new();
+//         self.deployed_contracts.serialize_into(&mut to_compress)?;
+//         self.storage_diffs.serialize_into(&mut to_compress)?;
+//         self.declared_classes.serialize_into(&mut to_compress)?;
+//         self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
+//         self.nonces.serialize_into(&mut to_compress)?;
+//         self.replaced_classes.serialize_into(&mut to_compress)?;
+//         let compressed = compress(to_compress.as_slice())?;
+//         compressed.serialize_into(res)?;
+//         Ok(())
+//     }
+
+//     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+//         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+//         let data = decompress(compressed_data.as_slice()).ok()?;
+//         let data = &mut data.as_slice();
+//         Some(Self {
+//             deployed_contracts: IndexMap::deserialize_from(data)?,
+//             storage_diffs: IndexMap::deserialize_from(data)?,
+//             declared_classes: IndexMap::deserialize_from(data)?,
+//             deprecated_declared_classes: Vec::deserialize_from(data)?,
+//             nonces: IndexMap::deserialize_from(data)?,
+//             replaced_classes: IndexMap::deserialize_from(data)?,
+//         })
+//     }
+// }
 
 // fn regular_ser(state_diff: &ThinStateDiff) -> Vec<u8>{
 //     let mut buff = Vec::new();
