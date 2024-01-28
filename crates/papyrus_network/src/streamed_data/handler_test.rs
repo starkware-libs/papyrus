@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use futures::task::{Context, Poll};
-use futures::{select, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
+use futures::{select, AsyncReadExt, AsyncWriteExt, FutureExt, Stream as StreamTrait, StreamExt};
 use libp2p::swarm::handler::{
     ConnectionEvent,
     DialUpgradeError,
@@ -67,7 +67,7 @@ fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataB
     inbound_session_id: InboundSessionId,
 ) {
     handler.on_connection_event(ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
-        protocol: (query, inbound_stream),
+        protocol: (query, inbound_stream.split().1),
         info: inbound_session_id,
     }));
 }
@@ -78,7 +78,7 @@ fn simulate_negotiated_outbound_session_from_swarm<Query: QueryBound, Data: Data
     outbound_session_id: OutboundSessionId,
 ) {
     handler.on_connection_event(ConnectionEvent::FullyNegotiatedOutbound(
-        FullyNegotiatedOutbound { protocol: outbound_stream, info: outbound_session_id },
+        FullyNegotiatedOutbound { protocol: outbound_stream.split().0, info: outbound_session_id },
     ));
 }
 
