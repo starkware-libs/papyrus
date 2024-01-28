@@ -6,12 +6,13 @@ use std::marker::PhantomData;
 use std::{io, iter};
 
 use futures::future::BoxFuture;
-use futures::{AsyncRead, AsyncWrite, FutureExt};
+use futures::io::{ReadHalf, WriteHalf};
+use futures::{AsyncRead, AsyncReadExt, AsyncWrite, FutureExt};
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use libp2p::swarm::StreamProtocol;
 use prost::Message;
 
-use crate::messages::{read_message, write_message};
+use crate::messages::{read_message_without_length_prefix, write_message_without_length_prefix};
 
 /// Substream upgrade protocol for sending data on blocks.
 ///
@@ -41,16 +42,15 @@ where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     Query: Message + Default,
 {
-    type Output = (Query, Stream);
+    type Output = (Query, WriteHalf<Stream>);
     type Error = io::Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_inbound(self, mut stream: Stream, _: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, stream: Stream, _: Self::Info) -> Self::Future {
         async move {
-            let request = read_message::<Query, _>(&mut stream)
-                .await?
-                .ok_or::<io::Error>(io::ErrorKind::UnexpectedEof.into())?;
-            Ok((request, stream))
+            let (read_half, write_half) = stream.split();
+            let request = read_message_without_length_prefix::<Query, _>(read_half).await?;
+            Ok((request, write_half))
         }
         .boxed()
     }
@@ -80,14 +80,15 @@ impl<Stream, Query: Message + Default + 'static> OutboundUpgrade<Stream> for Out
 where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Output = Stream;
+    type Output = ReadHalf<Stream>;
     type Error = io::Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_outbound(self, mut stream: Stream, _: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, stream: Stream, _: Self::Info) -> Self::Future {
         async move {
-            write_message(self.query, &mut stream).await?;
-            Ok(stream)
+            let (read_half, write_half) = stream.split();
+            write_message_without_length_prefix(self.query, write_half).await?;
+            Ok(read_half)
         }
         .boxed()
     }
