@@ -26,6 +26,8 @@ pub enum SessionError {
     ReceivedFin(i32),
     #[error("Incorrect session id")]
     IncorrectSessionId,
+    #[error("Received a message after Fin")]
+    ReceivedMessageAfterFin,
 }
 
 #[derive(Debug)]
