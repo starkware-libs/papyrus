@@ -48,7 +48,7 @@ use crate::messages::read_message;
 pub enum RequestFromBehaviourEvent<Query, Data> {
     CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
     SendData { data: Data, inbound_session_id: InboundSessionId },
-    CloseSession { session_id: SessionId },
+    CloseInboundSession { inbound_session_id: InboundSessionId },
     DropOutboundSession { outbound_session_id: OutboundSessionId },
 }
 
@@ -128,9 +128,11 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
             }
             Poll::Ready(Ok(())) => {
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByRequest {
-                        session_id: inbound_session_id.into(),
-                    }),
+                    RequestToBehaviourEvent::GenerateEvent(
+                        GenericEvent::SessionFinishedSuccessfully {
+                            session_id: inbound_session_id.into(),
+                        },
+                    ),
                 ));
                 true
             }
@@ -212,9 +214,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 }
                 Poll::Ready(None) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByPeer {
-                            session_id: SessionId::OutboundSessionId(*outbound_session_id),
-                        }),
+                        RequestToBehaviourEvent::GenerateEvent(
+                            GenericEvent::SessionFinishedSuccessfully {
+                                session_id: SessionId::OutboundSessionId(*outbound_session_id),
+                            },
+                        ),
                     ));
                     false
                 }
@@ -267,14 +271,9 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                     );
                 }
             }
-            RequestFromBehaviourEvent::CloseSession {
-                session_id: SessionId::InboundSessionId(inbound_session_id),
-            } => {
+            RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id } => {
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
             }
-            RequestFromBehaviourEvent::CloseSession {
-                session_id: SessionId::OutboundSessionId(_outbound_session_id),
-            } => {}
             RequestFromBehaviourEvent::DropOutboundSession { outbound_session_id } => {
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::NotifyOutboundSessionDropped { outbound_session_id },

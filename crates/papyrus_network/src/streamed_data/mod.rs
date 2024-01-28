@@ -53,10 +53,7 @@ pub enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     NewInboundSession { query: Query, inbound_session_id: InboundSessionId, peer_id: PeerId },
     ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
     SessionFailed { session_id: SessionId, error: SessionError },
-    // TODO(shahak): change this to InboundSessionId
-    SessionClosedByRequest { session_id: SessionId },
-    // TODO(shahak): change this to OutboundSessionId
-    SessionClosedByPeer { session_id: SessionId },
+    SessionFinishedSuccessfully { session_id: SessionId },
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

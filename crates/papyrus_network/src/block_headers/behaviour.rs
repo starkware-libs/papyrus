@@ -34,8 +34,7 @@ pub struct Behaviour {
         protobuf::BlockHeadersResponse,
     >,
     header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
-    outbound_sessions_pending_termination: HashSet<OutboundSessionId>,
-    inbound_sessions_pending_termination: HashSet<InboundSessionId>,
+    sessions_pending_termination: HashSet<SessionId>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -52,8 +51,7 @@ impl PapyrusBehaviour for Behaviour {
         Self {
             streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
             header_pending_pairing: HashMap::new(),
-            outbound_sessions_pending_termination: HashSet::new(),
-            inbound_sessions_pending_termination: HashSet::new(),
+            sessions_pending_termination: HashSet::new(),
         }
     }
 }
@@ -120,10 +118,9 @@ impl Behaviour {
     /// report the session was closed.
     #[allow(dead_code)]
     pub fn close_inbound_session(&mut self, inbound_session_id: InboundSessionId) {
-        self.inbound_sessions_pending_termination.insert(inbound_session_id);
-        let _ = self
-            .streamed_data_behaviour
-            .close_session(SessionId::InboundSessionId(inbound_session_id));
+        self.sessions_pending_termination.insert(inbound_session_id.into());
+        // TODO(shahak): handle error.
+        let _ = self.streamed_data_behaviour.close_inbound_session(inbound_session_id);
     }
 }
 
@@ -140,21 +137,27 @@ trait BehaviourTrait {
         outbound_session_id: OutboundSessionId,
     ) -> Result<BlockHeader, SessionError>;
 
-    fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId);
+    fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event>;
 
-    fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event;
+    // This function will panic if the outbound session doesn't exist.
+    fn handle_outbound_session_failed(&mut self, outbound_session_id: OutboundSessionId);
 
-    fn handle_outbound_session_closed_by_peer(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Event;
+    fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId>;
 
     fn handle_received_data(
         &mut self,
         data: protobuf::BlockHeadersResponse,
         outbound_session_id: OutboundSessionId,
     ) -> Option<Event> {
+        if self.get_sessions_pending_termination().contains(&outbound_session_id.into()) {
+            self.handle_outbound_session_failed(outbound_session_id);
+            return Some(Event::SessionFailed {
+                session_id: outbound_session_id.into(),
+                session_error: SessionError::ReceivedMessageAfterFin,
+            });
+        }
         if data.part.is_empty() {
+            self.handle_outbound_session_failed(outbound_session_id);
             return Some(Event::SessionFailed {
                 session_id: outbound_session_id.into(),
                 session_error: SessionError::IncompatibleDataError,
@@ -163,24 +166,22 @@ trait BehaviourTrait {
         let mut data_received = Vec::new();
         for message in data.part {
             let Some(message) = message.header_message.clone() else {
+                self.handle_outbound_session_failed(outbound_session_id);
                 return Some(Event::SessionFailed {
                     session_id: outbound_session_id.into(),
                     session_error: SessionError::IncompatibleDataError,
                 });
             };
             match message {
-                // TODO: consider if two consecutive headers is an error or not and what it the
-                // right way to handle it.
                 protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                    let event = self
+                    if let Err(error) = self
                         .store_header_pending_pairing_with_signature(header, outbound_session_id)
-                        .err()
-                        .map(|e| Event::SessionFailed {
+                    {
+                        self.handle_outbound_session_failed(outbound_session_id);
+                        return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
-                            session_error: e,
+                            session_error: error,
                         });
-                    if let Some(event) = event {
-                        return Some(event);
                     }
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
@@ -189,6 +190,7 @@ trait BehaviourTrait {
                     {
                         Ok(block_header) => block_header,
                         Err(e) => {
+                            self.handle_outbound_session_failed(outbound_session_id);
                             return Some(Event::SessionFailed {
                                 session_id: outbound_session_id.into(),
                                 session_error: e,
@@ -196,6 +198,7 @@ trait BehaviourTrait {
                         }
                     };
                     let Some(signatures) = sigs.try_into().ok() else {
+                        self.handle_outbound_session_failed(outbound_session_id);
                         return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
                             session_error: SessionError::IncompatibleDataError,
@@ -204,17 +207,20 @@ trait BehaviourTrait {
                     data_received.push(BlockHeaderData { block_header, signatures });
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
-                    error,
+                    error: Some(error),
                 }) => {
-                    // Close outboud session will eventually cause the streamed data
-                    // behaviour to emit a session closed by request event.
-                    self.close_outbound_session(outbound_session_id);
-                    if let Some(error) = error {
-                        return Some(Event::SessionFailed {
-                            session_id: outbound_session_id.into(),
-                            session_error: SessionError::ReceivedFin(error),
-                        });
-                    };
+                    self.handle_outbound_session_failed(outbound_session_id);
+                    return Some(Event::SessionFailed {
+                        session_id: outbound_session_id.into(),
+                        session_error: SessionError::ReceivedFin(error),
+                    });
+                }
+                protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
+                    error: None,
+                }) => {
+                    // TODO: handle errors here
+                    let _newly_inserted =
+                        self.get_sessions_pending_termination().insert(outbound_session_id.into());
                 }
             };
         }
@@ -242,18 +248,8 @@ trait BehaviourTrait {
                 session_id,
                 session_error: SessionError::StreamedData(error),
             }),
-            streamed_data::GenericEvent::SessionClosedByPeer { session_id } => {
-                // TODO: handle session closed by peer in inbound session as well.
-                let SessionId::OutboundSessionId(outbound_session_id) = session_id else {
-                    return Some(Event::SessionFailed {
-                        session_id,
-                        session_error: SessionError::IncorrectSessionId,
-                    });
-                };
-                Some(self.handle_outbound_session_closed_by_peer(outbound_session_id))
-            }
-            streamed_data::GenericEvent::SessionClosedByRequest { session_id } => {
-                Some(self.handle_session_closed_by_request(session_id))
+            streamed_data::GenericEvent::SessionFinishedSuccessfully { session_id } => {
+                self.handle_session_finished(session_id)
             }
             StreamedDataEvent::ReceivedData { data, outbound_session_id } => {
                 self.handle_received_data(data, outbound_session_id)
@@ -285,63 +281,25 @@ impl BehaviourTrait for Behaviour {
             .unwrap_or(Err(SessionError::PairingError))
     }
 
-    /// Instruct behaviour to close an outbound session. A corresponding event will be emitted when
-    /// the session is closed.
-    fn close_outbound_session(&mut self, outbound_session_id: OutboundSessionId) {
-        // TODO: handle errors in this function
-        let _newly_inserted =
-            self.outbound_sessions_pending_termination.insert(outbound_session_id);
-        let _ = self
-            .streamed_data_behaviour
-            .close_session(SessionId::OutboundSessionId(outbound_session_id));
-    }
-
-    fn handle_session_closed_by_request(&mut self, session_id: SessionId) -> Event {
-        // TODO: improve error handling when this unexpected case happens
-        match session_id {
-            SessionId::OutboundSessionId(outbound_session_id) => {
-                if self.outbound_sessions_pending_termination.remove(&outbound_session_id) {
-                    Event::SessionCompletedSuccessfully {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
-                    }
-                } else {
-                    Event::SessionFailed {
-                        session_id: SessionId::OutboundSessionId(outbound_session_id),
-                        session_error: SessionError::SessionClosedUnexpectedly,
-                    }
-                }
-            }
-            SessionId::InboundSessionId(inbound_session_id) => {
-                if self.inbound_sessions_pending_termination.remove(&inbound_session_id) {
-                    Event::SessionCompletedSuccessfully {
-                        session_id: SessionId::InboundSessionId(inbound_session_id),
-                    }
-                } else {
-                    Event::SessionFailed {
-                        session_id: SessionId::InboundSessionId(inbound_session_id),
-                        session_error: SessionError::SessionClosedUnexpectedly,
-                    }
-                }
-            }
-        }
-    }
-
-    fn handle_outbound_session_closed_by_peer(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Event {
-        // TODO: consider the handling of session closing when we have better understanding of the
-        // usage.
-        if self.outbound_sessions_pending_termination.remove(&outbound_session_id) {
-            Event::SessionCompletedSuccessfully {
-                session_id: SessionId::OutboundSessionId(outbound_session_id),
-            }
+    fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event> {
+        if self.sessions_pending_termination.remove(&session_id) {
+            Some(Event::SessionCompletedSuccessfully { session_id })
         } else {
-            Event::SessionFailed {
-                session_id: SessionId::OutboundSessionId(outbound_session_id),
+            Some(Event::SessionFailed {
+                session_id,
                 session_error: SessionError::SessionClosedUnexpectedly,
-            }
+            })
         }
+    }
+
+    fn handle_outbound_session_failed(&mut self, outbound_session_id: OutboundSessionId) {
+        self.streamed_data_behaviour
+            .drop_outbound_session(outbound_session_id)
+            .expect("Received data on non existing outbound session");
+    }
+
+    fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId> {
+        &mut self.sessions_pending_termination
     }
 }
 

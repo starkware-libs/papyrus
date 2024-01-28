@@ -103,9 +103,7 @@ fn close_inbound_session(
     let inbound_peer_id = *inbound_swarm.local_peer_id();
     inbound_swarm
         .behaviour_mut()
-        .close_session(SessionId::InboundSessionId(
-            inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
-        ))
+        .close_inbound_session(inbound_session_ids[&(inbound_peer_id, outbound_peer_id)])
         .unwrap();
 }
 
@@ -143,12 +141,12 @@ fn check_received_data_event(
     Some((inbound_peer_id, ()))
 }
 
-fn check_outbound_session_closed_by_peer_event(
+fn check_outbound_session_finished_event(
     peer_id: PeerId,
     swarm_event: SwarmEventAlias<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
-    let SwarmEvent::Behaviour(Event::SessionClosedByPeer {
+    let SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
         session_id: SessionId::OutboundSessionId(outbound_session_id),
         ..
     }) = swarm_event
@@ -247,11 +245,7 @@ async fn everyone_sends_to_everyone() {
     collect_events_from_swarms(
         &mut swarms_stream,
         |peer_id, event| {
-            check_outbound_session_closed_by_peer_event(
-                peer_id,
-                event,
-                &outbound_session_id_to_peer_id,
-            )
+            check_outbound_session_finished_event(peer_id, event, &outbound_session_id_to_peer_id)
         },
         false,
     )
