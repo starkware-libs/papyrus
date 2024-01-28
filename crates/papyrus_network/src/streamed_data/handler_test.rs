@@ -362,63 +362,6 @@ async fn test_outbound_session_negotiation_failure(
 }
 
 #[tokio::test]
-async fn inbound_session_closed_by_other_peer() {
-    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
-        Config::get_test_config(),
-        Arc::new(Default::default()),
-        PeerId::random(),
-    );
-
-    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BasicMessage::default();
-    let inbound_session_id = InboundSessionId { value: 1 };
-
-    simulate_negotiated_inbound_session_from_swarm(
-        &mut handler,
-        query.clone(),
-        inbound_stream,
-        inbound_session_id,
-    );
-
-    // consume the new inbound session event without reading it.
-    handler.next().await;
-
-    AsyncWriteExt::close(&mut outbound_stream).await.unwrap();
-
-    validate_session_closed_by_peer_event(&mut handler, inbound_session_id.into()).await;
-}
-
-#[tokio::test]
-async fn inbound_session_fails_when_outbound_peer_sends_data() {
-    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
-        Config::get_test_config(),
-        Arc::new(Default::default()),
-        PeerId::random(),
-    );
-
-    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let query = protobuf::BasicMessage::default();
-    let inbound_session_id = InboundSessionId { value: 1 };
-
-    simulate_negotiated_inbound_session_from_swarm(
-        &mut handler,
-        query.clone(),
-        inbound_stream,
-        inbound_session_id,
-    );
-
-    // consume the new inbound session event without reading it.
-    handler.next().await;
-
-    outbound_stream.write_all(&[0u8]).await.unwrap();
-
-    validate_session_failed_event(&mut handler, inbound_session_id.into(), |session_error| {
-        matches!(session_error, SessionError::OtherOutboundPeerSentData)
-    })
-    .await;
-}
-
-#[tokio::test]
 async fn close_outbound_session() {
     let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
         Config::get_test_config(),

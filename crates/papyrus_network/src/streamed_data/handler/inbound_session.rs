@@ -16,19 +16,12 @@ use crate::messages::write_message;
 pub(super) struct InboundSession<Data: DataBound> {
     pending_messages: VecDeque<Data>,
     current_task: WriteMessageTask,
-    check_other_peer_closed_task: BoxFuture<'static, FinishReason>,
     wakers_waiting_for_new_message: Vec<Waker>,
 }
 
-pub(super) enum InboundSessionError {
-    IO(io::Error),
-    OtherPeerSentData,
-}
-
-pub(super) enum FinishReason {
-    Error(InboundSessionError),
+enum FinishReason {
+    Error(io::Error),
     Closed,
-    OtherPeerClosed,
 }
 
 enum WriteMessageTask {
@@ -39,20 +32,10 @@ enum WriteMessageTask {
 
 impl<Data: DataBound> InboundSession<Data> {
     pub fn new(stream: Stream) -> Self {
-        let (mut read_half, write_half) = stream.split();
+        let (_read_half, write_half) = stream.split();
         Self {
             pending_messages: Default::default(),
             current_task: WriteMessageTask::Waiting(write_half),
-            check_other_peer_closed_task: async move {
-                let mut buffer = [0u8];
-                let size_result = read_half.read(&mut buffer).await;
-                match size_result {
-                    Err(io_error) => FinishReason::Error(InboundSessionError::IO(io_error)),
-                    Ok(0) => FinishReason::OtherPeerClosed,
-                    Ok(_) => FinishReason::Error(InboundSessionError::OtherPeerSentData),
-                }
-            }
-            .boxed(),
             wakers_waiting_for_new_message: Default::default(),
         }
     }
@@ -107,9 +90,7 @@ impl<Data: DataBound> InboundSession<Data> {
                 self.current_task = WriteMessageTask::Waiting(stream);
                 None
             }
-            Poll::Ready(Err(io_error)) => {
-                Some(FinishReason::Error(InboundSessionError::IO(io_error)))
-            }
+            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
         }
     }
 
@@ -120,23 +101,16 @@ impl<Data: DataBound> InboundSession<Data> {
         match fut.poll_unpin(cx) {
             Poll::Pending => None,
             Poll::Ready(Ok(())) => Some(FinishReason::Closed),
-            Poll::Ready(Err(io_error)) => {
-                Some(FinishReason::Error(InboundSessionError::IO(io_error)))
-            }
+            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
         }
     }
 }
 
 impl<Data: DataBound> Future for InboundSession<Data> {
-    type Output = FinishReason;
+    type Output = Result<(), io::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let unpinned_self = Pin::into_inner(self);
-        if let Poll::Ready(finish_reason) =
-            unpinned_self.check_other_peer_closed_task.poll_unpin(cx)
-        {
-            return Poll::Ready(finish_reason);
-        }
         let mut is_waiting = false;
         let mut is_running = false;
         let mut result = None;
@@ -165,7 +139,8 @@ impl<Data: DataBound> Future for InboundSession<Data> {
             }
         }
         match result {
-            Some(finish_reason) => Poll::Ready(finish_reason),
+            Some(FinishReason::Error(io_error)) => Poll::Ready(Err(io_error)),
+            Some(FinishReason::Closed) => Poll::Ready(Ok(())),
             None => Poll::Pending,
         }
     }
