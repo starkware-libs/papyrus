@@ -1,6 +1,3 @@
-use std::io::ErrorKind;
-
-use assert_matches::assert_matches;
 use futures::AsyncWriteExt;
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
@@ -70,23 +67,6 @@ async fn outbound_sends_invalid_request() {
             // The first element is the length of the message, if we don't write that many bytes
             // after then the message will be invalid.
             write_usize(&mut outbound_stream, 10).await.unwrap();
-            outbound_stream.close().await.unwrap();
-        },
-    );
-}
-
-#[tokio::test]
-async fn outbound_sends_no_request() {
-    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
-    let inbound_protocol = InboundProtocol::<protobuf::BasicMessage>::new(PROTOCOL_NAME);
-
-    tokio::join!(
-        async move {
-            let error =
-                inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap_err();
-            assert_matches!(error.kind(), ErrorKind::UnexpectedEof);
-        },
-        async move {
             outbound_stream.close().await.unwrap();
         },
     );

@@ -283,14 +283,14 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
     ) {
         match event {
             ConnectionEvent::FullyNegotiatedOutbound(FullyNegotiatedOutbound {
-                protocol: mut stream,
+                protocol: mut read_stream,
                 info: outbound_session_id,
             }) => {
                 self.id_to_outbound_session.insert(
                     outbound_session_id,
                     stream! {
                         loop {
-                            let result_opt = read_message::<Data, _>(&mut stream).await;
+                            let result_opt = read_message::<Data, _>(&mut read_stream).await;
                             let result = match result_opt {
                                 Ok(Some(data)) => Ok(data),
                                 Ok(None) => break,
@@ -307,7 +307,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 );
             }
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
-                protocol: (query, stream),
+                protocol: (query, write_stream),
                 info: inbound_session_id,
             }) => {
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
@@ -317,7 +317,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                         peer_id: self.peer_id,
                     },
                 ));
-                self.id_to_inbound_session.insert(inbound_session_id, InboundSession::new(stream));
+                self.id_to_inbound_session
+                    .insert(inbound_session_id, InboundSession::new(write_stream));
             }
             ConnectionEvent::DialUpgradeError(DialUpgradeError {
                 info: outbound_session_id,
