@@ -2,6 +2,8 @@
 #[path = "transaction_hash_test.rs"]
 mod transaction_hash_test;
 
+use std::str::FromStr;
+
 use lazy_static::lazy_static;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
@@ -29,7 +31,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::{stark_felt, StarknetApiError};
+use starknet_api::StarknetApiError;
 use starknet_crypto::{pedersen_hash, poseidon_hash_many, FieldElement};
 
 use crate::TransactionOptions;
@@ -661,7 +663,7 @@ fn get_tx_version(
     // If only_query is true, set the 128-th bit.
     if transaction_options.only_query {
         let query_only_bit: FieldElement =
-            stark_felt!("0x100000000000000000000000000000000").into();
+            FieldElement::from_str("0x100000000000000000000000000000000").expect("query_only_bit");
         let fe: FieldElement = version.0.into();
         version = TransactionVersion(StarkFelt::from(fe + query_only_bit));
     }
