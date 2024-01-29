@@ -39,6 +39,6 @@ async fn main() {
         dial(&mut swarm, dial_address);
     }
     let (storage_reader, _storage_writer) = open_storage(StorageConfig::default()).unwrap();
-    let mut network_manager = network_manager::NetworkManager::new(swarm, storage_reader);
+    let network_manager = network_manager::NetworkManager::new(swarm, storage_reader);
     network_manager.run().await;
 }
