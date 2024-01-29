@@ -446,10 +446,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         };
 
         // Get the block state diff.
-        let thin_state_diff = txn
+        let mut thin_state_diff = txn
             .get_state_diff(block_number)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
+        // Remove empty storage diffs. Some blocks contain empty storage diffs that must be kept for
+        // the computation of state diff commitment.
+        thin_state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
 
         Ok(StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
             block_hash: header.block_hash,
