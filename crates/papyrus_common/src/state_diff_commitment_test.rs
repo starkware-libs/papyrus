@@ -8,7 +8,7 @@ use starknet_api::core::{
     PatriciaKey,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_api::state::{StateDiff, StorageKey, ThinStateDiff};
 use starknet_api::{class_hash, contract_address, patricia_key, stark_felt};
 
 use crate::state_diff_commitment::{calculate_state_diff_commitment, StateDiffVersion};
@@ -43,4 +43,19 @@ fn state_diff_commitment() {
     ));
 
     assert_eq!(calculated_commitment, expected_commitment);
+}
+
+#[test]
+fn empty_storage_diff() {
+    // TODO: derive default in ThinStateDiff.
+    let state_diff = ThinStateDiff::from(StateDiff::default());
+    let state_diff_with_empty_storage_diff = ThinStateDiff::from(StateDiff {
+        storage_diffs: [(ContractAddress::default(), [].into())].into(),
+        ..Default::default()
+    });
+
+    assert_ne!(
+        calculate_state_diff_commitment(&state_diff, StateDiffVersion::V0),
+        calculate_state_diff_commitment(&state_diff_with_empty_storage_diff, StateDiffVersion::V0)
+    );
 }

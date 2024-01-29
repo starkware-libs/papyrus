@@ -437,8 +437,8 @@ async fn is_alive() {
     assert!(response);
 }
 
-/// Empty storage diffs were filtered out in the past, but should not anymore (part of the inputs to
-/// the state diff commitment).
+// Empty storage diffs were filtered out in the past, but should not anymore (part of the inputs to
+// the state diff commitment).
 #[tokio::test]
 async fn state_update_with_empty_storage_diff() {
     let starknet_client = StarknetFeederGatewayClient::new(
