@@ -1,20 +1,25 @@
-use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::Poll;
 
-use futures::Stream;
+use derive_more::Display;
+use futures::channel::mpsc::Sender;
+use futures::future::poll_fn;
+use futures::stream::FuturesUnordered;
+use futures::{Stream, StreamExt};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use tokio::task::JoinHandle;
 
-use crate::{BlockQuery, Direction};
+use crate::BlockQuery;
 
 pub mod dummy_executor;
+mod utils;
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
 pub struct QueryId(pub usize);
 
+#[cfg_attr(test, derive(Debug))]
 pub enum Data {
     BlockHeaderAndSignature { header: BlockHeader, signature: Option<BlockSignature> },
     Fin,
@@ -22,136 +27,104 @@ pub enum Data {
 
 #[derive(thiserror::Error, Debug)]
 pub enum DBExecutorError {
+    #[error("Storage error. Query id: {query_id}, error: {storage_error:?}")]
+    DBInternalError {
+        query_id: QueryId,
+        #[source]
+        storage_error: papyrus_storage::StorageError,
+    },
+    #[error(
+        "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
+    )]
+    BlockNumberOutOfRange { query: BlockQuery, counter: u64, query_id: QueryId },
+    #[error("Block not found. Block number: {block_number}, query_id: {query_id}")]
+    BlockNotFound { block_number: u64, query_id: QueryId },
     #[error(transparent)]
-    DBInternalError(#[from] papyrus_storage::StorageError),
-    #[error("Block number is out of range. Query: {query:?}, counter: {counter}")]
-    BlockNumberOutOfRange { query: BlockQuery, counter: u64 },
-    #[error("Block not found. Block number: {0}")]
-    BlockNotFound(u64),
+    JoinError(#[from] tokio::task::JoinError),
+    #[error("Send error. Query id: {query_id}, error: {send_error:?}")]
+    SendError {
+        query_id: QueryId,
+        #[source]
+        send_error: futures::channel::mpsc::SendError,
+    },
 }
 
-pub trait DBExecutor: Stream<Item = (QueryId, Data)> + Unpin {
+/// Db executor is a stream of queries. Each result is marks the end of a query fulfillment.
+/// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
+/// The stream is never exhausted, and it is the responsibility of the user to poll it.
+pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
     // TODO: add writer functionality
-    fn register_query(&mut self, query: BlockQuery) -> QueryId;
-
-    // Get an active query and the number of blocks read so far.
-    // Specific implementations may decide on the strategy.
-    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut u64)>;
-
-    // Fetch a single data instance from the DB.
-    fn fetch_data(
-        &mut self,
-        query: BlockQuery,
-        read_blocks_counter: u64,
-    ) -> Result<Data, DBExecutorError>;
-
-    // Default poll implementation counts query results and returns Fin when done reading.
-    // To be used in the poll_next function.
-    fn poll_func(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        let Some((query_id, query, read_blocks_counter)) = unpinned_self.get_active_query() else {
-            return Poll::Pending;
-        };
-        let res = match (*read_blocks_counter).cmp(&query.limit) {
-            Ordering::Less => {
-                *read_blocks_counter += 1;
-                let query_copy = *query;
-                let read_blocks_counter_copy = *read_blocks_counter;
-                if let Ok(data) = unpinned_self.fetch_data(query_copy, read_blocks_counter_copy) {
-                    Some((query_id, data))
-                } else {
-                    // TODO: decide what is the right way to handle db errors.
-                    None
-                }
-            }
-            Ordering::Equal => {
-                *read_blocks_counter += 1;
-                Some((query_id, Data::Fin))
-            }
-            Ordering::Greater => None,
-        };
-        Poll::Ready(res)
-    }
+    fn register_query(&mut self, query: BlockQuery, sender: Sender<Data>) -> QueryId;
 }
 
 // TODO: currently this executor returns only block headers and signatures.
 pub struct BlockHeaderDBExecutor {
-    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, u64)>,
-    query_conter: usize,
+    next_query_id: usize,
     storage_reader: StorageReader,
+    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
 impl BlockHeaderDBExecutor {
     #[allow(dead_code)]
     pub fn new(storage_reader: StorageReader) -> Self {
-        Self {
-            query_conter: 0,
-            query_id_to_query_and_read_blocks_counter: HashMap::new(),
-            storage_reader,
-        }
-    }
-
-    fn calc_block_number(
-        &self,
-        query: BlockQuery,
-        read_blocks_counter: u64,
-    ) -> Result<u64, DBExecutorError> {
-        let direction_factor: i128 = match query.direction {
-            Direction::Forward => 1,
-            Direction::Backward => -1,
-        };
-        let blocks_delta: i128 = direction_factor * (query.step * read_blocks_counter) as i128;
-        let block_number: i128 = query.start_block.0 as i128 + blocks_delta;
-        if block_number <= 0 || block_number > u64::MAX as i128 {
-            return Err(DBExecutorError::BlockNumberOutOfRange {
-                query,
-                counter: read_blocks_counter,
-            });
-        }
-        Ok(block_number as u64)
+        Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
     }
 }
 
 impl DBExecutor for BlockHeaderDBExecutor {
-    fn register_query(&mut self, query: BlockQuery) -> QueryId {
-        // TODO: when registering a query we should state what type of data we want to receive.
-        let query_id = QueryId(self.query_conter);
-        self.query_conter += 1;
-        self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, 0));
+    fn register_query(&mut self, query: BlockQuery, mut sender: Sender<Data>) -> QueryId {
+        // TODO: consider create a sized vector and increase its size when needed.
+        let query_id = QueryId(self.next_query_id);
+        self.next_query_id += 1;
+        let storage_reader_clone = self.storage_reader.clone();
+        self.query_execution_set.push(tokio::task::spawn(async move {
+            {
+                for block_counter in 0..=query.limit {
+                    let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
+                        DBExecutorError::DBInternalError { query_id, storage_error: err }
+                    })?;
+                    let block_number =
+                        utils::calculate_block_number(query, block_counter, query_id)?;
+                    let header = txn
+                        .get_block_header(BlockNumber(block_number))
+                        .map_err(|err| DBExecutorError::DBInternalError {
+                            query_id,
+                            storage_error: err,
+                        })?
+                        .ok_or(DBExecutorError::BlockNotFound { block_number, query_id })?;
+                    // Using poll_fn because Sender::poll_ready is not a future
+                    if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
+                        if let Err(e) = sender
+                            .start_send(Data::BlockHeaderAndSignature { header, signature: None })
+                        {
+                            // TODO: consider implement retry mechanism.
+                            return Err(DBExecutorError::SendError { query_id, send_error: e });
+                        };
+                    }
+                }
+                Ok(query_id)
+            }
+        }));
         query_id
-    }
-
-    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut u64)> {
-        self.query_id_to_query_and_read_blocks_counter
-            .iter_mut()
-            .next()
-            .map(|(query_id, (query, read_blocks_counter))| (*query_id, query, read_blocks_counter))
-    }
-
-    fn fetch_data(
-        &mut self,
-        query: BlockQuery,
-        read_blocks_counter: u64,
-    ) -> Result<Data, DBExecutorError> {
-        let txn = self.storage_reader.begin_ro_txn()?;
-        let block_number = self.calc_block_number(query, read_blocks_counter)?;
-        let header = txn
-            .get_block_header(BlockNumber(block_number))?
-            .ok_or_else(|| DBExecutorError::BlockNotFound(block_number))?;
-        Ok(Data::BlockHeaderAndSignature { header, signature: None })
     }
 }
 
 impl Stream for BlockHeaderDBExecutor {
-    type Item = (QueryId, Data);
+    type Item = Result<QueryId, DBExecutorError>;
 
     fn poll_next(
         self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        self.poll_func(cx)
+        let unpinned_self = Pin::into_inner(self);
+        if let Poll::Ready(ready) = unpinned_self.query_execution_set.poll_next_unpin(cx) {
+            if let Some(join_result) = ready {
+                let res = join_result?;
+                return Poll::Ready(Some(res));
+            };
+            unpinned_self.query_execution_set = FuturesUnordered::new();
+            return Poll::Pending;
+        }
+        Poll::Pending
     }
 }

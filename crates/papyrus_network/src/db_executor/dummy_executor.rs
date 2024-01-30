@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::Poll;
 
+use futures::channel::mpsc::Sender;
 use futures::Stream;
 
 use super::{DBExecutor, DBExecutorError, Data, QueryId};
@@ -10,7 +11,7 @@ use crate::BlockQuery;
 
 pub struct DummyDBExecutor {
     _data: Vec<protobuf::BlockHeadersResponse>,
-    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, u64)>,
+    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, Sender<Data>)>,
     query_conter: usize,
 }
 
@@ -41,42 +42,50 @@ impl DummyDBExecutor {
         }
         data
     }
-}
 
-impl DBExecutor for DummyDBExecutor {
-    fn register_query(&mut self, query: BlockQuery) -> QueryId {
-        let query_id = QueryId(self.query_conter);
-        self.query_conter += 1;
-        self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, 0));
-        query_id
-    }
-
-    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut u64)> {
+    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut Sender<Data>)> {
         self.query_id_to_query_and_read_blocks_counter
             .iter_mut()
             .next()
-            .map(|(query_id, (query, read_blocks_counter))| (*query_id, query, read_blocks_counter))
+            .map(|(query_id, (query, sender))| (*query_id, query, sender))
     }
+}
 
-    fn fetch_data(
-        &mut self,
-        _query: BlockQuery,
-        _read_blocks_counter: u64,
-    ) -> Result<Data, DBExecutorError> {
-        Ok(Data::BlockHeaderAndSignature {
-            header: Default::default(),
-            signature: Default::default(),
-        })
+impl DBExecutor for DummyDBExecutor {
+    fn register_query(&mut self, query: BlockQuery, sender: Sender<Data>) -> QueryId {
+        let query_id = QueryId(self.query_conter);
+        self.query_conter += 1;
+        self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, sender));
+        query_id
     }
 }
 
 impl Stream for DummyDBExecutor {
-    type Item = (QueryId, Data);
+    type Item = Result<QueryId, DBExecutorError>;
 
     fn poll_next(
         self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
+        _cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        self.poll_func(cx)
+        let unpinned_self = Pin::into_inner(self);
+        let Some((query_id, query, sender)) = unpinned_self.get_active_query() else {
+            return Poll::Pending;
+        };
+        // TODO: add a way to configure an expected failure for a query.
+        for _blocks_counter in 0..=query.limit {
+            // TODO: use generated data instead of creating default data in each iteration.
+            let data = Data::BlockHeaderAndSignature {
+                header: Default::default(),
+                signature: Some(Default::default()),
+            };
+            if let Err(e) = sender.try_send(data) {
+                panic!("failed to send data to sender. error: {:?}", e);
+            }
+        }
+        if let Err(e) = sender.try_send(Data::Fin) {
+            panic!("failed to send fin to sender. error: {:?}", e);
+        }
+        unpinned_self.query_id_to_query_and_read_blocks_counter.remove(&query_id);
+        Poll::Ready(Some(Ok(query_id)))
     }
 }
