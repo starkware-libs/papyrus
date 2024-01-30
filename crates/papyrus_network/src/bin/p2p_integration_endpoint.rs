@@ -38,7 +38,8 @@ async fn main() {
     if let Some(dial_address) = args.dial_address.as_ref() {
         dial(&mut swarm, dial_address);
     }
-    let (storage_reader, _storage_writer) = open_storage(StorageConfig::default()).unwrap();
-    let mut network_manager = network_manager::NetworkManager::new(swarm, storage_reader);
+    let (storage_reader, _storage_writer) =
+        open_storage(StorageConfig::default()).expect("failed to open storage");
+    let network_manager = network_manager::NetworkManager::new(swarm, storage_reader);
     network_manager.run().await;
 }

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use futures::future::{select, Either};
+use futures::stream::{BoxStream, SelectAll};
 use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::Swarm;
@@ -9,38 +7,38 @@ use tracing::debug;
 
 use crate::block_headers::behaviour::Behaviour;
 use crate::block_headers::Event;
-use crate::db_executor::{self, DBExecutor, Data, QueryId};
+use crate::db_executor::{self, DBExecutor, Data};
 use crate::streamed_data::InboundSessionId;
+
+type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
 pub struct NetworkManager {
     swarm: Swarm<Behaviour>,
     db_executor: db_executor::BlockHeaderDBExecutor,
-    query_id_to_inbound_session: HashMap<QueryId, InboundSessionId>,
+    buffer_size: usize,
+    query_results_router: StreamCollection,
 }
 
 impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
     pub fn new(swarm: Swarm<Behaviour>, storage_reader: StorageReader) -> Self {
+        let db_executor = db_executor::BlockHeaderDBExecutor::new(storage_reader);
         Self {
             swarm,
-            db_executor: db_executor::BlockHeaderDBExecutor::new(storage_reader),
-            query_id_to_inbound_session: HashMap::new(),
+            db_executor,
+            buffer_size: 1000,
+            query_results_router: StreamCollection::new(),
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) {
         loop {
-            match select(self.swarm.next(), self.db_executor.next()).await {
-                Either::Left((Some(event), _)) => self.handle_swarm_event(event),
-                Either::Right((Some(res), _)) => self.handle_db_executor_result(res),
-                Either::Left((None, _)) => {
-                    panic!("Swarm stream ended unexpectedly");
-                }
-                Either::Right((None, _)) => {
-                    panic!("DB executor stream ended unexpectedly");
-                }
-            };
+            tokio::select! {
+                Some(event) = self.swarm.next() => self.handle_swarm_event(event),
+                Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
+                res = self.query_results_router.next() => self.handle_query_result_routing(res),
+            }
         }
     }
 
@@ -61,18 +59,20 @@ impl NetworkManager {
         }
     }
 
-    fn handle_db_executor_result(&mut self, (query_id, data): (QueryId, Data)) {
-        let inbound_session_id = *self
-            .query_id_to_inbound_session
-            .get(&query_id)
-            .expect("Received data for unknown query id: {query_id:?}");
-        if let Data::Fin = data {
-            self.query_id_to_inbound_session.remove(&query_id);
-        }
-        self.swarm
-            .behaviour_mut()
-            .send_data(data, inbound_session_id)
-            .expect("Failed to send data to inbound session");
+    fn handle_db_executor_result(
+        &self,
+        res: Result<db_executor::QueryId, db_executor::DBExecutorError>,
+    ) {
+        match res {
+            Ok(query_id) => {
+                // TODO: in case we want to do bookkeeping, this is the place.
+                debug!("Query completed successfully. query_id: {query_id:?}");
+            }
+            Err(err) => {
+                // TODO: how do we handle errors?
+                debug!("Query failed. error: {err:?}");
+            }
+        };
     }
 
     fn handle_behaviour_event(&mut self, event: Event) {
@@ -81,8 +81,11 @@ impl NetworkManager {
                 debug!(
                     "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
                 );
-                let query_id = self.db_executor.register_query(query);
-                self.query_id_to_inbound_session.insert(query_id, inbound_session_id);
+                let (sender, receiver) = futures::channel::mpsc::channel(self.buffer_size);
+                // TODO: use query id for bookkeeping.
+                let _query_id = self.db_executor.register_query(query, sender);
+                self.query_results_router
+                    .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
             Event::ReceivedData { .. } => {
                 unimplemented!("ReceivedData");
@@ -95,6 +98,21 @@ impl NetworkManager {
             }
             Event::SessionCompletedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
+            }
+        }
+    }
+
+    fn handle_query_result_routing(&mut self, res: Option<(Data, InboundSessionId)>) {
+        match res {
+            None => {
+                // We're done handling all the queries we had and the stream is exhausted.
+                // Creating a new stream collection to process new queries.
+                self.query_results_router = StreamCollection::new();
+            }
+            Some((data, inbound_session_id)) => {
+                if let Err(e) = self.swarm.behaviour_mut().send_data(data, inbound_session_id) {
+                    panic!("Failed to send data to peer. Session id not found error: {e:?}")
+                }
             }
         }
     }
