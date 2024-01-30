@@ -12,6 +12,8 @@ use crate::streamed_data::Config;
 use crate::test_utils::create_fully_connected_swarms_stream;
 use crate::{BlockQuery, Direction, PapyrusBehaviour};
 
+const BUFFER_SIZE: usize = 10;
+
 #[tokio::test]
 async fn one_sends_to_the_other() {
     let mut db_executor = db_executor::dummy_executor::DummyDBExecutor::new();
@@ -26,9 +28,10 @@ async fn one_sends_to_the_other() {
     let mut swarms_mut = swarms_stream.values_mut();
     let outbound_swarm = swarms_mut.next().unwrap();
     let inbound_swarm = swarms_mut.next().unwrap();
+    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
 
     // Side A - send query
-    let number_of_blocks = 10;
+    let number_of_blocks = (BUFFER_SIZE - 1) as u64;
     let sent_query = BlockQuery {
         start_block: BlockNumber(1),
         direction: Direction::Forward,
@@ -52,16 +55,25 @@ async fn one_sends_to_the_other() {
     };
 
     // Side B - register query
-    let query_id = db_executor.register_query(received_query);
+    let _query_id = db_executor.register_query(received_query, sender);
+
+    let mut receiver_stream = receiver.map(|data| (data, inbound_session_id));
 
     let mut data_counter = 0;
     loop {
         select! {
-            // Side B - poll DB and instruct behaviour to send data
-            res = db_executor.next().fuse() => {
-                if let Some((curr_query_id, data)) = res {
-                    assert_eq!(query_id, curr_query_id);
+            // Side B - get data from channel and send to behaviour
+            res = receiver_stream.next().fuse() => {
+                if let Some((data, inbound_session_id)) = res {
                     inbound_swarm.behaviour_mut().send_data(data, inbound_session_id).unwrap();
+                }
+            },
+            // Side B - poll DB to make sure data is starting to be sent. should not return.
+            res = db_executor.next().fuse() => {
+                match res {
+                    Some(Ok(query_id)) => println!("Query completed successfully. query_id: {:?}", query_id),
+                    Some(Err(err)) => panic!("Query failed. error: {:?}", err),
+                    None => panic!("DB executor should not return")
                 }
             },
             // Side B - poll to perform data sending
@@ -71,7 +83,7 @@ async fn one_sends_to_the_other() {
                     SwarmEvent::Behaviour(Event::SessionCompletedSuccessfully { .. }) => {
                         break;
                     },
-                    _ => panic!("Unexpected event: {:?}", event),
+                    _ => panic!("Inbound - Unexpected event: {:?}", event),
                 };
             },
             // Side A - receive data
@@ -90,7 +102,7 @@ async fn one_sends_to_the_other() {
                         assert_eq!(data_counter, number_of_blocks);
                         break;
                     },
-                    _ => panic!("Unexpected event: {:?}", event),
+                    _ => panic!("Outbound - Unexpected event: {:?}", event),
                 };
             },
             complete => break,

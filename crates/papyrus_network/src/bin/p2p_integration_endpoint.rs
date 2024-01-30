@@ -6,6 +6,7 @@ use papyrus_network::bin_utils::{build_swarm, dial};
 use papyrus_network::block_headers::behaviour::Behaviour;
 use papyrus_network::network_manager;
 use papyrus_network::streamed_data::Config;
+use papyrus_storage::{open_storage, StorageConfig};
 
 /// A dummy P2P capable node for integration with other P2P capable nodes.
 #[derive(Parser)]
@@ -37,6 +38,8 @@ async fn main() {
     if let Some(dial_address) = args.dial_address.as_ref() {
         dial(&mut swarm, dial_address);
     }
-    let mut network_manager = network_manager::NetworkManager::new(swarm);
+    let (storage_reader, _storage_writer) =
+        open_storage(StorageConfig::default()).expect("failed to open storage");
+    let network_manager = network_manager::NetworkManager::new(swarm, storage_reader);
     network_manager.run().await;
 }
