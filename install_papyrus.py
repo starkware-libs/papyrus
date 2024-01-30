@@ -34,6 +34,18 @@ def parse_command_line_args():
         help="UID for prometheus (to use with Grafana)."
     )
     parser.add_argument(
+        "--old_version",
+        type=str,
+        required=False,
+        help="Represents previous RPC version for the desired env (e.g. v0_3)."
+    )
+    parser.add_argument(
+        "--new_version",
+        type=str,
+        required=False,
+        help="Represents current RPC version for the desired env (e.g. v0_4)."
+    )
+    parser.add_argument(
         "--dry_run",
         action="store_true",
         default=False,

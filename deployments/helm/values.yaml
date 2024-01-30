@@ -8,33 +8,38 @@ node:
   concurrentFgRequests: 50
 
 # Ethereum node URL. A value for this variable is mandatory.
-base_layer_node_url:
+base_layer_node_url: https://sepolia.infura.io/v3/02d1979ac909443b938cfc740f19708f
 
 starknet:
   # possible values: "mainnet.json", "goerli_testnet.json", "goerli_integration.json",
   # "sepolia_testnet" and "sepolia_integration".
-  preset: mainnet.json
+  preset: sepolia_testnet
   additionalHeaders: # optional addtional headers for SN communication
 
 deployment:
   # The container image
   image:
     repository: ghcr.io/starkware-libs/papyrus
-    tag: 0.2.0
+    tag: 0.2.0-rc5
   # The container's pullPolicy
   pullPolicy: Always
   # Optional - nodeSelector
   nodeSelector:
+    role: starkdex-service
   # Optional - tolerations
   tolerations:
+    - key: key
+      operator: Equal
+      effect: "NoSchedule"
+      value: starkdex-service
   # The default resources for a pod.
   resources:
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "3"
+      memory: 1GGi
     requests:
-      cpu: 500m
-      memory: 1Gi
+      cpu: "2"
+      memory: 1GGi
 
 # Service variables for a papyrus pod.
 services:
@@ -52,9 +57,9 @@ services:
 # Persistent volume claim variables for a papyrus pod.
 pvc:
   # Recommended size is at least 512Gi.
-  size:
+  size: 512Gi
   # Is is recommended to use an SSD volume (such as GKE premium-rwo).
-  storageClass: ""
+  storageClass: "premium-rwo"
   # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
   # exist in the same namespace as the rest of the resources.
   restoreFromSnapshot:
