@@ -19,6 +19,7 @@ papyrus_storage = { path = "../papyrus_storage", version = "0.3.0-dev.1" }
 prost.workspace = true
 prost-types.workspace = true
 starknet_api.workspace = true
+test_utils = { path = "../test_utils"}
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
@@ -31,6 +32,7 @@ prost-build.workspace = true
 assert_matches.workspace = true
 libp2p-swarm-test.workspace = true
 mockall.workspace = true
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 rand.workspace = true
 tokio-stream.workspace = true
