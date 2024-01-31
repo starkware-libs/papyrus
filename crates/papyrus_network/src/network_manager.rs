@@ -88,10 +88,11 @@ impl NetworkManager {
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
             Event::ReceivedData { .. } => {
-                unimplemented!("ReceivedData");
+                // TODO: Do something with the received data.
             }
-            Event::SessionFailed { .. } => {
-                unimplemented!("SessionFailed");
+            Event::SessionFailed { session_id, session_error } => {
+                debug!("Session {session_id:?} failed on {session_error:?}");
+                // TODO: Handle reputation and retry.
             }
             Event::ProtobufConversionError(_) => {
                 unimplemented!("ProtobufConversionError");
