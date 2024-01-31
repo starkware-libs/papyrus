@@ -371,8 +371,8 @@ async fn outbound_session_negotiation_failure() {
         |session_error| {
             matches!(
                 session_error,
-                SessionError::Timeout { substream_timeout }
-                if *substream_timeout == config.substream_timeout
+                SessionError::Timeout { session_timeout }
+                if *session_timeout == config.session_timeout
             )
         },
         config.clone(),

@@ -55,8 +55,8 @@ pub enum RequestFromBehaviourEvent<Query, Data> {
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
 pub enum SessionError {
-    #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
-    Timeout { substream_timeout: Duration },
+    #[error("Connection timed out after {} seconds.", session_timeout.as_secs())]
+    Timeout { session_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
@@ -145,7 +145,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             InboundProtocol::new(self.config.protocol_name.clone()),
             InboundSessionId { value: self.next_inbound_session_id.fetch_add(1, Ordering::AcqRel) },
         )
-        .with_timeout(self.config.substream_timeout)
+        .with_timeout(self.config.session_timeout)
     }
 
     fn poll(
@@ -235,7 +235,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                         },
                         outbound_session_id,
                     )
-                    .with_timeout(self.config.substream_timeout),
+                    .with_timeout(self.config.session_timeout),
                 });
             }
             RequestFromBehaviourEvent::SendData { data, inbound_session_id } => {
@@ -326,7 +326,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             }) => {
                 let session_error = match upgrade_error {
                     StreamUpgradeError::Timeout => {
-                        SessionError::Timeout { substream_timeout: self.config.substream_timeout }
+                        SessionError::Timeout { session_timeout: self.config.session_timeout }
                     }
                     StreamUpgradeError::Apply(outbound_protocol_error) => {
                         SessionError::IOError(outbound_protocol_error)

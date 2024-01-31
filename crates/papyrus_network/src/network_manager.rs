@@ -5,15 +5,23 @@ use libp2p::Swarm;
 use papyrus_storage::StorageReader;
 use tracing::debug;
 
-use crate::block_headers::behaviour::Behaviour;
+use crate::bin_utils::{build_swarm, dial};
+use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor, Data};
 use crate::streamed_data::InboundSessionId;
+use crate::Config;
+
+// TODO(shahak): Consider adding to config.
+const DB_EXECUTOR_BUFFER_SIZE: usize = 100000;
+
+// TODO(shahak): Consider adding to config.
+const IDLE_CONNECTION_TIMEOUT_SECONDS: u64 = 10;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
 pub struct NetworkManager {
-    swarm: Swarm<Behaviour>,
+    swarm: Swarm<BlockHeadersBehaviour>,
     db_executor: db_executor::BlockHeaderDBExecutor,
     buffer_size: usize,
     query_results_router: StreamCollection,
@@ -22,12 +30,20 @@ pub struct NetworkManager {
 impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
-    pub fn new(swarm: Swarm<Behaviour>, storage_reader: StorageReader) -> Self {
+    pub fn new(config: Config, storage_reader: StorageReader) -> Self {
+        let Config { listen_address, session_timeout } = config;
+
+        let swarm = build_swarm(
+            listen_address,
+            IDLE_CONNECTION_TIMEOUT_SECONDS,
+            BlockHeadersBehaviour::new(session_timeout),
+        );
+
         let db_executor = db_executor::BlockHeaderDBExecutor::new(storage_reader);
         Self {
             swarm,
             db_executor,
-            buffer_size: 1000,
+            buffer_size: DB_EXECUTOR_BUFFER_SIZE,
             query_results_router: StreamCollection::new(),
         }
     }
@@ -40,6 +56,12 @@ impl NetworkManager {
                 res = self.query_results_router.next() => self.handle_query_result_routing(res),
             }
         }
+    }
+
+    // TODO(shahak): Move this to the constructor and add the address to the config once we have
+    // p2p sync.
+    pub fn dial(&mut self, dial_address: &str) {
+        dial(&mut self.swarm, dial_address);
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {
