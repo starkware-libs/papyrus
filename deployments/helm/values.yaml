@@ -36,10 +36,10 @@ deployment:
   resources:
     limits:
       cpu: "3"
-      memory: 1GGi
+      memory: 16Gi
     requests:
       cpu: "2"
-      memory: 1GGi
+      memory: 16Gi
 
 # Service variables for a papyrus pod.
 services:
