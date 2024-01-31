@@ -39,12 +39,11 @@ use super::{
     QueryBound,
     SessionId,
 };
-use crate::PapyrusBehaviour;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
-    #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
-    Timeout { substream_timeout: Duration },
+    #[error("Connection timed out after {} seconds.", session_timeout.as_secs())]
+    Timeout { session_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
@@ -73,11 +72,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
             }
             GenericEvent::SessionFailed {
                 session_id,
-                error: HandlerSessionError::Timeout { substream_timeout },
-            } => Self::SessionFailed {
-                session_id,
-                error: SessionError::Timeout { substream_timeout },
-            },
+                error: HandlerSessionError::Timeout { session_timeout },
+            } => {
+                Self::SessionFailed { session_id, error: SessionError::Timeout { session_timeout } }
+            }
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::IOError(error),
@@ -123,8 +121,8 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     dropped_outbound_sessions: HashSet<OutboundSessionId>,
 }
 
-impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, Data> {
-    fn new(config: Config) -> Self {
+impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
+    pub fn new(config: Config) -> Self {
         Self {
             config,
             pending_events: Default::default(),
@@ -136,9 +134,7 @@ impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, D
             dropped_outbound_sessions: Default::default(),
         }
     }
-}
 
-impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
     pub fn send_query(

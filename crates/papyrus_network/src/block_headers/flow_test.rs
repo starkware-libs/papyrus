@@ -2,28 +2,21 @@ use std::time::Duration;
 
 use futures::{select, FutureExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
-use libp2p::StreamProtocol;
 use starknet_api::block::BlockNumber;
 
 use super::Behaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor};
-use crate::streamed_data::Config;
 use crate::test_utils::create_fully_connected_swarms_stream;
-use crate::{BlockQuery, Direction, PapyrusBehaviour};
+use crate::{BlockQuery, Direction};
 
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
 async fn one_sends_to_the_other() {
     let mut db_executor = db_executor::dummy_executor::DummyDBExecutor::new();
-    let mut swarms_stream = create_fully_connected_swarms_stream(2, || {
-        Behaviour::new(Config {
-            substream_timeout: Duration::from_secs(60),
-            protocol_name: StreamProtocol::new("/"),
-        })
-    })
-    .await;
+    let mut swarms_stream =
+        create_fully_connected_swarms_stream(2, || Behaviour::new(Duration::from_secs(5))).await;
 
     let mut swarms_mut = swarms_stream.values_mut();
     let outbound_swarm = swarms_mut.next().unwrap();
