@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::task::{Context, Poll};
+use std::time::Duration;
 
 use libp2p::core::Endpoint;
 use libp2p::swarm::{
@@ -10,7 +11,7 @@ use libp2p::swarm::{
     NetworkBehaviour,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 use starknet_api::block::BlockHeader;
 
 use super::{BlockHeaderData, Event, SessionError};
@@ -18,7 +19,7 @@ use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{BlockQuery, PapyrusBehaviour};
+use crate::BlockQuery;
 
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
@@ -27,6 +28,8 @@ mod behaviour_test;
 #[cfg(test)]
 #[path = "flow_test.rs"]
 mod flow_test;
+
+const PROTOCOL_NAME: &str = "/starknet/headers/1";
 
 pub struct Behaviour {
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
@@ -46,19 +49,19 @@ pub struct SessionIdNotFoundError(#[from] crate::streamed_data::behaviour::Sessi
 #[error(transparent)]
 pub struct PeerNotConnected(#[from] crate::streamed_data::behaviour::PeerNotConnected);
 
-impl PapyrusBehaviour for Behaviour {
-    #[allow(dead_code)]
-    fn new(config: Config) -> Self {
+impl Behaviour {
+    pub fn new(session_timeout: Duration) -> Self {
         Self {
-            streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(config),
+            streamed_data_behaviour: streamed_data::behaviour::Behaviour::new(Config {
+                session_timeout,
+                protocol_name: StreamProtocol::new(PROTOCOL_NAME),
+            }),
             header_pending_pairing: HashMap::new(),
             outbound_sessions_pending_termination: HashSet::new(),
             inbound_sessions_pending_termination: HashSet::new(),
         }
     }
-}
 
-impl Behaviour {
     #[allow(dead_code)]
     pub fn send_query(
         &mut self,

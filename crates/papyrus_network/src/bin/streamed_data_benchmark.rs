@@ -193,10 +193,14 @@ async fn main() {
     let args = Args::parse();
 
     let config = Config {
-        substream_timeout: Duration::from_secs(3600),
+        session_timeout: Duration::from_secs(3600),
         protocol_name: StreamProtocol::new("/papyrus/bench/1"),
     };
-    let mut swarm = build_swarm(args.listen_address.clone(), args.idle_connection_timeout, config);
+    let mut swarm = build_swarm(
+        args.listen_address.clone(),
+        Duration::from_secs(args.idle_connection_timeout),
+        Behaviour::new(config),
+    );
 
     let mut outbound_session_measurements = HashMap::new();
     let mut inbound_session_to_messages = HashMap::new();

@@ -5,29 +5,40 @@ use libp2p::Swarm;
 use papyrus_storage::StorageReader;
 use tracing::debug;
 
-use crate::block_headers::behaviour::Behaviour;
+use crate::bin_utils::{build_swarm, dial};
+use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor, Data};
 use crate::streamed_data::InboundSessionId;
+use crate::Config;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
 pub struct NetworkManager {
-    swarm: Swarm<Behaviour>,
+    swarm: Swarm<BlockHeadersBehaviour>,
     db_executor: db_executor::BlockHeaderDBExecutor,
-    buffer_size: usize,
+    header_buffer_size: usize,
     query_results_router: StreamCollection,
 }
 
 impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
-    pub fn new(swarm: Swarm<Behaviour>, storage_reader: StorageReader) -> Self {
+    pub fn new(config: Config, storage_reader: StorageReader) -> Self {
+        let Config { listen_address, session_timeout, idle_connection_timeout, header_buffer_size } =
+            config;
+
+        let swarm = build_swarm(
+            listen_address,
+            idle_connection_timeout,
+            BlockHeadersBehaviour::new(session_timeout),
+        );
+
         let db_executor = db_executor::BlockHeaderDBExecutor::new(storage_reader);
         Self {
             swarm,
             db_executor,
-            buffer_size: 1000,
+            header_buffer_size,
             query_results_router: StreamCollection::new(),
         }
     }
@@ -40,6 +51,12 @@ impl NetworkManager {
                 res = self.query_results_router.next() => self.handle_query_result_routing(res),
             }
         }
+    }
+
+    // TODO(shahak): Move this to the constructor and add the address to the config once we have
+    // p2p sync.
+    pub fn dial(&mut self, dial_address: &str) {
+        dial(&mut self.swarm, dial_address);
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {
@@ -81,7 +98,7 @@ impl NetworkManager {
                 debug!(
                     "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
                 );
-                let (sender, receiver) = futures::channel::mpsc::channel(self.buffer_size);
+                let (sender, receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
                 // TODO: use query id for bookkeeping.
                 let _query_id = self.db_executor.register_query(query, sender);
                 self.query_results_router

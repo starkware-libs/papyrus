@@ -13,7 +13,6 @@ use super::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::messages::protobuf;
 use crate::streamed_data::Config;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
-use crate::PapyrusBehaviour;
 
 const NUM_PEERS: usize = 3;
 const NUM_MESSAGES_PER_SESSION: usize = 5;
@@ -177,7 +176,7 @@ fn get_number_for_data(peer_id1: PeerId, peer_id2: PeerId, message_index: usize)
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
         Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config {
-            substream_timeout: Duration::from_secs(60),
+            session_timeout: Duration::from_secs(5),
             protocol_name: StreamProtocol::new("/"),
         })
     })

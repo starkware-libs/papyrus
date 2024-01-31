@@ -21,7 +21,6 @@ use super::super::{
 use super::{Behaviour, Event, SessionError};
 use crate::messages::protobuf;
 use crate::test_utils::dummy_data;
-use crate::PapyrusBehaviour;
 
 impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
 

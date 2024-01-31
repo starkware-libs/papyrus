@@ -59,8 +59,9 @@ pub enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
     SessionClosedByPeer { session_id: SessionId },
 }
 
+// TODO(shahak): Consider removing protocol_name from here.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Config {
-    pub substream_timeout: Duration,
+    pub session_timeout: Duration,
     pub protocol_name: StreamProtocol,
 }
