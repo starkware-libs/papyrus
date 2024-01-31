@@ -69,7 +69,7 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
                         Ok(Self { start_block, direction, limit, step })
                     }
                     protobuf::iteration::Start::Header(_) => {
-                        unimplemented!("BlockHash is not supported yet")
+                        Err(ProtobufConversionError::BlockHashInQueryUnsupported)
                     }
                 }
             } else {

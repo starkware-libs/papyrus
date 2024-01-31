@@ -123,6 +123,9 @@ pub enum ProtobufConversionError {
     MissingField,
     #[error("Bytes data length mismatch")]
     BytesDataLengthMismatch,
+    // TODO(shahak): Add support to block hash in query.
+    #[error("Block hash in query unsupported yet")]
+    BlockHashInQueryUnsupported,
 }
 
 impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
