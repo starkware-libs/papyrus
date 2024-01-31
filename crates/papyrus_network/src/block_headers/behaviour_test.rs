@@ -296,7 +296,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
     };
     let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
-    // Send bad signature message - should return incompatible data error event
+    // Send bad signature message - should return ProtobufConversionError
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
         outbound_session_id,
         data: protobuf::BlockHeadersResponse {
@@ -320,7 +320,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             session_error,
         }) => {
             assert_eq!(session_id, outbound_session_id.into());
-            assert_matches!(session_error, SessionError::IncompatibleDataError)
+            assert_matches!(session_error, SessionError::ProtobufConversionError(ProtobufConversionError::MissingField))
         }
     );
 }
