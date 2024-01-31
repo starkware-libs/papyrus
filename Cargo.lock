@@ -5688,6 +5688,7 @@ dependencies = [
  "rand",
  "replace_with",
  "starknet_api",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-stream",
