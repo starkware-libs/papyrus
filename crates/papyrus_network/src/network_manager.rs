@@ -94,8 +94,9 @@ impl NetworkManager {
                 debug!("Session {session_id:?} failed on {session_error:?}");
                 // TODO: Handle reputation and retry.
             }
-            Event::ProtobufConversionError(_) => {
-                unimplemented!("ProtobufConversionError");
+            Event::QueryConversionError(error) => {
+                debug!("Failed to convert incoming query on {error:?}");
+                // TODO: Consider adding peer_id to event and handling reputation.
             }
             Event::SessionCompletedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
