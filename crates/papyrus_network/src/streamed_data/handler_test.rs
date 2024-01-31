@@ -67,11 +67,12 @@ fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>
     });
 }
 
-fn simulate_request_to_close_session<Query: QueryBound, Data: DataBound>(
+fn simulate_request_to_close_inbound_session<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
-    session_id: SessionId,
+    inbound_session_id: InboundSessionId,
 ) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::CloseSession { session_id });
+    handler
+        .on_behaviour_event(RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id });
 }
 
 fn simulate_request_to_drop_outbound_session<Query: QueryBound, Data: DataBound>(
@@ -156,7 +157,7 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
     );
 }
 
-async fn validate_session_closed_by_request_event<
+async fn validate_session_finished_successfully_event<
     Query: QueryBound,
     Data: DataBound + PartialEq,
 >(
@@ -166,20 +167,7 @@ async fn validate_session_closed_by_request_event<
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByRequest {
-            session_id: event_session_id
-        })) if event_session_id == session_id
-    );
-}
-
-async fn validate_session_closed_by_peer_event<Query: QueryBound, Data: DataBound + PartialEq>(
-    handler: &mut Handler<Query, Data>,
-    session_id: SessionId,
-) {
-    let event = handler.next().await.unwrap();
-    assert_matches!(
-        event,
-        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionClosedByPeer {
+        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFinishedSuccessfully {
             session_id: event_session_id
         })) if event_session_id == session_id
     );
@@ -313,8 +301,8 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     // consume the new inbound session event without reading it.
     handler.next().await;
 
-    simulate_request_to_close_session(&mut handler, inbound_session_id.into());
-    validate_session_closed_by_request_event(&mut handler, inbound_session_id.into()).await;
+    simulate_request_to_close_inbound_session(&mut handler, inbound_session_id);
+    validate_session_finished_successfully_event(&mut handler, inbound_session_id.into()).await;
 
     let dummy_data_vec = dummy_data();
     for data in &dummy_data_vec {
@@ -388,7 +376,7 @@ async fn process_outbound_session() {
     validate_no_events(&mut handler);
 
     inbound_stream.close().await.unwrap();
-    validate_session_closed_by_peer_event(&mut handler, outbound_session_id.into()).await;
+    validate_session_finished_successfully_event(&mut handler, outbound_session_id.into()).await;
 }
 
 // Extracting to a function because two closures have different types.

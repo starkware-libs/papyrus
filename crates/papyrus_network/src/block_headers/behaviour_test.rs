@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use assert_matches::assert_matches;
 use libp2p::PeerId;
@@ -128,12 +128,12 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     };
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(res_event, None);
-    assert_eq!(behaviour.close_outbound_session_call_count, 1);
 
     // Make sure no function was called unexpectedly
     assert_eq!(behaviour.store_header_pending_pairing_with_signature_call_count, 1);
     assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
-    assert_eq!(behaviour.close_outbound_session_call_count, 1);
+    assert_eq!(behaviour.handle_outbound_session_failed_call_count, 0);
+    assert_eq!(behaviour.handle_session_finished_call_count, 0);
 }
 
 #[test]
@@ -326,8 +326,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
 struct TestBehaviour {
     store_header_pending_pairing_with_signature_call_count: usize,
     fetch_pending_header_for_session_call_count: usize,
-    close_outbound_session_call_count: usize,
+    handle_session_finished_call_count: usize,
+    handle_outbound_session_failed_call_count: usize,
     header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
+    sessions_pending_termination: HashSet<SessionId>,
 }
 
 impl TestBehaviour {
@@ -335,8 +337,10 @@ impl TestBehaviour {
         Self {
             store_header_pending_pairing_with_signature_call_count: 0,
             fetch_pending_header_for_session_call_count: 0,
-            close_outbound_session_call_count: 0,
+            handle_session_finished_call_count: 0,
+            handle_outbound_session_failed_call_count: 0,
             header_pending_pairing: HashMap::new(),
+            sessions_pending_termination: HashSet::new(),
         }
     }
 
@@ -344,27 +348,13 @@ impl TestBehaviour {
     fn reset(&mut self) {
         self.store_header_pending_pairing_with_signature_call_count = 0;
         self.fetch_pending_header_for_session_call_count = 0;
-        self.close_outbound_session_call_count = 0;
+        self.handle_session_finished_call_count = 0;
+        self.handle_outbound_session_failed_call_count = 0;
         self.header_pending_pairing = HashMap::new();
     }
 }
 
 impl BehaviourTrait for TestBehaviour {
-    fn handle_session_closed_by_request(&mut self, _session_id: SessionId) -> Event {
-        unimplemented!()
-    }
-
-    fn handle_outbound_session_closed_by_peer(
-        &mut self,
-        _outbound_session_id: OutboundSessionId,
-    ) -> Event {
-        unimplemented!()
-    }
-
-    fn close_outbound_session(&mut self, _outbound_session_id: OutboundSessionId) {
-        self.close_outbound_session_call_count += 1;
-    }
-
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
@@ -387,5 +377,18 @@ impl BehaviourTrait for TestBehaviour {
             .map(|_| ())
             .xor(Some(()))
             .ok_or_else(|| SessionError::PairingError)
+    }
+
+    fn handle_session_finished(&mut self, _session_id: SessionId) -> Option<Event> {
+        self.handle_session_finished_call_count += 1;
+        None
+    }
+
+    fn handle_outbound_session_failed(&mut self, _outbound_session_id: OutboundSessionId) {
+        self.handle_outbound_session_failed_call_count += 1;
+    }
+
+    fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId> {
+        &mut self.sessions_pending_termination
     }
 }

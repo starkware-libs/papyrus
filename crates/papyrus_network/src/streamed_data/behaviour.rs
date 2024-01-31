@@ -93,11 +93,8 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
                 session_id,
                 error: HandlerSessionError::OtherOutboundPeerSentData,
             } => Self::SessionFailed { session_id, error: SessionError::OtherOutboundPeerSentData },
-            GenericEvent::SessionClosedByRequest { session_id } => {
-                Self::SessionClosedByRequest { session_id }
-            }
-            GenericEvent::SessionClosedByPeer { session_id } => {
-                Self::SessionClosedByPeer { session_id }
+            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+                Self::SessionFinishedSuccessfully { session_id }
             }
         }
     }
@@ -183,16 +180,18 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         Ok(())
     }
 
-    /// Instruct behaviour to close session. A corresponding SessionClosedByRequest event will be
-    /// reported when the session is closed.
-    // TODO(shahak) allow only for inbound sessions
-    pub fn close_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
+    /// Instruct behaviour to close session. A corresponding SessionFinishedSuccessfully event will
+    /// be reported when the session is closed.
+    pub fn close_inbound_session(
+        &mut self,
+        inbound_session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
-            self.get_peer_id_and_connection_id_from_session_id(session_id)?;
+            self.get_peer_id_and_connection_id_from_session_id(inbound_session_id.into())?;
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::CloseSession { session_id },
+            event: RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id },
         });
         Ok(())
     }
@@ -296,8 +295,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                             .insert(inbound_session_id.into(), (peer_id, connection_id));
                     }
                     Event::SessionFailed { session_id, .. }
-                    | Event::SessionClosedByRequest { session_id, .. }
-                    | Event::SessionClosedByPeer { session_id, .. } => {
+                    | Event::SessionFinishedSuccessfully { session_id, .. } => {
                         self.session_id_to_peer_id_and_connection_id.remove(&session_id);
                         if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
                             let is_dropped =

@@ -109,7 +109,7 @@ fn send_data_to_inbound_sessions(
                 true
             }
             None => {
-                swarm.behaviour_mut().close_session((*inbound_session_id).into()).unwrap_or_else(
+                swarm.behaviour_mut().close_inbound_session(*inbound_session_id).unwrap_or_else(
                     |_| panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id),
                 );
                 false
@@ -240,7 +240,7 @@ async fn main() {
                     );
                 }
             }
-            SwarmEvent::Behaviour(Event::SessionClosedByPeer {
+            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
             }) => {
                 outbound_session_measurements[&outbound_session_id].print();
@@ -272,16 +272,11 @@ async fn main() {
             }) => {
                 println!("Session {:?} failed on {}", session_id, io_error.kind());
             }
-            SwarmEvent::Behaviour(Event::SessionClosedByPeer {
-                session_id: SessionId::InboundSessionId(inbound_session_id),
-            }) => {
-                println!("Outbound peer closed before us in session {:?}", inbound_session_id);
-            }
-            SwarmEvent::NewListenAddr { .. }
-            | SwarmEvent::IncomingConnection { .. }
-            | SwarmEvent::Behaviour(Event::SessionClosedByRequest {
-                session_id: SessionId::InboundSessionId(..),
+            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
+                session_id: SessionId::InboundSessionId(_),
             })
+            | SwarmEvent::NewListenAddr { .. }
+            | SwarmEvent::IncomingConnection { .. }
             | SwarmEvent::ConnectionClosed { .. } => {}
             _ => {
                 panic!("Unexpected event {:?}", event);
