@@ -49,13 +49,13 @@ pub enum RequestFromBehaviourEvent<Query, Data> {
     CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
     SendData { data: Data, inbound_session_id: InboundSessionId },
     CloseInboundSession { inbound_session_id: InboundSessionId },
-    DropOutboundSession { outbound_session_id: OutboundSessionId },
+    DropSession { session_id: SessionId },
 }
 
 #[derive(Debug)]
 pub enum RequestToBehaviourEvent<Query: QueryBound, Data: DataBound> {
     GenerateEvent(GenericEvent<Query, Data, SessionError>),
-    NotifyOutboundSessionDropped { outbound_session_id: OutboundSessionId },
+    NotifySessionDropped { session_id: SessionId },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -274,13 +274,27 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id } => {
                 self.inbound_sessions_marked_to_end.insert(inbound_session_id);
             }
-            RequestFromBehaviourEvent::DropOutboundSession { outbound_session_id } => {
+            RequestFromBehaviourEvent::DropSession {
+                session_id: SessionId::OutboundSessionId(outbound_session_id),
+            } => {
                 let remove_result = self.id_to_outbound_session.remove(&outbound_session_id);
                 if remove_result.is_none() {
                     self.dropped_outbound_sessions_non_negotiated.insert(outbound_session_id);
                 }
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::NotifyOutboundSessionDropped { outbound_session_id },
+                    RequestToBehaviourEvent::NotifySessionDropped {
+                        session_id: outbound_session_id.into(),
+                    },
+                ));
+            }
+            RequestFromBehaviourEvent::DropSession {
+                session_id: SessionId::InboundSessionId(inbound_session_id),
+            } => {
+                self.id_to_inbound_session.remove(&inbound_session_id);
+                self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
+                    RequestToBehaviourEvent::NotifySessionDropped {
+                        session_id: inbound_session_id.into(),
+                    },
                 ));
             }
         }

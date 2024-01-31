@@ -141,15 +141,15 @@ fn simulate_connection_closed<Query: QueryBound, Data: DataBound>(
     }))
 }
 
-fn simulate_outbound_session_dropped<Query: QueryBound, Data: DataBound>(
+fn simulate_session_dropped<Query: QueryBound, Data: DataBound>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: PeerId,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        RequestToBehaviourEvent::NotifyOutboundSessionDropped { outbound_session_id },
+        RequestToBehaviourEvent::NotifySessionDropped { session_id },
     );
 }
 
@@ -248,25 +248,21 @@ async fn validate_request_close_inbound_session_event<
     );
 }
 
-async fn validate_request_drop_outbound_session_event<
-    Query: QueryBound,
-    Data: DataBound + PartialEq,
->(
+async fn validate_request_drop_session_event<Query: QueryBound, Data: DataBound + PartialEq>(
     behaviour: &mut Behaviour<Query, Data>,
     peer_id: &PeerId,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
         ToSwarm::NotifyHandler {
             peer_id: event_peer_id,
-            event: RequestFromBehaviourEvent::DropOutboundSession {
-                outbound_session_id: event_outbound_session_id
+            event: RequestFromBehaviourEvent::DropSession {
+                session_id: event_session_id
             },
             ..
-        } if *peer_id == event_peer_id
-            && outbound_session_id == event_outbound_session_id
+        } if *peer_id == event_peer_id && session_id == event_session_id
     );
 }
 
@@ -423,9 +419,8 @@ async fn drop_outbound_session() {
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
-    behaviour.drop_outbound_session(outbound_session_id).unwrap();
-    validate_request_drop_outbound_session_event(&mut behaviour, &peer_id, outbound_session_id)
-        .await;
+    behaviour.drop_session(outbound_session_id.into()).unwrap();
+    validate_request_drop_session_event(&mut behaviour, &peer_id, outbound_session_id.into()).await;
 
     for data in dummy_data() {
         simulate_received_data(&mut behaviour, peer_id, data, outbound_session_id);
@@ -437,7 +432,36 @@ async fn drop_outbound_session() {
 
     validate_no_events(&mut behaviour);
 
-    simulate_outbound_session_dropped(&mut behaviour, peer_id, outbound_session_id);
+    simulate_session_dropped(&mut behaviour, peer_id, outbound_session_id.into());
+
+    // After this event the handler should not send any events to the behaviour about this session,
+    // so if it will the behaviour might output them.
+}
+
+#[tokio::test]
+async fn drop_inbound_session() {
+    let mut behaviour =
+        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+
+    let query = protobuf::BasicMessage::default();
+    let peer_id = PeerId::random();
+    let inbound_session_id = InboundSessionId::default();
+
+    simulate_listener_connection(&mut behaviour, peer_id);
+
+    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, query.clone());
+
+    // Consume the event that a new inbound session was created.
+    behaviour.next().await.unwrap();
+
+    behaviour.drop_session(inbound_session_id.into()).unwrap();
+    validate_request_drop_session_event(&mut behaviour, &peer_id, inbound_session_id.into()).await;
+
+    simulate_session_finished_successfully(&mut behaviour, peer_id, inbound_session_id.into());
+
+    validate_no_events(&mut behaviour);
+
+    simulate_session_dropped(&mut behaviour, peer_id, inbound_session_id.into());
 
     // After this event the handler should not send any events to the behaviour about this session,
     // so if it will the behaviour might output them.
