@@ -14,6 +14,8 @@ use tokio::task::JoinHandle;
 use crate::BlockQuery;
 
 pub mod dummy_executor;
+#[cfg(test)]
+mod test;
 mod utils;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
@@ -79,7 +81,7 @@ impl DBExecutor for BlockHeaderDBExecutor {
         let storage_reader_clone = self.storage_reader.clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
             {
-                for block_counter in 0..=query.limit {
+                for block_counter in 0..query.limit {
                     let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
                         DBExecutorError::DBInternalError { query_id, storage_error: err }
                     })?;
@@ -93,13 +95,19 @@ impl DBExecutor for BlockHeaderDBExecutor {
                         })?
                         .ok_or(DBExecutorError::BlockNotFound { block_number, query_id })?;
                     // Using poll_fn because Sender::poll_ready is not a future
-                    if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender
-                            .start_send(Data::BlockHeaderAndSignature { header, signature: None })
-                        {
-                            // TODO: consider implement retry mechanism.
+                    match poll_fn(|cx| sender.poll_ready(cx)).await {
+                        Ok(()) => {
+                            if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
+                                header,
+                                signature: None,
+                            }) {
+                                // TODO: consider implement retry mechanism.
+                                return Err(DBExecutorError::SendError { query_id, send_error: e });
+                            };
+                        }
+                        Err(e) => {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        };
+                        }
                     }
                 }
                 Ok(query_id)
@@ -117,14 +125,16 @@ impl Stream for BlockHeaderDBExecutor {
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
         let unpinned_self = Pin::into_inner(self);
-        if let Poll::Ready(ready) = unpinned_self.query_execution_set.poll_next_unpin(cx) {
-            if let Some(join_result) = ready {
+        match unpinned_self.query_execution_set.poll_next_unpin(cx) {
+            Poll::Ready(Some(join_result)) => {
                 let res = join_result?;
-                return Poll::Ready(Some(res));
-            };
-            unpinned_self.query_execution_set = FuturesUnordered::new();
-            return Poll::Pending;
+                Poll::Ready(Some(res))
+            }
+            Poll::Ready(None) => {
+                unpinned_self.query_execution_set = FuturesUnordered::new();
+                Poll::Pending
+            }
+            Poll::Pending => Poll::Pending,
         }
-        Poll::Pending
     }
 }

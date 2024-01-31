@@ -12,7 +12,7 @@ pub(crate) fn calculate_block_number(
     };
     let blocks_delta: i128 = direction_factor * (query.step * read_blocks_counter) as i128;
     let block_number: i128 = query.start_block.0 as i128 + blocks_delta;
-    if block_number <= 0 || block_number > u64::MAX as i128 {
+    if block_number < 0 || block_number > u64::MAX as i128 {
         return Err(DBExecutorError::BlockNumberOutOfRange {
             query,
             counter: read_blocks_counter,
