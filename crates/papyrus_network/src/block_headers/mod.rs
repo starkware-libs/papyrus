@@ -15,6 +15,8 @@ pub enum SessionError {
     StreamedData(#[from] streamed_data::behaviour::SessionError),
     #[error("Incompatible data error")]
     IncompatibleDataError,
+    #[error(transparent)]
+    ProtobufConversionError(#[from] ProtobufConversionError),
     #[error("Pairing of header and signature error")]
     PairingError,
     #[error("Session closed unexpectedly")]

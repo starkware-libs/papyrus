@@ -33,7 +33,7 @@ pub struct Behaviour {
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
     >,
-    header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
+    header_pending_pairing: HashMap<OutboundSessionId, BlockHeader>,
     sessions_pending_termination: HashSet<SessionId>,
 }
 
@@ -197,14 +197,20 @@ trait BehaviourTrait {
                             });
                         }
                     };
-                    let Some(signatures) = sigs.try_into().ok() else {
-                        self.drop_session(outbound_session_id.into());
-                        return Some(Event::SessionFailed {
-                            session_id: outbound_session_id.into(),
-                            session_error: SessionError::IncompatibleDataError,
-                        });
+                    match sigs.try_into() {
+                        Ok(signatures) => {
+                            data_received.push(BlockHeaderData { block_header, signatures })
+                        }
+                        Err(protobuf_conversion_error) => {
+                            self.drop_session(outbound_session_id.into());
+                            return Some(Event::SessionFailed {
+                                session_id: outbound_session_id.into(),
+                                session_error: SessionError::ProtobufConversionError(
+                                    protobuf_conversion_error,
+                                ),
+                            });
+                        }
                     };
-                    data_received.push(BlockHeaderData { block_header, signatures });
                 }
                 protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
                     error: Some(error),
@@ -267,20 +273,17 @@ impl BehaviourTrait for Behaviour {
         outbound_session_id: OutboundSessionId,
     ) -> Result<(), SessionError> {
         self.header_pending_pairing
-            .insert(outbound_session_id, header.clone())
+            .insert(outbound_session_id, header.try_into()?)
             .map(|_| ())
             .xor(Some(()))
-            .ok_or_else(|| SessionError::PairingError)
+            .ok_or(SessionError::PairingError)
     }
 
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
     ) -> Result<BlockHeader, SessionError> {
-        self.header_pending_pairing
-            .remove(&outbound_session_id)
-            .map(|header| header.try_into().map_err(|_| SessionError::PairingError))
-            .unwrap_or(Err(SessionError::PairingError))
+        self.header_pending_pairing.remove(&outbound_session_id).ok_or(SessionError::PairingError)
     }
 
     fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event> {
