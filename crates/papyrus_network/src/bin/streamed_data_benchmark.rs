@@ -207,7 +207,7 @@ async fn main() {
         protocol_name: StreamProtocol::new("/papyrus/bench/1"),
     };
     let mut swarm = build_swarm(
-        args.listen_address.clone(),
+        vec![args.listen_address.clone()],
         Duration::from_secs(args.idle_connection_timeout),
         Behaviour::new(config),
     );
