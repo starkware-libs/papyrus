@@ -69,6 +69,7 @@ prometheus-parse.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 schemars = { workspace = true, features = ["preserve_order"] }
+simple_logger.workspace = true
 tempfile = { workspace = true }
 test-case.workspace = true
 test-log.workspace = true
