@@ -5827,6 +5827,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "simple_logger",
  "starknet_api",
  "tempfile",
  "test-case",
