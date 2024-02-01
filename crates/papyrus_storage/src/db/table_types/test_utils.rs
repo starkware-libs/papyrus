@@ -1,7 +1,11 @@
+use rand::rngs::ThreadRng;
+use rand::Rng;
+use tracing::debug;
+
 use super::{Table, TableType};
 use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, StorageSerdeError};
 use crate::db::table_types::{DbCursor, DbCursorTrait};
-use crate::db::{DbReader, DbWriter, TableHandle, TableIdentifier, RO};
+use crate::db::{DbError, DbReader, DbWriter, TableHandle, TableIdentifier, RO};
 use crate::serializers::auto_storage_serde;
 
 type TableKey = (u32, u32);
@@ -156,4 +160,136 @@ pub(crate) fn table_cursor_test<T: TableType>(
     // In the end still return None.
     current = cursor.prev().unwrap();
     assert_eq!(current, None);
+}
+
+// Constants for random_table_test.
+const MAX_VALUE: u32 = 20;
+const MAIN_KEY_MAX_VALUE: u32 = 5;
+const SUB_KEY_MAX_VALUE: u32 = 5;
+// Number of iterations to run the test.
+const ITERS: usize = 500;
+// Number of get calls to make in each iteration.
+const GET_CALLS: usize = 10;
+// Number of cursor test iterations to make in each main iteration.
+const CURSOR_ITERS: usize = 2;
+// Number of cursor operations to make in each cursor iteration.
+const CURSOR_OPS_NUM: usize = 4;
+
+pub(crate) fn random_table_test<T0: TableType, T1: TableType>(
+    first_table_id: TableIdentifier<TableKey, TableValue, T0>,
+    second_table_id: TableIdentifier<TableKey, TableValue, T1>,
+    reader: &DbReader,
+    writer: &mut DbWriter,
+) where
+    for<'env> TableHandle<'env, TableKey, TableValue, T0>:
+        Table<'env, Key = TableKey, Value = TableValue, TableVariant = T0>,
+    for<'env> TableHandle<'env, TableKey, TableValue, T1>:
+        Table<'env, Key = TableKey, Value = TableValue, TableVariant = T1>,
+    for<'txn> DbCursor<'txn, RO, TableKey, TableValue, T0>:
+        DbCursorTrait<Key = TableKey, Value = TableValue>,
+    for<'txn> DbCursor<'txn, RO, TableKey, TableValue, T1>:
+        DbCursorTrait<Key = TableKey, Value = TableValue>,
+{
+    let _ = simple_logger::init_with_env();
+    let rtxn = reader.begin_ro_txn().unwrap();
+    let first_table = rtxn.open_table(&first_table_id).unwrap();
+    let second_table = rtxn.open_table(&second_table_id).unwrap();
+    let mut rng = rand::thread_rng();
+
+    for iter in 0..ITERS {
+        debug!("iteration: {iter:?}");
+        let wtxn = writer.begin_rw_txn().unwrap();
+        let random_op = rng.gen_range(0..3);
+        let key = get_random_key(&mut rng);
+        let value = rng.gen_range(0..MAX_VALUE);
+
+        // Insert, upsert, or delete a random key.
+        if random_op == 0 {
+            // Insert
+            debug!("insert: {key:?}, {value:?}");
+            let first_res = first_table.insert(&wtxn, &key, &value);
+            let second_res = second_table.insert(&wtxn, &key, &value);
+            assert!(
+                (first_res.is_ok() && second_res.is_ok())
+                    || (matches!(first_res.unwrap_err(), DbError::KeyAlreadyExists(..))
+                        && matches!(second_res.unwrap_err(), DbError::KeyAlreadyExists(..)))
+            );
+        } else if random_op == 1 {
+            // Upsert
+            debug!("upsert: {key:?}, {value:?}");
+            first_table.upsert(&wtxn, &key, &value).unwrap();
+            second_table.upsert(&wtxn, &key, &value).unwrap();
+        } else if random_op == 2 {
+            // Delete
+            debug!("delete: {key:?}");
+            first_table.delete(&wtxn, &key).unwrap();
+            second_table.delete(&wtxn, &key).unwrap();
+        }
+
+        wtxn.commit().unwrap();
+        let rtxn = reader.begin_ro_txn().unwrap();
+
+        // Compare get calls.
+        let mut keys_list = vec![key];
+        for _ in 0..GET_CALLS {
+            keys_list.push(get_random_key(&mut rng));
+        }
+
+        for key in keys_list {
+            let first_value = first_table.get(&rtxn, &key).unwrap();
+            let second_value = second_table.get(&rtxn, &key).unwrap();
+            assert_eq!(
+                first_value, second_value,
+                "Mismatch for key {key:?}\n first key: {first_value:?}\n second key: \
+                 {second_value:?}"
+            );
+        }
+
+        // Compare cursor calls.
+        let mut keys_list = vec![key];
+        for _ in 0..CURSOR_ITERS {
+            keys_list.push(get_random_key(&mut rng));
+        }
+
+        for key in keys_list {
+            debug!("lower_bound: {key:?}");
+            let mut first_cursor = first_table.cursor(&rtxn).unwrap();
+            let first_res = first_cursor.lower_bound(&key).unwrap();
+            let mut second_cursor = second_table.cursor(&rtxn).unwrap();
+            let second_res = second_cursor.lower_bound(&key).unwrap();
+            assert_eq!(
+                first_res, second_res,
+                "Mismatch for key {key:?}\n first key: {first_res:?}\n second key: {second_res:?}"
+            );
+
+            for _ in 0..CURSOR_OPS_NUM {
+                let random_op = rng.gen_range(0..2);
+                if random_op == 0 {
+                    // Next
+                    debug!("next: {key:?}");
+                    let first_res = first_cursor.next().unwrap();
+                    let second_res = second_cursor.next().unwrap();
+                    assert_eq!(
+                        first_res, second_res,
+                        "Mismatch for key {key:?}\n first key: {first_res:?}\n second key: \
+                         {second_res:?}"
+                    );
+                } else if random_op == 1 {
+                    // Prev
+                    debug!("prev: {key:?}");
+                    let first_res = first_cursor.prev().unwrap();
+                    let second_res = second_cursor.prev().unwrap();
+                    assert_eq!(
+                        first_res, second_res,
+                        "Mismatch for key {key:?}\n first key: {first_res:?}\n second key: \
+                         {second_res:?}"
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn get_random_key(rng: &mut ThreadRng) -> TableKey {
+    (rng.gen_range(0..MAIN_KEY_MAX_VALUE), rng.gen_range(0..SUB_KEY_MAX_VALUE))
 }
