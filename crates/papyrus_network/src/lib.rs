@@ -11,9 +11,9 @@ pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
 
-use libp2p::swarm::NetworkBehaviour;
+use std::time::Duration;
+
 use starknet_api::block::BlockNumber;
-use streamed_data::Config;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -29,9 +29,10 @@ pub struct BlockQuery {
     pub step: u64,
 }
 
-pub trait PapyrusBehaviour: NetworkBehaviour {
-    // TODO: create a generic network config and use that instead of the streamed data one.
-    fn new(config: Config) -> Self
-    where
-        Self: Sized;
+// TODO: implement the SerializeConfig trait.
+pub struct Config {
+    pub listen_address: String,
+    pub session_timeout: Duration,
+    pub idle_connection_timeout: Duration,
+    pub header_buffer_size: usize,
 }

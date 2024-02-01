@@ -15,6 +15,8 @@ pub enum SessionError {
     StreamedData(#[from] streamed_data::behaviour::SessionError),
     #[error("Incompatible data error")]
     IncompatibleDataError,
+    #[error(transparent)]
+    ProtobufConversionError(#[from] ProtobufConversionError),
     #[error("Pairing of header and signature error")]
     PairingError,
     #[error("Session closed unexpectedly")]
@@ -26,6 +28,8 @@ pub enum SessionError {
     ReceivedFin(i32),
     #[error("Incorrect session id")]
     IncorrectSessionId,
+    #[error("Received a message after Fin")]
+    ReceivedMessageAfterFin,
 }
 
 #[derive(Debug)]
@@ -43,7 +47,7 @@ pub enum Event {
         session_id: SessionId,
         session_error: SessionError,
     },
-    ProtobufConversionError(ProtobufConversionError),
+    QueryConversionError(ProtobufConversionError),
     SessionCompletedSuccessfully {
         session_id: SessionId,
     },

@@ -16,8 +16,22 @@ use libp2p::swarm::handler::{
 use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream, StreamUpgradeError};
 use libp2p::PeerId;
 
-use super::super::{Config, DataBound, InboundSessionId, OutboundSessionId, QueryBound, SessionId};
-use super::{Handler, HandlerEvent, RequestFromBehaviourEvent, SessionError, ToBehaviourEvent};
+use super::super::{
+    Config,
+    DataBound,
+    GenericEvent,
+    InboundSessionId,
+    OutboundSessionId,
+    QueryBound,
+    SessionId,
+};
+use super::{
+    Handler,
+    HandlerEvent,
+    RequestFromBehaviourEvent,
+    RequestToBehaviourEvent,
+    SessionError,
+};
 use crate::messages::{protobuf, read_message, write_message};
 use crate::test_utils::{dummy_data, get_connected_streams};
 
@@ -53,11 +67,19 @@ fn simulate_request_to_send_query_from_swarm<Query: QueryBound, Data: DataBound>
     });
 }
 
-fn simulate_request_to_close_session<Query: QueryBound, Data: DataBound>(
+fn simulate_request_to_close_inbound_session<Query: QueryBound, Data: DataBound>(
+    handler: &mut Handler<Query, Data>,
+    inbound_session_id: InboundSessionId,
+) {
+    handler
+        .on_behaviour_event(RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id });
+}
+
+fn simulate_request_to_drop_session<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
     session_id: SessionId,
 ) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::CloseSession { session_id });
+    handler.on_behaviour_event(RequestFromBehaviourEvent::DropSession { session_id });
 }
 
 fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
@@ -101,11 +123,15 @@ async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data:
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::NewInboundSession {
-            query: event_query,
-            inbound_session_id: event_inbound_session_id,
-            peer_id: event_peer_id,
-        }) if event_query == *query
+        ConnectionHandlerEvent::NotifyBehaviour(
+            RequestToBehaviourEvent::GenerateEvent(
+                GenericEvent::NewInboundSession {
+                    query: event_query,
+                    inbound_session_id: event_inbound_session_id,
+                    peer_id: event_peer_id,
+                }
+            )
+        ) if event_query == *query
             && event_inbound_session_id == inbound_session_id
             && event_peer_id == handler.peer_id => {}
     );
@@ -119,13 +145,18 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::ReceivedData {
-            data: event_data, outbound_session_id: event_outbound_session_id
-        }) if event_data == *data &&  event_outbound_session_id == outbound_session_id
+        ConnectionHandlerEvent::NotifyBehaviour(
+            RequestToBehaviourEvent::GenerateEvent(
+                GenericEvent::ReceivedData {
+                    data: event_data, outbound_session_id: event_outbound_session_id
+
+                }
+            )
+        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id
     );
 }
 
-async fn validate_session_closed_by_request_event<
+async fn validate_session_finished_successfully_event<
     Query: QueryBound,
     Data: DataBound + PartialEq,
 >(
@@ -135,22 +166,9 @@ async fn validate_session_closed_by_request_event<
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionClosedByRequest {
+        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFinishedSuccessfully {
             session_id: event_session_id
-        }) if event_session_id == session_id
-    );
-}
-
-async fn validate_session_closed_by_peer_event<Query: QueryBound, Data: DataBound + PartialEq>(
-    handler: &mut Handler<Query, Data>,
-    session_id: SessionId,
-) {
-    let event = handler.next().await.unwrap();
-    assert_matches!(
-        event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionClosedByPeer {
-            session_id: event_session_id
-        }) if event_session_id == session_id
+        })) if event_session_id == session_id
     );
 }
 
@@ -162,10 +180,27 @@ async fn validate_session_failed_event<Query: QueryBound, Data: DataBound + Part
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(ToBehaviourEvent::SessionFailed {
-            session_id: event_session_id,
-            error,
-        }) if event_session_id == session_id && session_error_matcher(&error)
+        ConnectionHandlerEvent::NotifyBehaviour(
+            RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
+                session_id: event_session_id,
+                error,
+            })
+        ) if event_session_id == session_id && session_error_matcher(&error)
+    );
+}
+
+async fn validate_session_dropped_event<Query: QueryBound, Data: DataBound + PartialEq>(
+    handler: &mut Handler<Query, Data>,
+    session_id: SessionId,
+) {
+    let event = handler.next().await.unwrap();
+    assert_matches!(
+        event,
+        ConnectionHandlerEvent::NotifyBehaviour(
+            RequestToBehaviourEvent::NotifySessionDropped {
+                session_id: event_session_id
+            }
+        ) if event_session_id == session_id
     );
 }
 
@@ -265,8 +300,8 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     // consume the new inbound session event without reading it.
     handler.next().await;
 
-    simulate_request_to_close_session(&mut handler, inbound_session_id.into());
-    validate_session_closed_by_request_event(&mut handler, inbound_session_id.into()).await;
+    simulate_request_to_close_inbound_session(&mut handler, inbound_session_id);
+    validate_session_finished_successfully_event(&mut handler, inbound_session_id.into()).await;
 
     let dummy_data_vec = dummy_data();
     for data in &dummy_data_vec {
@@ -340,7 +375,7 @@ async fn process_outbound_session() {
     validate_no_events(&mut handler);
 
     inbound_stream.close().await.unwrap();
-    validate_session_closed_by_peer_event(&mut handler, outbound_session_id.into()).await;
+    validate_session_finished_successfully_event(&mut handler, outbound_session_id.into()).await;
 }
 
 // Extracting to a function because two closures have different types.
@@ -371,8 +406,8 @@ async fn outbound_session_negotiation_failure() {
         |session_error| {
             matches!(
                 session_error,
-                SessionError::Timeout { substream_timeout }
-                if *substream_timeout == config.substream_timeout
+                SessionError::Timeout { session_timeout }
+                if *session_timeout == config.session_timeout
             )
         },
         config.clone(),
@@ -414,4 +449,123 @@ async fn outbound_session_negotiation_failure() {
         config.clone(),
     )
     .await;
+}
+
+#[tokio::test]
+async fn outbound_session_dropped_after_negotiation() {
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+    );
+
+    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
+    let outbound_session_id = OutboundSessionId { value: 1 };
+
+    simulate_request_to_send_query_from_swarm(
+        &mut handler,
+        protobuf::BasicMessage::default(),
+        outbound_session_id,
+    );
+    // consume the new outbound session event without reading it.
+    handler.next().await;
+
+    simulate_negotiated_outbound_session_from_swarm(
+        &mut handler,
+        outbound_stream,
+        outbound_session_id,
+    );
+
+    simulate_request_to_drop_session(&mut handler, outbound_session_id.into());
+    validate_session_dropped_event(&mut handler, outbound_session_id.into()).await;
+
+    // Need to sleep to make sure the dropping occurs on the other stream.
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    write_message(dummy_data().first().unwrap().clone(), &mut inbound_stream).await.unwrap_err();
+
+    // Need to sleep to make sure that if we did send a message the stream inside the handle will
+    // receive it
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    validate_no_events(&mut handler);
+}
+
+#[tokio::test]
+async fn outbound_session_dropped_before_negotiation() {
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+    );
+
+    let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
+    let outbound_session_id = OutboundSessionId { value: 1 };
+
+    simulate_request_to_send_query_from_swarm(
+        &mut handler,
+        protobuf::BasicMessage::default(),
+        outbound_session_id,
+    );
+    // consume the new outbound session event without reading it.
+    handler.next().await;
+
+    simulate_request_to_drop_session(&mut handler, outbound_session_id.into());
+    validate_session_dropped_event(&mut handler, outbound_session_id.into()).await;
+
+    simulate_negotiated_outbound_session_from_swarm(
+        &mut handler,
+        outbound_stream,
+        outbound_session_id,
+    );
+
+    // Need to sleep to make sure the dropping occurs on the other stream.
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    write_message(dummy_data().first().unwrap().clone(), &mut inbound_stream).await.unwrap_err();
+
+    // Need to sleep to make sure that if we did send a message the stream inside the handle will
+    // receive it
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    validate_no_events(&mut handler);
+}
+
+#[tokio::test]
+async fn inbound_session_dropped() {
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+    );
+
+    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
+    let query = protobuf::BasicMessage::default();
+    let inbound_session_id = InboundSessionId { value: 1 };
+
+    simulate_negotiated_inbound_session_from_swarm(
+        &mut handler,
+        query.clone(),
+        inbound_stream,
+        inbound_session_id,
+    );
+    // consume the new inbound session event without reading it.
+    handler.next().await;
+
+    simulate_request_to_drop_session(&mut handler, inbound_session_id.into());
+    validate_session_dropped_event(&mut handler, inbound_session_id.into()).await;
+
+    // Need to sleep to make sure the dropping occurs on the other stream.
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    // A dropped inbound session will return EOF.
+    assert!(
+        read_message::<protobuf::BasicMessage, _>(&mut outbound_stream).await.unwrap().is_none()
+    );
+
+    // Need to sleep to make sure that if we did send a message the stream inside the handle will
+    // receive it
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    validate_no_events(&mut handler);
 }

@@ -24,7 +24,12 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
-use super::handler::{Handler, RequestFromBehaviourEvent, SessionError as HandlerSessionError};
+use super::handler::{
+    Handler,
+    RequestFromBehaviourEvent,
+    RequestToBehaviourEvent,
+    SessionError as HandlerSessionError,
+};
 use super::{
     Config,
     DataBound,
@@ -34,12 +39,11 @@ use super::{
     QueryBound,
     SessionId,
 };
-use crate::PapyrusBehaviour;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
-    #[error("Connection timed out after {} seconds.", substream_timeout.as_secs())]
-    Timeout { substream_timeout: Duration },
+    #[error("Connection timed out after {} seconds.", session_timeout.as_secs())]
+    Timeout { session_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the {protocol_name} protocol.")]
@@ -68,11 +72,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
             }
             GenericEvent::SessionFailed {
                 session_id,
-                error: HandlerSessionError::Timeout { substream_timeout },
-            } => Self::SessionFailed {
-                session_id,
-                error: SessionError::Timeout { substream_timeout },
-            },
+                error: HandlerSessionError::Timeout { session_timeout },
+            } => {
+                Self::SessionFailed { session_id, error: SessionError::Timeout { session_timeout } }
+            }
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::IOError(error),
@@ -88,11 +91,8 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
                 session_id,
                 error: HandlerSessionError::OtherOutboundPeerSentData,
             } => Self::SessionFailed { session_id, error: SessionError::OtherOutboundPeerSentData },
-            GenericEvent::SessionClosedByRequest { session_id } => {
-                Self::SessionClosedByRequest { session_id }
-            }
-            GenericEvent::SessionClosedByPeer { session_id } => {
-                Self::SessionClosedByPeer { session_id }
+            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+                Self::SessionFinishedSuccessfully { session_id }
             }
         }
     }
@@ -118,10 +118,11 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
+    dropped_sessions: HashSet<SessionId>,
 }
 
-impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, Data> {
-    fn new(config: Config) -> Self {
+impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
+    pub fn new(config: Config) -> Self {
         Self {
             config,
             pending_events: Default::default(),
@@ -130,11 +131,10 @@ impl<Query: QueryBound, Data: DataBound> PapyrusBehaviour for Behaviour<Query, D
             session_id_to_peer_id_and_connection_id: Default::default(),
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
+            dropped_sessions: Default::default(),
         }
     }
-}
 
-impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
     pub fn send_query(
@@ -176,17 +176,34 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         Ok(())
     }
 
-    /// Instruct behaviour to close session. A corresponding SessionClosedByRequest event will be
-    /// reported when the session is closed.
-    // TODO(shahak) allow only for inbound sessions
-    pub fn close_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
+    /// Instruct behaviour to close session. A corresponding SessionFinishedSuccessfully event will
+    /// be reported when the session is closed.
+    pub fn close_inbound_session(
+        &mut self,
+        inbound_session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
-            self.get_peer_id_and_connection_id_from_session_id(session_id)?;
+            self.get_peer_id_and_connection_id_from_session_id(inbound_session_id.into())?;
         self.pending_events.push_back(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::CloseSession { session_id },
+            event: RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id },
         });
+        Ok(())
+    }
+
+    /// Instruct behaviour to drop outbound session. The session won't emit any events once dropped.
+    /// The other peer will receive an IOError on their corresponding inbound session.
+    pub fn drop_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
+        let (peer_id, connection_id) =
+            self.get_peer_id_and_connection_id_from_session_id(session_id)?;
+        if self.dropped_sessions.insert(session_id) {
+            self.pending_events.push_back(ToSwarm::NotifyHandler {
+                peer_id,
+                handler: NotifyHandler::One(connection_id),
+                event: RequestFromBehaviourEvent::DropSession { session_id },
+            });
+        }
         Ok(())
     }
 
@@ -261,22 +278,37 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
         connection_id: ConnectionId,
         event: <Self::ConnectionHandler as ConnectionHandler>::ToBehaviour,
     ) {
-        let converted_event = event.into();
-        match converted_event {
-            Event::NewInboundSession { inbound_session_id, .. } => {
-                self.session_id_to_peer_id_and_connection_id
-                    .insert(inbound_session_id.into(), (peer_id, connection_id));
+        match event {
+            RequestToBehaviourEvent::GenerateEvent(event) => {
+                let converted_event = event.into();
+                let mut is_event_muted = false;
+                match converted_event {
+                    Event::NewInboundSession { inbound_session_id, .. } => {
+                        self.session_id_to_peer_id_and_connection_id
+                            .insert(inbound_session_id.into(), (peer_id, connection_id));
+                    }
+                    Event::SessionFailed { session_id, .. }
+                    | Event::SessionFinishedSuccessfully { session_id, .. } => {
+                        self.session_id_to_peer_id_and_connection_id.remove(&session_id);
+                        let is_dropped = self.dropped_sessions.remove(&session_id);
+                        if is_dropped {
+                            is_event_muted = true;
+                        }
+                    }
+                    Event::ReceivedData { outbound_session_id, .. } => {
+                        if self.dropped_sessions.contains(&outbound_session_id.into()) {
+                            is_event_muted = true;
+                        }
+                    }
+                }
+                if !is_event_muted {
+                    self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
+                }
             }
-            Event::SessionFailed { session_id, .. }
-            | Event::SessionClosedByRequest { session_id, .. } => {
-                self.session_id_to_peer_id_and_connection_id.remove(&session_id);
+            RequestToBehaviourEvent::NotifySessionDropped { session_id } => {
+                self.dropped_sessions.remove(&session_id);
             }
-            Event::SessionClosedByPeer { session_id } => {
-                self.session_id_to_peer_id_and_connection_id.remove(&session_id);
-            }
-            _ => {}
         }
-        self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
     }
 
     fn poll(

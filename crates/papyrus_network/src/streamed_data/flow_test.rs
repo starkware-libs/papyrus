@@ -13,7 +13,6 @@ use super::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::messages::protobuf;
 use crate::streamed_data::Config;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
-use crate::PapyrusBehaviour;
 
 const NUM_PEERS: usize = 3;
 const NUM_MESSAGES_PER_SESSION: usize = 5;
@@ -103,9 +102,7 @@ fn close_inbound_session(
     let inbound_peer_id = *inbound_swarm.local_peer_id();
     inbound_swarm
         .behaviour_mut()
-        .close_session(SessionId::InboundSessionId(
-            inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
-        ))
+        .close_inbound_session(inbound_session_ids[&(inbound_peer_id, outbound_peer_id)])
         .unwrap();
 }
 
@@ -143,12 +140,12 @@ fn check_received_data_event(
     Some((inbound_peer_id, ()))
 }
 
-fn check_outbound_session_closed_by_peer_event(
+fn check_outbound_session_finished_event(
     peer_id: PeerId,
     swarm_event: SwarmEventAlias<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
-    let SwarmEvent::Behaviour(Event::SessionClosedByPeer {
+    let SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
         session_id: SessionId::OutboundSessionId(outbound_session_id),
         ..
     }) = swarm_event
@@ -177,7 +174,7 @@ fn get_number_for_data(peer_id1: PeerId, peer_id2: PeerId, message_index: usize)
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
         Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config {
-            substream_timeout: Duration::from_secs(60),
+            session_timeout: Duration::from_secs(5),
             protocol_name: StreamProtocol::new("/"),
         })
     })
@@ -247,11 +244,7 @@ async fn everyone_sends_to_everyone() {
     collect_events_from_swarms(
         &mut swarms_stream,
         |peer_id, event| {
-            check_outbound_session_closed_by_peer_event(
-                peer_id,
-                event,
-                &outbound_session_id_to_peer_id,
-            )
+            check_outbound_session_finished_event(peer_id, event, &outbound_session_id_to_peer_id)
         },
         false,
     )

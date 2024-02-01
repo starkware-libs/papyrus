@@ -1,11 +1,8 @@
 use std::time::Duration;
 
 use clap::Parser;
-use libp2p::{StreamProtocol, Swarm};
-use papyrus_network::bin_utils::{build_swarm, dial};
-use papyrus_network::block_headers::behaviour::Behaviour;
-use papyrus_network::network_manager;
-use papyrus_network::streamed_data::Config;
+use papyrus_network::{network_manager, Config};
+use papyrus_storage::{open_storage, StorageConfig};
 
 /// A dummy P2P capable node for integration with other P2P capable nodes.
 #[derive(Parser)]
@@ -28,15 +25,19 @@ struct Args {
 async fn main() {
     let args = Args::parse();
 
-    let config = Config {
-        substream_timeout: Duration::from_secs(3600),
-        protocol_name: StreamProtocol::new("/core/headers-sync/1"),
-    };
-    let mut swarm: Swarm<Behaviour> =
-        build_swarm(args.listen_address.clone(), args.idle_connection_timeout, config);
+    let (storage_reader, _storage_writer) =
+        open_storage(StorageConfig::default()).expect("failed to open storage");
+    let mut network_manager = network_manager::NetworkManager::new(
+        Config {
+            listen_address: args.listen_address,
+            session_timeout: Duration::from_secs(10),
+            idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),
+            header_buffer_size: 100000,
+        },
+        storage_reader,
+    );
     if let Some(dial_address) = args.dial_address.as_ref() {
-        dial(&mut swarm, dial_address);
+        network_manager.dial(dial_address);
     }
-    let mut network_manager = network_manager::NetworkManager::new(swarm);
     network_manager.run().await;
 }
