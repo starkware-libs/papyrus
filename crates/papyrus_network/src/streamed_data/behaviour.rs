@@ -118,7 +118,7 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
-    dropped_outbound_sessions: HashSet<OutboundSessionId>,
+    dropped_sessions: HashSet<SessionId>,
 }
 
 impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
@@ -131,7 +131,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             session_id_to_peer_id_and_connection_id: Default::default(),
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
-            dropped_outbound_sessions: Default::default(),
+            dropped_sessions: Default::default(),
         }
     }
 
@@ -194,17 +194,14 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
 
     /// Instruct behaviour to drop outbound session. The session won't emit any events once dropped.
     /// The other peer will receive an IOError on their corresponding inbound session.
-    pub fn drop_outbound_session(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<(), SessionIdNotFoundError> {
+    pub fn drop_session(&mut self, session_id: SessionId) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
-            self.get_peer_id_and_connection_id_from_session_id(outbound_session_id.into())?;
-        if self.dropped_outbound_sessions.insert(outbound_session_id) {
+            self.get_peer_id_and_connection_id_from_session_id(session_id)?;
+        if self.dropped_sessions.insert(session_id) {
             self.pending_events.push_back(ToSwarm::NotifyHandler {
                 peer_id,
                 handler: NotifyHandler::One(connection_id),
-                event: RequestFromBehaviourEvent::DropOutboundSession { outbound_session_id },
+                event: RequestFromBehaviourEvent::DropSession { session_id },
             });
         }
         Ok(())
@@ -293,16 +290,13 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                     Event::SessionFailed { session_id, .. }
                     | Event::SessionFinishedSuccessfully { session_id, .. } => {
                         self.session_id_to_peer_id_and_connection_id.remove(&session_id);
-                        if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
-                            let is_dropped =
-                                self.dropped_outbound_sessions.remove(&outbound_session_id);
-                            if is_dropped {
-                                is_event_muted = true;
-                            }
+                        let is_dropped = self.dropped_sessions.remove(&session_id);
+                        if is_dropped {
+                            is_event_muted = true;
                         }
                     }
                     Event::ReceivedData { outbound_session_id, .. } => {
-                        if self.dropped_outbound_sessions.contains(&outbound_session_id) {
+                        if self.dropped_sessions.contains(&outbound_session_id.into()) {
                             is_event_muted = true;
                         }
                     }
@@ -311,8 +305,8 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                     self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
                 }
             }
-            RequestToBehaviourEvent::NotifyOutboundSessionDropped { outbound_session_id } => {
-                self.dropped_outbound_sessions.remove(&outbound_session_id);
+            RequestToBehaviourEvent::NotifySessionDropped { session_id } => {
+                self.dropped_sessions.remove(&session_id);
             }
         }
     }

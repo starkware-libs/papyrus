@@ -75,12 +75,11 @@ fn simulate_request_to_close_inbound_session<Query: QueryBound, Data: DataBound>
         .on_behaviour_event(RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id });
 }
 
-fn simulate_request_to_drop_outbound_session<Query: QueryBound, Data: DataBound>(
+fn simulate_request_to_drop_session<Query: QueryBound, Data: DataBound>(
     handler: &mut Handler<Query, Data>,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
-    handler
-        .on_behaviour_event(RequestFromBehaviourEvent::DropOutboundSession { outbound_session_id });
+    handler.on_behaviour_event(RequestFromBehaviourEvent::DropSession { session_id });
 }
 
 fn simulate_negotiated_inbound_session_from_swarm<Query: QueryBound, Data: DataBound>(
@@ -190,18 +189,18 @@ async fn validate_session_failed_event<Query: QueryBound, Data: DataBound + Part
     );
 }
 
-async fn validate_outbound_session_dropped_event<Query: QueryBound, Data: DataBound + PartialEq>(
+async fn validate_session_dropped_event<Query: QueryBound, Data: DataBound + PartialEq>(
     handler: &mut Handler<Query, Data>,
-    outbound_session_id: OutboundSessionId,
+    session_id: SessionId,
 ) {
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(
-            RequestToBehaviourEvent::NotifyOutboundSessionDropped {
-                outbound_session_id: event_outbound_session_id
+            RequestToBehaviourEvent::NotifySessionDropped {
+                session_id: event_session_id
             }
-        ) if event_outbound_session_id == outbound_session_id
+        ) if event_session_id == session_id
     );
 }
 
@@ -477,8 +476,8 @@ async fn outbound_session_dropped_after_negotiation() {
         outbound_session_id,
     );
 
-    simulate_request_to_drop_outbound_session(&mut handler, outbound_session_id);
-    validate_outbound_session_dropped_event(&mut handler, outbound_session_id).await;
+    simulate_request_to_drop_session(&mut handler, outbound_session_id.into());
+    validate_session_dropped_event(&mut handler, outbound_session_id.into()).await;
 
     // Need to sleep to make sure the dropping occurs on the other stream.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
@@ -511,8 +510,8 @@ async fn outbound_session_dropped_before_negotiation() {
     // consume the new outbound session event without reading it.
     handler.next().await;
 
-    simulate_request_to_drop_outbound_session(&mut handler, outbound_session_id);
-    validate_outbound_session_dropped_event(&mut handler, outbound_session_id).await;
+    simulate_request_to_drop_session(&mut handler, outbound_session_id.into());
+    validate_session_dropped_event(&mut handler, outbound_session_id.into()).await;
 
     simulate_negotiated_outbound_session_from_swarm(
         &mut handler,
@@ -524,6 +523,45 @@ async fn outbound_session_dropped_before_negotiation() {
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
     write_message(dummy_data().first().unwrap().clone(), &mut inbound_stream).await.unwrap_err();
+
+    // Need to sleep to make sure that if we did send a message the stream inside the handle will
+    // receive it
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    validate_no_events(&mut handler);
+}
+
+#[tokio::test]
+async fn inbound_session_dropped() {
+    let mut handler = Handler::<protobuf::BasicMessage, protobuf::BasicMessage>::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+    );
+
+    let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
+    let query = protobuf::BasicMessage::default();
+    let inbound_session_id = InboundSessionId { value: 1 };
+
+    simulate_negotiated_inbound_session_from_swarm(
+        &mut handler,
+        query.clone(),
+        inbound_stream,
+        inbound_session_id,
+    );
+    // consume the new inbound session event without reading it.
+    handler.next().await;
+
+    simulate_request_to_drop_session(&mut handler, inbound_session_id.into());
+    validate_session_dropped_event(&mut handler, inbound_session_id.into()).await;
+
+    // Need to sleep to make sure the dropping occurs on the other stream.
+    tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+
+    // A dropped inbound session will return EOF.
+    assert!(
+        read_message::<protobuf::BasicMessage, _>(&mut outbound_stream).await.unwrap().is_none()
+    );
 
     // Need to sleep to make sure that if we did send a message the stream inside the handle will
     // receive it

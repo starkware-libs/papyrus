@@ -45,7 +45,7 @@ pub enum Event {
         session_id: SessionId,
         session_error: SessionError,
     },
-    ProtobufConversionError(ProtobufConversionError),
+    QueryConversionError(ProtobufConversionError),
     SessionCompletedSuccessfully {
         session_id: SessionId,
     },

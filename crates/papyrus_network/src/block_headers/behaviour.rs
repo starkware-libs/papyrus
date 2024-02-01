@@ -143,8 +143,7 @@ trait BehaviourTrait {
 
     fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event>;
 
-    // This function will panic if the outbound session doesn't exist.
-    fn handle_outbound_session_failed(&mut self, outbound_session_id: OutboundSessionId);
+    fn drop_session(&mut self, session_id: SessionId);
 
     fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId>;
 
@@ -154,14 +153,14 @@ trait BehaviourTrait {
         outbound_session_id: OutboundSessionId,
     ) -> Option<Event> {
         if self.get_sessions_pending_termination().contains(&outbound_session_id.into()) {
-            self.handle_outbound_session_failed(outbound_session_id);
+            self.drop_session(outbound_session_id.into());
             return Some(Event::SessionFailed {
                 session_id: outbound_session_id.into(),
                 session_error: SessionError::ReceivedMessageAfterFin,
             });
         }
         if data.part.is_empty() {
-            self.handle_outbound_session_failed(outbound_session_id);
+            self.drop_session(outbound_session_id.into());
             return Some(Event::SessionFailed {
                 session_id: outbound_session_id.into(),
                 session_error: SessionError::IncompatibleDataError,
@@ -170,7 +169,7 @@ trait BehaviourTrait {
         let mut data_received = Vec::new();
         for message in data.part {
             let Some(message) = message.header_message.clone() else {
-                self.handle_outbound_session_failed(outbound_session_id);
+                self.drop_session(outbound_session_id.into());
                 return Some(Event::SessionFailed {
                     session_id: outbound_session_id.into(),
                     session_error: SessionError::IncompatibleDataError,
@@ -181,7 +180,7 @@ trait BehaviourTrait {
                     if let Err(error) = self
                         .store_header_pending_pairing_with_signature(header, outbound_session_id)
                     {
-                        self.handle_outbound_session_failed(outbound_session_id);
+                        self.drop_session(outbound_session_id.into());
                         return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
                             session_error: error,
@@ -194,7 +193,7 @@ trait BehaviourTrait {
                     {
                         Ok(block_header) => block_header,
                         Err(e) => {
-                            self.handle_outbound_session_failed(outbound_session_id);
+                            self.drop_session(outbound_session_id.into());
                             return Some(Event::SessionFailed {
                                 session_id: outbound_session_id.into(),
                                 session_error: e,
@@ -202,7 +201,7 @@ trait BehaviourTrait {
                         }
                     };
                     let Some(signatures) = sigs.try_into().ok() else {
-                        self.handle_outbound_session_failed(outbound_session_id);
+                        self.drop_session(outbound_session_id.into());
                         return Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
                             session_error: SessionError::IncompatibleDataError,
@@ -213,7 +212,7 @@ trait BehaviourTrait {
                 protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
                     error: Some(error),
                 }) => {
-                    self.handle_outbound_session_failed(outbound_session_id);
+                    self.drop_session(outbound_session_id.into());
                     return Some(Event::SessionFailed {
                         session_id: outbound_session_id.into(),
                         session_error: SessionError::ReceivedFin(error),
@@ -242,11 +241,13 @@ trait BehaviourTrait {
     ) -> Option<Event> {
         match in_event {
             StreamedDataEvent::NewInboundSession { query, inbound_session_id, peer_id: _ } => {
-                let query = match query.try_into() {
-                    Ok(query) => query,
-                    Err(e) => return Some(Event::ProtobufConversionError(e)),
-                };
-                Some(Event::NewInboundQuery { query, inbound_session_id })
+                match query.try_into() {
+                    Ok(query) => Some(Event::NewInboundQuery { query, inbound_session_id }),
+                    Err(e) => {
+                        self.drop_session(inbound_session_id.into());
+                        Some(Event::QueryConversionError(e))
+                    }
+                }
             }
             StreamedDataEvent::SessionFailed { session_id, error } => Some(Event::SessionFailed {
                 session_id,
@@ -296,10 +297,10 @@ impl BehaviourTrait for Behaviour {
         }
     }
 
-    fn handle_outbound_session_failed(&mut self, outbound_session_id: OutboundSessionId) {
-        self.streamed_data_behaviour
-            .drop_outbound_session(outbound_session_id)
-            .expect("Received data on non existing outbound session");
+    fn drop_session(&mut self, session_id: SessionId) {
+        // Ignoring errors if they occur because an error here means the session doesn't exist, and
+        // if the session doesn't exist we don't need to drop it.
+        let _ = self.streamed_data_behaviour.drop_session(session_id);
     }
 
     fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId> {
