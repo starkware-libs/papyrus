@@ -7,14 +7,16 @@ use libp2p::swarm::NetworkBehaviour;
 use libp2p::{noise, yamux, Multiaddr, Swarm, SwarmBuilder};
 
 pub fn build_swarm<Behaviour: NetworkBehaviour>(
-    listen_address: String,
+    listen_addresses: Vec<String>,
     idle_connection_timeout: Duration,
     behaviour: Behaviour,
 ) -> Swarm<Behaviour>
 where
 {
-    let listen_address = Multiaddr::from_str(&listen_address)
-        .unwrap_or_else(|_| panic!("Unable to parse address {}", listen_address));
+    let listen_addresses = listen_addresses.iter().map(|listen_address| {
+        Multiaddr::from_str(&listen_address)
+            .unwrap_or_else(|_| panic!("Unable to parse address {}", listen_address))
+    });
 
     let key_pair = Keypair::generate_ed25519();
     let mut swarm = SwarmBuilder::with_existing_identity(key_pair)
@@ -26,9 +28,11 @@ where
         .expect("Error while building the swarm")
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(idle_connection_timeout))
         .build();
-    swarm
-        .listen_on(listen_address.clone())
-        .unwrap_or_else(|_| panic!("Error while binding to {}", listen_address));
+    for listen_address in listen_addresses {
+        swarm
+            .listen_on(listen_address.clone())
+            .unwrap_or_else(|_| panic!("Error while binding to {}", listen_address));
+    }
     swarm
 }
 

@@ -11,8 +11,11 @@ pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
 
+use std::collections::BTreeMap;
 use std::time::Duration;
 
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use starknet_api::block::BlockNumber;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -29,10 +32,54 @@ pub struct BlockQuery {
     pub step: u64,
 }
 
-// TODO: implement the SerializeConfig trait.
 pub struct Config {
-    pub listen_address: String,
+    pub listen_addresses: Vec<String>,
     pub session_timeout: Duration,
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
+}
+
+impl SerializeConfig for Config {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "listen_addresses",
+                &self.listen_addresses,
+                "The addresses that the peer listens on for incoming connections.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "session_timeout",
+                &self.session_timeout.as_secs(),
+                "Maximal time in seconds that each session can take before failing on timeout.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "idle_connection_timeout",
+                &self.idle_connection_timeout.as_secs(),
+                "Amount of time that a connection with no active sessions will stay alive.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "header_buffer_size",
+                &self.header_buffer_size,
+                "Size of the buffer for headers read from the storage.",
+                ParamPrivacyInput::Public,
+            ),
+        ])
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            listen_addresses: vec![
+                "/ip4/127.0.0.1/udp/10000/quic-v1".to_owned(),
+                "/ip4/127.0.0.1/tcp/10001".to_owned(),
+            ],
+            session_timeout: Duration::from_secs(10),
+            idle_connection_timeout: Duration::from_secs(10),
+            header_buffer_size: 100000,
+        }
+    }
 }

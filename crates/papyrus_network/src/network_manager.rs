@@ -25,11 +25,15 @@ impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
     pub fn new(config: Config, storage_reader: StorageReader) -> Self {
-        let Config { listen_address, session_timeout, idle_connection_timeout, header_buffer_size } =
-            config;
+        let Config {
+            listen_addresses,
+            session_timeout,
+            idle_connection_timeout,
+            header_buffer_size,
+        } = config;
 
         let swarm = build_swarm(
-            listen_address,
+            listen_addresses,
             idle_connection_timeout,
             BlockHeadersBehaviour::new(session_timeout),
         );
