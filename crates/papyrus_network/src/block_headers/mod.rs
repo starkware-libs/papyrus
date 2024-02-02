@@ -4,7 +4,7 @@ use prost_types::Timestamp;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
 use starknet_api::core::GlobalRoot;
 use starknet_api::crypto::Signature;
-use starknet_api::hash::StarkHash;
+use starknet_types_core::felt::Felt;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
@@ -67,13 +67,14 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
                         let bytes: [u8; 32] = bytes
                             .try_into()
                             .map_err(|_| ProtobufConversionError::BytesDataLengthMismatch)?;
-                        let block_hash = BlockHash(StarkHash::new(bytes).map_err(|_| {
-                            // OutOfRange is the only StarknetApiError that StarkHash::new will
+                        let block_hash = BlockHash(Felt::from_bytes_be(&bytes));
+                        if bytes != block_hash.0.to_bytes_be() {
+                            // OutOfRange is the only StarknetApiError that Felt::new will
                             // practically return
-                            // TODO(shahak): Enforce StarkHash::new to return only OutOfRange by
+                            // TODO(shahak): Enforce Felt::new to return only OutOfRange by
                             // defining a more limited StarknetApiError.
-                            ProtobufConversionError::OutOfRangeValue
-                        })?);
+                            return Err(ProtobufConversionError::OutOfRangeValue);
+                        }
                         BlockHashOrNumber::Hash(block_hash)
                     }
                 };
@@ -111,7 +112,7 @@ impl From<BlockQuery> for protobuf::BlockHeadersRequest {
                         }
                         BlockHashOrNumber::Hash(BlockHash(stark_hash)) => {
                             Some(protobuf::iteration::Start::Header(protobuf::Hash {
-                                elements: stark_hash.bytes().to_vec(),
+                                elements: stark_hash.to_bytes_be().to_vec(),
                             }))
                         }
                     },
@@ -197,13 +198,15 @@ impl TryFrom<protobuf::Signatures> for Vec<Signature> {
 impl From<BlockHeader> for protobuf::BlockHeader {
     fn from(value: BlockHeader) -> Self {
         Self {
-            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
+            parent_header: Some(protobuf::Hash {
+                elements: value.parent_hash.0.to_bytes_be().to_vec(),
+            }),
             number: value.block_number.0,
             sequencer_address: Some(protobuf::Address {
-                elements: value.sequencer.0.key().bytes().to_vec(),
+                elements: value.sequencer.0.to_bytes_be().to_vec(),
             }),
             state: Some(protobuf::Patricia {
-                root: Some(protobuf::Hash { elements: value.state_root.0.bytes().to_vec() }),
+                root: Some(protobuf::Hash { elements: value.state_root.0.to_bytes_be().to_vec() }),
                 height: 0,
             }),
             // TODO: fix timestamp conversion and

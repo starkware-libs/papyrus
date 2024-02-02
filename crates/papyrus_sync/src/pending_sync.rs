@@ -11,8 +11,9 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ClassHash;
 // TODO(shahak): Consider adding genesis hash to the config to support chains that have
 // different genesis hash.
-use starknet_api::hash::{StarkFelt, GENESIS_HASH};
+use starknet_api::hash::GENESIS_HASH;
 use starknet_client::reader::{DeclaredClassHashEntry, PendingData};
+use starknet_types_core::felt::Felt;
 use tokio::sync::RwLock;
 use tracing::{debug, trace};
 
@@ -36,9 +37,7 @@ pub(crate) async fn sync_pending_data<
     let header_marker = txn.get_header_marker()?;
     // TODO: Consider extracting this functionality to different а function.
     let latest_block_hash = match header_marker {
-        BlockNumber(0) => {
-            BlockHash(StarkFelt::try_from(GENESIS_HASH).expect("Invalid genesis hash."))
-        }
+        BlockNumber(0) => BlockHash(Felt::from(GENESIS_HASH)),
         _ => {
             txn.get_block_header(
                 header_marker

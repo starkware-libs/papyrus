@@ -14,9 +14,10 @@ lazy_static.workspace = true
 serde.workspace = true
 starknet_api.workspace = true
 starknet-crypto.workspace = true
+starknet-types-core.workspace = true
 
 [dev-dependencies]
 pretty_assertions.workspace = true
-serde_json = { workspace = true, features = ["arbitrary_precision"]}
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 sha3.workspace = true
 test_utils = { path = "../test_utils" }

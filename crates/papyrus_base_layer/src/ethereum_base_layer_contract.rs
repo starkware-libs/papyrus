@@ -11,8 +11,8 @@ use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::hash::StarkHash;
 use starknet_api::StarknetApiError;
+use starknet_types_core::felt::Felt;
 use url::ParseError;
 
 use crate::BaseLayerContract;
@@ -111,7 +111,10 @@ impl BaseLayerContract for EthereumBaseLayerContract {
 
         Ok(Some((
             BlockNumber(state_block_number.as_u64()),
-            BlockHash(StarkHash::try_from(state_block_hash.encode_hex().as_str())?),
+            BlockHash(
+                Felt::from_hex(state_block_hash.encode_hex().as_str())
+                    .expect("Invalid starknet block hash"),
+            ),
         )))
     }
 }

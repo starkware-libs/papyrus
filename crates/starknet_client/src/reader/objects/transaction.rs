@@ -7,38 +7,16 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use starknet_api::core::{
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    EntryPointSelector,
-    EthAddress,
-    Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
 };
-use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
-    AccountDeploymentData,
-    Calldata,
-    ContractAddressSalt,
-    DeclareTransactionOutput,
-    DeployAccountTransactionOutput,
-    DeployTransactionOutput,
-    Event,
-    Fee,
-    InvokeTransactionOutput,
-    L1HandlerTransactionOutput,
-    L1ToL2Payload,
-    L2ToL1Payload,
-    MessageToL1,
-    PaymasterData,
-    ResourceBoundsMapping,
-    Tip,
-    TransactionExecutionStatus,
-    TransactionHash,
-    TransactionOffsetInBlock,
-    TransactionOutput,
-    TransactionSignature,
-    TransactionVersion,
+    AccountDeploymentData, Calldata, ContractAddressSalt, DeclareTransactionOutput,
+    DeployAccountTransactionOutput, DeployTransactionOutput, Event, Fee, InvokeTransactionOutput,
+    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, PaymasterData,
+    ResourceBoundsMapping, Tip, TransactionExecutionStatus, TransactionHash,
+    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::reader::ReaderClientError;
 
@@ -202,15 +180,19 @@ impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::Decl
     type Error = ReaderClientError;
 
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
-        match declare_tx.version {
-            TransactionVersion::ZERO => Ok(Self::V0(declare_tx.try_into()?)),
-            TransactionVersion::ONE => Ok(Self::V1(declare_tx.try_into()?)),
-            TransactionVersion::TWO => Ok(Self::V2(declare_tx.try_into()?)),
-            TransactionVersion::THREE => Ok(Self::V3(declare_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
+        if declare_tx.version == TransactionVersion::ZERO {
+            Ok(Self::V0(declare_tx.try_into()?))
+        } else if declare_tx.version == TransactionVersion::ONE {
+            Ok(Self::V1(declare_tx.try_into()?))
+        } else if declare_tx.version == TransactionVersion::TWO {
+            Ok(Self::V2(declare_tx.try_into()?))
+        } else if declare_tx.version == TransactionVersion::THREE {
+            Ok(Self::V3(declare_tx.try_into()?))
+        } else {
+            Err(ReaderClientError::BadTransaction {
                 tx_hash: declare_tx.transaction_hash,
                 msg: format!("Declare version {:?} is not supported.", declare_tx.version),
-            }),
+            })
         }
     }
 }
@@ -369,18 +351,22 @@ impl TryFrom<IntermediateDeployAccountTransaction>
     fn try_from(
         deploy_account_tx: IntermediateDeployAccountTransaction,
     ) -> Result<Self, ReaderClientError> {
-        match deploy_account_tx.version {
-            TransactionVersion::ONE => Ok(Self::V1(deploy_account_tx.try_into()?)),
+        if deploy_account_tx.version == TransactionVersion::ONE {
+            Ok(Self::V1(deploy_account_tx.try_into()?))
+        } else if deploy_account_tx.version ==
             // Since v3 transactions, all transaction types are aligned with respect to the version,
             // v2 was skipped in the Deploy Account type.
-            TransactionVersion::THREE => Ok(Self::V3(deploy_account_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
+            TransactionVersion::THREE
+        {
+            Ok(Self::V3(deploy_account_tx.try_into()?))
+        } else {
+            Err(ReaderClientError::BadTransaction {
                 tx_hash: deploy_account_tx.transaction_hash,
                 msg: format!(
                     "DeployAccount version {:?} is not supported.",
                     deploy_account_tx.version
                 ),
-            }),
+            })
         }
     }
 }
@@ -495,16 +481,21 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     type Error = ReaderClientError;
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
-        match invoke_tx.version {
-            TransactionVersion::ZERO => Ok(Self::V0(invoke_tx.try_into()?)),
-            TransactionVersion::ONE => Ok(Self::V1(invoke_tx.try_into()?)),
+        if invoke_tx.version == TransactionVersion::ZERO {
+            Ok(Self::V0(invoke_tx.try_into()?))
+        } else if invoke_tx.version == TransactionVersion::ONE {
+            Ok(Self::V1(invoke_tx.try_into()?))
+        } else if invoke_tx.version ==
             // Since v3 transactions, all transaction types are aligned with respect to the version,
             // v2 was skipped in the Invoke type.
-            TransactionVersion::THREE => Ok(Self::V3(invoke_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
+            TransactionVersion::THREE
+        {
+            Ok(Self::V3(invoke_tx.try_into()?))
+        } else {
+            Err(ReaderClientError::BadTransaction {
                 tx_hash: invoke_tx.transaction_hash,
                 msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
-            }),
+            })
         }
     }
 }
@@ -741,7 +732,7 @@ impl TransactionReceipt {
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
-pub struct L1ToL2Nonce(pub StarkHash);
+pub struct L1ToL2Nonce(pub Felt);
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
 pub struct L1ToL2Message {

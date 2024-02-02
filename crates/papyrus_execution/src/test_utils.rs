@@ -4,6 +4,7 @@ use blockifier::abi::abi_utils::get_storage_var_address;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use lazy_static::lazy_static;
+use num_traits::ToPrimitive;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
@@ -11,36 +12,19 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::{StorageReader, StorageWriter};
 use serde::de::DeserializeOwned;
 use starknet_api::block::{
-    BlockBody,
-    BlockHash,
-    BlockHeader,
-    BlockNumber,
-    BlockTimestamp,
-    GasPrice,
+    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ChainId,
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    Nonce,
-    PatriciaKey,
+    ChainId, ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::transaction::{
-    Calldata,
-    DeclareTransactionV0V1,
-    DeclareTransactionV2,
-    DeployAccountTransaction,
-    DeployAccountTransactionV1,
-    Fee,
-    InvokeTransaction,
-    InvokeTransactionV1,
-    TransactionHash,
+    Calldata, DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
+    DeployAccountTransactionV1, Fee, InvokeTransaction, InvokeTransactionV1, TransactionHash,
 };
-use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, class_hash, contract_address, patricia_key};
+use starknet_types_core::felt::Felt;
 use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
@@ -53,17 +37,17 @@ lazy_static! {
     pub static ref GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
     pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
-    pub static ref SEQUENCER_ADDRESS: ContractAddress = contract_address!("0xa");
-    pub static ref DEPRECATED_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1");
-    pub static ref CONTRACT_ADDRESS: ContractAddress = contract_address!("0x2");
-    pub static ref ACCOUNT_CLASS_HASH: ClassHash = class_hash!("0x333");
-    pub static ref ACCOUNT_ADDRESS: ContractAddress = contract_address!("0x444");
+    pub static ref SEQUENCER_ADDRESS: ContractAddress = contract_address!(0xa);
+    pub static ref DEPRECATED_CONTRACT_ADDRESS: ContractAddress = contract_address!(0x1);
+    pub static ref CONTRACT_ADDRESS: ContractAddress = contract_address!(0x2);
+    pub static ref ACCOUNT_CLASS_HASH: ClassHash = class_hash!(0x333);
+    pub static ref ACCOUNT_ADDRESS: ContractAddress = contract_address!(0x444);
     // Taken from the trace of the deploy account transaction.
     pub static ref NEW_ACCOUNT_ADDRESS: ContractAddress =
-        contract_address!("0x0153ade9ef510502c4f3b879c049dcc3ad5866706cae665f0d9df9b01e794fdb");
-    pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!("0x1010");
-    pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
-    pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
+        contract_address!(Felt::from_hex("0x0153ade9ef510502c4f3b879c049dcc3ad5866706cae665f0d9df9b01e794fdb").unwrap());
+    pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!(0x1010);
+    pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!(0x1001);
+    pub static ref ACCOUNT_INITIAL_BALANCE: Felt = Felt::from(2 * MAX_FEE.0);
 }
 
 fn get_test_instance<T: DeserializeOwned>(path_in_resource_dir: &str) -> T {
@@ -86,15 +70,15 @@ pub fn get_test_account_class() -> DeprecatedContractClass {
 }
 
 pub fn prepare_storage(mut storage_writer: StorageWriter) {
-    let class_hash0 = class_hash!("0x2");
-    let class_hash1 = class_hash!("0x1");
+    let class_hash0 = class_hash!(0x2);
+    let class_hash1 = class_hash!(0x1);
 
     let minter_var_address = get_storage_var_address("permitted_minter", &[]);
 
     let account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
+        get_storage_var_address("ERC20_balances", &[ACCOUNT_ADDRESS.0.to_felt()]);
     let new_account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
+        get_storage_var_address("ERC20_balances", &[NEW_ACCOUNT_ADDRESS.0.to_felt()]);
 
     storage_writer
         .begin_rw_txn()
@@ -126,7 +110,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
                         account_balance_key => *ACCOUNT_INITIAL_BALANCE,
                         new_account_balance_key => *ACCOUNT_INITIAL_BALANCE,
                         // Give the first account mint permission (what is this?).
-                        minter_var_address => *ACCOUNT_ADDRESS.0.key()
+                        minter_var_address => ACCOUNT_ADDRESS.0.to_felt()
                     ),
                 ),
                 declared_classes: indexmap!(
@@ -158,8 +142,8 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
                 eth_l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!(1_u128)),
-                parent_hash: BlockHash(stark_felt!(0_u128)),
+                block_hash: BlockHash(Felt::ONE),
+                parent_hash: BlockHash(Felt::ZERO),
                 ..Default::default()
             },
         )
@@ -226,16 +210,16 @@ impl TxsScenarioBuilder {
         only_query: OnlyQuery,
     ) -> Self {
         let calldata = calldata![
-            *contract_address.0.key(),             // Contract address.
+            contract_address.0.to_felt(),          // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            Felt::ONE,                             // Calldata length.
+            Felt::TWO                              // Calldata: num.
         ];
         let nonce = match nonce {
             None => self.next_nonce(sender_address),
             Some(nonce) => {
                 let override_next_nonce: u128 =
-                    u64::try_from(nonce.0).expect("Nonce should fit in u64.").into();
+                    nonce.0.to_u64().expect("Nonce should fit in u64.").into();
                 self.sender_to_nonce.insert(sender_address, override_next_nonce + 1);
                 nonce
             }
@@ -290,7 +274,7 @@ impl TxsScenarioBuilder {
         let tx = ExecutableTransactionInput::DeployAccount(
             DeployAccountTransaction::V1(DeployAccountTransactionV1 {
                 max_fee: *MAX_FEE,
-                nonce: Nonce(stark_felt!(0_u128)),
+                nonce: Nonce(Felt::ZERO),
                 class_hash: *ACCOUNT_CLASS_HASH,
                 ..Default::default()
             }),
@@ -305,13 +289,13 @@ impl TxsScenarioBuilder {
     fn next_nonce(&mut self, sender_address: ContractAddress) -> Nonce {
         match self.sender_to_nonce.get_mut(&sender_address) {
             Some(current) => {
-                let res = Nonce(stark_felt!(*current));
+                let res = Nonce(Felt::from(*current));
                 *current += 1;
                 res
             }
             None => {
                 self.sender_to_nonce.insert(sender_address, 1);
-                Nonce(stark_felt!(0_u128))
+                Nonce(Felt::ZERO)
             }
         }
     }

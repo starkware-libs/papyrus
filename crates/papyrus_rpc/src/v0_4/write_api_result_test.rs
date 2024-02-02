@@ -1,14 +1,10 @@
 use serde::Serialize;
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
 use starknet_api::transaction::TransactionHash;
 use starknet_client::writer::objects::response::{
-    DeclareResponse,
-    DeployAccountResponse,
-    InvokeResponse,
-    SuccessfulStarknetErrorCode,
+    DeclareResponse, DeployAccountResponse, InvokeResponse, SuccessfulStarknetErrorCode,
 };
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};
 
 use super::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
@@ -55,7 +51,7 @@ fn add_deploy_account_ok_result_fits_rpc() {
 
 #[test]
 fn add_invoke_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
+    let transaction_hash = TransactionHash(Felt::from_hex_unchecked("0x12345"));
     let ok_result = AddInvokeOkResult::from(InvokeResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,
@@ -66,8 +62,8 @@ fn add_invoke_ok_result_from_response() {
 
 #[test]
 fn add_declare_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
-    let class_hash = ClassHash(stark_felt!("0xabcde"));
+    let transaction_hash = TransactionHash(Felt::from_hex_unchecked("0x12345"));
+    let class_hash = ClassHash(Felt::from_hex_unchecked("0xabcde"));
     let ok_result = AddDeclareOkResult::from(DeclareResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,
@@ -79,8 +75,9 @@ fn add_declare_ok_result_from_response() {
 
 #[test]
 fn add_deploy_account_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
-    let contract_address = ContractAddress(PatriciaKey::try_from(stark_felt!("0xabcde")).unwrap());
+    let transaction_hash = TransactionHash(Felt::from_hex_unchecked("0x12345"));
+    let contract_address =
+        ContractAddress(PatriciaKey::try_from(Felt::from_hex_unchecked("0xabcde")).unwrap());
     let ok_result = AddDeployAccountOkResult::from(DeployAccountResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,

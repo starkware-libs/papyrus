@@ -7,18 +7,12 @@ use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::objects::{
-    PendingData as ExecutionPendingData,
-    TransactionSimulationOutput,
-    TransactionTrace,
+    PendingData as ExecutionPendingData, TransactionSimulationOutput, TransactionTrace,
 };
 use papyrus_execution::{
-    estimate_fee as exec_estimate_fee,
-    execute_call,
-    execution_utils,
-    simulate_transactions as exec_simulate_transactions,
-    ExecutableTransactionInput,
-    ExecutionConfigByBlock,
-    ExecutionError,
+    estimate_fee as exec_estimate_fee, execute_call, execution_utils,
+    simulate_transactions as exec_simulate_transactions, ExecutableTransactionInput,
+    ExecutionConfigByBlock, ExecutionError,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -28,96 +22,52 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
-use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::hash::GENESIS_HASH;
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
-    EventContent,
-    EventIndexInTransactionOutput,
-    Fee,
-    Transaction as StarknetApiTransaction,
-    TransactionHash,
-    TransactionOffsetInBlock,
+    EventContent, EventIndexInTransactionOutput, Fee, Transaction as StarknetApiTransaction,
+    TransactionHash, TransactionOffsetInBlock,
 };
 use starknet_client::reader::objects::pending_data::{
-    PendingBlock,
-    PendingStateUpdate as ClientPendingStateUpdate,
+    PendingBlock, PendingStateUpdate as ClientPendingStateUpdate,
 };
 use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
+use starknet_types_core::felt::Felt;
 use tokio::sync::RwLock;
 use tracing::{instrument, trace, warn};
 
 use super::super::block::{
-    get_accepted_block_number,
-    get_block_header_by_number,
-    Block,
-    BlockHeader,
-    BlockNotRevertedValidator,
-    GeneralBlockHeader,
-    PendingBlockHeader,
-    ResourcePrice,
+    get_accepted_block_number, get_block_header_by_number, Block, BlockHeader,
+    BlockNotRevertedValidator, GeneralBlockHeader, PendingBlockHeader, ResourcePrice,
 };
 use super::super::broadcasted_transaction::{
-    BroadcastedDeclareTransaction,
-    BroadcastedTransaction,
+    BroadcastedDeclareTransaction, BroadcastedTransaction,
 };
 use super::super::error::{
-    contract_error,
-    ContractError,
-    JsonRpcError,
-    BLOCK_NOT_FOUND,
-    CLASS_HASH_NOT_FOUND,
-    CONTRACT_NOT_FOUND,
-    INVALID_TRANSACTION_HASH,
-    INVALID_TRANSACTION_INDEX,
-    NO_BLOCKS,
-    PAGE_SIZE_TOO_BIG,
-    TOO_MANY_KEYS_IN_FILTER,
-    TRANSACTION_HASH_NOT_FOUND,
+    contract_error, ContractError, JsonRpcError, BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND,
+    CONTRACT_NOT_FOUND, INVALID_TRANSACTION_HASH, INVALID_TRANSACTION_INDEX, NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG, TOO_MANY_KEYS_IN_FILTER, TRANSACTION_HASH_NOT_FOUND,
 };
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
-    get_block_tx_hashes_by_number,
-    get_block_txs_by_number,
-    Event,
-    GeneralTransactionReceipt,
-    L1HandlerMsgHash,
-    MessageFromL1,
-    PendingTransactionFinalityStatus,
-    PendingTransactionOutput,
-    PendingTransactionReceipt,
-    TransactionOutput,
-    TransactionReceipt,
-    TransactionStatus,
-    TransactionWithHash,
-    Transactions,
-    TypedDeployAccountTransaction,
-    TypedInvokeTransactionV1,
+    get_block_tx_hashes_by_number, get_block_txs_by_number, Event, GeneralTransactionReceipt,
+    L1HandlerMsgHash, MessageFromL1, PendingTransactionFinalityStatus, PendingTransactionOutput,
+    PendingTransactionReceipt, TransactionOutput, TransactionReceipt, TransactionStatus,
+    TransactionWithHash, Transactions, TypedDeployAccountTransaction, TypedInvokeTransactionV1,
 };
 use super::super::write_api_error::{
-    starknet_error_to_declare_error,
-    starknet_error_to_deploy_account_error,
+    starknet_error_to_declare_error, starknet_error_to_deploy_account_error,
     starknet_error_to_invoke_error,
 };
 use super::super::write_api_result::{
-    AddDeclareOkResult,
-    AddDeployAccountOkResult,
-    AddInvokeOkResult,
+    AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult,
 };
 use super::{
-    stored_txn_to_executable_txn,
-    BlockHashAndNumber,
-    BlockId,
-    CallRequest,
-    ContinuationToken,
-    EventFilter,
-    EventsChunk,
-    FeeEstimate,
-    GatewayContractClass,
-    JsonRpcV0_5Server as JsonRpcServer,
-    SimulatedTransaction,
-    SimulationFlag,
+    stored_txn_to_executable_txn, BlockHashAndNumber, BlockId, CallRequest, ContinuationToken,
+    EventFilter, EventsChunk, FeeEstimate, GatewayContractClass,
+    JsonRpcV0_5Server as JsonRpcServer, SimulatedTransaction, SimulationFlag,
     TransactionTraceWithHash,
 };
 use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
@@ -125,10 +75,7 @@ use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::version_config::VERSION_0_5 as VERSION;
 use crate::{
-    get_block_status,
-    get_latest_block_number,
-    internal_server_error,
-    verify_storage_scope,
+    get_block_status, get_latest_block_number, internal_server_error, verify_storage_scope,
     ContinuationTokenAsStruct,
 };
 
@@ -280,7 +227,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> RpcResult<StarkFelt> {
+    ) -> RpcResult<Felt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_storage_diffs = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(
@@ -310,7 +257,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         // we'll return an error instead.
         // Contract address 0x1 is a special address, it stores the block
         // hashes. Contracts are not deployed to this address.
-        if res == StarkFelt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
+        if res == Felt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
             // check if the contract exists
             txn.get_state_reader()
                 .map_err(internal_server_error)?
@@ -442,7 +389,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             Ok(parent_block_number) => {
                 BlockHeader::from(get_block_header_by_number(&txn, parent_block_number)?).new_root
             }
-            Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
+            Err(_) => GlobalRoot(Felt::try_from(GENESIS_HASH).map_err(internal_server_error)?),
         };
 
         // Get the block state diff.
@@ -742,7 +689,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         // corresponding to the requested filter. If there are, we return a continuation token
         // pointing to the next relevant event. Otherwise, we return a continuation token None.
         let mut filtered_events = vec![];
-        if start_event_index.0.0 <= latest_block_number {
+        if start_event_index.0 .0 <= latest_block_number {
             for ((from_address, event_index), content) in txn
                 .iter_events(filter.address, start_event_index, to_block_number)
                 .map_err(internal_server_error)?
@@ -791,8 +738,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             let pending_transaction_receipts =
                 read_pending_data(&self.pending_data, &txn).await?.block.transaction_receipts;
             // Extract the first transaction offset and event offset from the starting EventIndex.
-            let (transaction_start, event_start) = if start_event_index.0.0 > latest_block_number {
-                (start_event_index.0.1.0, start_event_index.1.0)
+            let (transaction_start, event_start) = if start_event_index.0 .0 > latest_block_number {
+                (start_event_index.0 .1 .0, start_event_index.1 .0)
             } else {
                 (0, 0)
             };
@@ -861,7 +808,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<Felt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
@@ -1457,7 +1404,7 @@ async fn read_pending_data<Mode: TransactionKind>(
         None => (
             starknet_api::block::BlockHeader {
                 parent_hash: BlockHash(
-                    StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
+                    Felt::try_from(GENESIS_HASH).map_err(internal_server_error)?,
                 ),
                 ..Default::default()
             },

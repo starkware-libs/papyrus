@@ -125,12 +125,13 @@ pub enum ProtobufConversionError {
     BytesDataLengthMismatch,
 }
 
-impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
+impl TryFrom<protobuf::Felt252> for starknet_types_core::felt::Felt {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::Felt252) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
         felt.copy_from_slice(&value.elements);
-        if let Ok(stark_felt) = Self::new(felt) {
+        let stark_felt = Self::from_bytes_be(&felt);
+        if stark_felt.to_bytes_be() == felt {
             Ok(stark_felt)
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
@@ -138,19 +139,19 @@ impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
     }
 }
 
-impl From<starknet_api::hash::StarkFelt> for protobuf::Felt252 {
-    fn from(value: starknet_api::hash::StarkFelt) -> Self {
-        Self { elements: value.bytes().to_vec() }
+impl From<starknet_types_core::felt::Felt> for protobuf::Felt252 {
+    fn from(value: starknet_types_core::felt::Felt) -> Self {
+        Self { elements: value.to_bytes_be().to_vec() }
     }
 }
 
 impl From<starknet_api::block::BlockHash> for protobuf::Hash {
     fn from(value: starknet_api::block::BlockHash) -> Self {
-        Self { elements: value.0.bytes().to_vec() }
+        Self { elements: value.0.to_bytes_be().to_vec() }
     }
 }
 
-impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
+impl TryFrom<protobuf::Hash> for starknet_types_core::felt::Felt {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
@@ -158,7 +159,8 @@ impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
             return Err(ProtobufConversionError::BytesDataLengthMismatch);
         }
         felt.copy_from_slice(&value.elements);
-        if let Ok(stark_hash) = Self::new(felt) {
+        let stark_hash = Self::from_bytes_be(&felt);
+        if stark_hash.to_bytes_be() == felt {
             Ok(stark_hash)
         } else {
             Err(ProtobufConversionError::OutOfRangeValue)
@@ -174,7 +176,8 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
             return Err(ProtobufConversionError::BytesDataLengthMismatch);
         }
         felt.copy_from_slice(&value.elements);
-        if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
+        let hash = starknet_types_core::felt::Felt::from_bytes_be(&felt);
+        if hash.to_bytes_be() == felt {
             if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
                 Ok(starknet_api::core::ContractAddress(stark_felt))
             } else {

@@ -12,7 +12,10 @@ testing = ["tempfile"]
 [dependencies]
 byteorder.workspace = true
 cairo-lang-starknet.workspace = true
-cairo-lang-casm.workspace = true
+cairo-lang-casm = { workspace = true, features = [
+    "parity-scale-codec",
+    "schemars",
+] }
 cairo-lang-utils.workspace = true
 clap.workspace = true
 flate2.workspace = true
@@ -31,6 +34,7 @@ primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+starknet-types-core.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }

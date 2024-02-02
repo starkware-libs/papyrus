@@ -4,8 +4,7 @@ use std::process::Command;
 use ethers::utils::{Ganache, GanacheInstance};
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
+use starknet_types_core::felt::Felt;
 use tar::Archive;
 use tempfile::{tempdir, TempDir};
 
@@ -63,9 +62,9 @@ async fn latest_proved_block_ethereum() {
         EthereumBaseLayerConfig { node_url: node_handle.0.endpoint(), starknet_contract_address };
     let contract = EthereumBaseLayerContract::new(config).unwrap();
 
-    let first_sn_state_update = (BlockNumber(100), BlockHash(stark_felt!("0x100")));
-    let second_sn_state_update = (BlockNumber(200), BlockHash(stark_felt!("0x200")));
-    let third_sn_state_update = (BlockNumber(300), BlockHash(stark_felt!("0x300")));
+    let first_sn_state_update = (BlockNumber(100), BlockHash(Felt::from_hex_unchecked("0x100")));
+    let second_sn_state_update = (BlockNumber(200), BlockHash(Felt::from_hex_unchecked("0x200")));
+    let third_sn_state_update = (BlockNumber(300), BlockHash(Felt::from_hex_unchecked("0x300")));
 
     type Scenario = (Option<u64>, Option<(BlockNumber, BlockHash)>);
     let scenarios: Vec<Scenario> = vec![

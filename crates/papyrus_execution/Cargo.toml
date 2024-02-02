@@ -11,7 +11,7 @@ testing = ["rand", "rand_chacha", "test_utils"]
 
 [dependencies]
 anyhow.workspace = true
-blockifier.workspace = true
+blockifier = { git = "https://github.com/LucasLvy/blockifier/", rev = "cea3141" }
 cairo-lang-starknet.workspace = true
 cairo-vm.workspace = true
 indexmap.workspace = true
@@ -25,9 +25,11 @@ rand_chacha = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+starknet-types-core = { workspace = true, features = ["num-traits"] }
 test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
 tracing.workspace = true
+num-traits = "0.2.17"
 
 [dev-dependencies]
 assert_matches.workspace = true

@@ -6,18 +6,16 @@ use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_rpc::{
-    AddInvokeOkResultRPC0_4,
-    InvokeTransactionRPC0_4,
-    InvokeTransactionV1RPC0_4,
+    AddInvokeOkResultRPC0_4, InvokeTransactionRPC0_4, InvokeTransactionV1RPC0_4,
     TransactionVersion1RPC0_4,
 };
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Calldata, Fee, Transaction, TransactionSignature};
-use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, contract_address, patricia_key};
 use starknet_client::writer::objects::transaction::InvokeTransaction as SNClientInvokeTransaction;
 use starknet_core::crypto::ecdsa_sign;
 use starknet_core::types::FieldElement;
+use starknet_types_core::felt::Felt;
 
 const ETH_TO_WEI: u128 = u128::pow(10, 18);
 const MAX_FEE: u128 = ETH_TO_WEI / 1000;
@@ -32,15 +30,15 @@ const USER_A_ADDRESS: &str = "0x2eda087f4edf190224eac3fdf7f762d83052f7c83fdda674
 const USER_B_ADDRESS: &str = "0x02d23bb72da2a2c7cce1577a013c3139b4f51d2b32be2ee7825f33428f572a9d";
 
 // Returns the eth balance for the given account via the given node client.
-async fn get_eth_balance(client: &HttpClient, account: ContractAddress) -> StarkFelt {
+async fn get_eth_balance(client: &HttpClient, account: ContractAddress) -> Felt {
     let balance = client
-        .request::<Vec<StarkFelt>, _>(
+        .request::<Vec<Felt>, _>(
             "starknet_call",
             rpc_params!(
                 (
                     L2_ETH_CONTRACT_ADDRESS,
-                    EntryPointSelector(stark_felt!(BALANCE_OF_ENTRY_POINT_SELECTOR)),
-                    calldata![*account.0.key()],
+                    EntryPointSelector(Felt::from_hex(BALANCE_OF_ENTRY_POINT_SELECTOR).unwrap()),
+                    calldata![account.0.to_felt()],
                 ),
                 "latest"
             ),
@@ -60,7 +58,7 @@ async fn test_gw_integration_testnet() {
         .expect("Node url must be given in INTEGRATION_TESTNET_NODE_URL environment variable.");
     let client =
         HttpClientBuilder::default().build(format!("https://{}:443/rpc/v0_4", node_url)).unwrap();
-    let sender_address = contract_address!(USER_A_ADDRESS);
+    let sender_address = contract_address!(Felt::from_hex(USER_A_ADDRESS).unwrap());
     // Sender balance sufficient balance should be maintained outside of this test.
     let sender_balance = get_eth_balance(&client, sender_address).await;
     if sender_balance <= MAX_FEE.into() {
@@ -74,7 +72,7 @@ async fn test_gw_integration_testnet() {
         .request::<Nonce, _>("starknet_getNonce", rpc_params!["latest", sender_address])
         .await
         .unwrap();
-    let receiver_address = contract_address!(USER_B_ADDRESS);
+    let receiver_address = contract_address!(Felt::from_hex(USER_B_ADDRESS).unwrap());
 
     // Create an invoke transaction for Eth transfer with a signature placeholder.
     let mut invoke_tx = InvokeTransactionV1RPC0_4 {
@@ -84,19 +82,19 @@ async fn test_gw_integration_testnet() {
         sender_address,
         version: TransactionVersion1RPC0_4::default(),
         calldata: calldata![
-            stark_felt!(1_u8), // OpenZeppelin call array len (number of calls in this tx).
+            Felt::ONE, // OpenZeppelin call array len (number of calls in this tx).
             // Call Array (4 elements per array struct element).
-            stark_felt!(L2_ETH_CONTRACT_ADDRESS), // to
-            EntryPointSelector(stark_felt!(TRANSFER_ENTRY_POINT_SELECTOR)).0, // selector.
-            stark_felt!(0_u8),                    // data offset (in the calldata array)
-            stark_felt!(3_u8),                    /* data len (of this call in the entire
-                                                   * calldata array) */
+            Felt::from_hex(L2_ETH_CONTRACT_ADDRESS).unwrap(), // to
+            EntryPointSelector(Felt::from_hex(TRANSFER_ENTRY_POINT_SELECTOR).unwrap()).0, // selector.
+            Felt::ZERO, // data offset (in the calldata array)
+            Felt::THREE, /* data len (of this call in the entire
+                         * calldata array) */
             // Call data.
-            stark_felt!(3_u8), // Call data len.
+            Felt::THREE, // Call data len.
             // calldata for transfer - receiver and amount (uint256  = 2 felts).
-            *receiver_address.0.key(),
-            stark_felt![1_u8], // LSB
-            stark_felt![0_u8]
+            receiver_address.0.to_felt(),
+            Felt::ONE, // LSB
+            Felt::ZERO
         ],
     };
 
@@ -112,10 +110,13 @@ async fn test_gw_integration_testnet() {
             "Sender private key must be given in SENDER_PRIVATE_KEY environment variable.",
         ))
         .unwrap(),
-        &hash.0.into(),
+        &FieldElement::from_mont(hash.0.to_raw_reversed()),
     )
     .unwrap();
-    invoke_tx.signature = TransactionSignature(vec![signature.r.into(), signature.s.into()]);
+    invoke_tx.signature = TransactionSignature(vec![
+        Felt::from_bytes_be(&signature.r.to_bytes_be()),
+        Felt::from_bytes_be(&signature.s.to_bytes_be()),
+    ]);
 
     let invoke_res = client
         .request::<AddInvokeOkResultRPC0_4, _>(

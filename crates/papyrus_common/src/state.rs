@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
+use starknet_types_core::felt::Felt;
 
 /// A storage entry in a contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
     pub key: StorageKey,
-    pub value: StarkFelt,
+    pub value: Felt,
 }
 
 /// A deployed contract in StarkNet.

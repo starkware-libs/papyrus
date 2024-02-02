@@ -13,31 +13,18 @@ use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    GlobalRoot,
-    Nonce,
-    PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
-use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::{
-    Block,
-    BlockSignatureData,
-    ContractClass,
-    DeclaredClassHashEntry,
-    DeployedContract,
-    GenericContractClass,
-    MockStarknetReader,
-    ReaderClientError,
-    ReplacedClass,
-    StateUpdate,
+    Block, BlockSignatureData, ContractClass, DeclaredClassHashEntry, DeployedContract,
+    GenericContractClass, MockStarknetReader, ReaderClientError, ReplacedClass, StateUpdate,
     StorageEntry,
 };
 use starknet_client::ClientError;
+use starknet_types_core::felt::Felt;
 use tokio_stream::StreamExt;
 
 use super::state_update_stream::StateUpdateStreamConfig;
@@ -258,20 +245,20 @@ async fn stream_state_updates() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
-    let class_hash1 = ClassHash(stark_felt!("0x123"));
-    let class_hash2 = ClassHash(stark_felt!("0x456"));
-    let class_hash3 = ClassHash(stark_felt!("0x789"));
-    let class_hash4 = ClassHash(stark_felt!("0x101112"));
-    let contract_address1 = ContractAddress(patricia_key!("0xabc"));
-    let contract_address2 = ContractAddress(patricia_key!("0xdef"));
-    let contract_address3 = ContractAddress(patricia_key!("0x0abc"));
-    let nonce1 = Nonce(stark_felt!("0x123456789abcdef"));
-    let root1 = GlobalRoot(stark_felt!("0x111"));
-    let root2 = GlobalRoot(stark_felt!("0x222"));
-    let block_hash1 = BlockHash(stark_felt!("0x333"));
-    let block_hash2 = BlockHash(stark_felt!("0x444"));
-    let key = StorageKey(patricia_key!("0x555"));
-    let value = stark_felt!("0x666");
+    let class_hash1 = ClassHash(Felt::from_hex_unchecked("0x123"));
+    let class_hash2 = ClassHash(Felt::from_hex_unchecked("0x456"));
+    let class_hash3 = ClassHash(Felt::from_hex_unchecked("0x789"));
+    let class_hash4 = ClassHash(Felt::from_hex_unchecked("0x101112"));
+    let contract_address1 = ContractAddress(patricia_key!(0xabc));
+    let contract_address2 = ContractAddress(patricia_key!(0xdef));
+    let contract_address3 = ContractAddress(patricia_key!(0x0abc));
+    let nonce1 = Nonce(Felt::from_hex_unchecked("0x123456789abcdef"));
+    let root1 = GlobalRoot(Felt::from_hex_unchecked("0x111"));
+    let root2 = GlobalRoot(Felt::from_hex_unchecked("0x222"));
+    let block_hash1 = BlockHash(Felt::from_hex_unchecked("0x333"));
+    let block_hash2 = BlockHash(Felt::from_hex_unchecked("0x444"));
+    let key = StorageKey(patricia_key!(0x555));
+    let value = Felt::from_hex_unchecked("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let deprecated_contract_class1 = DeprecatedContractClass::default();
@@ -280,10 +267,10 @@ async fn stream_state_updates() {
 
     let contract_class1 = ContractClass::default();
     let contract_class2 = ContractClass::default();
-    let new_class_hash1 = ClassHash(stark_felt!("0x111"));
-    let new_class_hash2 = ClassHash(stark_felt!("0x222"));
-    let compiled_class_hash1 = CompiledClassHash(stark_felt!("0x00111"));
-    let compiled_class_hash2 = CompiledClassHash(stark_felt!("0x00222"));
+    let new_class_hash1 = ClassHash(Felt::from_hex_unchecked("0x111"));
+    let new_class_hash2 = ClassHash(Felt::from_hex_unchecked("0x222"));
+    let compiled_class_hash1 = CompiledClassHash(Felt::from_hex_unchecked("0x00111"));
+    let compiled_class_hash2 = CompiledClassHash(Felt::from_hex_unchecked("0x00222"));
     let class_hash_entry1 = DeclaredClassHashEntry {
         class_hash: new_class_hash1,
         compiled_class_hash: compiled_class_hash1,
@@ -438,8 +425,8 @@ async fn stream_compiled_classes() {
             deployed_contracts: indexmap! {},
             storage_diffs: indexmap! {},
             declared_classes: indexmap! {
-                ClassHash(stark_felt!("0x0")) => (CompiledClassHash(stark_felt!("0x0")), sn_api_ContractClass::default()),
-                ClassHash(stark_felt!("0x1")) => (CompiledClassHash(stark_felt!("0x1")), sn_api_ContractClass::default())
+                ClassHash(Felt::ZERO) => (CompiledClassHash(Felt::ZERO), sn_api_ContractClass::default()),
+                ClassHash(Felt::ONE) => (CompiledClassHash(Felt::ONE), sn_api_ContractClass::default())
             },
             deprecated_declared_classes: indexmap! {},
             nonces: indexmap! {},
@@ -452,8 +439,8 @@ async fn stream_compiled_classes() {
             deployed_contracts: indexmap! {},
             storage_diffs: indexmap! {},
             declared_classes: indexmap! {
-                ClassHash(stark_felt!("0x2")) => (CompiledClassHash(stark_felt!("0x2")), sn_api_ContractClass::default()),
-                ClassHash(stark_felt!("0x3")) => (CompiledClassHash(stark_felt!("0x3")), sn_api_ContractClass::default())
+                ClassHash(Felt::TWO) => (CompiledClassHash(Felt::TWO), sn_api_ContractClass::default()),
+                ClassHash(Felt::THREE) => (CompiledClassHash(Felt::THREE), sn_api_ContractClass::default())
             },
             deprecated_declared_classes: indexmap! {},
             nonces: indexmap! {},
@@ -462,7 +449,7 @@ async fn stream_compiled_classes() {
         indexmap! {},
     ).unwrap().commit().unwrap();
 
-    let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
+    let felts: Vec<_> = (0..4u64).map(Felt::from).collect();
     let mut mock = MockStarknetReader::new();
     for felt in felts.clone() {
         mock.expect_compiled_class_by_hash()
@@ -499,7 +486,7 @@ async fn stream_compiled_classes() {
 async fn get_class() {
     let mut mock = MockStarknetReader::new();
 
-    let deprecated_class_hash = ClassHash(StarkHash::ONE);
+    let deprecated_class_hash = ClassHash(Felt::ONE);
     let deprecated_contract_class =
         GenericContractClass::Cairo0ContractClass(DeprecatedContractClass::default());
     let deprecated_contract_class_clone = deprecated_contract_class.clone();
@@ -508,7 +495,7 @@ async fn get_class() {
         .times(1)
         .return_once(move |_x| Ok(Some(deprecated_contract_class_clone)));
 
-    let class_hash = ClassHash(StarkHash::TWO);
+    let class_hash = ClassHash(Felt::TWO);
     let contract_class = GenericContractClass::Cairo1ContractClass(ContractClass::default());
     let contract_class_clone = contract_class.clone();
     mock.expect_class_by_hash()
@@ -545,7 +532,7 @@ async fn get_class() {
 async fn get_compiled_class() {
     let mut mock = MockStarknetReader::new();
 
-    let class_hash = ClassHash(StarkHash::ONE);
+    let class_hash = ClassHash(Felt::ONE);
     let compiled_class = CasmContractClass::default();
     let compiled_class_clone = compiled_class.clone();
     mock.expect_compiled_class_by_hash()

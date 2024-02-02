@@ -9,57 +9,33 @@ use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::execution::call_info::Retdata;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use indexmap::indexmap;
+use num_traits::ToPrimitive;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{
-    ChainId,
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    Nonce,
-    PatriciaKey,
+    ChainId, ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{Calldata, Fee};
-use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, class_hash, contract_address, patricia_key};
+use starknet_types_core::felt::Felt;
 
 use crate::execution_utils::selector_from_name;
 use crate::objects::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    PriceUnit,
-    TransactionSimulationOutput,
-    TransactionTrace,
+    DeclareTransactionTrace, DeployAccountTransactionTrace, FunctionInvocationResult,
+    InvokeTransactionTrace, PriceUnit, TransactionSimulationOutput, TransactionTrace,
 };
 use crate::test_utils::{
-    execute_simulate_transactions,
-    prepare_storage,
-    TxsScenarioBuilder,
-    ACCOUNT_ADDRESS,
-    ACCOUNT_CLASS_HASH,
-    ACCOUNT_INITIAL_BALANCE,
-    CHAIN_ID,
-    CONTRACT_ADDRESS,
-    DEPRECATED_CONTRACT_ADDRESS,
-    GAS_PRICE,
-    NEW_ACCOUNT_ADDRESS,
-    SEQUENCER_ADDRESS,
+    execute_simulate_transactions, prepare_storage, TxsScenarioBuilder, ACCOUNT_ADDRESS,
+    ACCOUNT_CLASS_HASH, ACCOUNT_INITIAL_BALANCE, CHAIN_ID, CONTRACT_ADDRESS,
+    DEPRECATED_CONTRACT_ADDRESS, GAS_PRICE, NEW_ACCOUNT_ADDRESS, SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
 use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
 use crate::{
-    estimate_fee,
-    execute_call,
-    BlockExecutionConfig,
-    ExecutableTransactionInput,
-    ExecutionConfigByBlock,
-    ExecutionError,
-    FeeEstimationResult,
-    RevertedTransaction,
+    estimate_fee, execute_call, BlockExecutionConfig, ExecutableTransactionInput,
+    ExecutionConfigByBlock, ExecutionError, FeeEstimationResult, RevertedTransaction,
 };
 
 // Test calling entry points of a deprecated class.
@@ -96,7 +72,7 @@ fn execute_call_cairo0() {
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
-        Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
+        Calldata(Arc::new(vec![Felt::from(25u128)])),
         &test_block_execution_config(),
     )
     .unwrap()
@@ -112,12 +88,12 @@ fn execute_call_cairo0() {
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
-        Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
+        Calldata(Arc::new(vec![Felt::from(123u128)])),
         &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
-    assert_eq!(retdata, Retdata(vec![StarkFelt::from(123u128)]));
+    assert_eq!(retdata, Retdata(vec![Felt::from(123u128)]));
 
     // Test that the entry point can read and write to the contract storage.
     let retdata = execute_call(
@@ -128,12 +104,12 @@ fn execute_call_cairo0() {
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
-        Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
+        Calldata(Arc::new(vec![Felt::from(123u128), Felt::from(456u128)])),
         &test_block_execution_config(),
     )
     .unwrap()
     .retdata;
-    assert_eq!(retdata, Retdata(vec![StarkFelt::from(456u128)]));
+    assert_eq!(retdata, Retdata(vec![Felt::from(456u128)]));
 }
 
 // Test calling entry points of a cairo 1 class.
@@ -142,8 +118,8 @@ fn execute_call_cairo1() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     prepare_storage(storage_writer);
 
-    let key = stark_felt!(1234_u16);
-    let value = stark_felt!(18_u8);
+    let key = Felt::from_hex_unchecked("0x1234");
+    let value = Felt::from_hex_unchecked("0x18");
     let calldata = calldata![key, value];
 
     // Test that the entry point can read and write to the contract storage.
@@ -229,7 +205,7 @@ fn estimate_fee_combination() {
 
 #[test]
 fn estimate_fee_reverted() {
-    let non_existing_contract = contract_address!("0x987");
+    let non_existing_contract = contract_address!(0x987);
     let txs = TxsScenarioBuilder::default()
         .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .invoke_deprecated(*ACCOUNT_ADDRESS, non_existing_contract, None, false)
@@ -553,7 +529,7 @@ fn simulate_invoke_from_new_account() {
             *NEW_ACCOUNT_ADDRESS,
             *DEPRECATED_CONTRACT_ADDRESS,
             // the deploy account make the next nonce be 1.
-            Some(Nonce(stark_felt!(1_u128))),
+            Some(Nonce(Felt::ONE)),
             false,
         )
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
@@ -592,9 +568,13 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     prepare_storage(storage_writer);
 
     // Taken from the trace of the deploy account transaction.
-    let new_account_address = ContractAddress(patricia_key!(
-        "0x0153ade9ef510502c4f3b879c049dcc3ad5866706cae665f0d9df9b01e794fdb"
-    ));
+    let new_account_address = ContractAddress(
+        PatriciaKey::try_from(
+            Felt::from_hex("0x0153ade9ef510502c4f3b879c049dcc3ad5866706cae665f0d9df9b01e794fdb")
+                .unwrap(),
+        )
+        .unwrap(),
+    );
     let txs = TxsScenarioBuilder::default()
         // Invoke contract from a newly deployed account.
         .deploy_account()
@@ -602,7 +582,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
             new_account_address,
             *DEPRECATED_CONTRACT_ADDRESS,
             // the deploy account make the next nonce be 1.
-            Some(Nonce(stark_felt!(1_u128))),
+            Some(Nonce(Felt::ONE)),
             false,
         )
         // TODO(yair): Find out how to deploy another contract to test calling a new contract.
@@ -663,8 +643,14 @@ fn test_default_execution_config() {
 
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     let block_execution_config = BlockExecutionConfig {
-        fee_contract_address: contract_address!(
-            "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+        fee_contract_address: ContractAddress(
+            PatriciaKey::try_from(
+                Felt::from_hex(
+                    "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+                )
+                .unwrap(),
+            )
+            .unwrap(),
         ),
         invoke_tx_max_n_steps: 3_000_000,
         validate_tx_max_n_steps: 1_000_000,
@@ -684,7 +670,7 @@ fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecu
     let vm_resource_fee_cost = HashMap::new();
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     BlockExecutionConfig {
-        fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
+        fee_contract_address: contract_address!(value),
         invoke_tx_max_n_steps: value as u32,
         validate_tx_max_n_steps: value as u32,
         max_recursion_depth: value,
@@ -739,9 +725,9 @@ fn induced_state_diff() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     prepare_storage(storage_writer);
     let account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*ACCOUNT_ADDRESS.0.key()]);
+        get_storage_var_address("ERC20_balances", &[ACCOUNT_ADDRESS.0.to_felt()]);
     let sequencer_balance_key =
-        get_storage_var_address("ERC20_balances", &[*SEQUENCER_ADDRESS.0.key()]);
+        get_storage_var_address("ERC20_balances", &[SEQUENCER_ADDRESS.0.to_felt()]);
 
     // TODO(yair): Add a reverted transaction.
     let tx = TxsScenarioBuilder::default()
@@ -754,18 +740,18 @@ fn induced_state_diff() {
         execute_simulate_transactions(storage_reader, None, tx, None, true, true);
     // This is the value TxsScenarioBuilder uses for the first declared class hash.
     let mut next_declared_class_hash = 100_u128;
-    let mut account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128;
+    let mut account_balance = ACCOUNT_INITIAL_BALANCE.to_u64().unwrap() as u128;
     let mut sequencer_balance = 0_u128;
 
     account_balance -= simulation_results[0].fee.0;
     sequencer_balance += simulation_results[0].fee.0;
     let expected_invoke_deprecated = ThinStateDiff {
-        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
+        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(Felt::ONE)},
         deployed_contracts: indexmap! {},
         storage_diffs: indexmap! {
             *TEST_ERC20_CONTRACT_ADDRESS => indexmap!{
-                account_balance_key => stark_felt!(account_balance),
-                sequencer_balance_key => stark_felt!(sequencer_balance),
+                account_balance_key => Felt::from(account_balance),
+                sequencer_balance_key => Felt::from(sequencer_balance),
             },
         },
         declared_classes: indexmap! {},
@@ -777,12 +763,12 @@ fn induced_state_diff() {
     account_balance -= simulation_results[1].fee.0;
     sequencer_balance += simulation_results[1].fee.0;
     let expected_declare_class = ThinStateDiff {
-        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))},
+        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(Felt::TWO)},
         declared_classes: indexmap! {class_hash!(next_declared_class_hash) => CompiledClassHash::default()},
         storage_diffs: indexmap! {
             *TEST_ERC20_CONTRACT_ADDRESS => indexmap!{
-                account_balance_key => stark_felt!(account_balance),
-                sequencer_balance_key => stark_felt!(sequencer_balance),
+                account_balance_key => Felt::from(account_balance),
+                sequencer_balance_key => Felt::from(sequencer_balance),
             },
         },
         deployed_contracts: indexmap! {},
@@ -795,12 +781,12 @@ fn induced_state_diff() {
     account_balance -= simulation_results[2].fee.0;
     sequencer_balance += simulation_results[2].fee.0;
     let expected_declare_deprecated_class = ThinStateDiff {
-        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(3_u128))},
+        nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(Felt::THREE)},
         deprecated_declared_classes: vec![class_hash!(next_declared_class_hash)],
         storage_diffs: indexmap! {
             *TEST_ERC20_CONTRACT_ADDRESS => indexmap!{
-                account_balance_key => stark_felt!(account_balance),
-                sequencer_balance_key => stark_felt!(sequencer_balance),
+                account_balance_key => Felt::from(account_balance),
+                sequencer_balance_key => Felt::from(sequencer_balance),
             },
         },
         declared_classes: indexmap! {},
@@ -810,18 +796,18 @@ fn induced_state_diff() {
     assert_eq!(simulation_results[2].induced_state_diff, expected_declare_deprecated_class);
 
     let new_account_balance_key =
-        get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
+        get_storage_var_address("ERC20_balances", &[NEW_ACCOUNT_ADDRESS.0.to_felt()]);
     let new_account_balance =
-        u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].fee.0;
+        ACCOUNT_INITIAL_BALANCE.to_u64().unwrap() as u128 - simulation_results[3].fee.0;
 
     sequencer_balance += simulation_results[3].fee.0;
     let expected_deploy_account = ThinStateDiff {
-        nonces: indexmap! {*NEW_ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
+        nonces: indexmap! {*NEW_ACCOUNT_ADDRESS => Nonce(Felt::ONE)},
         deprecated_declared_classes: vec![],
         storage_diffs: indexmap! {
             *TEST_ERC20_CONTRACT_ADDRESS => indexmap!{
-                new_account_balance_key => stark_felt!(new_account_balance),
-                sequencer_balance_key => stark_felt!(sequencer_balance),
+                new_account_balance_key => Felt::from(new_account_balance),
+                sequencer_balance_key => Felt::from(sequencer_balance),
             },
         },
         declared_classes: indexmap! {},

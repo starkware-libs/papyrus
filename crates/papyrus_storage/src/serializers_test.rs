@@ -5,8 +5,8 @@ use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
-use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
+use starknet_types_core::felt::Felt;
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
@@ -50,7 +50,7 @@ pub(crate) use create_storage_serde_test;
 ////////////////////////////////////////////////////////////////////////
 create_storage_serde_test!(bool);
 create_storage_serde_test!(ContractAddress);
-create_storage_serde_test!(StarkHash);
+create_storage_serde_test!(Felt);
 create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);

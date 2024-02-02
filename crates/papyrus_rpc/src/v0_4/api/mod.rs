@@ -18,39 +18,25 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::Program;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{EventKey, Fee, TransactionHash, TransactionOffsetInBlock};
+use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
-    BroadcastedDeclareTransaction,
-    BroadcastedDeclareV1Transaction,
-    BroadcastedTransaction,
+    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction, BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::error::{
-    JsonRpcError,
-    BLOCK_NOT_FOUND,
-    CONTRACT_ERROR,
-    CONTRACT_NOT_FOUND,
-    INVALID_CONTINUATION_TOKEN,
+    JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND, INVALID_CONTINUATION_TOKEN,
 };
 use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
-    DeployAccountTransaction,
-    DeployAccountTransactionV1,
-    Event,
-    GeneralTransactionReceipt,
-    InvokeTransaction,
-    InvokeTransactionV0,
-    InvokeTransactionV1,
-    MessageFromL1,
-    TransactionWithHash,
-    TypedDeployAccountTransaction,
-    TypedInvokeTransactionV1,
+    DeployAccountTransaction, DeployAccountTransactionV1, Event, GeneralTransactionReceipt,
+    InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1, MessageFromL1,
+    TransactionWithHash, TypedDeployAccountTransaction, TypedInvokeTransactionV1,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};
@@ -87,7 +73,7 @@ pub trait JsonRpc {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> RpcResult<StarkFelt>;
+    ) -> RpcResult<Felt>;
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
@@ -167,7 +153,7 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>>;
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<Felt>>;
 
     /// Submits a new invoke transaction to be added to the chain.
     #[method(name = "addInvokeTransaction")]
@@ -278,7 +264,7 @@ impl ContinuationToken {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
 pub struct FeeEstimate {
-    pub gas_consumed: StarkFelt,
+    pub gas_consumed: Felt,
     pub gas_price: GasPrice,
     pub overall_fee: Fee,
 }

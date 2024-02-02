@@ -3,20 +3,15 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{
-    EntryPoint,
-    EntryPointType,
-    StorageKey,
-    ThinStateDiff as starknet_api_ThinStateDiff,
+    EntryPoint, EntryPointType, StorageKey, ThinStateDiff as starknet_api_ThinStateDiff,
 };
 use starknet_client::reader::objects::state::{
     DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
-    DeployedContract as ClientDeployedContract,
-    ReplacedClass as ClientReplacedClass,
-    StateDiff as ClientStateDiff,
-    StorageEntry as ClientStorageEntry,
+    DeployedContract as ClientDeployedContract, ReplacedClass as ClientReplacedClass,
+    StateDiff as ClientStateDiff, StorageEntry as ClientStorageEntry,
 };
+use starknet_types_core::felt::Felt;
 
 const CONTRACT_CLASS_VERSION: &str = "0.1.0";
 
@@ -157,7 +152,7 @@ pub struct StorageDiff {
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
     pub key: StorageKey,
-    pub value: StarkFelt,
+    pub value: Felt,
 }
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct EntryPointByType {
@@ -194,7 +189,7 @@ impl EntryPointByType {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub sierra_program: Vec<StarkFelt>,
+    pub sierra_program: Vec<Felt>,
     pub contract_class_version: String,
     pub entry_points_by_type: EntryPointByType,
     pub abi: String,
@@ -205,7 +200,7 @@ impl From<starknet_api::state::ContractClass> for ContractClass {
         Self {
             sierra_program: class.sierra_program,
             contract_class_version: CONTRACT_CLASS_VERSION.to_owned(),
-            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_point_by_type),
+            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_points_by_type),
             abi: class.abi,
         }
     }

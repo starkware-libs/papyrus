@@ -22,22 +22,17 @@ pub mod objects;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
-use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
+use blockifier::block_context::{BlockContext, BlockInfo, ChainInfo, FeeTokenAddresses, GasPrices};
 use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
-    CallEntryPoint,
-    CallType as BlockifierCallType,
-    EntryPointExecutionContext,
-    ExecutionResources,
+    CallEntryPoint, CallType as BlockifierCallType, EntryPointExecutionContext, ExecutionResources,
 };
-use blockifier::state::cached_state::CachedState;
+use blockifier::state::cached_state::{CachedState, GlobalContractCache};
 use blockifier::state::state_api::State;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
-    AccountTransactionContext,
-    DeprecatedAccountTransactionContext,
-    TransactionExecutionInfo,
+    AccountTransactionContext, DeprecatedAccountTransactionContext, TransactionExecutionInfo,
 };
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
@@ -53,23 +48,13 @@ use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass,
-    EntryPointType,
+    ContractClass as DeprecatedContractClass, EntryPointType,
 };
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{
-    Calldata,
-    DeclareTransaction,
-    DeclareTransactionV0V1,
-    DeclareTransactionV2,
-    DeclareTransactionV3,
-    DeployAccountTransaction,
-    Fee,
-    InvokeTransaction,
-    L1HandlerTransaction,
-    Transaction,
-    TransactionHash,
-    TransactionVersion,
+    Calldata, DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2,
+    DeclareTransactionV3, DeployAccountTransaction, Fee, InvokeTransaction, L1HandlerTransaction,
+    Transaction, TransactionHash, TransactionVersion,
 };
 use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
@@ -212,12 +197,15 @@ pub fn execute_call(
         execution_config,
     )?;
 
-    let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader,
-        state_number,
-        maybe_pending_data,
-        missing_compiled_class: None,
-    });
+    let mut cached_state = CachedState::new(
+        ExecutionStateReader {
+            storage_reader,
+            state_number,
+            maybe_pending_data,
+            missing_compiled_class: None,
+        },
+        GlobalContractCache::new(100),
+    );
     let mut context = EntryPointExecutionContext::new_invoke(
         &block_context,
         // TODO(yair): fix when supporting v3 transactions
@@ -271,6 +259,8 @@ fn create_block_context(
             GasPrices {
                 eth_l1_gas_price: pending_data.eth_l1_gas_price.0,
                 strk_l1_gas_price: pending_data.strk_l1_gas_price.0,
+                eth_l1_data_gas_price: 0,
+                strk_l1_data_gas_price: 0,
             },
             pending_data.sequencer,
         ),
@@ -285,6 +275,8 @@ fn create_block_context(
                 GasPrices {
                     eth_l1_gas_price: header.eth_l1_gas_price.0,
                     strk_l1_gas_price: header.strk_l1_gas_price.0,
+                    eth_l1_data_gas_price: 0,
+                    strk_l1_data_gas_price: 0,
                 },
                 header.sequencer,
             )
@@ -292,21 +284,27 @@ fn create_block_context(
     };
 
     Ok(BlockContext {
-        chain_id,
-        block_number,
-        block_timestamp,
-        sequencer_address,
-        // TODO(barak, 01/10/2023): Change strk_fee_token_address once it exists.
-        fee_token_addresses: FeeTokenAddresses {
-            strk_fee_token_address: execution_config.fee_contract_address,
-            eth_fee_token_address: execution_config.fee_contract_address,
-        },
-        vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
-        invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
-        validate_max_n_steps: execution_config.validate_tx_max_n_steps,
-        max_recursion_depth: execution_config.max_recursion_depth,
         // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
-        gas_prices,
+        block_info: BlockInfo {
+            block_number,
+            block_timestamp,
+            // Fee-related.
+            sequencer_address,
+            vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
+            gas_prices,
+            use_kzg_da: false,
+            // Limits.
+            invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
+            validate_max_n_steps: execution_config.validate_tx_max_n_steps,
+            max_recursion_depth: execution_config.max_recursion_depth,
+        },
+        chain_info: ChainInfo {
+            chain_id,
+            fee_token_addresses: FeeTokenAddresses {
+                strk_fee_token_address: execution_config.fee_contract_address,
+                eth_fee_token_address: execution_config.fee_contract_address,
+            },
+        },
     })
 }
 
@@ -476,8 +474,12 @@ pub fn estimate_fee(
                 Err(RevertedTransaction { index, revert_reason })
             } else {
                 let gas_price = match tx_execution_output.price_unit {
-                    PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
-                    PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+                    PriceUnit::Wei => {
+                        GasPrice(block_context.block_info.gas_prices.eth_l1_gas_price)
+                    }
+                    PriceUnit::Fri => {
+                        GasPrice(block_context.block_info.gas_prices.strk_l1_gas_price)
+                    }
                 };
                 Ok((
                     gas_price,
@@ -519,12 +521,15 @@ fn execute_transactions(
     )?;
 
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader,
-        state_number,
-        maybe_pending_data,
-        missing_compiled_class: None,
-    });
+    let mut cached_state = CachedState::new(
+        ExecutionStateReader {
+            storage_reader,
+            state_number,
+            maybe_pending_data,
+            missing_compiled_class: None,
+        },
+        GlobalContractCache::new(100),
+    );
 
     // TODO(yair): this is a temporary bug fix, delete once the blockifier is fixed and add a test.
     set_block_hash_contract(state_number, &mut cached_state)?;
@@ -541,12 +546,15 @@ fn execute_transactions(
     let mut res = vec![];
     for (transaction_index, (tx, tx_hash)) in txs.into_iter().zip(tx_hashes.into_iter()).enumerate()
     {
-        let price_unit = match tx.transaction_version() {
-            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
-                PriceUnit::Wei
-            }
-            // From V3 all transactions are priced in Fri.
-            _ => PriceUnit::Fri,
+        let price_unit = if tx.transaction_version() == TransactionVersion::ZERO
+            || tx.transaction_version() == TransactionVersion::ONE
+            || tx.transaction_version() == TransactionVersion::TWO
+        {
+            PriceUnit::Wei
+        }
+        // From V3 all transactions are priced in Fri.
+        else {
+            PriceUnit::Fri
         };
         let mut transactional_state = CachedState::create_transactional(&mut cached_state);
         let deprecated_declared_class_hash = match &tx {
@@ -601,15 +609,15 @@ fn set_block_hash_contract(
     cached_state: &mut CachedState<ExecutionStateReader>,
 ) -> ExecutionResult<()> {
     if state_number.is_after(BlockNumber(10)) {
-        let block_min_10 = state_number.0.0 - 10;
+        let block_min_10 = state_number.0 .0 - 10;
         let header_10_blocks_ago = cached_state
             .state
             .storage_reader
             .begin_ro_txn()?
             .get_block_header(BlockNumber(block_min_10))?
             .expect("State should be > 10.");
-
-        cached_state.set_storage_at(
+        // TODO: check this result
+        let _ = cached_state.set_storage_at(
             ContractAddress::from(1_u128),
             StorageKey::from(block_min_10),
             header_10_blocks_ago.block_hash.0,
@@ -759,8 +767,8 @@ pub fn simulate_transactions(
         .map(|(tx_execution_output, trace_constructor)| {
             let fee = tx_execution_output.execution_info.actual_fee;
             let gas_price = match tx_execution_output.price_unit {
-                PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
-                PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+                PriceUnit::Wei => GasPrice(block_context.block_info.gas_prices.eth_l1_gas_price),
+                PriceUnit::Fri => GasPrice(block_context.block_info.gas_prices.strk_l1_gas_price),
             };
             match trace_constructor(tx_execution_output.execution_info) {
                 Ok(transaction_trace) => Ok(TransactionSimulationOutput {

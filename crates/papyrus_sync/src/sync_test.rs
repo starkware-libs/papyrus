@@ -14,13 +14,14 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::hash::GENESIS_HASH;
+use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
-use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
 use starknet_client::reader::{DeclaredClassHashEntry, PendingData};
+use starknet_types_core::felt::Felt;
 use test_utils::{get_rng, GetTestInstance};
 use tokio::sync::RwLock;
 
@@ -28,28 +29,23 @@ use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::MockCentralSourceTrait;
 use crate::sources::pending::MockPendingSourceTrait;
 use crate::{
-    sort_state_diff,
-    stream_new_base_layer_block,
-    sync_pending_data,
-    GenericStateSync,
-    StateSyncError,
-    SyncConfig,
-    SyncEvent,
+    sort_state_diff, stream_new_base_layer_block, sync_pending_data, GenericStateSync,
+    StateSyncError, SyncConfig, SyncEvent,
 };
 
 // TODO(anatg): Add a test to check that the sync calls the sort_state_diff function
 // before writing to the storage.
 #[test]
 fn state_sorted() {
-    let hash0 = stark_felt!("0x0");
-    let patricia_key0 = patricia_key!("0x0");
-    let hash1 = stark_felt!("0x1");
-    let patricia_key1 = patricia_key!("0x1");
+    let hash0 = Felt::ZERO;
+    let patricia_key0 = patricia_key!(0x0);
+    let hash1 = Felt::ONE;
+    let patricia_key1 = patricia_key!(0x1);
 
     let dep_contract_0 = (ContractAddress(patricia_key0), ClassHash(hash0));
     let dep_contract_1 = (ContractAddress(patricia_key1), ClassHash(hash1));
-    let storage_key_0 = StorageKey(patricia_key!("0x0"));
-    let storage_key_1 = StorageKey(patricia_key!("0x1"));
+    let storage_key_0 = StorageKey(patricia_key!(0x0));
+    let storage_key_1 = StorageKey(patricia_key!(0x1));
     let declare_class_0 =
         (ClassHash(hash0), (CompiledClassHash::default(), ContractClass::default()));
     let declare_class_1 =
@@ -169,7 +165,7 @@ async fn stream_new_base_layer_block_no_blocks_on_base_layer() {
 fn store_base_layer_block_test() {
     let (reader, mut writer) = get_test_storage().0;
 
-    let header_hash = BlockHash(stark_felt!("0x0"));
+    let header_hash = BlockHash(Felt::ZERO);
     let header = BlockHeader {
         block_number: BlockNumber(0),
         block_hash: header_hash,
@@ -200,8 +196,8 @@ fn store_base_layer_block_test() {
     assert_matches!(res, Err(StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. }));
 
     // Trying to store a block with mismatching header.
-    let res =
-        gen_state_sync.store_base_layer_block(BlockNumber(0), BlockHash(stark_felt!("0x666")));
+    let res = gen_state_sync
+        .store_base_layer_block(BlockNumber(0), BlockHash(Felt::from_hex_unchecked("0x666")));
     assert_matches!(res, Err(StateSyncError::BaseLayerHashMismatch { .. }));
 
     // Happy flow.
@@ -286,7 +282,7 @@ async fn test_pending_sync(
 
 #[tokio::test]
 async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with no block headers.
     let (reader, _) = get_test_storage().0;
     let mut rng = get_rng();
@@ -323,7 +319,7 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::ONE), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::ONE), ..Default::default() },
         ..Default::default()
     };
 
@@ -349,8 +345,8 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
 
 #[tokio::test]
 async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
-    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(Felt::ONE);
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with one block header.
     let (reader, mut writer) = get_test_storage().0;
     writer
@@ -390,7 +386,7 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::TWO), ..Default::default() },
         ..Default::default()
     };
 
@@ -415,7 +411,7 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
 
 #[tokio::test]
 async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash() {
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with no block headers.
     let (reader, _) = get_test_storage().0;
     let mut rng = get_rng();
@@ -430,7 +426,7 @@ async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash
     };
     let new_pending_datas = vec![PendingData {
         block: PendingBlock {
-            block_hash: Some(BlockHash(StarkHash::ONE)),
+            block_hash: Some(BlockHash(Felt::ONE)),
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
@@ -457,8 +453,8 @@ async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash
 
 #[tokio::test]
 async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_hash() {
-    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(Felt::ONE);
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with one block header.
     let (reader, mut writer) = get_test_storage().0;
     writer
@@ -499,7 +495,7 @@ async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_h
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::TWO), ..Default::default() },
         ..Default::default()
     };
 
@@ -523,10 +519,10 @@ async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_h
 }
 
 #[tokio::test]
-async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_and_more_transactions()
- {
-    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_and_more_transactions(
+) {
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(Felt::ONE);
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with one block header.
     let (reader, mut writer) = get_test_storage().0;
     writer
@@ -567,7 +563,7 @@ async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::TWO), ..Default::default() },
         ..Default::default()
     };
 
@@ -592,13 +588,13 @@ async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_
 
 #[tokio::test]
 async fn pending_sync_classes_request_only_new_classes() {
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with no blocks.
     let (reader, _writer) = get_test_storage().0;
     let mut rng = get_rng();
 
-    let first_class_hash = ClassHash(StarkHash::ONE);
-    let second_class_hash = ClassHash(StarkHash::TWO);
+    let first_class_hash = ClassHash(Felt::ONE);
+    let second_class_hash = ClassHash(Felt::TWO);
 
     let first_new_pending_data = PendingData {
         block: PendingBlock {
@@ -610,7 +606,7 @@ async fn pending_sync_classes_request_only_new_classes() {
             state_diff: ClientStateDiff {
                 declared_classes: vec![DeclaredClassHashEntry {
                     class_hash: first_class_hash,
-                    compiled_class_hash: CompiledClassHash(StarkHash::ONE),
+                    compiled_class_hash: CompiledClassHash(Felt::ONE),
                 }],
                 ..Default::default()
             },
@@ -621,7 +617,7 @@ async fn pending_sync_classes_request_only_new_classes() {
     second_new_pending_data.block.transactions.push(ClientTransaction::get_test_instance(&mut rng));
     second_new_pending_data.state_update.state_diff.old_declared_contracts.push(second_class_hash);
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::ONE), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::ONE), ..Default::default() },
         ..Default::default()
     };
 
@@ -662,8 +658,8 @@ async fn pending_sync_classes_request_only_new_classes() {
 
 #[tokio::test]
 async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_block() {
-    const FIRST_BLOCK_HASH: BlockHash = BlockHash(StarkHash::ONE);
-    let genesis_hash = BlockHash(stark_felt!(GENESIS_HASH));
+    const FIRST_BLOCK_HASH: BlockHash = BlockHash(Felt::ONE);
+    let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with one block header.
     let (reader, mut writer) = get_test_storage().0;
     writer
@@ -692,21 +688,19 @@ async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_bloc
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlock { parent_block_hash: BlockHash(Felt::TWO), ..Default::default() },
         ..Default::default()
     };
 
     let mut old_pending_classes_data = PendingClasses::default();
     old_pending_classes_data.add_class(
-        ClassHash(StarkHash::ONE),
+        ClassHash(Felt::ONE),
         ApiContractClass::DeprecatedContractClass(DeprecatedContractClass::get_test_instance(
             &mut rng,
         )),
     );
-    old_pending_classes_data.add_compiled_class(
-        ClassHash(StarkHash::TWO),
-        CasmContractClass::get_test_instance(&mut rng),
-    );
+    old_pending_classes_data
+        .add_compiled_class(ClassHash(Felt::TWO), CasmContractClass::get_test_instance(&mut rng));
 
     let new_pending_datas = vec![new_pending_data.clone(), new_block_pending_data];
     let expected_pending_data = new_pending_data;

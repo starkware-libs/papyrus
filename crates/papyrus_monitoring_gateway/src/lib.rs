@@ -291,7 +291,7 @@ async fn node_config_by_secret(
 async fn metrics(prometheus_handle: Option<PrometheusHandle>) -> Response {
     match prometheus_handle {
         Some(handle) => {
-            Collector::default().prefix(PROCESS_METRICS_PREFIX).collect();
+            Collector::new(PROCESS_METRICS_PREFIX).collect();
             handle.render().into_response()
         }
         None => StatusCode::METHOD_NOT_ALLOWED.into_response(),

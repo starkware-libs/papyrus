@@ -6,23 +6,16 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
-    Block as starknet_api_block,
-    BlockHash,
-    BlockNumber,
-    BlockTimestamp,
-    GasPrice,
+    Block as starknet_api_block, BlockHash, BlockNumber, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{ContractAddress, GlobalRoot};
-use starknet_api::hash::StarkFelt;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_types_core::felt::Felt;
 
 use crate::reader::objects::transaction::{
-    L1ToL2Message,
-    Transaction,
-    TransactionReceipt,
-    TransactionType,
+    L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
 };
 use crate::reader::{ReaderClientError, ReaderClientResult};
 
@@ -246,7 +239,7 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 )]
 pub struct BlockSignatureData {
     pub block_number: BlockNumber,
-    pub signature: [StarkFelt; 2],
+    pub signature: [Felt; 2],
     pub signature_input: BlockSignatureMessage,
 }
 

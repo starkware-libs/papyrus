@@ -2,37 +2,23 @@
 #[path = "transaction_hash_test.rs"]
 mod transaction_hash_test;
 
-use std::str::FromStr;
+
 
 use lazy_static::lazy_static;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
-    DeclareTransaction,
-    DeclareTransactionV0V1,
-    DeclareTransactionV2,
-    DeclareTransactionV3,
-    DeployAccountTransaction,
-    DeployAccountTransactionV1,
-    DeployAccountTransactionV3,
-    DeployTransaction,
-    InvokeTransaction,
-    InvokeTransactionV0,
-    InvokeTransactionV1,
-    InvokeTransactionV3,
-    L1HandlerTransaction,
-    Resource,
-    ResourceBounds,
-    ResourceBoundsMapping,
-    Tip,
-    Transaction,
-    TransactionHash,
-    TransactionVersion,
+    DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2, DeclareTransactionV3,
+    DeployAccountTransaction, DeployAccountTransactionV1, DeployAccountTransactionV3,
+    DeployTransaction, InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1,
+    InvokeTransactionV3, L1HandlerTransaction, Resource, ResourceBounds, ResourceBoundsMapping,
+    Tip, Transaction, TransactionHash, TransactionVersion,
 };
 use starknet_api::StarknetApiError;
-use starknet_crypto::{pedersen_hash, poseidon_hash_many, FieldElement};
+
+use starknet_types_core::felt::Felt;
+use starknet_types_core::hash::{Pedersen, Poseidon, StarkHash};
 
 use crate::TransactionOptions;
 
@@ -43,27 +29,27 @@ const L1_GAS: &ResourceName = b"\0L1_GAS";
 const L2_GAS: &ResourceName = b"\0L2_GAS";
 
 lazy_static! {
-    static ref DECLARE: StarkFelt =
+    static ref DECLARE: Felt =
         #[allow(clippy::unwrap_used)] ascii_as_felt("declare").unwrap();
-    static ref DEPLOY: StarkFelt =
+    static ref DEPLOY: Felt =
         #[allow(clippy::unwrap_used)] ascii_as_felt("deploy").unwrap();
-    static ref DEPLOY_ACCOUNT: StarkFelt =
+    static ref DEPLOY_ACCOUNT: Felt =
         #[allow(clippy::unwrap_used)] ascii_as_felt("deploy_account").unwrap();
-    static ref INVOKE: StarkFelt =
+    static ref INVOKE: Felt =
         #[allow(clippy::unwrap_used)] ascii_as_felt("invoke").unwrap();
-    static ref L1_HANDLER: StarkFelt =
+    static ref L1_HANDLER: Felt =
         #[allow(clippy::unwrap_used)] ascii_as_felt("l1_handler").unwrap();
     // The first 250 bits of the Keccak256 hash on "constructor".
     // The correctness of this constant is enforced by a test.
-    static ref CONSTRUCTOR_ENTRY_POINT_SELECTOR: StarkFelt =
+    static ref CONSTRUCTOR_ENTRY_POINT_SELECTOR: Felt =
         #[allow(clippy::unwrap_used)]
-        StarkFelt::try_from("0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194")
+        Felt::from_hex("0x28ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194")
         .unwrap();
 
-    pub(crate) static ref ZERO: StarkFelt = StarkFelt::from(0_u8);
-    static ref ONE: StarkFelt = StarkFelt::from(1_u8);
-    static ref TWO: StarkFelt = StarkFelt::from(2_u8);
-    static ref THREE: StarkFelt = StarkFelt::from(3_u8);
+    pub(crate) static ref ZERO: Felt = Felt::from(0_u8);
+    static ref ONE: Felt = Felt::from(1_u8);
+    static ref TWO: Felt = Felt::from(2_u8);
+    static ref THREE: Felt = Felt::from(3_u8);
 }
 
 /// Calculates hash of a Starknet transaction.
@@ -180,7 +166,7 @@ pub fn validate_transaction_hash(
 
 // Collect elements for applying hash chain.
 pub(crate) struct HashChain {
-    elements: Vec<FieldElement>,
+    elements: Vec<Felt>,
 }
 
 impl HashChain {
@@ -189,63 +175,67 @@ impl HashChain {
     }
 
     // Chains a felt to the hash chain.
-    pub fn chain(mut self, felt: &StarkFelt) -> Self {
-        self.elements.push(FieldElement::from(*felt));
+    pub fn chain(mut self, felt: &Felt) -> Self {
+        self.elements.push(*felt);
         self
     }
 
     // Chains a felt to the hash chain if a condition is true.
-    pub fn chain_if(self, felt: &StarkFelt, condition: bool) -> Self {
-        if condition { self.chain(felt) } else { self }
+    pub fn chain_if(self, felt: &Felt, condition: bool) -> Self {
+        if condition {
+            self.chain(felt)
+        } else {
+            self
+        }
     }
 
     // Chains felt_if to the hash chain if a condition is true, otherwise chains felt_else.
-    pub fn chain_if_else(
-        self,
-        felt_if: &StarkFelt,
-        felt_else: &StarkFelt,
-        condition: bool,
-    ) -> Self {
-        if condition { self.chain(felt_if) } else { self.chain(felt_else) }
+    pub fn chain_if_else(self, felt_if: &Felt, felt_else: &Felt, condition: bool) -> Self {
+        if condition {
+            self.chain(felt_if)
+        } else {
+            self.chain(felt_else)
+        }
     }
 
     // Chains many felts to the hash chain.
-    pub fn chain_iter<'a>(self, felts: impl Iterator<Item = &'a StarkFelt>) -> Self {
+    pub fn chain_iter<'a>(self, felts: impl Iterator<Item = &'a Felt>) -> Self {
         felts.fold(self, |current, felt| current.chain(felt))
     }
 
     // Returns the pedersen hash of the chained felts, hashed with the length of the chain.
-    pub fn get_pedersen_hash(&self) -> StarkHash {
+    pub fn get_pedersen_hash(&self) -> Felt {
         let current_hash = self
             .elements
             .iter()
-            .fold(FieldElement::ZERO, |current_hash, felt| pedersen_hash(&current_hash, felt));
-        let n_elements = FieldElement::from(self.elements.len());
-        pedersen_hash(&current_hash, &n_elements).into()
+            .fold(Felt::ZERO, |current_hash, felt| Pedersen::hash(&current_hash, felt));
+        let n_elements = Felt::from(self.elements.len());
+        Pedersen::hash(&current_hash, &n_elements)
     }
 
     // Returns the poseidon hash of the chained felts.
-    pub fn get_poseidon_hash(&self) -> StarkHash {
-        poseidon_hash_many(&self.elements).into()
+    pub fn get_poseidon_hash(&self) -> Felt {
+        Poseidon::hash_array(&self.elements)
     }
 }
 
-pub(crate) fn ascii_as_felt(ascii_str: &str) -> Result<StarkFelt, StarknetApiError> {
-    StarkFelt::try_from(hex::encode(ascii_str).as_str())
+pub(crate) fn ascii_as_felt(ascii_str: &str) -> Result<Felt, StarknetApiError> {
+    Felt::from_hex(&hex::encode(ascii_str))
+        .map_err(|_| StarknetApiError::InvalidFeltValue { value: ascii_str.to_string() })
 }
 
 // An implementation of the SNIP: https://github.com/EvyatarO/SNIPs/blob/snip-8/SNIPS/snip-8.md
 fn get_tip_resource_bounds_hash(
     resource_bounds_mapping: &ResourceBoundsMapping,
     tip: &Tip,
-) -> Result<StarkFelt, StarknetApiError> {
+) -> Result<Felt, StarknetApiError> {
     let l1_resource_bounds =
         resource_bounds_mapping.0.get(&Resource::L1Gas).expect("Missing l1 resource");
-    let l1_resource = get_concat_resource(l1_resource_bounds, L1_GAS)?;
+    let l1_resource = get_concat_resource(l1_resource_bounds, L1_GAS);
 
     let l2_resource_bounds =
         resource_bounds_mapping.0.get(&Resource::L2Gas).expect("Missing l2 resource");
-    let l2_resource = get_concat_resource(l2_resource_bounds, L2_GAS)?;
+    let l2_resource = get_concat_resource(l2_resource_bounds, L2_GAS);
 
     Ok(HashChain::new()
         .chain(&tip.0.into())
@@ -257,16 +247,13 @@ fn get_tip_resource_bounds_hash(
 // Receives resource_bounds and resource_name and returns:
 // [0 | resource_name (56 bit) | max_amount (64 bit) | max_price_per_unit (128 bit)].
 // An implementation of the SNIP: https://github.com/EvyatarO/SNIPs/blob/snip-8/SNIPS/snip-8.md.
-fn get_concat_resource(
-    resource_bounds: &ResourceBounds,
-    resource_name: &ResourceName,
-) -> Result<StarkFelt, StarknetApiError> {
+fn get_concat_resource(resource_bounds: &ResourceBounds, resource_name: &ResourceName) -> Felt {
     let max_amount = resource_bounds.max_amount.to_be_bytes();
     let max_price = resource_bounds.max_price_per_unit.to_be_bytes();
     let concat_bytes =
         [[0_u8].as_slice(), resource_name.as_slice(), max_amount.as_slice(), max_price.as_slice()]
             .concat();
-    StarkFelt::new(concat_bytes.try_into().expect("Expect 32 bytes"))
+    Felt::from_bytes_be_slice(&concat_bytes)
 }
 
 // Receives nonce_mode and fee_mode and returns:
@@ -275,7 +262,7 @@ fn get_concat_resource(
 fn concat_data_availability_mode(
     nonce_mode: &DataAvailabilityMode,
     fee_mode: &DataAvailabilityMode,
-) -> StarkFelt {
+) -> Felt {
     (data_availability_mode_index(fee_mode)
         + (data_availability_mode_index(nonce_mode) << DATA_AVAILABILITY_MODE_BITS))
         .into()
@@ -321,7 +308,7 @@ fn get_common_deploy_transaction_hash(
         HashChain::new()
         .chain(&DEPLOY)
         .chain_if(&transaction_version.0, !is_deprecated)
-        .chain(contract_address.0.key())
+        .chain(contract_address.0.as_felt())
         .chain(&CONSTRUCTOR_ENTRY_POINT_SELECTOR)
         .chain(
             &HashChain::new()
@@ -360,7 +347,7 @@ fn get_common_invoke_transaction_v0_hash(
         HashChain::new()
         .chain(&INVOKE)
         .chain_if(&transaction_version.0, !is_deprecated) // Version
-        .chain(transaction.contract_address.0.key())
+        .chain(transaction.contract_address.0.as_felt())
         .chain(&transaction.entry_point_selector.0)
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain_if(&transaction.max_fee.0.into(), !is_deprecated)
@@ -378,7 +365,7 @@ fn get_invoke_transaction_v1_hash(
         HashChain::new()
         .chain(&INVOKE)
         .chain(&transaction_version.0)
-        .chain(transaction.sender_address.0.key())
+        .chain(transaction.sender_address.0.as_felt())
         .chain(&ZERO) // No entry point selector in invoke transaction.
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
@@ -411,7 +398,7 @@ fn get_invoke_transaction_v3_hash(
         HashChain::new()
             .chain(&INVOKE)
             .chain(&transaction_version.0)
-            .chain(transaction.sender_address.0.key())
+            .chain(transaction.sender_address.0.as_felt())
             .chain(&tip_resource_bounds_hash)
             .chain(&paymaster_data_hash)
             .chain(&ascii_as_felt(chain_id.0.as_str())?)
@@ -474,7 +461,7 @@ fn get_common_l1_handler_transaction_hash(
         HashChain::new()
         .chain_if_else(&INVOKE, &L1_HANDLER, version == L1HandlerVersions::AsInvoke)
         .chain_if(&transaction_version.0, version > L1HandlerVersions::V0Deprecated)
-        .chain(transaction.contract_address.0.key())
+        .chain(transaction.contract_address.0.as_felt())
         .chain(&transaction.entry_point_selector.0)
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
         .chain_if(&ZERO, version > L1HandlerVersions::V0Deprecated) // No fee in l1 handler transaction.
@@ -493,7 +480,7 @@ fn get_declare_transaction_v0_hash(
         HashChain::new()
         .chain(&DECLARE)
         .chain(&transaction_version.0)
-        .chain(transaction.sender_address.0.key())
+        .chain(transaction.sender_address.0.as_felt())
         .chain(&ZERO ) // No entry point selector in declare transaction.
         .chain(&HashChain::new().get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
@@ -512,7 +499,7 @@ fn get_declare_transaction_v1_hash(
         HashChain::new()
         .chain(&DECLARE)
         .chain(&transaction_version.0)
-        .chain(transaction.sender_address.0.key())
+        .chain(transaction.sender_address.0.as_felt())
         .chain(&ZERO) // No entry point selector in declare transaction.
         .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
@@ -531,7 +518,7 @@ fn get_declare_transaction_v2_hash(
         HashChain::new()
         .chain(&DECLARE)
         .chain(&transaction_version.0)
-        .chain(transaction.sender_address.0.key())
+        .chain(transaction.sender_address.0.as_felt())
         .chain(&ZERO) // No entry point selector in declare transaction.
         .chain(&HashChain::new().chain(&transaction.class_hash.0).get_pedersen_hash())
         .chain(&transaction.max_fee.0.into())
@@ -563,7 +550,7 @@ fn get_declare_transaction_v3_hash(
         HashChain::new()
             .chain(&DECLARE)
             .chain(&transaction_version.0)
-            .chain(transaction.sender_address.0.key())
+            .chain(transaction.sender_address.0.as_felt())
             .chain(&tip_resource_bounds_hash)
             .chain(&paymaster_data_hash)
             .chain(&ascii_as_felt(chain_id.0.as_str())?)
@@ -598,7 +585,7 @@ fn get_deploy_account_transaction_v1_hash(
         HashChain::new()
         .chain(&DEPLOY_ACCOUNT)
         .chain(&transaction_version.0)
-        .chain(contract_address.0.key())
+        .chain(contract_address.0.as_felt())
         .chain(&ZERO) // No entry point selector in deploy account transaction.
         .chain(&calldata_hash)
         .chain(&transaction.max_fee.0.into())
@@ -634,7 +621,7 @@ fn get_deploy_account_transaction_v3_hash(
         HashChain::new()
             .chain(&DEPLOY_ACCOUNT)
             .chain(&transaction_version.0)
-            .chain(contract_address.0.key())
+            .chain(contract_address.0.as_felt())
             .chain(&tip_resource_bounds_hash)
             .chain(&paymaster_data_hash)
             .chain(&ascii_as_felt(chain_id.0.as_str())?)
@@ -662,10 +649,14 @@ fn get_tx_version(
 
     // If only_query is true, set the 128-th bit.
     if transaction_options.only_query {
-        let query_only_bit: FieldElement =
-            FieldElement::from_str("0x100000000000000000000000000000000").expect("query_only_bit");
-        let fe: FieldElement = version.0.into();
-        version = TransactionVersion(StarkFelt::from(fe + query_only_bit));
+        let query_only_bit = Felt::from_raw_const([
+            0x7fffffff6678010,
+            0xffffffffffffffe0,
+            0x43ff,
+            0xffffffffff6f8001,
+        ]);
+        let fe = version.0;
+        version = TransactionVersion(Felt::from(fe + query_only_bit));
     }
     version
 }

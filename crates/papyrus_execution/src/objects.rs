@@ -2,48 +2,32 @@
 use std::collections::HashMap;
 
 use blockifier::execution::call_info::{
-    CallInfo,
-    OrderedEvent as BlockifierOrderedEvent,
-    OrderedL2ToL1Message as BlockifierOrderedL2ToL1Message,
-    Retdata as BlockifierRetdata,
+    CallInfo, OrderedEvent as BlockifierOrderedEvent,
+    OrderedL2ToL1Message as BlockifierOrderedL2ToL1Message, Retdata as BlockifierRetdata,
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::vm::runners::builtin_runner::{
-    BITWISE_BUILTIN_NAME,
-    EC_OP_BUILTIN_NAME,
-    HASH_BUILTIN_NAME,
-    KECCAK_BUILTIN_NAME,
-    OUTPUT_BUILTIN_NAME,
-    POSEIDON_BUILTIN_NAME,
-    RANGE_CHECK_BUILTIN_NAME,
-    SEGMENT_ARENA_BUILTIN_NAME,
-    SIGNATURE_BUILTIN_NAME,
+    BITWISE_BUILTIN_NAME, EC_OP_BUILTIN_NAME, HASH_BUILTIN_NAME, KECCAK_BUILTIN_NAME,
+    OUTPUT_BUILTIN_NAME, POSEIDON_BUILTIN_NAME, RANGE_CHECK_BUILTIN_NAME,
+    SEGMENT_ARENA_BUILTIN_NAME, SIGNATURE_BUILTIN_NAME,
 };
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources as VmExecutionResources;
 use indexmap::IndexMap;
 use itertools::Itertools;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::state::{
-    DeclaredClassHashEntry,
-    DeployedContract,
-    ReplacedClass,
-    StorageEntry,
+    DeclaredClassHashEntry, DeployedContract, ReplacedClass, StorageEntry,
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockTimestamp, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{
-    Builtin,
-    Calldata,
-    EventContent,
-    ExecutionResources,
-    Fee,
-    MessageToL1,
+    Builtin, Calldata, EventContent, ExecutionResources, Fee, MessageToL1,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::{ExecutionError, ExecutionResult};
 
@@ -344,7 +328,7 @@ impl From<BlockifierCallType> for CallType {
 
 /// The return data of a function call.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Retdata(pub Vec<StarkFelt>);
+pub struct Retdata(pub Vec<Felt>);
 
 impl From<BlockifierRetdata> for Retdata {
     fn from(retdata: BlockifierRetdata) -> Self {

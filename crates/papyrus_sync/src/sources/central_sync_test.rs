@@ -16,28 +16,19 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::ClassHash;
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
 use starknet_client::reader::PendingData;
+use starknet_types_core::felt::Felt;
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, error};
 
 use super::pending::MockPendingSourceTrait;
 use crate::sources::base_layer::{BaseLayerSourceTrait, MockBaseLayerSourceTrait};
 use crate::sources::central::{
-    BlocksStream,
-    CompiledClassesStream,
-    MockCentralSourceTrait,
-    StateUpdatesStream,
+    BlocksStream, CompiledClassesStream, MockCentralSourceTrait, StateUpdatesStream,
 };
 use crate::{
-    CentralError,
-    CentralSourceTrait,
-    GenericStateSync,
-    StateSyncError,
-    StateSyncResult,
-    SyncConfig,
+    CentralError, CentralSourceTrait, GenericStateSync, StateSyncError, StateSyncResult, SyncConfig,
 };
 
 const SYNC_SLEEP_DURATION: Duration = Duration::from_millis(100); // 100ms
@@ -624,8 +615,8 @@ async fn test_unrecoverable_sync_error_flow() {
 
 fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
     if is_reverted_block {
-        BlockHash(stark_felt!(format!("0x{}10", bn.0).as_str()))
+        BlockHash(Felt::from_hex(format!("0x{}10", bn.0).as_str()).unwrap())
     } else {
-        BlockHash(stark_felt!(format!("0x{}", bn.0).as_str()))
+        BlockHash(Felt::from_hex(format!("0x{}", bn.0).as_str()).unwrap())
     }
 }

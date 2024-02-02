@@ -60,8 +60,8 @@ use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use crate::db::serialization::NoVersionValueWrapper;
@@ -70,13 +70,7 @@ use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
-    FileHandlers,
-    MarkerKind,
-    MarkersTable,
-    OffsetKind,
-    StorageError,
-    StorageResult,
-    StorageTxn,
+    FileHandlers, MarkerKind, MarkersTable, OffsetKind, StorageError, StorageResult, StorageTxn,
 };
 
 type FileOffsetTable<'env> =
@@ -102,7 +96,7 @@ type DeployedContractsTable<'env> = TableHandle<
 type ContractStorageTable<'env> = TableHandle<
     'env,
     (ContractAddress, StorageKey, BlockNumber),
-    NoVersionValueWrapper<StarkFelt>,
+    NoVersionValueWrapper<Felt>,
     SimpleTable,
 >;
 type NoncesTable<'env> =
@@ -306,7 +300,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     }
 
     /// Returns the storage value at a given state number for a given contract and key.
-    /// If no value is stored at the given state number, returns [`StarkFelt`]::default.
+    /// If no value is stored at the given state number, returns [`Felt`]::default.
     ///
     /// # Arguments
     /// * state_number - state number to search before.
@@ -320,7 +314,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
         key: &StorageKey,
-    ) -> StorageResult<StarkFelt> {
+    ) -> StorageResult<Felt> {
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
@@ -330,12 +324,12 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
-            None => Ok(StarkFelt::default()),
+            None => Ok(Felt::default()),
             Some(((got_address, got_key, _got_block_number), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
-                    return Ok(StarkFelt::default());
+                    return Ok(Felt::default());
                 };
                 // The previous db item indeed belongs to this address and key.
                 Ok(value)
@@ -743,7 +737,7 @@ fn write_replaced_classes<'env>(
 }
 
 fn write_storage_diffs<'env>(
-    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,

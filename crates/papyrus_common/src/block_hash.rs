@@ -6,15 +6,12 @@ use std::iter::zip;
 
 use starknet_api::block::{Block, BlockBody};
 use starknet_api::core::ChainId;
-use starknet_api::hash::{pedersen_hash, StarkFelt, StarkHash};
 use starknet_api::transaction::{
-    DeployAccountTransaction,
-    Event,
-    Transaction,
-    TransactionHash,
-    TransactionOutput,
+    DeployAccountTransaction, Event, Transaction, TransactionHash, TransactionOutput,
 };
 use starknet_api::StarknetApiError;
+use starknet_types_core::felt::Felt;
+use starknet_types_core::hash::{Pedersen, StarkHash};
 
 use crate::patricia_hash_tree::calculate_root;
 use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
@@ -46,7 +43,7 @@ fn calculate_block_hash_by_version(
     block: &Block,
     version: BlockHashVersion,
     chain_id: &ChainId,
-) -> Result<StarkFelt, StarknetApiError> {
+) -> Result<Felt, StarknetApiError> {
     let (n_transactions, transactions_patricia_root) =
         get_transactions_hash_data(&block.body, &version)?;
 
@@ -58,7 +55,7 @@ fn calculate_block_hash_by_version(
         .chain(&block.header.state_root.0)
         .chain_if_else(
             &get_chain_sequencer_address(chain_id),
-            block.header.sequencer.0.key(),
+            block.header.sequencer.0.as_felt(),
             version == BlockHashVersion::V2,
         )
         .chain_if_else(&block.header.timestamp.0.into(), &ZERO, version >= BlockHashVersion::V1)
@@ -76,7 +73,7 @@ fn calculate_block_hash_by_version(
 fn get_transactions_hash_data(
     block_body: &BlockBody,
     version: &BlockHashVersion,
-) -> Result<(StarkFelt, StarkFelt), StarknetApiError> {
+) -> Result<(Felt, Felt), StarknetApiError> {
     let n_transactions = usize_into_felt(block_body.transactions.len());
     let transaction_patricia_leaves =
         zip(block_body.transactions.iter(), block_body.transaction_hashes.iter())
@@ -93,17 +90,17 @@ fn get_transaction_leaf(
     transaction: &Transaction,
     transaction_hash: &TransactionHash,
     version: &BlockHashVersion,
-) -> Result<StarkHash, StarknetApiError> {
+) -> Result<Felt, StarknetApiError> {
     let signature = if version >= &BlockHashVersion::V3 {
         get_transaction_signature(transaction)
     } else {
         get_signature_only_from_invoke(transaction)
     };
     let signature_hash = HashChain::new().chain_iter(signature.iter()).get_pedersen_hash();
-    Ok(pedersen_hash(&transaction_hash.0, &signature_hash))
+    Ok(Pedersen::hash(&transaction_hash.0, &signature_hash))
 }
 
-fn get_transaction_signature(transaction: &Transaction) -> Vec<StarkFelt> {
+fn get_transaction_signature(transaction: &Transaction) -> Vec<Felt> {
     match transaction {
         Transaction::Declare(declare) => declare.signature().0,
         Transaction::Deploy(_) => vec![],
@@ -120,15 +117,19 @@ fn get_transaction_signature(transaction: &Transaction) -> Vec<StarkFelt> {
     }
 }
 
-fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<StarkFelt> {
-    if let Transaction::Invoke(invoke) = transaction { invoke.signature().0 } else { vec![] }
+fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<Felt> {
+    if let Transaction::Invoke(invoke) = transaction {
+        invoke.signature().0
+    } else {
+        vec![]
+    }
 }
 
 // Returns the number of the events, and the Patricia root of the events.
 fn get_events_hash_data(
     transaction_outputs: &[TransactionOutput],
     version: &BlockHashVersion,
-) -> (StarkFelt, StarkFelt) {
+) -> (Felt, Felt) {
     if version < &BlockHashVersion::V1 {
         return (*ZERO, *ZERO);
     }
@@ -138,28 +139,30 @@ fn get_events_hash_data(
 }
 
 // Returns a Patricia leaf value for an event.
-fn get_event_leaf(event: &Event) -> StarkHash {
+fn get_event_leaf(event: &Event) -> Felt {
     let event_keys: Vec<_> = event.content.keys.iter().map(|key| key.0).collect();
     HashChain::new()
-        .chain(event.from_address.0.key())
+        .chain(event.from_address.0.as_felt())
         .chain(&HashChain::new().chain_iter(event_keys.iter()).get_pedersen_hash())
         .chain(&HashChain::new().chain_iter(event.content.data.0.iter()).get_pedersen_hash())
         .get_pedersen_hash()
 }
 
 // The fixed sequencer addresses of the chains that have historic blocks with block hash version 2.
-fn get_chain_sequencer_address(chain_id: &ChainId) -> StarkHash {
+fn get_chain_sequencer_address(chain_id: &ChainId) -> Felt {
     match chain_id.to_string().as_str() {
-        "SN_MAIN" => StarkHash::try_from(
-            "0x021f4b90b0377c82bf330b7b5295820769e72d79d8acd0effa0ebde6e9988bc5",
-        )
-        .expect("should be a Stark felt in hex representation"),
+        "SN_MAIN" => Felt::from_raw_const([
+            0x375aff991ca3ef5,
+            0x69b0ff646a614732,
+            0x2afb9b62dbae9765,
+            0x677e110ff9eccfed,
+        ]),
         // TODO(yoav): Add sequencers for the rest of the supported chains that have historic blocks
         // with block hash version 2.
         _ => unimplemented!("Sequencer address for chain"),
     }
 }
 
-fn usize_into_felt(u: usize) -> StarkFelt {
+fn usize_into_felt(u: usize) -> Felt {
     u128::try_from(u).expect("Expect at most 128 bits").into()
 }

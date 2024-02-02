@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHeader, BlockNumber};
-use starknet_api::hash::StarkFelt;
+use starknet_types_core::felt::Felt;
 
 use super::super::Event;
 use super::BehaviourTrait;
@@ -110,8 +110,8 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
+                signatures[0].r == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()) &&
+                signatures[0].s == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()));
             assert_eq!(outbound_session_id, session_id);
         }
     );
@@ -191,8 +191,8 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
+                signatures[0].r == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()) &&
+                signatures[0].s == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()));
             assert_eq!(outbound_session_id_b, session_id);
         }
     );
@@ -217,8 +217,8 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
             assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
+                signatures[0].r == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()) &&
+                signatures[0].s == Felt::from_bytes_be(&[1].repeat(32).to_vec().try_into().unwrap()));
             assert_eq!(outbound_session_id_a, session_id);
         }
     );

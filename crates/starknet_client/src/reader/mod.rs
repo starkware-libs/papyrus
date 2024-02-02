@@ -23,19 +23,11 @@ use tracing::{debug, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{
-    Block,
-    BlockSignatureData,
-    BlockSignatureMessage,
-    TransactionReceiptsError,
+    Block, BlockSignatureData, BlockSignatureMessage, TransactionReceiptsError,
 };
 pub use crate::reader::objects::pending_data::PendingData;
 pub use crate::reader::objects::state::{
-    ContractClass,
-    DeclaredClassHashEntry,
-    DeployedContract,
-    ReplacedClass,
-    StateDiff,
-    StateUpdate,
+    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
     StorageEntry,
 };
 #[cfg(doc)]
@@ -272,35 +264,35 @@ impl StarknetReader for StarknetFeederGatewayClient {
         if [
             #[allow(clippy::unwrap_used)]
             ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
+                starknet_types_core::felt::Felt::from_hex(
                     "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c",
                 )
                 .unwrap(),
             ),
             #[allow(clippy::unwrap_used)]
             ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
+                starknet_types_core::felt::Felt::from_hex(
                     "0x6208b3f9f94e6220f3d6a3562fe06a35a66181a202d946c3522fd28eda9ea1b",
                 )
                 .unwrap(),
             ),
             #[allow(clippy::unwrap_used)]
             ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
+                starknet_types_core::felt::Felt::from_hex(
                     "0xd6916ff38c93f834e7223a95b41d4542152d8288ff388b5d3dcdf8126a784a",
                 )
                 .unwrap(),
             ),
             #[allow(clippy::unwrap_used)]
             ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
+                starknet_types_core::felt::Felt::from_hex(
                     "0x161354521d46ca89a5b64aa41fa4e77ffeadc0f9796272d9b94227dbbb3840e",
                 )
                 .unwrap(),
             ),
             #[allow(clippy::unwrap_used)]
             ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
+                starknet_types_core::felt::Felt::from_hex(
                     "0x6a9eb910b3f83989900c8d65f9d67d67016f2528cc1b834019cf489f4f7d716",
                 )
                 .unwrap(),

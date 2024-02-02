@@ -80,13 +80,7 @@ use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::{Key, NoVersionValueWrapper, ValueSerde};
 use db::table_types::Table;
 use mmap_file::{
-    open_file,
-    FileHandler,
-    LocationInFile,
-    MMapFileError,
-    MmapFileConfig,
-    Reader,
-    Writer,
+    open_file, FileHandler, LocationInFile, MMapFileError, MmapFileConfig, Reader, Writer,
 };
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -94,9 +88,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
+use starknet_types_core::felt::Felt;
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
@@ -105,17 +99,8 @@ use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
 use crate::db::table_types::SimpleTable;
 use crate::db::{
-    open_env,
-    DbConfig,
-    DbError,
-    DbReader,
-    DbTransaction,
-    DbWriter,
-    TableHandle,
-    TableIdentifier,
-    TransactionKind,
-    RO,
-    RW,
+    open_env, DbConfig, DbError, DbReader, DbTransaction, DbWriter, TableHandle, TableIdentifier,
+    TransactionKind, RO, RW,
 };
 use crate::header::StarknetVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -435,7 +420,7 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         block_signatures: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockSignature>, SimpleTable>,
         casms: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<Felt>, SimpleTable>,
         declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>, SimpleTable>,

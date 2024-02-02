@@ -7,26 +7,16 @@ pub use blockifier::abi::abi_utils::get_storage_var_address;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, MessageToL1};
 use starknet_api::{contract_address, patricia_key};
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::objects::{
-    CallType,
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionCall,
-    FunctionInvocation,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
-    OrderedEvent,
-    OrderedL2ToL1Message,
-    PriceUnit,
-    Retdata,
-    RevertReason,
-    TransactionTrace,
+    CallType, DeclareTransactionTrace, DeployAccountTransactionTrace, FunctionCall,
+    FunctionInvocation, FunctionInvocationResult, InvokeTransactionTrace,
+    L1HandlerTransactionTrace, OrderedEvent, OrderedL2ToL1Message, PriceUnit, Retdata,
+    RevertReason, TransactionTrace,
 };
 use crate::{BlockExecutionConfig, ExecutionConfigByBlock};
 
@@ -41,7 +31,7 @@ pub fn test_block_execution_config() -> BlockExecutionConfig {
     let execution_config = test_get_default_execution_config();
     let mut block_execution_config =
         execution_config.execution_config_segments.get(&BlockNumber(0)).unwrap().clone();
-    block_execution_config.fee_contract_address = contract_address!("0x1001");
+    block_execution_config.fee_contract_address = contract_address!(0x1001);
     block_execution_config
 }
 
@@ -78,7 +68,7 @@ auto_impl_get_test_instance! {
         Call = 0,
         LibraryCall = 1,
     }
-    pub struct Retdata(pub Vec<StarkFelt>);
+    pub struct Retdata(pub Vec<Felt>);
     pub struct OrderedEvent {
         pub order: usize,
         pub event: EventContent,

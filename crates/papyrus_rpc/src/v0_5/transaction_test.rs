@@ -1,57 +1,42 @@
 use assert_matches::assert_matches;
 use camelpaste::paste;
 use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
-    ThinTransactionOutput,
+    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
 };
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
-    Calldata,
-    ContractAddressSalt,
-    Fee,
-    L1HandlerTransaction,
-    Transaction,
-    TransactionSignature,
+    Calldata, ContractAddressSalt, Fee, L1HandlerTransaction, Transaction, TransactionSignature,
     TransactionVersion,
 };
-use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, contract_address, patricia_key};
 use starknet_client::writer::objects::transaction as client_transaction;
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::{
-    DeployAccountTransaction,
-    DeployAccountTransactionV1,
-    InvokeTransaction,
-    InvokeTransactionV0,
-    InvokeTransactionV1,
-    TransactionOutput,
-    TransactionVersion0,
-    TransactionVersion1,
+    DeployAccountTransaction, DeployAccountTransactionV1, InvokeTransaction, InvokeTransactionV0,
+    InvokeTransactionV1, TransactionOutput, TransactionVersion0, TransactionVersion1,
 };
 
 lazy_static::lazy_static! {
     // A transaction from GOERLI with tx hash 0x7c9660754689dee9c6de773f1c4c9d94269ed678e7199298a9e1a19cda415ab.
     static ref L1_HANDLER_TX: L1HandlerTransaction = L1HandlerTransaction {
         version: TransactionVersion::ZERO,
-        nonce: Nonce(stark_felt!("0xc01b3")),
-        contract_address: contract_address!(
-            "0x55350a859da02cb244c8c09f29bc38047cef93d38b72033a0e8be03d24c5756"
+        nonce: Nonce(Felt::from_hex_unchecked("0xc01b3")),
+        contract_address: contract_address!(Felt::from_hex(
+            "0x55350a859da02cb244c8c09f29bc38047cef93d38b72033a0e8be03d24c5756").unwrap()
         ),
-        entry_point_selector: EntryPointSelector(stark_felt!(
+        entry_point_selector: EntryPointSelector(Felt::from_hex(
             "0x3fa70707d0e831418fb142ca8fb7483611b84e89c0c42bf1fc2a7a5c40890ad"
-        )),
+        ).unwrap()),
         calldata: calldata![
-            stark_felt!("0x18e4a8e2badb5f5950758f46f8108e2c5d357b07"),
-            stark_felt!("0x10ae809a95d34dd22538e6c30bec2e11"),
-            stark_felt!("0x8eacfcd7b4046547e3cbe5ff4f08c1f9"),
-            stark_felt!("0x99c3dd"),
-            stark_felt!("0x0")
+            Felt::from_hex("0x18e4a8e2badb5f5950758f46f8108e2c5d357b07").unwrap(),
+            Felt::from_hex("0x10ae809a95d34dd22538e6c30bec2e11").unwrap(),
+            Felt::from_hex("0x8eacfcd7b4046547e3cbe5ff4f08c1f9").unwrap(),
+            Felt::from_hex_unchecked("0x99c3dd"),
+            Felt::ZERO
         ],
     };
 }

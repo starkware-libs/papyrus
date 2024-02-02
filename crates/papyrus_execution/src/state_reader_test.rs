@@ -1,8 +1,6 @@
 use assert_matches::assert_matches;
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass,
-    ContractClassV0,
-    ContractClassV1,
+    ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
@@ -10,10 +8,7 @@ use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{
-    DeclaredClassHashEntry,
-    DeployedContract,
-    ReplacedClass,
-    StorageEntry,
+    DeclaredClassHashEntry, DeployedContract, ReplacedClass, StorageEntry,
 };
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
@@ -22,16 +17,16 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
-use starknet_api::{patricia_key, stark_felt};
+use starknet_types_core::felt::Felt;
 
 use crate::objects::PendingData;
 use crate::state_reader::ExecutionStateReader;
 use crate::test_utils::{get_test_casm, get_test_deprecated_contract_class};
 
-const CONTRACT_ADDRESS: &str = "0x2";
-const DEPRECATED_CONTRACT_ADDRESS: &str = "0x1";
+const CONTRACT_ADDRESS: u64 = 0x2;
+const DEPRECATED_CONTRACT_ADDRESS: u64 = 0x1;
 
 #[test]
 fn read_state() {
@@ -39,30 +34,30 @@ fn read_state() {
 
     let class_hash0 = ClassHash(2u128.into());
     let address0 = ContractAddress(patricia_key!(CONTRACT_ADDRESS));
-    let storage_key0 = StorageKey(patricia_key!("0x0"));
-    let storage_value0 = stark_felt!(777_u128);
-    let storage_value1 = stark_felt!(888_u128);
+    let storage_key0 = StorageKey(patricia_key!(0x0));
+    let storage_value0 = Felt::from_hex_unchecked("0x777");
+    let storage_value1 = Felt::from_hex_unchecked("0x888");
     // The class is not used in the execution, so it can be default.
     let class0 = ContractClass::default();
     let casm0 = get_test_casm();
     let blockifier_casm0 =
         BlockifierContractClass::V1(ContractClassV1::try_from(casm0.clone()).unwrap());
-    let compiled_class_hash0 = CompiledClassHash(StarkHash::default());
+    let compiled_class_hash0 = CompiledClassHash(Felt::default());
 
     let class_hash1 = ClassHash(1u128.into());
     let class1 = get_test_deprecated_contract_class();
     let address1 = ContractAddress(patricia_key!(DEPRECATED_CONTRACT_ADDRESS));
-    let nonce0 = Nonce(stark_felt!(1_u128));
+    let nonce0 = Nonce(Felt::ONE);
 
-    let address2 = ContractAddress(patricia_key!("0x123"));
-    let storage_value2 = stark_felt!(999_u128);
+    let address2 = ContractAddress(patricia_key!(0x123));
+    let storage_value2 = Felt::from_hex_unchecked("0x999");
     let class_hash2 = ClassHash(1234u128.into());
-    let compiled_class_hash2 = CompiledClassHash(StarkHash::TWO);
+    let compiled_class_hash2 = CompiledClassHash(Felt::TWO);
     let mut casm1 = get_test_casm();
     casm1.bytecode[0] = BigUintAsHex { value: 12345u32.into() };
     let blockifier_casm1 =
         BlockifierContractClass::V1(ContractClassV1::try_from(casm1.clone()).unwrap());
-    let nonce1 = Nonce(stark_felt!(2_u128));
+    let nonce1 = Nonce(Felt::TWO);
     let class_hash3 = ClassHash(567_u128.into());
     let class_hash4 = ClassHash(89_u128.into());
     let class_hash5 = ClassHash(98765_u128.into());
@@ -79,7 +74,7 @@ fn read_state() {
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                block_hash: BlockHash(stark_felt!(1_u128)),
+                block_hash: BlockHash(Felt::ONE),
                 block_number: BlockNumber(1),
                 ..Default::default()
             },
@@ -122,7 +117,7 @@ fn read_state() {
         .append_header(
             BlockNumber(2),
             &BlockHeader {
-                block_hash: BlockHash(stark_felt!(2_u128)),
+                block_hash: BlockHash(Felt::TWO),
                 block_number: BlockNumber(2),
                 ..Default::default()
             },
@@ -143,13 +138,13 @@ fn read_state() {
         missing_compiled_class: None,
     };
     let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
-    assert_eq!(storage_after_block_0, StarkFelt::default());
+    assert_eq!(storage_after_block_0, Felt::default());
     let nonce_after_block_0 = state_reader0.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_0, Nonce::default());
     let class_hash_after_block_0 = state_reader0.get_class_hash_at(address0).unwrap();
     assert_eq!(class_hash_after_block_0, ClassHash::default());
     let compiled_contract_class_after_block_0 =
-        state_reader0.get_compiled_contract_class(&class_hash0);
+        state_reader0.get_compiled_contract_class(class_hash0);
     assert_matches!(
         compiled_contract_class_after_block_0, Err(StateError::UndeclaredClassHash(class_hash))
         if class_hash == class_hash0
@@ -170,12 +165,12 @@ fn read_state() {
     let class_hash_after_block_1 = state_reader1.get_class_hash_at(address0).unwrap();
     assert_eq!(class_hash_after_block_1, class_hash0);
     let compiled_contract_class_after_block_1 =
-        state_reader1.get_compiled_contract_class(&class_hash0).unwrap();
+        state_reader1.get_compiled_contract_class(class_hash0).unwrap();
     assert_eq!(compiled_contract_class_after_block_1, blockifier_casm0);
 
     // Test that if we try to get a casm and it's missing, that an error is returned and the field
     // `missing_compiled_class` is set to its hash
-    state_reader1.get_compiled_contract_class(&class_hash5).unwrap_err();
+    state_reader1.get_compiled_contract_class(class_hash5).unwrap_err();
     assert_eq!(state_reader1.missing_compiled_class.unwrap(), class_hash5);
 
     let state_number2 = StateNumber::right_after_block(BlockNumber(2));
@@ -219,13 +214,13 @@ fn read_state() {
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
     assert_eq!(state_reader2.get_nonce_at(address0).unwrap(), nonce0);
     assert_eq!(state_reader2.get_nonce_at(address2).unwrap(), nonce1);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
+    assert_eq!(state_reader2.get_compiled_contract_class(class_hash0).unwrap(), blockifier_casm0);
+    assert_eq!(state_reader2.get_compiled_contract_class(class_hash2).unwrap(), blockifier_casm1);
     // Test that if we only got the class without the casm then an error is returned.
-    state_reader2.get_compiled_contract_class(&class_hash3).unwrap_err();
+    state_reader2.get_compiled_contract_class(class_hash3).unwrap_err();
     // Test that if the class is deprecated it is returned.
     assert_eq!(
-        state_reader2.get_compiled_contract_class(&class_hash4).unwrap(),
+        state_reader2.get_compiled_contract_class(class_hash4).unwrap(),
         BlockifierContractClass::V0(ContractClassV0::try_from(class1).unwrap())
     );
 

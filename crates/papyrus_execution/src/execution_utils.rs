@@ -5,9 +5,7 @@ use std::path::PathBuf;
 // Expose the tool for creating entry point selectors from function names.
 pub use blockifier::abi::abi_utils::selector_from_name;
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass,
-    ContractClassV0,
-    ContractClassV1,
+    ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
 };
 use blockifier::state::cached_state::{CachedState, MutRefState};
 use blockifier::state::state_api::{State, StateReader};
@@ -20,17 +18,14 @@ use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageResult, StorageTxn};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use thiserror::Error;
 
 use crate::objects::TransactionTrace;
 use crate::state_reader::ExecutionStateReader;
 use crate::{
-    BlockifierError,
-    ExecutableTransactionInput,
-    ExecutionConfigByBlock,
-    ExecutionError,
+    BlockifierError, ExecutableTransactionInput, ExecutionConfigByBlock, ExecutionError,
     ExecutionResult,
 };
 
@@ -157,7 +152,7 @@ pub fn get_storage_at<Mode: TransactionKind>(
     pending_storage_diffs: Option<&IndexMap<ContractAddress, Vec<StorageEntry>>>,
     contract_address: ContractAddress,
     key: StorageKey,
-) -> StorageResult<StarkFelt> {
+) -> StorageResult<Felt> {
     if let Some(pending_storage_diffs) = pending_storage_diffs {
         if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
             if let Some(StorageEntry { key: _, value }) = storage_entries

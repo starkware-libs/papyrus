@@ -2,9 +2,9 @@
 use serde::Serialize;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
-use starknet_api::hash::StarkHash;
 use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
 use starknet_client::retry::RetryConfig;
+use starknet_types_core::felt::Felt;
 use tokio::join;
 
 const NODE_VERSION: &str = "PAPYRUS-INTEGRATION-TEST-STARKNET-FEEDER-GATEWAY-CLIENT";
@@ -181,7 +181,7 @@ async fn test_class_hash(starknet_client: &StarknetFeederGatewayClient, class_ha
 
     for class_hash_json_val in data.as_object().unwrap().values() {
         let class_hash_val = class_hash_json_val.as_str().unwrap();
-        let class_hash = ClassHash(StarkHash::try_from(class_hash_val).unwrap());
+        let class_hash = ClassHash(Felt::from_hex(class_hash_val).unwrap());
         starknet_client.class_by_hash(class_hash).await.unwrap().unwrap();
     }
 }

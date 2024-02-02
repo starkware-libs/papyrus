@@ -11,11 +11,8 @@ use std::sync::Arc;
 use byteorder::BigEndian;
 use cairo_lang_casm::hints::Hint;
 use cairo_lang_starknet::casm_contract_class::{
-    CasmContractClass,
-    CasmContractEntryPoint,
-    CasmContractEntryPoints,
+    CasmContractClass, CasmContractEntryPoint, CasmContractEntryPoints,
 };
-use cairo_lang_starknet::NestedIntList;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use integer_encoding::*;
@@ -23,106 +20,43 @@ use num_bigint::BigUint;
 use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
-    BlockHash,
-    BlockHeader,
-    BlockNumber,
-    BlockSignature,
-    BlockStatus,
-    BlockTimestamp,
-    GasPrice,
+    BlockHash, BlockHeader, BlockNumber, BlockSignature, BlockStatus, BlockTimestamp, GasPrice,
 };
 use starknet_api::core::{
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    EntryPointSelector,
-    EthAddress,
-    GlobalRoot,
-    Nonce,
-    PatriciaKey,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, GlobalRoot,
+    Nonce, PatriciaKey,
 };
 use starknet_api::crypto::Signature;
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass,
-    ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint,
-    EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType,
-    EventAbiEntry,
-    FunctionAbiEntry,
-    FunctionStateMutability,
-    Program,
-    StructAbiEntry,
-    StructMember,
-    TypedParameter,
+    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry,
+    FunctionStateMutability, Program, StructAbiEntry, StructMember, TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{
-    ContractClass,
-    EntryPoint,
-    EntryPointType,
-    FunctionIndex,
-    StorageKey,
-    ThinStateDiff,
+    ContractClass, EntryPoint, EntryPointType, FunctionIndex, StorageKey, ThinStateDiff,
 };
 use starknet_api::transaction::{
-    AccountDeploymentData,
-    Builtin,
-    Calldata,
-    ContractAddressSalt,
-    DeclareTransaction,
-    DeclareTransactionV0V1,
-    DeclareTransactionV2,
-    DeclareTransactionV3,
-    DeployAccountTransaction,
-    DeployAccountTransactionV1,
-    DeployAccountTransactionV3,
-    DeployTransaction,
-    EventContent,
-    EventData,
-    EventIndexInTransactionOutput,
-    EventKey,
-    ExecutionResources,
-    Fee,
-    InvokeTransaction,
-    InvokeTransactionV0,
-    InvokeTransactionV1,
-    InvokeTransactionV3,
-    L1HandlerTransaction,
-    L1ToL2Payload,
-    L2ToL1Payload,
-    MessageToL1,
-    MessageToL2,
-    PaymasterData,
-    Resource,
-    ResourceBounds,
-    ResourceBoundsMapping,
-    Tip,
-    Transaction,
-    TransactionExecutionStatus,
-    TransactionHash,
-    TransactionOffsetInBlock,
-    TransactionSignature,
-    TransactionVersion,
+    AccountDeploymentData, Builtin, Calldata, ContractAddressSalt, DeclareTransaction,
+    DeclareTransactionV0V1, DeclareTransactionV2, DeclareTransactionV3, DeployAccountTransaction,
+    DeployAccountTransactionV1, DeployAccountTransactionV3, DeployTransaction, EventContent,
+    EventData, EventIndexInTransactionOutput, EventKey, ExecutionResources, Fee, InvokeTransaction,
+    InvokeTransactionV0, InvokeTransactionV1, InvokeTransactionV3, L1HandlerTransaction,
+    L1ToL2Payload, L2ToL1Payload, MessageToL1, MessageToL2, PaymasterData, Resource,
+    ResourceBounds, ResourceBoundsMapping, Tip, Transaction, TransactionExecutionStatus,
+    TransactionHash, TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::body::events::{
-    EventIndex,
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
+    EventIndex, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
 use crate::body::TransactionIndex;
 use crate::compression_utils::{
-    compress,
-    decompress,
-    decompress_from_reader,
-    serialize_and_compress,
-    IsCompressed,
+    compress, decompress, decompress_from_reader, serialize_and_compress, IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StarknetVersion;
@@ -137,8 +71,8 @@ use crate::{MarkerKind, OffsetKind};
 const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 
 auto_storage_serde! {
-    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
-    pub struct BlockHash(pub StarkHash);
+    pub struct AccountDeploymentData(pub Vec<Felt>);
+    pub struct BlockHash(pub Felt);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
@@ -158,10 +92,10 @@ auto_storage_serde! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
-    pub struct CompiledClassHash(pub StarkHash);
-    pub struct ClassHash(pub StarkHash);
-    pub struct ContractAddressSalt(pub StarkHash);
+    pub struct Calldata(pub Arc<Vec<Felt>>);
+    pub struct CompiledClassHash(pub Felt);
+    pub struct ClassHash(pub Felt);
+    pub struct ContractAddressSalt(pub Felt);
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
         Function(FunctionAbiEntry) = 1,
@@ -226,7 +160,7 @@ auto_storage_serde! {
     }
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
-    pub struct EntryPointSelector(pub StarkHash);
+    pub struct EntryPointSelector(pub Felt);
     pub enum EntryPointType {
         Constructor = 0,
         External = 1,
@@ -243,10 +177,10 @@ auto_storage_serde! {
         pub keys: Vec<EventKey>,
         pub data: EventData,
     }
-    pub struct EventData(pub Vec<StarkFelt>);
+    pub struct EventData(pub Vec<Felt>);
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct EventIndexInTransactionOutput(pub usize);
-    pub struct EventKey(pub StarkFelt);
+    pub struct EventKey(pub Felt);
     pub struct Fee(pub u128);
     pub struct FunctionAbiEntry {
         pub name: String,
@@ -258,7 +192,7 @@ auto_storage_serde! {
         View = 0,
     }
     pub struct GasPrice(pub u128);
-    pub struct GlobalRoot(pub StarkHash);
+    pub struct GlobalRoot(pub Felt);
     pub struct H160(pub [u8; 20]);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
@@ -273,8 +207,8 @@ auto_storage_serde! {
         No = 0,
         Yes = 1,
     }
-    pub struct L1ToL2Payload(pub Vec<StarkFelt>);
-    pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+    pub struct L1ToL2Payload(pub Vec<Felt>);
+    pub struct L2ToL1Payload(pub Vec<Felt>);
     enum MarkerKind {
         Header = 0,
         Body = 1,
@@ -291,18 +225,14 @@ auto_storage_serde! {
         pub from_address: EthAddress,
         pub payload: L1ToL2Payload,
     }
-    pub enum NestedIntList {
-        Leaf(usize) = 0,
-        Node(Vec<NestedIntList>) = 1,
-    }
-    pub struct Nonce(pub StarkFelt);
+    pub struct Nonce(pub Felt);
     pub enum OffsetKind {
         ThinStateDiff = 0,
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
     }
-    pub struct PaymasterData(pub Vec<StarkFelt>);
+    pub struct PaymasterData(pub Vec<Felt>);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -325,8 +255,8 @@ auto_storage_serde! {
     }
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
     pub struct Signature {
-        pub r: StarkFelt,
-        pub s: StarkFelt,
+        pub r: Felt,
+        pub s: Felt,
     }
     pub struct StructAbiEntry {
         pub name: String,
@@ -398,11 +328,11 @@ auto_storage_serde! {
         Succeeded = 0,
         Reverted = 1,
     }
-    pub struct TransactionHash(pub StarkHash);
+    pub struct TransactionHash(pub Felt);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct TransactionOffsetInBlock(pub usize);
-    pub struct TransactionSignature(pub Vec<StarkFelt>);
-    pub struct TransactionVersion(pub StarkFelt);
+    pub struct TransactionSignature(pub Vec<Felt>);
+    pub struct TransactionVersion(pub Felt);
     pub struct Version(pub u32);
 
     pub struct CasmContractEntryPoints {
@@ -613,21 +543,21 @@ impl StorageSerde for ContractAddress {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        ContractAddress::try_from(StarkHash::deserialize(bytes)?).ok()
+        ContractAddress::try_from(Felt::deserialize(bytes)?).ok()
     }
 }
 
 impl StorageSerde for PatriciaKey {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        self.key().serialize_into(res)
+        self.as_felt().serialize_into(res)
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        Self::try_from(StarkHash::deserialize(bytes)?).ok()
+        Self::try_from(Felt::deserialize(bytes)?).ok()
     }
 }
 
-impl StorageSerde for StarkHash {
+impl StorageSerde for Felt {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         Ok(self.serialize(res)?)
     }
@@ -643,7 +573,7 @@ impl StorageSerde for StorageKey {
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        StorageKey::try_from(StarkHash::deserialize(bytes)?).ok()
+        StorageKey::try_from(Felt::deserialize(bytes)?).ok()
     }
 }
 
@@ -869,17 +799,17 @@ impl StorageSerde for BigUint {
 impl StorageSerde for ContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         serialize_and_compress(&self.sierra_program)?.serialize_into(res)?;
-        self.entry_point_by_type.serialize_into(res)?;
+        self.entry_points_by_type.serialize_into(res)?;
         serialize_and_compress(&self.abi)?.serialize_into(res)?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         Some(Self {
-            sierra_program: Vec::<StarkFelt>::deserialize_from(
+            sierra_program: Vec::<Felt>::deserialize_from(
                 &mut decompress_from_reader(bytes)?.as_slice(),
             )?,
-            entry_point_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
+            entry_points_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
                 bytes,
             )?,
             abi: String::deserialize_from(&mut decompress_from_reader(bytes)?.as_slice())?,
@@ -924,7 +854,6 @@ impl StorageSerde for CasmContractClass {
         self.prime.serialize_into(&mut to_compress)?;
         self.compiler_version.serialize_into(&mut to_compress)?;
         self.bytecode.serialize_into(&mut to_compress)?;
-        self.bytecode_segment_lengths.serialize_into(&mut to_compress)?;
         self.hints.serialize_into(&mut to_compress)?;
         self.pythonic_hints.serialize_into(&mut to_compress)?;
         self.entry_points_by_type.serialize_into(&mut to_compress)?;
@@ -943,7 +872,6 @@ impl StorageSerde for CasmContractClass {
             prime: BigUint::deserialize_from(data)?,
             compiler_version: String::deserialize_from(data)?,
             bytecode: Vec::<BigUintAsHex>::deserialize_from(data)?,
-            bytecode_segment_lengths: Option::<NestedIntList>::deserialize_from(data)?,
             hints: Vec::<(usize, Vec<Hint>)>::deserialize_from(data)?,
             pythonic_hints: Option::<Vec<(usize, Vec<String>)>>::deserialize_from(data)?,
             entry_points_by_type: CasmContractEntryPoints::deserialize_from(data)?,

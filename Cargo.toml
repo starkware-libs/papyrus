@@ -33,13 +33,12 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 bitvec = "1.0.1"
-blockifier = "0.5.0-dev.0"
 bytes = "1"
 byteorder = "1.4.3"
-cairo-lang-starknet = "=2.5.0-dev.1"
-cairo-lang-casm = "=2.5.0-dev.1"
-cairo-lang-utils = "=2.5.0-dev.1"
-cairo-vm = "0.9.1"
+cairo-lang-starknet = { git = "https://github.com/LucasLvy/cairo/", rev = "5d2847c" }
+cairo-lang-casm = { git = "https://github.com/LucasLvy/cairo/", rev = "5d2847c" }
+cairo-lang-utils = { git = "https://github.com/LucasLvy/cairo/", rev = "5d2847c" }
+cairo-vm = { git = "https://github.com/LucasLvy/cairo-rs", rev = "3b187b0" }
 camelpaste = "0.1.0"
 chrono = "0.4.26"
 clap = { version = "4.3.10" }
@@ -101,9 +100,10 @@ serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
-starknet_api = "0.7.0-dev.0"
+starknet_api = { git = "https://github.com/LucasLvy/starknet-api/", rev = "5579488" }
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
+starknet-types-core = { git = "https://github.com/starknet-io/types-rs/", rev = "30e9dc0" }
 strum = "0.25.0"
 strum_macros = "0.25.2"
 tempfile = "3.3.0"

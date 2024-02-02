@@ -22,10 +22,10 @@ use papyrus_sync::sources::central::{CentralError, CentralSource};
 use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError};
 use starknet_api::block::BlockHash;
-use starknet_api::hash::{StarkFelt, GENESIS_HASH};
-use starknet_api::stark_felt;
+use starknet_api::hash::GENESIS_HASH;
 use starknet_client::reader::objects::pending_data::PendingBlock;
 use starknet_client::reader::PendingData;
+use starknet_types_core::felt::Felt;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
 use tracing::metadata::LevelFilter;
@@ -63,7 +63,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let shared_highest_block = Arc::new(RwLock::new(None));
     let pending_data = Arc::new(RwLock::new(PendingData {
         block: PendingBlock {
-            parent_block_hash: BlockHash(stark_felt!(GENESIS_HASH)),
+            parent_block_hash: BlockHash(Felt::from(GENESIS_HASH)),
             ..Default::default()
         },
         ..Default::default()

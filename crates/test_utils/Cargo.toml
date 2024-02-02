@@ -19,8 +19,9 @@ rand.workspace = true
 rand_chacha.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true, features = ["arbitrary_precision"]}
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, features = ["testing"] }
+starknet-types-core.workspace = true
 tracing = { workspace = true, features = ["log"] }
 
 [dev-dependencies]

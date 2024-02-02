@@ -7,8 +7,8 @@ use pretty_assertions::assert_eq;
 use prometheus_parse::Value::{Counter, Gauge};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash};
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateDiff};
+use starknet_types_core::felt::Felt;
 use test_utils::prometheus_is_contained;
 
 use super::update_storage_metrics;
@@ -20,17 +20,17 @@ use crate::utils::{dump_declared_classes_table_by_block_range_internal, DumpDecl
 #[test]
 fn test_dump_declared_classes() {
     let file_path = "tmp_test_dump_declared_classes_table.json";
-    let compiled_class_hash = CompiledClassHash(StarkHash::default());
+    let compiled_class_hash = CompiledClassHash(Felt::default());
     let mut declared_classes = vec![];
     let mut state_diffs = vec![];
     let ((reader, mut writer), _temp_dir) = get_test_storage();
     for i in 0..5 {
-        let i_felt = StarkFelt::from(i as u128);
+        let i_felt = Felt::from(i as u128);
         declared_classes.push((
             ClassHash(i_felt),
             ContractClass {
                 sierra_program: vec![i_felt, i_felt],
-                entry_point_by_type: HashMap::new(),
+                entry_points_by_type: HashMap::new(),
                 abi: "".to_string(),
             },
         ));
@@ -62,13 +62,13 @@ fn test_dump_declared_classes() {
             class_hash: declared_classes[2].0,
             compiled_class_hash,
             sierra_program: declared_classes[2].1.sierra_program.clone(),
-            entry_points_by_type: declared_classes[2].1.entry_point_by_type.clone(),
+            entry_points_by_type: declared_classes[2].1.entry_points_by_type.clone(),
         },
         DumpDeclaredClass {
             class_hash: declared_classes[3].0,
             compiled_class_hash,
             sierra_program: declared_classes[3].1.sierra_program.clone(),
-            entry_points_by_type: declared_classes[3].1.entry_point_by_type.clone(),
+            entry_points_by_type: declared_classes[3].1.entry_points_by_type.clone(),
         },
     ];
     assert_eq!(file_content, serde_json::to_string(&expected_declared_classes).unwrap());

@@ -12,28 +12,15 @@ use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
-    ClassHash,
-    CompiledClassHash,
-    ContractAddress,
-    EntryPointSelector,
-    EthAddress,
-    Nonce,
+    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
 };
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
-    Calldata,
-    ContractAddressSalt,
-    DeployTransaction,
-    Fee,
-    L1HandlerTransaction,
-    MessageToL1,
-    Resource,
-    TransactionExecutionStatus,
-    TransactionHash,
-    TransactionSignature,
+    Calldata, ContractAddressSalt, DeployTransaction, Fee, L1HandlerTransaction, MessageToL1,
+    Resource, TransactionExecutionStatus, TransactionHash, TransactionSignature,
     TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
+use starknet_types_core::felt::Felt;
 
 use super::error::BLOCK_NOT_FOUND;
 use crate::internal_server_error;
@@ -811,9 +798,9 @@ impl From<MessageFromL1> for L1HandlerTransaction {
 }
 
 // TODO(yair): move to SN_API and implement as From.
-fn eth_address_to_felt(eth_address: EthAddress) -> StarkFelt {
+fn eth_address_to_felt(eth_address: EthAddress) -> Felt {
     let eth_address_as_bytes = eth_address.0.to_fixed_bytes();
     let mut bytes: [u8; 32] = [0; 32];
     bytes[12..32].copy_from_slice(&eth_address_as_bytes);
-    StarkFelt::new(bytes).expect("Eth address should fit in Felt")
+    Felt::from_bytes_be(&bytes)
 }

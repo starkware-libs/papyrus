@@ -9,43 +9,24 @@ use mockito::mock;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
-    ClassHash,
-    ContractAddress,
-    EntryPointSelector,
-    GlobalRoot,
-    Nonce,
-    PatriciaKey,
+    ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass,
-    ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint,
-    EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType,
-    FunctionAbiEntry,
-    Program,
-    TypedParameter,
+    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, Program, TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::patricia_key;
 use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
 use starknet_api::transaction::{Fee, TransactionHash, TransactionSignature, TransactionVersion};
-use starknet_api::{patricia_key, stark_felt};
+use starknet_types_core::felt::Felt;
 
 use super::objects::state::StateUpdate;
 use super::objects::transaction::IntermediateDeclareTransaction;
 use super::{
-    Block,
-    ContractClass,
-    GenericContractClass,
-    PendingData,
-    ReaderClientError,
-    ReaderClientResult,
-    StarknetFeederGatewayClient,
-    StarknetReader,
-    BLOCK_NUMBER_QUERY,
-    CLASS_HASH_QUERY,
-    GET_BLOCK_URL,
-    GET_STATE_UPDATE_URL,
+    Block, ContractClass, GenericContractClass, PendingData, ReaderClientError, ReaderClientResult,
+    StarknetFeederGatewayClient, StarknetReader, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY,
+    GET_BLOCK_URL, GET_STATE_UPDATE_URL,
 };
 use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
 use crate::test_utils::read_resource::read_resource_file;
@@ -102,12 +83,13 @@ async fn get_block_number() {
 #[tokio::test]
 async fn declare_tx_serde() {
     let declare_tx = IntermediateDeclareTransaction {
-        class_hash: ClassHash(stark_felt!(
-            "0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25"
-        )),
+        class_hash: ClassHash(
+            Felt::from_hex("0x7319e2f01b0947afd86c0bb0e95029551b32f6dc192c47b2e8b08415eebbc25")
+                .unwrap(),
+        ),
         compiled_class_hash: None,
-        sender_address: ContractAddress(patricia_key!("0x1")),
-        nonce: Nonce(stark_felt!("0x0")),
+        sender_address: ContractAddress(patricia_key!(0x1)),
+        nonce: Nonce(Felt::ZERO),
         max_fee: Some(Fee(0)),
         version: TransactionVersion::ONE,
         resource_bounds: None,
@@ -116,9 +98,10 @@ async fn declare_tx_serde() {
         fee_data_availability_mode: None,
         paymaster_data: None,
         account_deployment_data: None,
-        transaction_hash: TransactionHash(stark_felt!(
-            "0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22"
-        )),
+        transaction_hash: TransactionHash(
+            Felt::from_hex("0x2f2ef64daffdc72bf33b34ad024891691b8eb1d0ab70cc7f8fb71f6fd5e1f22")
+                .unwrap(),
+        ),
         signature: TransactionSignature(vec![]),
     };
     let raw_declare_tx = serde_json::to_string(&declare_tx).unwrap();
@@ -176,17 +159,17 @@ async fn contract_class() {
     .unwrap();
     let expected_contract_class = ContractClass {
         sierra_program: vec![
-            stark_felt!("0x302e312e30"),
-            stark_felt!("0x1c"),
-            stark_felt!("0x52616e6765436865636b"),
+            Felt::from_hex_unchecked("0x302e312e30"),
+            Felt::from_hex_unchecked("0x1c"),
+            Felt::from(0x52616e6765436865636b_u128),
         ],
         entry_points_by_type: HashMap::from([(
             EntryPointType::External,
             vec! [EntryPoint {
                 function_idx: FunctionIndex(0),
-                selector: EntryPointSelector(stark_felt!(
+                selector: EntryPointSelector(Felt::from_hex(
                     "0x22ff5f21f0b81b113e63f7db6da94fedef11b2119b4088b89664fb9a3cb658"
-                )),
+                ).unwrap()),
             }],
         ),
         (EntryPointType::Constructor, vec![]),
@@ -196,19 +179,21 @@ async fn contract_class() {
         abi: String::from("[\n  {\n    \"type\": \"function\",\n    \"name\": \"test\",\n    \"inputs\": [\n      {\n        \"name\": \"arg\",\n        \"ty\": \"core::felt\"\n      },\n      {\n        \"name\": \"arg1\",\n        \"ty\": \"core::felt\"\n      },\n      {\n        \"name\": \"arg2\",\n        \"ty\": \"core::felt\"\n      }\n    ],\n    \"output_ty\": \"core::felt\",\n    \"state_mutability\": \"external\"\n  },\n  {\n    \"type\": \"function\",\n    \"name\": \"empty\",\n    \"inputs\": [],\n    \"output_ty\": \"()\",\n    \"state_mutability\": \"external\"\n  },\n  {\n    \"type\": \"function\",\n    \"name\": \"call_foo\",\n    \"inputs\": [\n      {\n        \"name\": \"a\",\n        \"ty\": \"core::integer::u128\"\n      }\n    ],\n    \"output_ty\": \"core::integer::u128\",\n    \"state_mutability\": \"external\"\n  }\n]"),
     };
 
-    let mock_by_hash =
-        mock(
-            "GET",
-            &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&\
-         {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c")[..],
-        )
-        .with_status(200)
-        .with_body(read_resource_file("reader/contract_class.json"))
-        .create();
+    let mock_by_hash = mock(
+        "GET",
+        &format!(
+            "/feeder_gateway/get_class_by_hash?blockNumber=pending&\
+         {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c"
+        )[..],
+    )
+    .with_status(200)
+    .with_body(read_resource_file("reader/contract_class.json"))
+    .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash(stark_felt!(
-            "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c"
-        )))
+        .class_by_hash(ClassHash(
+            Felt::from_hex("0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c")
+                .unwrap(),
+        ))
         .await
         .unwrap()
         .unwrap();
@@ -230,69 +215,70 @@ async fn deprecated_contract_class() {
         get_test_config(),
     )
     .unwrap();
-    let expected_contract_class = DeprecatedContractClass {
-        abi: Some(vec![ContractClassAbiEntry::Constructor(FunctionAbiEntry {
-            name: "constructor".to_string(),
-            inputs: vec![TypedParameter {
-                name: "implementation".to_string(),
-                r#type: "felt".to_string(),
-            }],
-            outputs: vec![],
-            state_mutability: None,
-        })]),
-        program: Program {
-            attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
-            builtins: serde_json::Value::Array(Vec::new()),
-            compiler_version: serde_json::Value::Null,
-            data: serde_json::Value::Array(vec![
-                serde_json::Value::String("0x20780017fff7ffd".to_string()),
-                serde_json::Value::String("0x4".to_string()),
-                serde_json::Value::String("0x400780017fff7ffd".to_string()),
-            ]),
-            debug_info: serde_json::Value::Null,
-            hints: serde_json::Value::Object(serde_json::Map::new()),
-            identifiers: serde_json::Value::Object(serde_json::Map::new()),
-            main_scope: serde_json::Value::String("__main__".to_string()),
-            prime: serde_json::Value::String(
-                "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
-            ),
-            reference_manager: serde_json::Value::Object(serde_json::Map::new()),
-        },
-        entry_points_by_type: HashMap::from([
-            (DeprecatedEntryPointType::L1Handler, vec![]),
-            (
-                DeprecatedEntryPointType::Constructor,
-                vec![DeprecatedEntryPoint {
-                    selector: EntryPointSelector(stark_felt!(
+    let expected_contract_class =
+        DeprecatedContractClass {
+            abi: Some(vec![ContractClassAbiEntry::Constructor(FunctionAbiEntry {
+                name: "constructor".to_string(),
+                inputs: vec![TypedParameter {
+                    name: "implementation".to_string(),
+                    r#type: "felt".to_string(),
+                }],
+                outputs: vec![],
+                state_mutability: None,
+            })]),
+            program: Program {
+                attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
+                builtins: serde_json::Value::Array(Vec::new()),
+                compiler_version: serde_json::Value::Null,
+                data: serde_json::Value::Array(vec![
+                    serde_json::Value::String("0x20780017fff7ffd".to_string()),
+                    serde_json::Value::String("0x4".to_string()),
+                    serde_json::Value::String("0x400780017fff7ffd".to_string()),
+                ]),
+                debug_info: serde_json::Value::Null,
+                hints: serde_json::Value::Object(serde_json::Map::new()),
+                identifiers: serde_json::Value::Object(serde_json::Map::new()),
+                main_scope: serde_json::Value::String("__main__".to_string()),
+                prime: serde_json::Value::String(
+                    "0x800000000000011000000000000000000000000000000000000000000000001".to_string(),
+                ),
+                reference_manager: serde_json::Value::Object(serde_json::Map::new()),
+            },
+            entry_points_by_type: HashMap::from([
+                (DeprecatedEntryPointType::L1Handler, vec![]),
+                (
+                    DeprecatedEntryPointType::Constructor,
+                    vec![DeprecatedEntryPoint {
+                    selector: EntryPointSelector(Felt::from_hex(
                         "0x028ffe4ff0f226a9107253e17a904099aa4f63a02a5621de0576e5aa71bc5194"
-                    )),
+                    ).unwrap()),
                     offset: EntryPointOffset(62),
                 }],
-            ),
-            (
-                DeprecatedEntryPointType::External,
-                vec![DeprecatedEntryPoint {
-                    selector: EntryPointSelector(stark_felt!(
-                        "0x0000000000000000000000000000000000000000000000000000000000000000"
-                    )),
-                    offset: EntryPointOffset(86),
-                }],
-            ),
-        ]),
-    };
-    let mock_by_hash =
-        mock(
-            "GET",
-            &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&\
-         {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")[..],
-        )
-        .with_status(200)
-        .with_body(read_resource_file("reader/deprecated_contract_class.json"))
-        .create();
+                ),
+                (
+                    DeprecatedEntryPointType::External,
+                    vec![DeprecatedEntryPoint {
+                        selector: EntryPointSelector(Felt::ZERO),
+                        offset: EntryPointOffset(86),
+                    }],
+                ),
+            ]),
+        };
+    let mock_by_hash = mock(
+        "GET",
+        &format!(
+            "/feeder_gateway/get_class_by_hash?blockNumber=pending&\
+         {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
+        )[..],
+    )
+    .with_status(200)
+    .with_body(read_resource_file("reader/deprecated_contract_class.json"))
+    .create();
     let contract_class = starknet_client
-        .class_by_hash(ClassHash(stark_felt!(
-            "0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
-        )))
+        .class_by_hash(ClassHash(
+            Felt::from_hex("0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17")
+                .unwrap(),
+        ))
         .await
         .unwrap()
         .unwrap();
@@ -315,7 +301,8 @@ async fn deprecated_contract_class() {
         .with_status(400)
         .with_body(body)
         .create();
-    let class = starknet_client.class_by_hash(ClassHash(stark_felt!("0x7"))).await.unwrap();
+    let class =
+        starknet_client.class_by_hash(ClassHash(Felt::from_hex_unchecked("0x7"))).await.unwrap();
     mock_by_hash.assert();
     assert!(class.is_none());
 }
@@ -393,7 +380,7 @@ async fn compiled_class_by_hash() {
     .with_body(&raw_casm_contract_class)
     .create();
     let casm_contract_class = starknet_client
-        .compiled_class_by_hash(ClassHash(stark_felt!("0x7")))
+        .compiled_class_by_hash(ClassHash(Felt::from_hex_unchecked("0x7")))
         .await
         .unwrap()
         .unwrap();
@@ -413,8 +400,7 @@ async fn compiled_class_by_hash() {
     .with_status(400)
     .with_body(body)
     .create();
-    let class =
-        starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x0"))).await.unwrap();
+    let class = starknet_client.compiled_class_by_hash(ClassHash(Felt::ZERO)).await.unwrap();
     mock_undeclared.assert();
     assert!(class.is_none());
 }
@@ -506,7 +492,7 @@ async fn class_by_hash_unserializable() {
     test_unserializable(
         &format!("/feeder_gateway/get_class_by_hash?blockNumber=pending&{CLASS_HASH_QUERY}=0x1")[..],
         |starknet_client| async move {
-            starknet_client.class_by_hash(ClassHash(stark_felt!("0x1"))).await
+            starknet_client.class_by_hash(ClassHash(Felt::ONE)).await
         },
     )
     .await
@@ -529,7 +515,7 @@ async fn compiled_class_by_hash_unserializable() {
              {CLASS_HASH_QUERY}=0x7"
         )[..],
         |starknet_client| async move {
-            starknet_client.compiled_class_by_hash(ClassHash(stark_felt!("0x7"))).await
+            starknet_client.compiled_class_by_hash(ClassHash(Felt::from_hex_unchecked("0x7"))).await
         },
     )
     .await
@@ -547,10 +533,10 @@ async fn get_block_signature() {
 
     let expected_block_signature = BlockSignatureData {
         block_number: BlockNumber(20),
-        signature: [stark_felt!("0x1"), stark_felt!("0x2")],
+        signature: [Felt::ONE, Felt::TWO],
         signature_input: BlockSignatureMessage {
-            block_hash: BlockHash(stark_felt!("0x20")),
-            state_diff_commitment: GlobalRoot(stark_felt!("0x1234")),
+            block_hash: BlockHash(Felt::from_hex_unchecked("0x20")),
+            state_diff_commitment: GlobalRoot(Felt::from_hex_unchecked("0x1234")),
         },
     };
 

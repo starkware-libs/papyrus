@@ -4,19 +4,14 @@ use assert_matches::assert_matches;
 use camelpaste::paste;
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
+
 use test_utils::get_test_block;
 
 use crate::body::events::{
-    EventIndex,
-    EventsReader,
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
+    EventIndex, EventsReader, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
 use crate::body::{BodyStorageWriter, TransactionIndex};
@@ -28,7 +23,7 @@ use crate::test_utils::get_test_storage;
 async fn iter_events_by_key() {
     let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let from_addresses =
-        vec![ContractAddress(patricia_key!("0x22")), ContractAddress(patricia_key!("0x23"))];
+        vec![ContractAddress(patricia_key!(0x22)), ContractAddress(patricia_key!(0x23))];
     let block = get_test_block(2, Some(5), Some(from_addresses), None);
     let block_number = block.header.block_number;
     storage_writer
@@ -44,7 +39,7 @@ async fn iter_events_by_key() {
     // Create the events emitted, starting from contract address 0x22 onwards.
     // In our case, after the events emitted from address 0x22, come the events
     // emitted from address 0x23, which are all the remaining events.
-    let address = ContractAddress(patricia_key!("0x22"));
+    let address = ContractAddress(patricia_key!(0x22));
     let mut emitted_events = vec![];
     let mut events_not_from_address = vec![];
     for (tx_i, tx_output) in block.body.transaction_outputs.iter().enumerate() {
@@ -134,15 +129,13 @@ async fn revert_events() {
     );
 
     // Test iter events using the storage reader.
-    assert!(
-        storage_reader
-            .begin_ro_txn()
-            .unwrap()
-            .iter_events(None, event_index, block_number)
-            .unwrap()
-            .last()
-            .is_some()
-    );
+    assert!(storage_reader
+        .begin_ro_txn()
+        .unwrap()
+        .iter_events(None, event_index, block_number)
+        .unwrap()
+        .last()
+        .is_some());
 
     // Test events raw table.
     let txn = storage_reader.begin_ro_txn().unwrap();
@@ -169,15 +162,13 @@ async fn revert_events() {
         .0
         .commit()
         .unwrap();
-    assert!(
-        storage_reader
-            .begin_ro_txn()
-            .unwrap()
-            .iter_events(None, event_index, block_number)
-            .unwrap()
-            .last()
-            .is_none()
-    );
+    assert!(storage_reader
+        .begin_ro_txn()
+        .unwrap()
+        .iter_events(None, event_index, block_number)
+        .unwrap()
+        .last()
+        .is_none());
 
     let txn = storage_reader.begin_ro_txn().unwrap();
     let events_table = txn.txn.open_table(&txn.tables.events).unwrap();
@@ -196,8 +187,8 @@ macro_rules! test_events_contract_addresses_macro {
         paste! {
             #[tokio::test]
             async fn [<events_contract_addresses_ $variant:lower>]() {
-                let event_contract_address_1 = ContractAddress(patricia_key!("0x12"));
-                let event_contract_address_2 = ContractAddress(patricia_key!("0x17"));
+                let event_contract_address_1 = ContractAddress(patricia_key!(0x12));
+                let event_contract_address_2 = ContractAddress(patricia_key!(0x17));
                 let output = $variant_input {
                     events_contract_addresses: vec![event_contract_address_1, event_contract_address_2],
                     ..Default::default()
