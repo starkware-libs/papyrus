@@ -223,7 +223,7 @@ For example, to send a request calling the `starknet_blockHashAndNumber` method,
 [source,bash]
 ----
 curl --location 'localhost:8080/rpc/v0_4_0' --header 'Content-Type: application/json'\
- --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'
+ --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber", "params": {} }'
 ----
 
 == JSON RPC API endpoints
