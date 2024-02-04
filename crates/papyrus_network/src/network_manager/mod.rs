@@ -52,7 +52,7 @@ impl NetworkManager {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
                 Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
-                res = self.query_results_router.next() => self.handle_query_result_routing(res),
+                Some(res) = self.query_results_router.next() => self.handle_query_result_routing(res),
             }
         }
     }
@@ -125,18 +125,15 @@ impl NetworkManager {
         }
     }
 
-    fn handle_query_result_routing(&mut self, res: Option<(Data, InboundSessionId)>) {
-        match res {
-            None => {
-                // We're done handling all the queries we had and the stream is exhausted.
-                // Creating a new stream collection to process new queries.
-                self.query_results_router = StreamCollection::new();
-            }
-            Some((data, inbound_session_id)) => {
-                if let Err(e) = self.swarm.behaviour_mut().send_data(data, inbound_session_id) {
-                    panic!("Failed to send data to peer. Session id not found error: {e:?}")
-                }
-            }
+    fn handle_query_result_routing(&mut self, res: (Data, InboundSessionId)) {
+        if self.query_results_router.is_empty() {
+            // We're done handling all the queries we had and the stream is exhausted.
+            // Creating a new stream collection to process new queries.
+            self.query_results_router = StreamCollection::new();
+        }
+        let (data, inbound_session_id) = res;
+        if let Err(e) = self.swarm.behaviour_mut().send_data(data, inbound_session_id) {
+            panic!("Failed to send data to peer. Session id not found error: {e:?}")
         }
     }
 }
