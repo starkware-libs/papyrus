@@ -1,14 +1,16 @@
+use std::collections::HashMap;
+
 use futures::stream::{BoxStream, SelectAll};
 use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::Swarm;
 use papyrus_storage::StorageReader;
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::bin_utils::{build_swarm, dial};
 use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
-use crate::db_executor::{self, DBExecutor, Data};
+use crate::db_executor::{self, DBExecutor, Data, QueryId};
 use crate::streamed_data::InboundSessionId;
 use crate::Config;
 
@@ -19,6 +21,7 @@ pub struct NetworkManager {
     db_executor: db_executor::BlockHeaderDBExecutor,
     header_buffer_size: usize,
     query_results_router: StreamCollection,
+    query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
 }
 
 impl NetworkManager {
@@ -44,6 +47,7 @@ impl NetworkManager {
             db_executor,
             header_buffer_size,
             query_results_router: StreamCollection::new(),
+            query_id_to_inbound_session_id: HashMap::new(),
         }
     }
 
@@ -81,7 +85,7 @@ impl NetworkManager {
     }
 
     fn handle_db_executor_result(
-        &self,
+        &mut self,
         res: Result<db_executor::QueryId, db_executor::DBExecutorError>,
     ) {
         match res {
@@ -90,8 +94,21 @@ impl NetworkManager {
                 debug!("Query completed successfully. query_id: {query_id:?}");
             }
             Err(err) => {
-                // TODO: how do we handle errors?
                 debug!("Query failed. error: {err:?}");
+                if let Some(query_id) = err.query_id() {
+                    // TODO: Consider retrying based on error.
+                    let inbound_session_id = self
+                        .query_id_to_inbound_session_id
+                        .remove(&query_id)
+                        .expect("Received error on non existing query");
+                    if self.swarm.behaviour_mut().send_data(Data::Fin, inbound_session_id).is_err()
+                    {
+                        error!(
+                            "Tried to close inbound session {inbound_session_id:?} due to {err:?} \
+                             but the session was already closed"
+                        );
+                    }
+                }
             }
         };
     }
@@ -104,7 +121,8 @@ impl NetworkManager {
                 );
                 let (sender, receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
                 // TODO: use query id for bookkeeping.
-                let _query_id = self.db_executor.register_query(query, sender);
+                let query_id = self.db_executor.register_query(query, sender);
+                self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
                 self.query_results_router
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
@@ -132,8 +150,8 @@ impl NetworkManager {
             self.query_results_router = StreamCollection::new();
         }
         let (data, inbound_session_id) = res;
-        if let Err(e) = self.swarm.behaviour_mut().send_data(data, inbound_session_id) {
+        self.swarm.behaviour_mut().send_data(data, inbound_session_id).unwrap_or_else(|e| {
             panic!("Failed to send data to peer. Session id not found error: {e:?}")
-        }
+        })
     }
 }
