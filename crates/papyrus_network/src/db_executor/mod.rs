@@ -49,6 +49,18 @@ pub enum DBExecutorError {
     },
 }
 
+impl DBExecutorError {
+    pub fn query_id(&self) -> Option<QueryId> {
+        match self {
+            Self::DBInternalError { query_id, .. }
+            | Self::BlockNumberOutOfRange { query_id, .. }
+            | Self::BlockNotFound { query_id, .. }
+            | Self::SendError { query_id, .. } => Some(*query_id),
+            Self::JoinError(_) => None,
+        }
+    }
+}
+
 /// Db executor is a stream of queries. Each result is marks the end of a query fulfillment.
 /// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
 /// The stream is never exhausted, and it is the responsibility of the user to poll it.
