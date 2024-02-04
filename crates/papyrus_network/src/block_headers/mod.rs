@@ -4,10 +4,12 @@ use prost_types::Timestamp;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
 use starknet_api::core::GlobalRoot;
 use starknet_api::crypto::Signature;
+use starknet_api::hash::StarkHash;
+use starknet_api::StarknetApiError;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
-use crate::{BlockQuery, Direction};
+use crate::{BlockHashOrNumber, BlockQuery, Direction};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -58,22 +60,33 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
         if let Some(value) = value.iteration {
             if let Some(start) = value.start {
-                match start {
+                let start_block = match start {
                     protobuf::iteration::Start::BlockNumber(block_number) => {
-                        let start_block = BlockNumber(block_number);
-                        let direction = match value.direction {
-                            0 => Direction::Forward,
-                            1 => Direction::Backward,
-                            _ => return Err(ProtobufConversionError::OutOfRangeValue),
-                        };
-                        let limit = value.limit;
-                        let step = value.step;
-                        Ok(Self { start_block, direction, limit, step })
+                        BlockHashOrNumber::Number(BlockNumber(block_number))
                     }
-                    protobuf::iteration::Start::Header(_) => {
-                        unimplemented!("BlockHash is not supported yet")
+                    protobuf::iteration::Start::Header(protobuf::Hash { elements: bytes }) => {
+                        let bytes: [u8; 32] = bytes
+                            .try_into()
+                            .map_err(|_| ProtobufConversionError::BytesDataLengthMismatch)?;
+                        let block_hash = BlockHash(StarkHash::new(bytes).map_err(|error| {
+                            if !matches!(error, StarknetApiError::OutOfRange { .. }) {
+                                panic!(
+                                    "StarkHash::new returned an error different than OutOfRange"
+                                );
+                            }
+                            ProtobufConversionError::OutOfRangeValue
+                        })?);
+                        BlockHashOrNumber::Hash(block_hash)
                     }
-                }
+                };
+                let direction = match value.direction {
+                    0 => Direction::Forward,
+                    1 => Direction::Backward,
+                    _ => return Err(ProtobufConversionError::OutOfRangeValue),
+                };
+                let limit = value.limit;
+                let step = value.step;
+                Ok(Self { start_block, direction, limit, step })
             } else {
                 Err(ProtobufConversionError::MissingField)
             }
@@ -94,7 +107,16 @@ impl From<BlockQuery> for protobuf::BlockHeadersRequest {
                     },
                     limit: value.limit,
                     step: value.step,
-                    start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
+                    start: match value.start_block {
+                        BlockHashOrNumber::Number(BlockNumber(num)) => {
+                            Some(protobuf::iteration::Start::BlockNumber(num))
+                        }
+                        BlockHashOrNumber::Hash(BlockHash(stark_hash)) => {
+                            Some(protobuf::iteration::Start::Header(protobuf::Hash {
+                                elements: stark_hash.bytes().to_vec(),
+                            }))
+                        }
+                    },
                 }
             }),
         }
