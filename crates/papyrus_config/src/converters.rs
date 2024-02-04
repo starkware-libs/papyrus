@@ -78,3 +78,27 @@ where
     }
     Ok(Some(map))
 }
+
+/// Serialize a vector of strings to "[a, b, c]" structure.
+pub fn serialize_string_vector(vector: &[String]) -> String {
+    vector.join(",").to_string()
+}
+
+/// Deserialize a vector of strings from "[a, b, c]" structure.
+pub fn deserialize_string_vector<'de, D>(de: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw_str: String = Deserialize::deserialize(de)?;
+    if raw_str.is_empty() {
+        return Err(D::Error::custom(
+            "Vector string should not be empty. Empty vector is represented as []".to_string(),
+        ));
+    }
+
+    let mut vector = Vec::new();
+    for split in raw_str.split(',') {
+        vector.push(split.to_string());
+    }
+    Ok(vector)
+}
