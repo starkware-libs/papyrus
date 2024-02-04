@@ -6,6 +6,8 @@ repository.workspace = true
 license-file.workspace = true
 description = "A storage implementation for a Starknet node."
 
+# TODO(dvir): use in only in binaries crates that ar not in use in the library.
+
 [features]
 testing = ["tempfile"]
 
@@ -28,6 +30,7 @@ papyrus_config = { path = "../papyrus_config", version = "0.3.0" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
+rand.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
@@ -35,6 +38,7 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+zstd = { workspace = true, features = ["zdict_builder"] }
 
 [dev-dependencies]
 assert_matches.workspace = true
