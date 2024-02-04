@@ -3,7 +3,7 @@ use std::task::Poll;
 use assert_matches::assert_matches;
 use futures::future::poll_fn;
 use futures::{FutureExt, StreamExt};
-use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use rand::random;
@@ -11,7 +11,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockTimestamp};
 
 use super::Data::BlockHeaderAndSignature;
 use crate::db_executor::{DBExecutor, DBExecutorError};
-use crate::{BlockQuery, Direction};
+use crate::{BlockHashOrNumber, BlockQuery, Direction};
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -26,7 +26,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = BlockQuery {
-        start_block: BlockNumber(0),
+        start_block: BlockHashOrNumber::Number(BlockNumber(0)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
         step: 1,
@@ -50,6 +50,49 @@ async fn header_db_executor_can_register_and_run_a_query() {
 }
 
 #[tokio::test]
+async fn header_db_executor_start_block_given_by_hash() {
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+
+    // put some data in the storage.
+    const NUM_OF_BLOCKS: u64 = 10;
+    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
+
+    let block_hash = storage_reader
+        .begin_ro_txn()
+        .unwrap()
+        .get_block_header(BlockNumber(0))
+        .unwrap()
+        .unwrap()
+        .block_hash;
+
+    let mut db_executor = super::BlockHeaderDBExecutor::new(storage_reader);
+
+    // register a query.
+    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    let query = BlockQuery {
+        start_block: BlockHashOrNumber::Hash(block_hash),
+        direction: Direction::Forward,
+        limit: NUM_OF_BLOCKS,
+        step: 1,
+    };
+    let query_id = db_executor.register_query(query, sender);
+
+    // run the executor and collect query results.
+    tokio::select! {
+        res = db_executor.next() => {
+            let poll_res = res.unwrap();
+            let res_query_id = poll_res.unwrap();
+            assert_eq!(res_query_id, query_id);
+        }
+        res = receiver.collect::<Vec<_>>() => {
+            assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
+            for (i, data) in res.iter().enumerate() {
+                assert_matches!(data, BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} if block_number == &(i as u64));
+            }
+        }
+    }
+}
+#[tokio::test]
 async fn header_db_executor_query_of_missing_block() {
     let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let mut db_executor = super::BlockHeaderDBExecutor::new(storage_reader);
@@ -61,7 +104,7 @@ async fn header_db_executor_query_of_missing_block() {
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = BlockQuery {
-        start_block: BlockNumber(NUM_OF_BLOCKS - BLOCKS_DELTA),
+        start_block: BlockHashOrNumber::Number(BlockNumber(NUM_OF_BLOCKS - BLOCKS_DELTA)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
         step: 1,
@@ -100,7 +143,7 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
         // register a query.
         let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
         let query = BlockQuery {
-            start_block: BlockNumber(0),
+            start_block: BlockHashOrNumber::Number(BlockNumber(0)),
             direction: Direction::Forward,
             limit: NUM_OF_BLOCKS,
             step: 1,
@@ -132,7 +175,7 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
 
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = BlockQuery {
-        start_block: BlockNumber(1),
+        start_block: BlockHashOrNumber::Number(BlockNumber(1)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
         step: 1,
