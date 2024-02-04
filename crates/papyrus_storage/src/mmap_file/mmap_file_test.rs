@@ -3,6 +3,7 @@ use std::sync::Arc;
 use pretty_assertions::assert_eq;
 use rand::Rng;
 use tempfile::tempdir;
+use test_utils::get_rng;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
@@ -261,4 +262,20 @@ fn reader_when_writer_is_out_of_scope() {
     assert_eq!(res, data);
 
     dir.close().unwrap();
+}
+
+#[test]
+fn storage_serde_test_location_in_file() {
+    // Checks serialization and serialization of the max value of LocationInFile.
+    let item = LocationInFile { offset: (1 << 48) - 1, len: (1 << 24) - 1 };
+    let mut buf = Vec::new();
+    item.serialize_into(&mut buf).unwrap();
+    let res = LocationInFile::deserialize_from(&mut buf.as_slice()).unwrap();
+    assert_eq!(res, item);
+
+    let item = LocationInFile::get_test_instance(&mut get_rng());
+    let mut buf = Vec::new();
+    item.serialize_into(&mut buf).unwrap();
+    let res = LocationInFile::deserialize_from(&mut buf.as_slice()).unwrap();
+    assert_eq!(res, item);
 }
