@@ -29,7 +29,7 @@ async fn main() {
         open_storage(StorageConfig::default()).expect("failed to open storage");
     let mut network_manager = network_manager::NetworkManager::new(
         Config {
-            listen_address: args.listen_address,
+            listen_addresses: vec![args.listen_address],
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),
             header_buffer_size: 100000,
