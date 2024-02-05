@@ -257,14 +257,6 @@ impl StarknetReader for StarknetFeederGatewayClient {
                 "Failed to get state update for block number {block_number} from starknet server."
             ),
         )
-        .map(|option| {
-            option.map(|mut state_update: StateUpdate| {
-                // Remove empty storage diffs. The feeder gateway sometimes returns an empty
-                // storage diff.
-                state_update.state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
-                state_update
-            })
-        })
     }
 
     #[instrument(skip(self), level = "debug")]

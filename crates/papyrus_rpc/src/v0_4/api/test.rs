@@ -6,7 +6,7 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
-use indexmap::IndexMap;
+use indexmap::{indexmap, IndexMap};
 use itertools::Itertools;
 use jsonrpsee::core::Error;
 use jsonrpsee::Methods;
@@ -176,7 +176,6 @@ use crate::{
     run_server,
     ContinuationTokenAsStruct,
 };
-
 const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
@@ -2141,6 +2140,47 @@ async fn get_state_update() {
         .await
         .unwrap_err();
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+}
+
+#[tokio::test]
+async fn get_state_update_with_empty_storage_diff() {
+    let method_name = "starknet_V0_4_getStateUpdate";
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerV0_4Impl,
+    >(None, None, Some(pending_data.clone()), None, None);
+    let state_diff = starknet_api::state::StateDiff {
+        storage_diffs: indexmap!(ContractAddress::default() => indexmap![]),
+        ..Default::default()
+    };
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    // The empty storage diff should be removed in the result.
+    let expected_state_diff =
+        ThinStateDiff::from(starknet_api::state::ThinStateDiff::from(StateDiff::default()));
+    let expected_update = StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
+        state_diff: expected_state_diff.clone(),
+        ..Default::default()
+    });
+
+    // Get state update by block hash.
+    call_api_then_assert_and_validate_schema_for_result(
+        &module,
+        method_name,
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(0))))],
+        &VERSION_0_4,
+        SpecFile::StarknetApiOpenrpc,
+        &expected_update,
+    )
+    .await;
 }
 
 #[derive(Clone)]

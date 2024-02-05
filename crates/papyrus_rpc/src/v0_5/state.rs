@@ -27,7 +27,7 @@ pub enum StateUpdate {
     PendingStateUpdate(PendingStateUpdate),
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize, Serialize)]
 pub struct AcceptedStateUpdate {
     pub block_hash: BlockHash,
     pub new_root: GlobalRoot,

@@ -437,6 +437,8 @@ async fn is_alive() {
     assert!(response);
 }
 
+// Empty storage diffs were filtered out in the past, but should not anymore (part of the inputs to
+// the state diff commitment).
 #[tokio::test]
 async fn state_update_with_empty_storage_diff() {
     let starknet_client = StarknetFeederGatewayClient::new(
@@ -447,7 +449,8 @@ async fn state_update_with_empty_storage_diff() {
     )
     .unwrap();
     let mut state_update = StateUpdate::default();
-    state_update.state_diff.storage_diffs = indexmap!(ContractAddress::default() => vec![]);
+    let empty_storage_diff = indexmap!(ContractAddress::default() => vec![]);
+    state_update.state_diff.storage_diffs = empty_storage_diff.clone();
 
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
@@ -456,7 +459,7 @@ async fn state_update_with_empty_storage_diff() {
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
     mock.assert();
-    assert!(state_update.state_diff.storage_diffs.is_empty());
+    assert_eq!(state_update.state_diff.storage_diffs, empty_storage_diff);
 }
 
 async fn test_unserializable<
