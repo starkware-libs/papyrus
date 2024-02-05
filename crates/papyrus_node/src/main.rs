@@ -13,8 +13,7 @@ use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_network::network_manager::{self, NetworkError};
-use papyrus_network::NetworkConfig;
+use papyrus_network::{network_manager, NetworkConfig};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_rpc::run_server;
@@ -118,7 +117,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         }
         res = network_handle => {
             error!("Network stopped.");
-            res??
+            res?
         }
     };
     error!("Task ended with unexpected Ok.");
@@ -155,11 +154,8 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     }
 }
 
-async fn run_network(
-    config: Option<NetworkConfig>,
-    storage_reader: StorageReader,
-) -> Result<(), NetworkError> {
-    let Some(network_config) = config else { return Ok(()) };
+async fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) {
+    let Some(network_config) = config else { return };
     let network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     network_manager.run().await
