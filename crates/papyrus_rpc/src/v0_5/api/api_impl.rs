@@ -23,7 +23,6 @@ use papyrus_execution::{
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::db::TransactionKind;
-use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
@@ -491,7 +490,6 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
 
             let block_hash = get_block_header_by_number(&txn, block_number)
                 .map_err(internal_server_error)?
-                .0
                 .block_hash;
 
             let thin_tx_output = txn
@@ -1450,17 +1448,14 @@ async fn read_pending_data<Mode: TransactionKind>(
     pending_data: &Arc<RwLock<PendingData>>,
     txn: &StorageTxn<'_, Mode>,
 ) -> RpcResult<PendingData> {
-    let (latest_header, starknet_version) = match get_latest_block_number(txn)? {
+    let latest_header = match get_latest_block_number(txn)? {
         Some(latest_block_number) => get_block_header_by_number(txn, latest_block_number)?,
-        None => (
-            starknet_api::block::BlockHeader {
-                parent_hash: BlockHash(
-                    StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
-                ),
-                ..Default::default()
-            },
-            StarknetVersion::default(),
-        ),
+        None => starknet_api::block::BlockHeader {
+            parent_hash: BlockHash(
+                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
+            ),
+            ..Default::default()
+        },
     };
     let pending_data = &pending_data.read().await;
     if pending_data.block.parent_block_hash() == latest_header.block_hash {
@@ -1473,7 +1468,7 @@ async fn read_pending_data<Mode: TransactionKind>(
                 strk_l1_gas_price: latest_header.l1_gas_price.price_in_fri,
                 timestamp: latest_header.timestamp,
                 sequencer_address: latest_header.sequencer,
-                starknet_version: starknet_version.0,
+                starknet_version: latest_header.starknet_version.0,
                 ..Default::default()
             }),
             state_update: ClientPendingStateUpdate {

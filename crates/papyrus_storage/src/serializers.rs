@@ -24,13 +24,13 @@ use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
     BlockHash,
-    BlockHeader,
     BlockNumber,
     BlockSignature,
     BlockStatus,
     BlockTimestamp,
     GasPrice,
     GasPricePerToken,
+    StarknetVersion,
 };
 use starknet_api::core::{
     ClassHash,
@@ -129,7 +129,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::header::StarknetVersion;
+use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -143,7 +143,7 @@ const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
-    pub struct BlockHeader {
+    pub struct StorageBlockHeader {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,

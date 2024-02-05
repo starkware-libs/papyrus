@@ -18,7 +18,9 @@
     "transaction_commitment": "0x0",
     "event_commitment": "0x0",
     "n_transactions": 0,
-    "n_events": 0
+    "n_events": 0,
+    "timestamp": 1643463800,
+    "starknet_version": "test"
   },
   "body": {
     "transactions": [

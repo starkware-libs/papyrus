@@ -21,8 +21,8 @@
 //! ```
 //! use papyrus_storage::open_storage;
 //! # use papyrus_storage::{db::DbConfig, StorageConfig};
-//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};    // Import the header API.
-//! use starknet_api::block::{BlockHeader, BlockNumber};
+//! use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};    // Import the header API.
+//! use starknet_api::block::{BlockHeader, BlockNumber, StarknetVersion};
 //! use starknet_api::core::ChainId;
 //!
 //! # let dir_handle = tempfile::tempdir().unwrap();
@@ -91,7 +91,7 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
@@ -117,7 +117,7 @@ use crate::db::{
     RO,
     RW,
 };
-use crate::header::StarknetVersion;
+use crate::header::StorageBlockHeader;
 use crate::state::data::IndexedDeprecatedContractClass;
 pub use crate::utils::update_storage_metrics;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
@@ -441,7 +441,7 @@ struct_field_names! {
         deprecated_declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
-        headers: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockHeader>, SimpleTable>,
+        headers: TableIdentifier<BlockNumber, NoVersionValueWrapper<StorageBlockHeader>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>, SimpleTable>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
