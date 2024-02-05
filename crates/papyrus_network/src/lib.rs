@@ -13,6 +13,7 @@ mod test_utils;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
+use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
@@ -34,8 +35,11 @@ pub struct BlockQuery {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetworkConfig {
-    pub listen_addresses: Vec<String>,
+    pub tcp_port: u16,
+    pub quic_port: u16,
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub session_timeout: Duration,
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
 }
@@ -44,9 +48,15 @@ impl SerializeConfig for NetworkConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
-                "listen_addresses",
-                &self.listen_addresses,
-                "The addresses that the peer listens on for incoming connections.",
+                "tcp_port",
+                &self.tcp_port,
+                "The port that the peer listens on for incoming tcp connections.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "quic_port",
+                &self.quic_port,
+                "The port that the peer listens on for incoming quic connections.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
@@ -75,10 +85,8 @@ impl SerializeConfig for NetworkConfig {
 impl Default for NetworkConfig {
     fn default() -> Self {
         Self {
-            listen_addresses: vec![
-                "/ip4/127.0.0.1/udp/10000/quic-v1".to_owned(),
-                "/ip4/127.0.0.1/tcp/10001".to_owned(),
-            ],
+            tcp_port: 10000,
+            quic_port: 10001,
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,

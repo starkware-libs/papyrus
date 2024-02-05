@@ -13,6 +13,8 @@ use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
+use papyrus_network::network_manager::{self, NetworkError};
+use papyrus_network::NetworkConfig;
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_rpc::run_server;
@@ -82,6 +84,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     .await?;
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
+    // P2P network.
+    let network_future = run_network(config.network.clone(), storage_reader.clone());
+    let network_handle = tokio::spawn(network_future);
+
     // Sync task.
     let sync_future = run_sync(
         config,
@@ -108,6 +114,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         }
         res = sync_handle => {
             error!("Sync stopped.");
+            res??
+        }
+        res = network_handle => {
+            error!("Network stopped.");
             res??
         }
     };
@@ -143,6 +153,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         );
         sync.run().await
     }
+}
+
+async fn run_network(
+    config: Option<NetworkConfig>,
+    storage_reader: StorageReader,
+) -> Result<(), NetworkError> {
+    let Some(network_config) = config else { return Ok(()) };
+    let network_manager =
+        network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
+    network_manager.run().await
 }
 
 // TODO(yair): add dynamic level filtering.
