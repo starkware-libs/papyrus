@@ -225,16 +225,15 @@ impl<V: ValueSerde> FileHandler<V, RW> {
 impl<V: ValueSerde + Debug> Writer<V> for FileHandler<V, RW> {
     fn append(&mut self, val: &V::Value) -> LocationInFile {
         trace!("Inserting object: {:?}", val);
-        // TODO(dan): change serialize_into to return serialization size.
-
-        let len = V::serialize(val).expect("Should be able to serialize").len();
+        let serialized = V::serialize(val).expect("Should be able to serialize");
+        let len = serialized.len();
         let offset;
         {
             let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
             offset = mmap_file.offset;
             debug!("Inserting object at offset: {}", offset);
-            let mut mmap_slice = &mut mmap_file.mmap[offset..];
-            let _ = val.serialize_into(&mut mmap_slice);
+            let mmap_slice = &mut mmap_file.mmap[offset..];
+            mmap_slice[..len].copy_from_slice(&serialized);
             mmap_file
                 .mmap
                 .flush_async_range(offset, len)
