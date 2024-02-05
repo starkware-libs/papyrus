@@ -29,6 +29,32 @@ fn common_prefix_compare_with_simple_table_random_test() {
 }
 
 #[test]
+fn common_prefix_fixed_size_table_test() {
+    let ((reader, mut writer), _temp_dir) = get_test_env();
+    let table_id = writer.create_common_prefix_fixed_size_table("table").unwrap();
+    table_test(table_id, &reader, &mut writer);
+}
+
+#[test]
+fn common_prefix_table_fixed_size_cursor_test() {
+    let ((reader, mut writer), _temp_dir) = get_test_env();
+    let table_id = writer.create_common_prefix_fixed_size_table("table").unwrap();
+    table_cursor_test(table_id, &reader, &mut writer);
+}
+
+#[ignore]
+#[test]
+fn common_prefix_fixed_size_compare_with_simple_table_random_test() {
+    for _ in 0..5 {
+        let ((reader, mut writer), _temp_dir) = get_test_env();
+        let simple_table = writer.create_simple_table("simple_table").unwrap();
+        let common_prefix_table =
+            writer.create_common_prefix_fixed_size_table("common_prefix_fixed_size_table").unwrap();
+        random_table_test(simple_table, common_prefix_table, &reader, &mut writer);
+    }
+}
+
+#[test]
 fn add_one_test() {
     let mut bytes;
 

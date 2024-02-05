@@ -10,6 +10,8 @@ mod dup_sort_tables;
 mod simple_table;
 #[allow(unused_imports)]
 pub(crate) use dup_sort_tables::CommonPrefix;
+#[allow(unused_imports)]
+pub(crate) use dup_sort_tables::CommonPrefixFixedSize;
 pub(crate) use simple_table::SimpleTable;
 pub(crate) mod const_serialization_size;
 #[cfg(test)]
