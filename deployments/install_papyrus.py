@@ -51,6 +51,13 @@ def parse_command_line_args():
         default=False,
         help="Enabling this option will dry run the helm upgrade.",
     )
+    parser.add_argument(
+        "--helm_deployment_dir",
+        type=str,
+        required=False,
+        default="./deployments/helm/",
+        help="Relative path to the helm deployment directory (default is ./deployments/helm/."
+    )
 
     return parser.parse_args()
 
@@ -71,7 +78,7 @@ def main():
     args = parse_command_line_args()
     print(args)
     # The CMD assumes this script is being run from the root directory.
-    cmd = f"helm upgrade --install {args.release_name} ./deployments/helm/ --namespace {args.namespace}"
+    cmd = f"helm upgrade --install {args.release_name} {args.helm_deployment_dir} --namespace {args.namespace}"
     if args.create_namespace:
         cmd += " --create-namespace"
     if args.with_alerts:
