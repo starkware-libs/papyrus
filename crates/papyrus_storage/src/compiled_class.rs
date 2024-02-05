@@ -42,7 +42,7 @@ use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
-use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::serialization::VersionZeroWrapper;
 use crate::db::table_types::{SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
@@ -110,7 +110,7 @@ fn update_marker<'env>(
     state_diffs_table: &'env TableHandle<
         '_,
         BlockNumber,
-        NoVersionValueWrapper<LocationInFile>,
+        VersionZeroWrapper<LocationInFile>,
         SimpleTable,
     >,
     file_handlers: FileHandlers<RW>,

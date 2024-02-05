@@ -77,7 +77,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{Key, NoVersionValueWrapper, ValueSerde};
+use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use db::table_types::Table;
 use mmap_file::{
     open_file,
@@ -433,27 +433,27 @@ pub fn table_names() -> &'static [&'static str] {
 struct_field_names! {
     struct Tables {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
-        block_signatures: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockSignature>, SimpleTable>,
-        casms: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>,
+        block_signatures: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockSignature>, SimpleTable>,
+        casms: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
-        declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>,
+        declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, NoVersionValueWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
-        headers: TableIdentifier<BlockNumber, NoVersionValueWrapper<BlockHeader>, SimpleTable>,
-        markers: TableIdentifier<MarkerKind, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
+        headers: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockHeader>, SimpleTable>,
+        markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), NoVersionValueWrapper<Nonce>, SimpleTable>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
-        state_diffs: TableIdentifier<BlockNumber, NoVersionValueWrapper<LocationInFile>, SimpleTable>,
+        state_diffs: TableIdentifier<BlockNumber, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>,
         transaction_idx_to_hash: TableIdentifier<TransactionIndex, NoVersionValueWrapper<TransactionHash>, SimpleTable>,
-        transaction_outputs: TableIdentifier<TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>, SimpleTable>,
-        transactions: TableIdentifier<TransactionIndex, NoVersionValueWrapper<Transaction>, SimpleTable>,
+        transaction_outputs: TableIdentifier<TransactionIndex, VersionZeroWrapper<ThinTransactionOutput>, SimpleTable>,
+        transactions: TableIdentifier<TransactionIndex, VersionZeroWrapper<Transaction>, SimpleTable>,
 
         // Version tables
-        starknet_version: TableIdentifier<BlockNumber, NoVersionValueWrapper<StarknetVersion>, SimpleTable>,
-        storage_version: TableIdentifier<String, NoVersionValueWrapper<Version>, SimpleTable>
+        starknet_version: TableIdentifier<BlockNumber, VersionZeroWrapper<StarknetVersion>, SimpleTable>,
+        storage_version: TableIdentifier<String, VersionZeroWrapper<Version>, SimpleTable>
     }
 }
 
@@ -571,14 +571,14 @@ pub(crate) enum MarkerKind {
 }
 
 pub(crate) type MarkersTable<'env> =
-    TableHandle<'env, MarkerKind, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
+    TableHandle<'env, MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>;
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
-    thin_state_diff: FileHandler<NoVersionValueWrapper<ThinStateDiff>, Mode>,
-    contract_class: FileHandler<NoVersionValueWrapper<ContractClass>, Mode>,
-    casm: FileHandler<NoVersionValueWrapper<CasmContractClass>, Mode>,
-    deprecated_contract_class: FileHandler<NoVersionValueWrapper<DeprecatedContractClass>, Mode>,
+    thin_state_diff: FileHandler<VersionZeroWrapper<ThinStateDiff>, Mode>,
+    contract_class: FileHandler<VersionZeroWrapper<ContractClass>, Mode>,
+    casm: FileHandler<VersionZeroWrapper<CasmContractClass>, Mode>,
+    deprecated_contract_class: FileHandler<VersionZeroWrapper<DeprecatedContractClass>, Mode>,
 }
 
 impl FileHandlers<RW> {

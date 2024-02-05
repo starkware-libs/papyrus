@@ -64,7 +64,7 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
-use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
@@ -82,17 +82,13 @@ use crate::{
 type FileOffsetTable<'env> =
     TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>;
 type DeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>;
+    TableHandle<'env, ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>;
 type DeclaredClassesBlockTable<'env> =
     TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
-type DeprecatedDeclaredClassesTable<'env> = TableHandle<
-    'env,
-    ClassHash,
-    NoVersionValueWrapper<IndexedDeprecatedContractClass>,
-    SimpleTable,
->;
+type DeprecatedDeclaredClassesTable<'env> =
+    TableHandle<'env, ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>;
 type CompiledClassesTable<'env> =
-    TableHandle<'env, ClassHash, NoVersionValueWrapper<LocationInFile>, SimpleTable>;
+    TableHandle<'env, ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>;
 type DeployedContractsTable<'env> = TableHandle<
     'env,
     (ContractAddress, BlockNumber),
@@ -626,7 +622,7 @@ fn update_compiled_class_marker<'env>(
     state_diffs_table: &'env TableHandle<
         '_,
         BlockNumber,
-        NoVersionValueWrapper<LocationInFile>,
+        VersionZeroWrapper<LocationInFile>,
         SimpleTable,
     >,
     file_handlers: &FileHandlers<RW>,
