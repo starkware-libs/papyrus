@@ -38,7 +38,6 @@ pub enum BlockHashOrNumber {
     Number(BlockNumber),
 }
 
-
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetworkConfig {
     pub listen_addresses: Vec<String>,

@@ -14,9 +14,6 @@ use crate::NetworkConfig;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
-#[derive(thiserror::Error, Debug)]
-pub enum NetworkError {}
-
 pub struct NetworkManager {
     swarm: Swarm<BlockHeadersBehaviour>,
     db_executor: db_executor::BlockHeaderDBExecutor,
@@ -50,7 +47,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn run(mut self) -> Result<(), NetworkError> {
+    pub async fn run(mut self) {
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
