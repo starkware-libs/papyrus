@@ -24,12 +24,12 @@ use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
     BlockHash,
-    BlockHeader,
     BlockNumber,
     BlockSignature,
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    StarknetVersion,
 };
 use starknet_api::core::{
     ClassHash,
@@ -125,7 +125,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::header::StarknetVersion;
+use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -139,7 +139,7 @@ const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
-    pub struct BlockHeader {
+    pub struct StorageBlockHeader {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
@@ -869,7 +869,7 @@ impl StorageSerde for BigUint {
 impl StorageSerde for ContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         serialize_and_compress(&self.sierra_program)?.serialize_into(res)?;
-        self.entry_point_by_type.serialize_into(res)?;
+        self.entry_points_by_type.serialize_into(res)?;
         serialize_and_compress(&self.abi)?.serialize_into(res)?;
         Ok(())
     }
@@ -879,7 +879,7 @@ impl StorageSerde for ContractClass {
             sierra_program: Vec::<StarkFelt>::deserialize_from(
                 &mut decompress_from_reader(bytes)?.as_slice(),
             )?,
-            entry_point_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
+            entry_points_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
                 bytes,
             )?,
             abi: String::deserialize_from(&mut decompress_from_reader(bytes)?.as_slice())?,

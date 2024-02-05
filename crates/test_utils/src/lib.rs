@@ -46,6 +46,7 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    StarknetVersion,
 };
 use starknet_api::core::{
     ClassHash,
@@ -410,6 +411,7 @@ auto_impl_get_test_instance! {
         pub state_root: GlobalRoot,
         pub sequencer: ContractAddress,
         pub timestamp: BlockTimestamp,
+        pub starknet_version: StarknetVersion,
     }
     pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
@@ -430,13 +432,14 @@ auto_impl_get_test_instance! {
         Keccak = 6,
         SegmentArena = 7,
     }
+    pub struct StarknetVersion(pub String);
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     pub struct ContractClass {
         pub sierra_program: Vec<StarkFelt>,
-        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub abi: String,
     }
     pub struct DeprecatedContractClass {

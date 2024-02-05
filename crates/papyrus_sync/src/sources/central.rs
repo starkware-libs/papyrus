@@ -22,7 +22,6 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_storage::header::StarknetVersion;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
@@ -192,7 +191,7 @@ pub trait CentralSourceTrait {
 }
 
 pub(crate) type BlocksStream<'a> =
-    BoxStream<'a, Result<(BlockNumber, Block, BlockSignature, StarknetVersion), CentralError>>;
+    BoxStream<'a, Result<(BlockNumber, Block, BlockSignature), CentralError>>;
 type CentralStateUpdate =
     (BlockNumber, BlockHash, StateDiff, IndexMap<ClassHash, DeprecatedContractClass>);
 pub(crate) type StateUpdatesStream<'a> = BoxStream<'a, CentralResult<CentralStateUpdate>>;
@@ -266,8 +265,8 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
                 let maybe_central_block =
                     client_to_central_block(current_block_number, maybe_client_block);
                 match maybe_central_block {
-                    Ok((block, signature, version)) => {
-                        yield Ok((current_block_number, block, signature, version));
+                    Ok((block, signature)) => {
+                        yield Ok((current_block_number, block, signature));
                     }
                     Err(err) => {
                         yield (Err(err));
@@ -393,12 +392,12 @@ fn client_to_central_block(
         ),
         ReaderClientError,
     >,
-) -> CentralResult<(Block, BlockSignature, StarknetVersion)> {
+) -> CentralResult<(Block, BlockSignature)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
             trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
-            let (block, version) = block
+            let block = block
                 .to_starknet_api_block_and_version()
                 .map_err(|err| CentralError::ClientError(Arc::new(err)))?;
             Ok((
@@ -407,7 +406,6 @@ fn client_to_central_block(
                     r: signature_data.signature[0],
                     s: signature_data.signature[1],
                 }),
-                StarknetVersion(version),
             ))
         }
         Ok((None, Some(_))) => {

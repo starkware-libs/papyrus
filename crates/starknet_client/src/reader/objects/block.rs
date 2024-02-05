@@ -11,6 +11,7 @@ use starknet_api::block::{
     BlockNumber,
     BlockTimestamp,
     GasPrice,
+    StarknetVersion,
 };
 use starknet_api::core::{ContractAddress, GlobalRoot};
 use starknet_api::hash::StarkFelt;
@@ -112,9 +113,8 @@ pub enum TransactionReceiptsError {
 /// [Block](`starknet_api_block`) and String representing the Starknet version corresponding to
 /// that block.
 impl Block {
-    pub fn to_starknet_api_block_and_version(
-        self,
-    ) -> ReaderClientResult<(starknet_api_block, String)> {
+    // TODO(shahak): Rename to to_starknet_api_block.
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions.len();
         let num_of_receipts = self.transaction_receipts.len();
@@ -199,6 +199,7 @@ impl Block {
             state_root: self.state_root,
             sequencer: self.sequencer_address,
             timestamp: self.timestamp,
+            starknet_version: StarknetVersion(self.starknet_version),
         };
 
         let body = starknet_api::block::BlockBody {
@@ -207,7 +208,7 @@ impl Block {
             transaction_hashes,
         };
 
-        Ok((starknet_api_block { header, body }, self.starknet_version))
+        Ok(starknet_api_block { header, body })
     }
 }
 

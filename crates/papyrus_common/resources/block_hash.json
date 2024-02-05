@@ -7,7 +7,8 @@
     "strk_l1_gas_price": "0x0",
     "state_root": "0x6c4171ece740d153a40106b18545f147d62c513a9cb67eb7b06f83a2508b3a4",
     "sequencer": "0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8",
-    "timestamp": 1693484880
+    "timestamp": 1693484880,
+    "starknet_version": "test"
   },
   "body": {
     "transactions": [

@@ -205,7 +205,7 @@ impl From<starknet_api::state::ContractClass> for ContractClass {
         Self {
             sierra_program: class.sierra_program,
             contract_class_version: CONTRACT_CLASS_VERSION.to_owned(),
-            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_point_by_type),
+            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_points_by_type),
             abi: class.abi,
         }
     }

@@ -18,7 +18,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
-use papyrus_storage::header::{HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageScope;
@@ -35,6 +35,7 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    StarknetVersion,
 };
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
@@ -241,8 +242,6 @@ async fn block_hash_and_number() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .commit()
         .unwrap();
     call_api_then_assert_and_validate_schema_for_err::<_, BlockHashAndNumber>(
@@ -304,8 +303,6 @@ async fn block_number() {
         .begin_rw_txn()
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -391,8 +388,6 @@ async fn get_block_transaction_count() {
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
@@ -486,12 +481,11 @@ async fn get_block_w_full_transactions() {
     block.header.block_hash = block_hash;
     block.header.sequencer = sequencer_address;
     block.header.timestamp = timestamp;
+    block.header.starknet_version = starknet_version.clone();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -510,7 +504,7 @@ async fn get_block_w_full_transactions() {
     };
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Full(vec![expected_transaction]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -668,8 +662,6 @@ async fn get_block_w_transaction_hashes() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &starknet_version)
-        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .append_state_diff(
@@ -683,7 +675,7 @@ async fn get_block_w_transaction_hashes() {
 
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Hashes(vec![block.body.transaction_hashes[0]]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -846,8 +838,6 @@ async fn get_class() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
@@ -997,8 +987,6 @@ async fn get_transaction_status() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .commit()
@@ -1115,8 +1103,6 @@ async fn get_transaction_receipt() {
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -1265,8 +1251,6 @@ async fn get_class_at() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -1441,8 +1425,6 @@ async fn get_class_hash_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1597,8 +1579,6 @@ async fn get_nonce() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1734,8 +1714,6 @@ async fn get_storage_at() {
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
-        .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
@@ -2079,8 +2057,6 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .append_state_diff(
@@ -2217,8 +2193,6 @@ async fn get_state_update() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -2499,8 +2473,6 @@ async fn test_get_events(
 
         rw_txn = rw_txn
             .append_header(block_number, &block.header)
-            .unwrap()
-            .update_starknet_version(&block_number, &StarknetVersion::default())
             .unwrap()
             .append_body(block_number, block.body)
             .unwrap()
@@ -3094,8 +3066,6 @@ async fn serialize_returns_valid_json() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_block.header.block_number, &parent_block.header)
-        .unwrap()
-        .update_starknet_version(&parent_block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()

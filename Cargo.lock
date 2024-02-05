@@ -934,8 +934,6 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.5.0-dev.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3b5acc7622f7b7af1e1df0c4065211d4665f29bbd0e658b8d21975f4a0ab6b8e"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1290,9 +1288,9 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-runner"
-version = "2.5.0-dev.0"
+version = "2.5.0-dev.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "026e0364e91261d163ca7f542cd0025aa876ae29d5bdf23b226c7bc5521de61a"
+checksum = "9867f8e30b824988c249fbed6325ace995503143d02c45c60fc15e572b6c11c7"
 dependencies = [
  "ark-ff",
  "ark-secp256k1",
@@ -7777,16 +7775,12 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.7.0-dev.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "88969610ab6ea9391e0e05a3e7c38acc49dc1cb49941b93ca52814075002b92f"
 dependencies = [
  "cairo-lang-starknet",
  "derive_more",
  "hex",
  "indexmap 2.1.0",
  "once_cell",
- "parity-scale-codec",
- "parity-scale-codec-derive",
  "primitive-types",
  "serde",
  "serde_json",

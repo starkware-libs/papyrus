@@ -1,7 +1,7 @@
 pub mod behaviour;
 
 use prost_types::Timestamp;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice, StarknetVersion};
 use starknet_api::core::GlobalRoot;
 use starknet_api::crypto::Signature;
 
@@ -153,6 +153,7 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
             block_hash: BlockHash::default(),
             eth_l1_gas_price: GasPrice::default(),
             strk_l1_gas_price: GasPrice::default(),
+            starknet_version: StarknetVersion::default(),
         })
     }
 }

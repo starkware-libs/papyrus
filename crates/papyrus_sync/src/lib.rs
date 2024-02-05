@@ -28,7 +28,7 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::db::DbError;
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
@@ -177,7 +177,6 @@ pub enum SyncEvent {
         block_number: BlockNumber,
         block: Block,
         signature: BlockSignature,
-        starknet_version: StarknetVersion,
     },
     StateDiffAvailable {
         block_number: BlockNumber,
@@ -324,8 +323,8 @@ impl<
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
-            SyncEvent::BlockAvailable { block_number, block, signature, starknet_version } => {
-                self.store_block(block_number, block, &signature, &starknet_version)
+            SyncEvent::BlockAvailable { block_number, block, signature } => {
+                self.store_block(block_number, block, &signature)
             }
             SyncEvent::StateDiffAvailable {
                 block_number,
@@ -357,7 +356,6 @@ impl<
         block_number: BlockNumber,
         block: Block,
         signature: &BlockSignature,
-        starknet_version: &StarknetVersion,
     ) -> StateSyncResult {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
@@ -369,7 +367,6 @@ impl<
             .begin_rw_txn()?
             .append_header(block_number, &block.header)?
             .append_block_signature(block_number, signature)?
-            .update_starknet_version(&block_number, starknet_version)?
             .append_body(block_number, block.body)?
             .commit()?;
         metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
@@ -628,8 +625,8 @@ fn stream_new_blocks<
                 central_source.stream_new_blocks(header_marker, up_to).fuse();
             pin_mut!(block_stream);
             while let Some(maybe_block) = block_stream.next().await {
-                let (block_number, block, signature, starknet_version) = maybe_block?;
-                yield SyncEvent::BlockAvailable { block_number, block , signature, starknet_version};
+                let (block_number, block, signature) = maybe_block?;
+                yield SyncEvent::BlockAvailable { block_number, block , signature };
             }
         }
     }
