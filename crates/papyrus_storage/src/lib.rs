@@ -130,7 +130,7 @@ pub const STORAGE_VERSION_STATE: Version = Version(11);
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(11);
+pub const STORAGE_VERSION_BLOCKS: Version = Version(12);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
