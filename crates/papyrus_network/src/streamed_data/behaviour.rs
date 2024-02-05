@@ -112,6 +112,8 @@ pub struct PeerNotConnected;
 #[allow(dead_code)]
 pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     config: Config,
+    // TODO(shahak): Use deadqueue if using a VecDeque is a bug (libp2p uses VecDeque, so we opened
+    // an issue on it https://github.com/libp2p/rust-libp2p/issues/5147)
     pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
