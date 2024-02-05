@@ -25,7 +25,7 @@ pub enum Direction {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub struct BlockQuery {
+struct BlockQuery {
     pub start_block: BlockHashOrNumber,
     pub direction: Direction,
     pub limit: u64,
