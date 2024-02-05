@@ -25,7 +25,7 @@ use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
-use papyrus_storage::header::{HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
@@ -1412,8 +1412,6 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
             },
         )
         .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
-        .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
         .append_state_diff(
@@ -1490,8 +1488,6 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
                 ..Default::default()
             },
         )
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()

@@ -47,6 +47,7 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
     GasPricePerToken,
+    StarknetVersion,
 };
 use starknet_api::core::{
     ClassHash,
@@ -419,6 +420,7 @@ auto_impl_get_test_instance! {
         pub event_commitment: EventCommitment,
         pub n_transactions: usize,
         pub n_events: usize,
+        pub starknet_version: StarknetVersion,
     }
     pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
@@ -439,6 +441,7 @@ auto_impl_get_test_instance! {
         Keccak = 6,
         SegmentArena = 7,
     }
+    pub struct StarknetVersion(pub String);
     pub struct Calldata(pub Arc<Vec<StarkFelt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);

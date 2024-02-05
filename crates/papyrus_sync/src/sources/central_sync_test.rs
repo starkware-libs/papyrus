@@ -10,7 +10,7 @@ use indexmap::IndexMap;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses};
 use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
-use papyrus_storage::header::{HeaderStorageReader, StarknetVersion};
+use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -45,7 +45,6 @@ const BASE_LAYER_SLEEP_DURATION: Duration = Duration::from_millis(10); // 10ms
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = SYNC_SLEEP_DURATION.saturating_mul(2); // 200ms twice the sleep duration of the sync loop.
 const MAX_CHECK_STORAGE_ITERATIONS: u8 = 3;
 const STREAM_SIZE: u32 = 1000;
-const STARKNET_VERSION: &str = "starknet_version";
 
 // TODO(dvir): separate this file to flow tests and unit tests.
 // TODO(dvir): consider adding a test for mismatch between the base layer and l2.
@@ -182,7 +181,6 @@ async fn sync_happy_flow() {
                     block_number,
                     Block { header, body: BlockBody::default() },
                     BlockSignature::default(),
-                    StarknetVersion(STARKNET_VERSION.to_string())
                 ));
             }
         }
@@ -469,7 +467,6 @@ async fn sync_with_revert() {
                             i,
                             Block{ header, body: BlockBody::default() },
                             BlockSignature::default(),
-                            StarknetVersion(STARKNET_VERSION.to_string()),
                         ));
                     }
                 }
@@ -489,7 +486,6 @@ async fn sync_with_revert() {
                             i,
                             Block{header, body: BlockBody::default()},
                             BlockSignature::default(),
-                            StarknetVersion(STARKNET_VERSION.to_string())
                         ));
                     }
                 }
@@ -589,7 +585,6 @@ async fn test_unrecoverable_sync_error_flow() {
                 BLOCK_NUMBER,
                 Block { header, body: BlockBody::default()},
                 BlockSignature::default(),
-                StarknetVersion(STARKNET_VERSION.to_string()),
             ));
         }
         .boxed();

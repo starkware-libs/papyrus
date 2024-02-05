@@ -2,14 +2,9 @@ pub mod behaviour;
 
 use prost_types::Timestamp;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
-use starknet_api::core::{
-    ContractAddress,
-    GlobalRoot,
-    SequencerContractAddress,
-};
+use starknet_api::core::{ContractAddress, GlobalRoot, SequencerContractAddress};
 use starknet_api::crypto::Signature;
 use starknet_api::hash::StarkHash;
-
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};

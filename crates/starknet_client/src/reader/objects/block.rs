@@ -12,6 +12,7 @@ use starknet_api::block::{
     BlockTimestamp,
     GasPrice,
     GasPricePerToken,
+    StarknetVersion,
 };
 use starknet_api::core::{
     EventCommitment,
@@ -59,9 +60,7 @@ pub struct DeprecatedBlock {
 }
 
 impl DeprecatedBlock {
-    pub fn to_starknet_api_block_and_version(
-        self,
-    ) -> ReaderClientResult<(starknet_api_block, String)> {
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         let block_or_deprecated = BlockOrDeprecated::Deprecated(self);
         block_or_deprecated.to_starknet_api_block_and_version()
     }
@@ -91,9 +90,7 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn to_starknet_api_block_and_version(
-        self,
-    ) -> ReaderClientResult<(starknet_api_block, String)> {
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         let block_or_deprecated = BlockOrDeprecated::Current(self);
         block_or_deprecated.to_starknet_api_block_and_version()
     }
@@ -264,8 +261,8 @@ impl BlockOrDeprecated {
 
     pub fn transaction_commitment(&self) -> TransactionCommitment {
         match self {
-            // TODO(Eitan): calculate the transaction commitment (note that afterwards, the block hash
-            // needs to be verified against self.block_hash).
+            // TODO(Eitan): calculate the transaction commitment (note that afterwards, the block
+            // hash needs to be verified against self.block_hash).
             BlockOrDeprecated::Deprecated(_) => TransactionCommitment::default(),
             BlockOrDeprecated::Current(block) => block.transaction_commitment,
         }
@@ -279,9 +276,8 @@ impl BlockOrDeprecated {
         }
     }
 
-    pub fn to_starknet_api_block_and_version(
-        self,
-    ) -> ReaderClientResult<(starknet_api_block, String)> {
+    // TODO(shahak): Rename to to_starknet_api_block.
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions().len();
         let num_of_receipts = self.transaction_receipts().len();
@@ -312,10 +308,9 @@ impl BlockOrDeprecated {
             n_events: self
                 .transaction_receipts()
                 .iter()
-                .fold(0, |_acc, receipt| receipt.events.len()),
+                .fold(0, |acc, receipt| acc + receipt.events.len()),
+            starknet_version: StarknetVersion(self.starknet_version()),
         };
-
-        let starknet_version = self.starknet_version();
 
         let (transactions, transaction_receipts) = self.get_body();
 
@@ -385,7 +380,7 @@ impl BlockOrDeprecated {
             transaction_hashes,
         };
 
-        Ok((starknet_api_block { header, body }, starknet_version))
+        Ok(starknet_api_block { header, body })
     }
 
     fn get_body(self) -> (Vec<Transaction>, Vec<TransactionReceipt>) {
