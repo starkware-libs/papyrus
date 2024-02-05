@@ -8,6 +8,7 @@ use std::marker::PhantomData;
 
 use libmdbx::{TableFlags, WriteFlags};
 
+use super::const_serialization_size::ConstSerializationSize;
 use super::{DbResult, Table, TableType};
 use crate::db::serialization::{Key as KeyTrait, StorageSerde, StorageSerdeEx, ValueSerde};
 use crate::db::{
@@ -33,7 +34,12 @@ impl<T: DupSortTableType> TableType for T {}
 // NOTICE: the size of the serialized sub key and value must be half of page size.
 pub(crate) struct CommonPrefix;
 
+// A table with keys with common prefix where the sub key and value are fixed size.
+// NOTICE: the size of the serialized sub key and value must be half of page size.
+pub(crate) struct CommonPrefixFixedSize;
+
 impl DupSortTableType for CommonPrefix {}
+impl DupSortTableType for CommonPrefixFixedSize {}
 
 trait DupSortUtils<K: KeyTrait, V: ValueSerde> {
     // Returns the main key.
@@ -93,6 +99,54 @@ where
     }
 }
 
+impl<
+    MainKey: KeyTrait,
+    SubKey: KeyTrait + ConstSerializationSize,
+    V: ValueSerde + ConstSerializationSize,
+> DupSortUtils<(MainKey, SubKey), V> for CommonPrefixFixedSize
+where
+    (MainKey, SubKey): KeyTrait,
+{
+    fn get_main_key(key: &(MainKey, SubKey)) -> DbResult<Vec<u8>> {
+        <CommonPrefix as DupSortUtils<(MainKey, SubKey), V>>::get_main_key(key)
+    }
+
+    fn get_sub_key(key: &(MainKey, SubKey)) -> DbResult<Vec<u8>> {
+        <CommonPrefix as DupSortUtils<(MainKey, SubKey), V>>::get_sub_key(key)
+    }
+
+    fn get_sub_key_value<'a>(key: &(MainKey, SubKey), value: &V::Value) -> DbResult<Vec<u8>> {
+        let mut res = Vec::with_capacity(SubKey::SIZE + V::SIZE);
+        key.1.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
+        value.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
+        Ok(res)
+    }
+
+    fn get_first_key_after(key: &(MainKey, SubKey)) -> DbResult<Vec<u8>> {
+        let total_size = SubKey::SIZE + V::SIZE;
+        let mut res = Vec::with_capacity(total_size);
+        key.1.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
+        // Libmdbx requires that for DUP_FIXED tables, the value size will fixed even for getters
+        // function, so the padding is a must.
+        res.resize(total_size, 0);
+        Ok(res)
+    }
+
+    fn next_key_suffix_value(sub_key_value: &mut Vec<u8>) {
+        <CommonPrefix as DupSortUtils<(MainKey, SubKey), V>>::next_key_suffix_value(sub_key_value);
+    }
+
+    fn get_key_value_pair(
+        main_key: &[u8],
+        sub_key_value: &[u8],
+    ) -> Option<((MainKey, SubKey), <V as ValueSerde>::Value)> {
+        <CommonPrefix as DupSortUtils<(MainKey, SubKey), V>>::get_key_value_pair(
+            main_key,
+            sub_key_value,
+        )
+    }
+}
+
 // Adds one to the number represented by the bytes.
 fn add_one(bytes: &mut Vec<u8>) {
     for byte in bytes.iter_mut().rev() {
@@ -123,6 +177,29 @@ impl DbWriter {
     {
         let txn = self.env.begin_rw_txn()?;
         txn.create_table(Some(name), TableFlags::DUP_SORT)?;
+        txn.commit()?;
+        Ok(TableIdentifier {
+            name,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+            _table_type: PhantomData {},
+        })
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn create_common_prefix_fixed_size_table<
+        K0: KeyTrait + Debug,
+        K1: KeyTrait + Debug + ConstSerializationSize,
+        V: ValueSerde + Debug + ConstSerializationSize,
+    >(
+        &mut self,
+        name: &'static str,
+    ) -> DbResult<TableIdentifier<(K0, K1), V, CommonPrefixFixedSize>>
+    where
+        (K0, K1): KeyTrait + Debug,
+    {
+        let txn = self.env.begin_rw_txn()?;
+        txn.create_table(Some(name), TableFlags::DUP_SORT | TableFlags::DUP_FIXED)?;
         txn.commit()?;
         Ok(TableIdentifier {
             name,
