@@ -66,7 +66,7 @@ impl<T: StorageSerde + Debug> ValueSerde for NoVersionValueWrapper<T> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// A generic wrapper for values with version zero. These values are serialized with a leading byte
 /// that is set to zero.
 pub(crate) struct VersionZeroWrapper<T: StorageSerde> {
