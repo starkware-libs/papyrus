@@ -63,12 +63,21 @@ use crate::body::events::{EventIndex, ThinTransactionOutput};
 use crate::db::serialization::{NoVersionValueWrapper, StorageSerde};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
-use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
+use crate::mmap_file::LocationInFile;
+use crate::{
+    FileHandlers,
+    MarkerKind,
+    MarkersTable,
+    StorageError,
+    StorageResult,
+    StorageScope,
+    StorageTxn,
+};
 
 type TransactionsTable<'env> =
     TableHandle<'env, TransactionIndex, NoVersionValueWrapper<Transaction>, SimpleTable>;
 type TransactionOutputsTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>, SimpleTable>;
+    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<LocationInFile>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type TransactionIdxToHashTable<'env> =
@@ -184,8 +193,14 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<ThinTransactionOutput>> {
         let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
-        let transaction_output = transaction_outputs_table.get(&self.txn, &transaction_index)?;
-        Ok(transaction_output)
+        let Some(tx_output_location) =
+            transaction_outputs_table.get(&self.txn, &transaction_index)?
+        else {
+            return Ok(None);
+        };
+        let transaction_output =
+            self.file_handlers.get_transaction_output_unchecked(tx_output_location)?;
+        Ok(Some(transaction_output))
     }
 
     fn get_transaction_events(
@@ -254,7 +269,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
         let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
-        self.get_transactions_in_block(block_number, transaction_outputs_table)
+        self.get_transaction_outputs_in_block(block_number, transaction_outputs_table)
     }
 
     fn get_block_transactions_count(
@@ -309,6 +324,31 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
         }
         Ok(Some(res))
     }
+
+    // TODO(dvir): remove this function when we have a general table interface also for values
+    // written to a file.
+    // Returns the transaction outputs in the given block.
+    fn get_transaction_outputs_in_block(
+        &self,
+        block_number: BlockNumber,
+        transaction_output_offsets_table: TransactionOutputsTable<'env>,
+    ) -> StorageResult<Option<Vec<ThinTransactionOutput>>> {
+        if self.get_body_marker()? <= block_number {
+            return Ok(None);
+        }
+        let mut cursor = transaction_output_offsets_table.cursor(&self.txn)?;
+        let mut current =
+            cursor.lower_bound(&TransactionIndex(block_number, TransactionOffsetInBlock(0)))?;
+        let mut res = Vec::new();
+        while let Some((TransactionIndex(current_block_number, _), file_location)) = current {
+            if current_block_number != block_number {
+                break;
+            }
+            res.push(self.file_handlers.get_transaction_output_unchecked(file_location)?);
+            current = cursor.next()?;
+        }
+        Ok(Some(res))
+    }
 }
 
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
@@ -337,6 +377,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             write_transaction_outputs(
                 block_body,
                 &self.txn,
+                &self.file_handlers,
                 &transaction_outputs_table,
                 &events_table,
                 block_number,
@@ -445,6 +486,7 @@ fn write_transactions<'env>(
 fn write_transaction_outputs<'env>(
     block_body: BlockBody,
     txn: &DbTransaction<'env, RW>,
+    file_handlers: &FileHandlers<RW>,
     transaction_outputs_table: &'env TransactionOutputsTable<'env>,
     events_table: &'env EventsTable<'env>,
     block_number: BlockNumber,
@@ -453,11 +495,9 @@ fn write_transaction_outputs<'env>(
         let transaction_index = TransactionIndex(block_number, TransactionOffsetInBlock(index));
 
         write_events(&tx_output, txn, events_table, transaction_index)?;
-        transaction_outputs_table.insert(
-            txn,
-            &transaction_index,
-            &ThinTransactionOutput::from(tx_output),
-        )?;
+        let location =
+            file_handlers.append_transaction_output(&ThinTransactionOutput::from(tx_output));
+        transaction_outputs_table.insert(txn, &transaction_index, &location)?;
     }
     Ok(())
 }
