@@ -106,7 +106,7 @@ expression: dumped_default_config
   },
   "network.#is_none": {
     "description": "Flag for an optional field",
-    "value": false,
+    "value": true,
     "privacy": "TemporaryValue"
   },
   "network.header_buffer_size": {

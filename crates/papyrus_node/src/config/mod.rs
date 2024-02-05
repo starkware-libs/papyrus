@@ -59,7 +59,7 @@ impl Default for NodeConfig {
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
-            network: Some(NetworkConfig::default()),
+            network: None,
         }
     }
 }

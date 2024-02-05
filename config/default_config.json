@@ -97,7 +97,7 @@
   "network.#is_none": {
     "description": "Flag for an optional field",
     "privacy": "TemporaryValue",
-    "value": false
+    "value": true
   },
   "network.header_buffer_size": {
     "description": "Size of the buffer for headers read from the storage.",
