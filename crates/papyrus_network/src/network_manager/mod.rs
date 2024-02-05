@@ -29,12 +29,17 @@ impl NetworkManager {
     // TODO: make sure errors are handled and not just paniced.
     pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
         let NetworkConfig {
-            listen_addresses,
+            tcp_port,
+            quic_port,
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
         } = config;
 
+        let listen_addresses = vec![
+            format!("/ip4/127.0.0.1/udp/{quic_port}/quic-v1"),
+            format!("/ip4/127.0.0.1/tcp/{tcp_port}"),
+        ];
         let swarm = build_swarm(
             listen_addresses,
             idle_connection_timeout,
