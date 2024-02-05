@@ -18,6 +18,7 @@ papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.3.0-dev.1" }
 prost.workspace = true
 prost-types.workspace = true
+serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
