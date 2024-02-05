@@ -65,7 +65,8 @@ use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursor, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
-use crate::{StorageResult, StorageTxn};
+use crate::mmap_file::LocationInFile;
+use crate::{FileHandlers, StorageResult, StorageTxn};
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -159,6 +160,7 @@ impl EventIterByContractAddress<'_> {
 /// and finally, by the event index in the transaction output.
 pub struct EventIterByEventIndex<'txn, 'env> {
     txn: &'txn DbTransaction<'env, RO>,
+    file_handlers: &'txn FileHandlers<RO>,
     tx_current: Option<TransactionOutputsKeyValue>,
     tx_cursor: TransactionOutputsTableCursor<'txn>,
     events_table: EventsTable<'env>,
@@ -206,7 +208,12 @@ impl EventIterByEventIndex<'_, '_> {
 
             // There are no more events in the current transaction, so we go over the rest of the
             // transactions until we find an event.
-            self.tx_current = self.tx_cursor.next()?;
+            let Some((tx_index, location)) = self.tx_cursor.next()? else {
+                self.tx_current = None;
+                return Ok(());
+            };
+            self.tx_current =
+                Some((tx_index, self.file_handlers.get_transaction_output_unchecked(location)?));
             self.event_index_in_tx_current = EventIndexInTransactionOutput(0);
         }
 
@@ -248,12 +255,19 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
     ) -> StorageResult<EventIterByEventIndex<'txn, 'env>> {
         let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
-        let tx_current = tx_cursor.lower_bound(&event_index.0)?;
         let events_table = self.open_table(&self.tables.events)?;
+        let first_txn_location = tx_cursor.lower_bound(&event_index.0)?;
+        let first_relevant_transaction = match first_txn_location {
+            None => None,
+            Some((tx_index, location)) => {
+                Some((tx_index, self.file_handlers.get_transaction_output_unchecked(location)?))
+            }
+        };
 
         let mut it = EventIterByEventIndex {
             txn: &self.txn,
-            tx_current,
+            file_handlers: &self.file_handlers,
+            tx_current: first_relevant_transaction,
             tx_cursor,
             events_table,
             event_index_in_tx_current: event_index.1,
@@ -476,4 +490,4 @@ type EventsTableCursor<'txn> =
 type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 /// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<ThinTransactionOutput>, SimpleTable>;
+    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>;
