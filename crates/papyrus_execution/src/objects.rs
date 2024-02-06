@@ -32,7 +32,13 @@ use papyrus_common::state::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockTimestamp, GasPrice};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, SequencerContractAddress};
+use starknet_api::core::{
+    ClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    Nonce,
+    SequencerContractAddress,
+};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;

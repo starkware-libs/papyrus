@@ -77,9 +77,12 @@ pub trait StarknetReader {
     /// Returns the last block in the system, returning [`None`] in case there are no blocks in the
     /// system.
     async fn latest_block(&self) -> ReaderClientResult<Option<BlockOrDeprecated>>;
-    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
-    /// block exists in the system.
-    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<BlockOrDeprecated>>;
+    /// Returns a [`BlockOrDeprecated`] corresponding to `block_number`, returning [`None`] in case
+    /// no such block exists in the system.
+    async fn block(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockOrDeprecated>>;
     /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(
         &self,
@@ -221,7 +224,10 @@ impl StarknetReader for StarknetFeederGatewayClient {
     }
 
     #[instrument(skip(self), level = "debug")]
-    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<BlockOrDeprecated>> {
+    async fn block(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockOrDeprecated>> {
         self.request_block(Some(block_number)).await
     }
 

@@ -2337,8 +2337,6 @@ async fn get_state_update_with_empty_storage_diff() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
-        .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
         .unwrap()
         .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
