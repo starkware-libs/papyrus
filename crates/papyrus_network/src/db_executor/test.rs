@@ -8,6 +8,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockTimestamp};
+use starknet_api::core::SequencerContractAddress;
 
 use super::Data::BlockHeaderAndSignature;
 use crate::db_executor::{DBExecutor, DBExecutorError};
@@ -152,7 +153,7 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
         let block_header = BlockHeader {
             block_number: BlockNumber(i),
             block_hash: BlockHash(random::<u64>().into()),
-            sequencer: random::<u64>().into(),
+            sequencer: SequencerContractAddress(random::<u64>().into()),
             timestamp: BlockTimestamp(random::<u64>()),
             ..Default::default()
         };

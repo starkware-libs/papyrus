@@ -1,9 +1,14 @@
 pub mod behaviour;
 
 use prost_types::Timestamp;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
-use starknet_api::core::GlobalRoot;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::core::{
+    ContractAddress,
+    GlobalRoot,
+    SequencerContractAddress,
+};
 use starknet_api::crypto::Signature;
+
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
@@ -126,8 +131,12 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
 
         let sequencer_address = value
             .sequencer_address
-            .and_then(|sequencer_address| sequencer_address.try_into().ok())
-            .ok_or(ProtobufConversionError::MissingField)?;
+            .ok_or(ProtobufConversionError::MissingField)
+            .and_then(|sequencer_address| {
+                ContractAddress::try_from(sequencer_address)
+                    .map_err(|_| ProtobufConversionError::OutOfRangeValue)
+            })
+            .map(SequencerContractAddress)?;
 
         let timestamp = value
             .time
@@ -150,9 +159,7 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
             timestamp,
             state_root,
             // TODO: add missing fields.
-            block_hash: BlockHash::default(),
-            eth_l1_gas_price: GasPrice::default(),
-            strk_l1_gas_price: GasPrice::default(),
+            ..Default::default()
         })
     }
 }
