@@ -3,11 +3,22 @@
     "block_hash": "0x1bd1f64828cf2aff0023881344e63f982494b220d5d27057994864680a7f946",
     "parent_hash": "0x4ea8578693532db895a0b2117a8561aa2f062d31898b6bc39cca0f2507f4820",
     "block_number": 2242,
-    "eth_l1_gas_price": "0x38ae2e27b",
-    "strk_l1_gas_price": "0x0",
+    "l1_gas_price": {
+      "price_in_wei": "0x38ae2e27b",
+      "price_in_fri": "0x0"
+    },
+    "l1_data_gas_price": {
+      "price_in_wei": "0x0",
+      "price_in_fri": "0x0"
+    },
     "state_root": "0x67d06ffd8b41a4a4d4bbe0b6f991760e365aa499add0180b7ee52c0d6b67843",
     "sequencer": "0x0",
-    "timestamp": 1652680274
+    "timestamp": 1652680274,
+    "l1_da_mode": "CALLDATA",
+    "transaction_commitment": "0x0",
+    "event_commitment": "0x0",
+    "n_transactions": 0,
+    "n_events": 0
   },
   "body": {
     "transactions": [
