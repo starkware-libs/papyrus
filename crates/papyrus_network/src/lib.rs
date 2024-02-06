@@ -19,12 +19,14 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(test, derive(Hash))]
 pub enum Direction {
     Forward,
     Backward,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(test, derive(Hash))]
 pub struct BlockQuery {
     pub start_block: BlockHashOrNumber,
     pub direction: Direction,
@@ -33,6 +35,7 @@ pub struct BlockQuery {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(test, derive(Hash))]
 pub enum BlockHashOrNumber {
     Hash(BlockHash),
     Number(BlockNumber),

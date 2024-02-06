@@ -16,12 +16,13 @@ use crate::{BlockHashOrNumber, BlockQuery};
 pub mod dummy_executor;
 #[cfg(test)]
 mod test;
-mod utils;
+
+pub(crate) mod utils;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
 pub struct QueryId(pub usize);
 
-#[cfg_attr(test, derive(Debug))]
+#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
     BlockHeaderAndSignature { header: BlockHeader, signature: Option<BlockSignature> },
     Fin,
@@ -160,17 +161,23 @@ impl Stream for BlockHeaderDBExecutor {
         self: Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        match unpinned_self.query_execution_set.poll_next_unpin(cx) {
-            Poll::Ready(Some(join_result)) => {
-                let res = join_result?;
-                Poll::Ready(Some(res))
-            }
-            Poll::Ready(None) => {
-                unpinned_self.query_execution_set = FuturesUnordered::new();
-                Poll::Pending
-            }
-            Poll::Pending => Poll::Pending,
+        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
+    }
+}
+
+pub(crate) fn poll_query_execution_set(
+    query_execution_set: &mut FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+    cx: &mut std::task::Context<'_>,
+) -> Poll<Option<Result<QueryId, DBExecutorError>>> {
+    match query_execution_set.poll_next_unpin(cx) {
+        Poll::Ready(Some(join_result)) => {
+            let res = join_result?;
+            Poll::Ready(Some(res))
         }
+        Poll::Ready(None) => {
+            *query_execution_set = FuturesUnordered::new();
+            Poll::Pending
+        }
+        Poll::Pending => Poll::Pending,
     }
 }
