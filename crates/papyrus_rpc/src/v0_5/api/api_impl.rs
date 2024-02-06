@@ -39,7 +39,8 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
 };
 use starknet_client::reader::objects::pending_data::{
-    PendingBlock,
+    DeprecatedPendingBlock,
+    PendingBlockOrDeprecated,
     PendingStateUpdate as ClientPendingStateUpdate,
 };
 use starknet_client::reader::PendingData;
@@ -182,14 +183,14 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         if let BlockId::Tag(Tag::Pending) = block_id {
             let block = read_pending_data(&self.pending_data, &txn).await?.block;
             let pending_block_header = PendingBlockHeader {
-                parent_hash: block.parent_block_hash,
-                sequencer_address: block.sequencer_address,
-                timestamp: block.timestamp,
-                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
-                starknet_version: block.starknet_version,
+                parent_hash: block.parent_block_hash(),
+                sequencer_address: block.sequencer_address(),
+                timestamp: block.timestamp(),
+                l1_gas_price: ResourcePrice { price_in_wei: block.l1_gas_price().price_in_wei },
+                starknet_version: block.starknet_version(),
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions;
+            let client_transactions = block.transactions();
             let transaction_hashes = client_transactions
                 .iter()
                 .map(|transaction| transaction.transaction_hash())
@@ -222,14 +223,14 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         if let BlockId::Tag(Tag::Pending) = block_id {
             let block = read_pending_data(&self.pending_data, &txn).await?.block;
             let pending_block_header = PendingBlockHeader {
-                parent_hash: block.parent_block_hash,
-                sequencer_address: block.sequencer_address,
-                timestamp: block.timestamp,
-                l1_gas_price: ResourcePrice { price_in_wei: block.eth_l1_gas_price },
-                starknet_version: block.starknet_version,
+                parent_hash: block.parent_block_hash(),
+                sequencer_address: block.sequencer_address(),
+                timestamp: block.timestamp(),
+                l1_gas_price: ResourcePrice { price_in_wei: block.l1_gas_price().price_in_wei },
+                starknet_version: block.starknet_version(),
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions;
+            let client_transactions = block.transactions();
             let transactions = client_transactions
                 .iter()
                 .map(|client_transaction| {
@@ -345,7 +346,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             let client_transaction = read_pending_data(&self.pending_data, &txn)
                 .await?
                 .block
-                .transactions
+                .transactions()
                 .iter()
                 .find(|transaction| transaction.transaction_hash() == transaction_hash)
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
@@ -374,7 +375,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 let client_transaction = read_pending_data(&self.pending_data, &txn)
                     .await?
                     .block
-                    .transactions
+                    .transactions()
                     .get(index.0)
                     .ok_or_else(|| ErrorObjectOwned::from(INVALID_TRANSACTION_INDEX))?
                     .clone();
@@ -408,7 +409,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
 
         if let BlockId::Tag(Tag::Pending) = block_id {
             let transactions_len =
-                read_pending_data(&self.pending_data, &txn).await?.block.transactions.len();
+                read_pending_data(&self.pending_data, &txn).await?.block.transactions().len();
             Ok(transactions_len)
         } else {
             let block_number = get_accepted_block_number(&txn, block_id)?;
@@ -539,13 +540,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             let pending_block = read_pending_data(&self.pending_data, &txn).await?.block;
 
             let client_transaction_receipt = pending_block
-                .transaction_receipts
+                .transaction_receipts()
                 .iter()
                 .find(|receipt| receipt.transaction_hash == transaction_hash)
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
                 .clone();
             let client_transaction = &pending_block
-                .transactions
+                .transactions()
                 .iter()
                 .find(|transaction| transaction.transaction_hash() == transaction_hash)
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
@@ -788,8 +789,8 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
         }
 
         if include_pending_block {
-            let pending_transaction_receipts =
-                read_pending_data(&self.pending_data, &txn).await?.block.transaction_receipts;
+            let pending_block = read_pending_data(&self.pending_data, &txn).await?.block;
+            let pending_transaction_receipts = pending_block.transaction_receipts();
             // Extract the first transaction offset and event offset from the starting EventIndex.
             let (transaction_start, event_start) = if start_event_index.0.0 > latest_block_number {
                 (start_event_index.0.1.0, start_event_index.1.0)
@@ -1127,7 +1128,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             block_number,
             state_number,
         ) = if let Some((pending_transaction_offset, _)) = pending_block
-            .transaction_receipts
+            .transaction_receipts()
             .iter()
             .enumerate()
             .find(|(_, receipt)| receipt.transaction_hash == transaction_hash)
@@ -1138,7 +1139,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 get_latest_block_number(&storage_txn)?.ok_or(INVALID_TRANSACTION_HASH)?;
             let state_number = StateNumber::right_after_block(block_number);
             let executable_transactions = pending_block
-                .transactions
+                .transactions()
                 .iter()
                 .take(pending_transaction_offset + 1)
                 .map(|client_transaction| {
@@ -1152,14 +1153,14 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 })
                 .collect::<Result<_, _>>()?;
             let transaction_hashes = pending_block
-                .transaction_receipts
+                .transaction_receipts()
                 .iter()
                 .map(|receipt| receipt.transaction_hash)
                 .collect();
             let maybe_pending_data = Some(ExecutionPendingData {
-                timestamp: pending_block.timestamp,
-                eth_l1_gas_price: pending_block.eth_l1_gas_price,
-                sequencer: pending_block.sequencer_address,
+                timestamp: pending_block.timestamp(),
+                eth_l1_gas_price: pending_block.l1_gas_price().price_in_wei,
+                sequencer: pending_block.sequencer_address(),
                 // The pending state diff should be empty since we look at the state in the
                 // start of the pending block.
                 ..Default::default()
@@ -1272,16 +1273,16 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
             match maybe_client_pending_data {
                 Some(client_pending_data) => (
                     Some(ExecutionPendingData {
-                        timestamp: client_pending_data.block.timestamp,
-                        eth_l1_gas_price: client_pending_data.block.eth_l1_gas_price,
-                        sequencer: client_pending_data.block.sequencer_address,
+                        timestamp: client_pending_data.block.timestamp(),
+                        eth_l1_gas_price: client_pending_data.block.l1_gas_price().price_in_wei,
+                        sequencer: client_pending_data.block.sequencer_address(),
                         // The pending state diff should be empty since we look at the state in the
                         // start of the pending block.
                         ..Default::default()
                     }),
                     client_pending_data
                         .block
-                        .transactions
+                        .transactions()
                         .iter()
                         .map(|client_transaction| {
                             client_transaction.clone().try_into().map_err(internal_server_error)
@@ -1289,7 +1290,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                         .collect::<Result<Vec<_>, ErrorObjectOwned>>()?,
                     client_pending_data
                         .block
-                        .transaction_receipts
+                        .transaction_receipts()
                         .iter()
                         .map(|receipt| receipt.transaction_hash)
                         .collect(),
@@ -1465,19 +1466,19 @@ async fn read_pending_data<Mode: TransactionKind>(
         ),
     };
     let pending_data = &pending_data.read().await;
-    if pending_data.block.parent_block_hash == latest_header.block_hash {
+    if pending_data.block.parent_block_hash() == latest_header.block_hash {
         Ok((*pending_data).clone())
     } else {
         Ok(PendingData {
-            block: PendingBlock {
+            block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
                 parent_block_hash: latest_header.block_hash,
-                eth_l1_gas_price: latest_header.eth_l1_gas_price,
-                strk_l1_gas_price: latest_header.strk_l1_gas_price,
+                eth_l1_gas_price: latest_header.l1_gas_price.price_in_wei,
+                strk_l1_gas_price: latest_header.l1_gas_price.price_in_fri,
                 timestamp: latest_header.timestamp,
                 sequencer_address: latest_header.sequencer,
                 starknet_version: starknet_version.0,
                 ..Default::default()
-            },
+            }),
             state_update: ClientPendingStateUpdate {
                 old_root: latest_header.state_root,
                 state_diff: Default::default(),

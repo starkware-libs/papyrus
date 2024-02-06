@@ -4,7 +4,7 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus, BlockTimestamp};
-use starknet_api::core::{ContractAddress, GlobalRoot};
+use starknet_api::core::{GlobalRoot, SequencerContractAddress};
 
 use super::error::BLOCK_NOT_FOUND;
 use super::transaction::Transactions;
@@ -16,7 +16,7 @@ pub struct BlockHeader {
     pub block_hash: BlockHash,
     pub parent_hash: BlockHash,
     pub block_number: BlockNumber,
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: SequencerContractAddress,
     pub new_root: GlobalRoot,
     pub timestamp: BlockTimestamp,
 }
@@ -25,7 +25,7 @@ pub struct BlockHeader {
 #[serde(deny_unknown_fields)]
 pub struct PendingBlockHeader {
     pub parent_hash: BlockHash,
-    pub sequencer_address: ContractAddress,
+    pub sequencer_address: SequencerContractAddress,
     pub timestamp: BlockTimestamp,
 }
 

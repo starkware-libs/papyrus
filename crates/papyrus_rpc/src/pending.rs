@@ -14,9 +14,9 @@ pub(crate) fn client_pending_data_to_execution_pending_data(
         nonces: client_pending_data.state_update.state_diff.nonces,
         replaced_classes: client_pending_data.state_update.state_diff.replaced_classes,
         classes: pending_classes,
-        timestamp: client_pending_data.block.timestamp,
-        eth_l1_gas_price: client_pending_data.block.eth_l1_gas_price,
-        strk_l1_gas_price: client_pending_data.block.strk_l1_gas_price,
-        sequencer: client_pending_data.block.sequencer_address,
+        timestamp: client_pending_data.block.timestamp(),
+        eth_l1_gas_price: client_pending_data.block.l1_gas_price().price_in_wei,
+        strk_l1_gas_price: client_pending_data.block.l1_gas_price().price_in_fri,
+        sequencer: client_pending_data.block.sequencer_address(),
     }
 }
