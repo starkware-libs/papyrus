@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHash, BlockNumber};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -26,10 +26,16 @@ pub enum Direction {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BlockQuery {
-    pub start_block: BlockNumber,
+    pub start_block: BlockHashOrNumber,
     pub direction: Direction,
     pub limit: u64,
     pub step: u64,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum BlockHashOrNumber {
+    Hash(BlockHash),
+    Number(BlockNumber),
 }
 
 pub struct Config {

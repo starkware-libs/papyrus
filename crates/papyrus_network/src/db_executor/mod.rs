@@ -11,7 +11,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use tokio::task::JoinHandle;
 
-use crate::BlockQuery;
+use crate::{BlockHashOrNumber, BlockQuery};
 
 pub mod dummy_executor;
 #[cfg(test)]
@@ -39,8 +39,8 @@ pub enum DBExecutorError {
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
     BlockNumberOutOfRange { query: BlockQuery, counter: u64, query_id: QueryId },
-    #[error("Block not found. Block number: {block_number}, query_id: {query_id}")]
-    BlockNotFound { block_number: u64, query_id: QueryId },
+    #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
+    BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
     #[error("Send error. Query id: {query_id}, error: {send_error:?}")]
@@ -81,19 +81,43 @@ impl DBExecutor for BlockHeaderDBExecutor {
         let storage_reader_clone = self.storage_reader.clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
             {
+                let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
+                    DBExecutorError::DBInternalError { query_id, storage_error: err }
+                })?;
+                let start_block_number = match query.start_block {
+                    BlockHashOrNumber::Number(BlockNumber(num)) => num,
+                    BlockHashOrNumber::Hash(block_hash) => {
+                        txn.get_block_number_by_hash(&block_hash)
+                            .map_err(|err| DBExecutorError::DBInternalError {
+                                query_id,
+                                storage_error: err,
+                            })?
+                            .ok_or(DBExecutorError::BlockNotFound {
+                                block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
+                                query_id,
+                            })?
+                            .0
+                    }
+                };
                 for block_counter in 0..query.limit {
-                    let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
-                        DBExecutorError::DBInternalError { query_id, storage_error: err }
-                    })?;
-                    let block_number =
-                        utils::calculate_block_number(query, block_counter, query_id)?;
+                    let block_number = utils::calculate_block_number(
+                        query,
+                        start_block_number,
+                        block_counter,
+                        query_id,
+                    )?;
                     let header = txn
                         .get_block_header(BlockNumber(block_number))
                         .map_err(|err| DBExecutorError::DBInternalError {
                             query_id,
                             storage_error: err,
                         })?
-                        .ok_or(DBExecutorError::BlockNotFound { block_number, query_id })?;
+                        .ok_or(DBExecutorError::BlockNotFound {
+                            block_hash_or_number: BlockHashOrNumber::Number(BlockNumber(
+                                block_number,
+                            )),
+                            query_id,
+                        })?;
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
