@@ -157,7 +157,7 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
     // treat this case as if the pending block is an empty block on top of the latest block.
     // We distinguish this case by looking if the block_hash field is present.
     let new_pending_parent_hash =
-        new_pending_data.block.block_hash.unwrap_or(new_pending_data.block.parent_block_hash);
+        new_pending_data.block.block_hash().unwrap_or(new_pending_data.block.parent_block_hash());
     if new_pending_parent_hash != latest_block_hash {
         // TODO(shahak): If block_hash is present, consider writing the pending data here so that
         // the pending data will be available until the node syncs on the new block.
@@ -168,12 +168,12 @@ async fn get_pending_data<TPendingSource: PendingSourceTrait + Sync + Send + 'st
     let (current_pending_num_transactions, current_pending_parent_hash) = {
         let pending_block = &pending_data.read().await.block;
         (
-            pending_block.transactions.len(),
-            pending_block.block_hash.unwrap_or(pending_block.parent_block_hash),
+            pending_block.transactions().len(),
+            pending_block.block_hash().unwrap_or(pending_block.parent_block_hash()),
         )
     };
     let is_new_pending_data_more_advanced = current_pending_parent_hash != new_pending_parent_hash
-        || new_pending_data.block.transactions.len() > current_pending_num_transactions;
+        || new_pending_data.block.transactions().len() > current_pending_num_transactions;
     if is_new_pending_data_more_advanced {
         debug!("Received new pending data.");
         trace!("Pending data: {new_pending_data:#?}.");

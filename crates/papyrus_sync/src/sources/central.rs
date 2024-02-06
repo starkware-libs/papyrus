@@ -207,8 +207,8 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
     async fn get_latest_block(&self) -> Result<Option<BlockHashAndNumber>, CentralError> {
         self.starknet_client.latest_block().await.map_err(Arc::new)?.map_or(Ok(None), |block| {
             Ok(Some(BlockHashAndNumber {
-                block_hash: block.block_hash,
-                block_number: block.block_number,
+                block_hash: block.block_hash(),
+                block_number: block.block_number(),
             }))
         })
     }
@@ -222,7 +222,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> CentralSourceTrait
             .block(block_number)
             .await
             .map_err(Arc::new)?
-            .map_or(Ok(None), |block| Ok(Some(block.block_hash)))
+            .map_or(Ok(None), |block| Ok(Some(block.block_hash())))
     }
 
     // Returns a stream of state updates downloaded from the central source.
@@ -388,7 +388,7 @@ fn client_to_central_block(
     current_block_number: BlockNumber,
     maybe_client_block: Result<
         (
-            Option<starknet_client::reader::Block>,
+            Option<starknet_client::reader::BlockOrDeprecated>,
             Option<starknet_client::reader::BlockSignatureData>,
         ),
         ReaderClientError,
@@ -396,7 +396,7 @@ fn client_to_central_block(
 ) -> CentralResult<(Block, BlockSignature, StarknetVersion)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
-            debug!("Received new block {current_block_number} with hash {}.", block.block_hash);
+            debug!("Received new block {current_block_number} with hash {}.", block.block_hash());
             trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
             let (block, version) = block
                 .to_starknet_api_block_and_version()
