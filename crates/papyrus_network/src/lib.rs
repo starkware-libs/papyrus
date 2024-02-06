@@ -12,15 +12,39 @@ pub mod streamed_data;
 mod test_utils;
 use std::collections::BTreeMap;
 use std::time::Duration;
+use std::usize;
 
+use futures::channel::mpsc::{Receiver, Sender};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::crypto::Signature;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub struct NetworkConfig {
+    pub listen_addresses: Vec<String>,
+    pub session_timeout: Duration,
+    pub idle_connection_timeout: Duration,
+    pub header_buffer_size: usize,
+}
+
+#[derive(Default)]
+pub enum DataType {
+    #[default]
+    SignedBlock,
+}
+
+#[derive(Default)]
+pub struct Query {
+    pub start_block: BlockNumber,
+    pub direction: Direction,
+    pub limit: u64,
+    pub step: u64,
+    pub data_type: DataType,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub enum Direction {
+    #[default]
     Forward,
     Backward,
 }
@@ -32,7 +56,7 @@ pub struct SignedBlockHeader {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-struct BlockQuery {
+struct InternalQuery {
     pub start_block: BlockHashOrNumber,
     pub direction: Direction,
     pub limit: u64,
@@ -45,12 +69,14 @@ pub enum BlockHashOrNumber {
     Number(BlockNumber),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct NetworkConfig {
-    pub listen_addresses: Vec<String>,
-    pub session_timeout: Duration,
-    pub idle_connection_timeout: Duration,
-    pub header_buffer_size: usize,
+#[allow(unused)]
+pub struct ResponseReceivers {
+    signed_headers_receiver: Receiver<SignedBlockHeader>,
+}
+
+#[allow(unused)]
+struct ResponseSenders {
+    pub signed_headers_sender: Sender<SignedBlockHeader>,
 }
 
 impl SerializeConfig for NetworkConfig {
@@ -96,5 +122,11 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
         }
+    }
+}
+
+impl ResponseReceivers {
+    fn new(signed_headers_receiver: Receiver<SignedBlockHeader>) -> Self {
+        Self { signed_headers_receiver }
     }
 }

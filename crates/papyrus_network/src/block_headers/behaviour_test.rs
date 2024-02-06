@@ -11,7 +11,7 @@ use super::BehaviourTrait;
 use crate::block_headers::SessionError;
 use crate::messages::{protobuf, ProtobufConversionError, TestInstance};
 use crate::streamed_data::{self, OutboundSessionId, SessionId};
-use crate::{BlockQuery, SignedBlockHeader};
+use crate::{InternalQuery, SignedBlockHeader};
 
 type StreamedDataEvent = streamed_data::GenericEvent<
     protobuf::BlockHeadersRequest,
@@ -43,7 +43,7 @@ fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
     // Make sure we return the right event and call insert_inbound_session_id_to_waiting_list
-    let converted_query: BlockQuery = query.try_into().unwrap();
+    let converted_query: InternalQuery = query.try_into().unwrap();
     assert_matches!(
         res_event,
         Some(Event::NewInboundQuery { query, inbound_session_id })

@@ -7,11 +7,11 @@ use futures::Stream;
 
 use super::{DBExecutor, DBExecutorError, Data, QueryId};
 use crate::messages::protobuf;
-use crate::BlockQuery;
+use crate::InternalQuery;
 
 pub struct DummyDBExecutor {
     _data: Vec<protobuf::BlockHeadersResponse>,
-    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, Sender<Data>)>,
+    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (InternalQuery, Sender<Data>)>,
     query_conter: usize,
 }
 
@@ -43,7 +43,7 @@ impl DummyDBExecutor {
         data
     }
 
-    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut Sender<Data>)> {
+    fn get_active_query(&mut self) -> Option<(QueryId, &mut InternalQuery, &mut Sender<Data>)> {
         self.query_id_to_query_and_read_blocks_counter
             .iter_mut()
             .next()
@@ -52,7 +52,7 @@ impl DummyDBExecutor {
 }
 
 impl DBExecutor for DummyDBExecutor {
-    fn register_query(&mut self, query: BlockQuery, sender: Sender<Data>) -> QueryId {
+    fn register_query(&mut self, query: InternalQuery, sender: Sender<Data>) -> QueryId {
         let query_id = QueryId(self.query_conter);
         self.query_conter += 1;
         self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, sender));

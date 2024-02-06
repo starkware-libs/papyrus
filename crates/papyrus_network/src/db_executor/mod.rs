@@ -11,7 +11,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use tokio::task::JoinHandle;
 
-use crate::{BlockHashOrNumber, BlockQuery};
+use crate::{BlockHashOrNumber, InternalQuery};
 
 pub mod dummy_executor;
 #[cfg(test)]
@@ -38,7 +38,7 @@ pub enum DBExecutorError {
     #[error(
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
-    BlockNumberOutOfRange { query: BlockQuery, counter: u64, query_id: QueryId },
+    BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
     #[error(transparent)]
@@ -56,7 +56,7 @@ pub enum DBExecutorError {
 /// The stream is never exhausted, and it is the responsibility of the user to poll it.
 pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
     // TODO: add writer functionality
-    fn register_query(&mut self, query: BlockQuery, sender: Sender<Data>) -> QueryId;
+    fn register_query(&mut self, query: InternalQuery, sender: Sender<Data>) -> QueryId;
 }
 
 // TODO: currently this executor returns only block headers and signatures.
@@ -74,7 +74,7 @@ impl BlockHeaderDBExecutor {
 }
 
 impl DBExecutor for BlockHeaderDBExecutor {
-    fn register_query(&mut self, query: BlockQuery, mut sender: Sender<Data>) -> QueryId {
+    fn register_query(&mut self, query: InternalQuery, mut sender: Sender<Data>) -> QueryId {
         // TODO: consider create a sized vector and increase its size when needed.
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;

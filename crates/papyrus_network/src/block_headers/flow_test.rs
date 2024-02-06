@@ -8,7 +8,7 @@ use super::Behaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor};
 use crate::test_utils::create_fully_connected_swarms_stream;
-use crate::{BlockHashOrNumber, BlockQuery, Direction};
+use crate::{BlockHashOrNumber, Direction, InternalQuery};
 
 const BUFFER_SIZE: usize = 10;
 
@@ -25,7 +25,7 @@ async fn one_sends_to_the_other() {
 
     // Side A - send query
     let number_of_blocks = (BUFFER_SIZE - 1) as u64;
-    let sent_query = BlockQuery {
+    let sent_query = InternalQuery {
         start_block: BlockHashOrNumber::Number(BlockNumber(1)),
         direction: Direction::Forward,
         limit: number_of_blocks,

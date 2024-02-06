@@ -8,7 +8,7 @@ use starknet_api::hash::StarkHash;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
-use crate::{BlockHashOrNumber, BlockQuery, Direction, SignedBlockHeader};
+use crate::{BlockHashOrNumber, Direction, InternalQuery, SignedBlockHeader};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -37,7 +37,7 @@ pub enum SessionError {
 #[allow(dead_code)]
 pub(crate) enum Event {
     NewInboundQuery {
-        query: BlockQuery,
+        query: InternalQuery,
         inbound_session_id: streamed_data::InboundSessionId,
     },
     ReceivedData {
@@ -54,7 +54,7 @@ pub(crate) enum Event {
     },
 }
 
-impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
+impl TryFrom<protobuf::BlockHeadersRequest> for InternalQuery {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
         if let Some(value) = value.iteration {
@@ -94,8 +94,8 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     }
 }
 
-impl From<BlockQuery> for protobuf::BlockHeadersRequest {
-    fn from(value: BlockQuery) -> Self {
+impl From<InternalQuery> for protobuf::BlockHeadersRequest {
+    fn from(value: InternalQuery) -> Self {
         protobuf::BlockHeadersRequest {
             iteration: Some({
                 protobuf::Iteration {

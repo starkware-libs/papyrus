@@ -19,7 +19,7 @@ use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{BlockQuery, SignedBlockHeader};
+use crate::{InternalQuery, SignedBlockHeader};
 
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
@@ -63,7 +63,7 @@ impl Behaviour {
     #[allow(dead_code)]
     pub(crate) fn send_query(
         &mut self,
-        query: BlockQuery,
+        query: InternalQuery,
         peer_id: PeerId,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         self.streamed_data_behaviour.send_query(query.into(), peer_id).map_err(|e| e.into())
