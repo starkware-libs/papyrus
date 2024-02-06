@@ -31,7 +31,7 @@ mod flow_test;
 
 const PROTOCOL_NAME: &str = "/starknet/headers/1";
 
-pub struct Behaviour {
+pub(crate) struct Behaviour {
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
@@ -61,7 +61,7 @@ impl Behaviour {
     }
 
     #[allow(dead_code)]
-    pub fn send_query(
+    pub(crate) fn send_query(
         &mut self,
         query: BlockQuery,
         peer_id: PeerId,
@@ -71,7 +71,7 @@ impl Behaviour {
 
     /// Send data to the session that is mapped to this query id.
     /// return false if the query id is not mapped to any session.
-    pub fn send_data(
+    pub(crate) fn send_data(
         &mut self,
         data: Data,
         inbound_session_id: InboundSessionId,

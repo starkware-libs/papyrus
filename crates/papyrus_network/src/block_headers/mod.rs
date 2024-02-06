@@ -35,7 +35,7 @@ pub enum SessionError {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub enum Event {
+pub(crate) enum Event {
     NewInboundQuery {
         query: BlockQuery,
         inbound_session_id: streamed_data::InboundSessionId,
