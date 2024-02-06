@@ -8,7 +8,7 @@ use starknet_api::hash::StarkHash;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
-use crate::{BlockHashOrNumber, BlockQuery, Direction};
+use crate::{BlockHashOrNumber, BlockQuery, Direction, SignedBlockHeader};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -41,7 +41,7 @@ pub enum Event {
         inbound_session_id: streamed_data::InboundSessionId,
     },
     ReceivedData {
-        data: Vec<BlockHeaderData>,
+        data: Vec<SignedBlockHeader>,
         outbound_session_id: streamed_data::OutboundSessionId,
     },
     SessionFailed {
@@ -175,12 +175,6 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
             strk_l1_gas_price: GasPrice::default(),
         })
     }
-}
-
-#[derive(Debug)]
-pub struct BlockHeaderData {
-    pub block_header: BlockHeader,
-    pub signatures: Vec<Signature>,
 }
 
 impl TryFrom<protobuf::Signatures> for Vec<Signature> {
