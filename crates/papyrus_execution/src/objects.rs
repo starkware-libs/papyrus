@@ -32,7 +32,7 @@ use papyrus_common::state::{
 };
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockTimestamp, GasPrice};
-use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, SequencerContractAddress};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;
@@ -429,7 +429,7 @@ pub struct PendingData {
     /// The STRK gas price of the pending block.
     pub strk_l1_gas_price: GasPrice,
     /// The sequencer address of the pending block.
-    pub sequencer: ContractAddress,
+    pub sequencer: SequencerContractAddress,
     /// The classes and casms that were declared in the pending block.
     pub classes: PendingClasses,
 }
