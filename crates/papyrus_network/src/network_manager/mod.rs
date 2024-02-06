@@ -1,3 +1,4 @@
+use futures::channel::mpsc::Receiver;
 use futures::stream::{BoxStream, SelectAll};
 use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
@@ -10,15 +11,21 @@ use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor, Data};
 use crate::streamed_data::InboundSessionId;
-use crate::NetworkConfig;
+use crate::{NetworkConfig, Query, QueryId, QuerySender, ResponseReceivers, ResponseSenders};
+
+#[cfg(test)]
+mod tests;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
+type SyncSubscriberChannels = (Receiver<(Query, QueryId)>, ResponseSenders);
 
 pub struct NetworkManager {
     swarm: Swarm<BlockHeadersBehaviour>,
     db_executor: db_executor::BlockHeaderDBExecutor,
     header_buffer_size: usize,
     query_results_router: StreamCollection,
+    next_query_id: usize,
+    sync_subscriber: Option<SyncSubscriberChannels>,
 }
 
 impl NetworkManager {
@@ -44,6 +51,8 @@ impl NetworkManager {
             db_executor,
             header_buffer_size,
             query_results_router: StreamCollection::new(),
+            next_query_id: 0,
+            sync_subscriber: None,
         }
     }
 
@@ -61,6 +70,17 @@ impl NetworkManager {
     // p2p sync.
     pub fn dial(&mut self, dial_address: &str) {
         dial(&mut self.swarm, dial_address);
+    }
+
+    pub fn register_subscriber(&mut self) -> (QuerySender, ResponseReceivers) {
+        let (sender, query_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
+        let query_sender = QuerySender { sender, query_id: self.next_query_id };
+        self.next_query_id += 1;
+
+        let (response_sender, response_receiver) =
+            futures::channel::mpsc::channel(self.header_buffer_size);
+        self.sync_subscriber = Some((query_receiver, ResponseSenders::new(response_sender)));
+        (query_sender, ResponseReceivers::new(response_receiver))
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {

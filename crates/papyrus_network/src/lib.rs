@@ -11,13 +11,47 @@ pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
 use std::collections::BTreeMap;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 use std::time::Duration;
+use std::usize;
 
+use futures::channel::mpsc::{Receiver, SendError, Sender};
+use futures::{Sink, SinkExt};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
 use starknet_api::crypto::Signature;
+
+pub struct NetworkConfig {
+    pub listen_addresses: Vec<String>,
+    pub session_timeout: Duration,
+    pub idle_connection_timeout: Duration,
+    pub header_buffer_size: usize,
+}
+
+pub enum Data {
+    SignedBlock,
+}
+
+#[derive(Default)]
+pub struct Query {
+    pub start_block: BlockNumber,
+    pub direction: Direction,
+    pub limit: u64,
+    pub step: u64,
+    pub data_type: Data,
+}
+
+pub struct QuerySender {
+    sender: Sender<(Query, QueryId)>,
+    query_id: QueryId,
+}
+
+#[allow(unused)]
+pub struct ResponseReceivers {
+    signed_headers_receiver: Receiver<SignedBlockHeader>,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
@@ -45,13 +79,12 @@ pub enum BlockHashOrNumber {
     Number(BlockNumber),
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct NetworkConfig {
-    pub listen_addresses: Vec<String>,
-    pub session_timeout: Duration,
-    pub idle_connection_timeout: Duration,
-    pub header_buffer_size: usize,
+#[allow(unused)]
+struct ResponseSenders {
+    signed_headers_sender: Sender<SignedBlockHeader>,
 }
+
+type QueryId = usize;
 
 impl SerializeConfig for NetworkConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
@@ -96,5 +129,53 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
         }
+    }
+}
+
+impl Sink<Query> for QuerySender {
+    type Error = SendError;
+
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let unpinned_self = Pin::into_inner(self);
+        unpinned_self.sender.poll_ready(cx)
+    }
+
+    fn start_send(self: Pin<&mut Self>, item: Query) -> Result<(), Self::Error> {
+        let unpinned_self = Pin::into_inner(self);
+        unpinned_self.sender.start_send((item, unpinned_self.query_id))
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let unpinned_self = Pin::into_inner(self);
+        unpinned_self.sender.poll_flush_unpin(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        let unpinned_self = Pin::into_inner(self);
+        unpinned_self.sender.poll_close_unpin(cx)
+    }
+}
+
+impl Default for Direction {
+    fn default() -> Self {
+        Self::Forward
+    }
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        Self::SignedBlock
+    }
+}
+
+impl ResponseSenders {
+    fn new(signed_headers_sender: Sender<SignedBlockHeader>) -> Self {
+        Self { signed_headers_sender }
+    }
+}
+
+impl ResponseReceivers {
+    fn new(signed_headers_receiver: Receiver<SignedBlockHeader>) -> Self {
+        Self { signed_headers_receiver }
     }
 }
