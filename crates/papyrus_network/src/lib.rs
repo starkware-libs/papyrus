@@ -43,6 +43,7 @@ pub struct Query {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
+#[cfg_attr(test, derive(Hash))]
 pub enum Direction {
     #[default]
     Forward,
@@ -55,8 +56,10 @@ pub struct SignedBlockHeader {
     pub signatures: Vec<Signature>,
 }
 
+// TODO(shahak): Internalize this when we have a mixed behaviour.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-struct InternalQuery {
+#[cfg_attr(test, derive(Hash))]
+pub struct InternalQuery {
     pub start_block: BlockHashOrNumber,
     pub direction: Direction,
     pub limit: u64,
@@ -64,6 +67,7 @@ struct InternalQuery {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[cfg_attr(test, derive(Hash))]
 pub enum BlockHashOrNumber {
     Hash(BlockHash),
     Number(BlockNumber),

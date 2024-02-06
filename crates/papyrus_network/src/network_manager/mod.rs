@@ -1,3 +1,8 @@
+mod swarm_trait;
+
+#[cfg(test)]
+mod test;
+
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, Sender};
@@ -8,56 +13,27 @@ use libp2p::Swarm;
 use papyrus_storage::StorageReader;
 use tracing::{debug, error};
 
+use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::{build_swarm, dial};
 use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
-use crate::db_executor::{self, DBExecutor, Data, QueryId};
+use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::streamed_data::InboundSessionId;
 use crate::{NetworkConfig, Query, ResponseReceivers, ResponseSenders};
-
-#[cfg(test)]
-mod test;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SyncSubscriberChannels = (Receiver<Query>, ResponseSenders);
 
-pub struct NetworkManager {
-    swarm: Swarm<BlockHeadersBehaviour>,
-    db_executor: db_executor::BlockHeaderDBExecutor,
+pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
+    swarm: SwarmT,
+    db_executor: DBExecutorT,
     header_buffer_size: usize,
     query_results_router: StreamCollection,
     sync_subscriber: Option<SyncSubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
 }
 
-impl NetworkManager {
-    // TODO: add tests for this struct.
-    // TODO: make sure errors are handled and not just paniced.
-    pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
-        let NetworkConfig {
-            listen_addresses,
-            session_timeout,
-            idle_connection_timeout,
-            header_buffer_size,
-        } = config;
-
-        let swarm = build_swarm(
-            listen_addresses,
-            idle_connection_timeout,
-            BlockHeadersBehaviour::new(session_timeout),
-        );
-
-        let db_executor = db_executor::BlockHeaderDBExecutor::new(storage_reader);
-        Self {
-            swarm,
-            db_executor,
-            header_buffer_size,
-            query_results_router: StreamCollection::new(),
-            sync_subscriber: None,
-            query_id_to_inbound_session_id: HashMap::new(),
-        }
-    }
-
+impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
     pub async fn run(mut self) {
         loop {
             tokio::select! {
@@ -68,10 +44,19 @@ impl NetworkManager {
         }
     }
 
-    // TODO(shahak): Move this to the constructor and add the address to the config once we have
-    // p2p sync.
-    pub fn dial(&mut self, dial_address: &str) {
-        dial(&mut self.swarm, dial_address);
+    pub(self) fn generic_new(
+        swarm: SwarmT,
+        db_executor: DBExecutorT,
+        header_buffer_size: usize,
+    ) -> Self {
+        Self {
+            swarm,
+            db_executor,
+            header_buffer_size,
+            query_results_router: StreamCollection::new(),
+            sync_subscriber: None,
+            query_id_to_inbound_session_id: HashMap::new(),
+        }
     }
 
     pub fn register_subscriber(&mut self) -> (Sender<Query>, ResponseReceivers) {
@@ -119,8 +104,7 @@ impl NetworkManager {
                         error!("Received error on non existing query");
                         return;
                     };
-                    if self.swarm.behaviour_mut().send_data(Data::Fin, inbound_session_id).is_err()
-                    {
+                    if self.swarm.send_data(Data::Fin, inbound_session_id).is_err() {
                         error!(
                             "Tried to close inbound session {inbound_session_id:?} due to {err:?} \
                              but the session was already closed"
@@ -172,8 +156,39 @@ impl NetworkManager {
             self.query_results_router = StreamCollection::new();
         }
         let (data, inbound_session_id) = res;
-        self.swarm.behaviour_mut().send_data(data, inbound_session_id).unwrap_or_else(|e| {
+        self.swarm.send_data(data, inbound_session_id).unwrap_or_else(|e| {
             error!("Failed to send data to peer. Session id not found error: {e:?}");
         })
+    }
+}
+
+pub type NetworkManager =
+    GenericNetworkManager<BlockHeaderDBExecutor, Swarm<BlockHeadersBehaviour>>;
+
+impl NetworkManager {
+    // TODO: add tests for this struct.
+    // TODO: make sure errors are handled and not just paniced.
+    pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
+        let NetworkConfig {
+            listen_addresses,
+            session_timeout,
+            idle_connection_timeout,
+            header_buffer_size,
+        } = config;
+
+        let swarm = build_swarm(
+            listen_addresses,
+            idle_connection_timeout,
+            BlockHeadersBehaviour::new(session_timeout),
+        );
+
+        let db_executor = BlockHeaderDBExecutor::new(storage_reader);
+        Self::generic_new(swarm, db_executor, header_buffer_size)
+    }
+
+    // TODO(shahak): Move this to the constructor and add the address to the config once we have
+    // p2p sync.
+    pub fn dial(&mut self, dial_address: &str) {
+        dial(&mut self.swarm, dial_address);
     }
 }
