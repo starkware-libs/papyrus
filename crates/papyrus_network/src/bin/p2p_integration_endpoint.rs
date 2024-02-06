@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use clap::Parser;
-use papyrus_network::{network_manager, Config};
+use papyrus_network::{network_manager, NetworkConfig};
 use papyrus_storage::{open_storage, StorageConfig};
 
 /// A dummy P2P capable node for integration with other P2P capable nodes.
@@ -28,7 +28,7 @@ async fn main() {
     let (storage_reader, _storage_writer) =
         open_storage(StorageConfig::default()).expect("failed to open storage");
     let mut network_manager = network_manager::NetworkManager::new(
-        Config {
+        NetworkConfig {
             listen_addresses: vec![args.listen_address],
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),

@@ -10,7 +10,7 @@ use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, DBExecutor, Data};
 use crate::streamed_data::InboundSessionId;
-use crate::Config;
+use crate::NetworkConfig;
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
@@ -24,8 +24,8 @@ pub struct NetworkManager {
 impl NetworkManager {
     // TODO: add tests for this struct.
     // TODO: make sure errors are handled and not just paniced.
-    pub fn new(config: Config, storage_reader: StorageReader) -> Self {
-        let Config {
+    pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
+        let NetworkConfig {
             listen_addresses,
             session_timeout,
             idle_connection_timeout,
