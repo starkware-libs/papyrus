@@ -86,6 +86,8 @@ pub struct Handler<Query: QueryBound, Data: DataBound> {
     peer_id: PeerId,
     id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
     id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
+    // TODO(shahak): Use deadqueue if using a VecDeque is a bug (libp2p uses VecDeque, so we opened
+    // an issue on it https://github.com/libp2p/rust-libp2p/issues/5147)
     pending_events: VecDeque<HandlerEvent<Self>>,
     inbound_sessions_marked_to_end: HashSet<InboundSessionId>,
     dropped_outbound_sessions_non_negotiated: HashSet<OutboundSessionId>,
