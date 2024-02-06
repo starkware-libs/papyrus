@@ -23,7 +23,7 @@ fn append_state_diff_declared_classes() {
     let dep_class = DeprecatedContractClass::default();
     // New classes.
     let nc0 = ClassHash(Felt::from_hex_unchecked("0x10"));
-    let nc1 = ClassHash(Felt::from_hex_unchecked("0x10"));
+    let nc1 = ClassHash(Felt::from_hex_unchecked("0x11"));
     let new_class = (CompiledClassHash::default(), ContractClass::default());
     let diff0 = StateDiff {
         deprecated_declared_classes: IndexMap::from([
@@ -674,12 +674,10 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
-    assert!(
-        state_reader
-            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-            .unwrap()
-            .is_some()
-    );
+    assert!(state_reader
+        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+        .unwrap()
+        .is_some());
 
     // Revert the block and assert that the classes are no longer declared.
     let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
@@ -687,12 +685,10 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_none());
-    assert!(
-        state_reader
-            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-            .unwrap()
-            .is_none()
-    );
+    assert!(state_reader
+        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+        .unwrap()
+        .is_none());
 
     // Re-declaring reverted classes should be possible.
     writer
@@ -708,10 +704,8 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
-    assert!(
-        state_reader
-            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-            .unwrap()
-            .is_some()
-    );
+    assert!(state_reader
+        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+        .unwrap()
+        .is_some());
 }

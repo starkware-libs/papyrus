@@ -11,7 +11,7 @@ testing = ["rand", "rand_chacha", "test_utils"]
 
 [dependencies]
 anyhow.workspace = true
-blockifier = { git = "https://github.com/LucasLvy/blockifier/", rev = "cea3141" }
+blockifier = { git = "https://github.com/LucasLvy/blockifier/", rev = "f1cfd08" }
 cairo-lang-starknet.workspace = true
 cairo-vm.workspace = true
 indexmap.workspace = true

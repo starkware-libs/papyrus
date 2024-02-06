@@ -660,7 +660,7 @@ fn get_tx_version(
             0xffffffffff6f8001,
         ]);
         let fe = version.0;
-        version = TransactionVersion(Felt::from(fe + query_only_bit));
+        version = TransactionVersion(fe + query_only_bit);
     }
     version
 }
