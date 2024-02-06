@@ -733,6 +733,7 @@ auto_impl_get_test_instance! {
     (CompiledClassHash, ContractClass);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
+    (u32, u32);
 }
 
 #[macro_export]

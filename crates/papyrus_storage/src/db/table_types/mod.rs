@@ -8,6 +8,7 @@ use super::{DbResult, DbTransaction, TransactionKind, RW};
 
 mod simple_table;
 pub(crate) use simple_table::SimpleTable;
+pub(crate) mod const_serialization_size;
 #[cfg(test)]
 pub(crate) mod test_utils;
 
