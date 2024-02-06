@@ -11,6 +11,7 @@ mod simple_table;
 #[allow(unused_imports)]
 pub(crate) use dup_sort_tables::CommonPrefix;
 pub(crate) use simple_table::SimpleTable;
+pub(crate) mod const_serialization_size;
 #[cfg(test)]
 pub(crate) mod test_utils;
 
