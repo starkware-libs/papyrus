@@ -9,12 +9,22 @@ use mockito::mock;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
-    ClassHash, ContractAddress, EntryPointSelector, GlobalRoot, Nonce, PatriciaKey,
+    ClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, ContractClassAbiEntry,
-    EntryPoint as DeprecatedEntryPoint, EntryPointOffset,
-    EntryPointType as DeprecatedEntryPointType, FunctionAbiEntry, Program, TypedParameter,
+    ContractClass as DeprecatedContractClass,
+    ContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointOffset,
+    EntryPointType as DeprecatedEntryPointType,
+    FunctionAbiEntry,
+    Program,
+    TypedParameter,
 };
 use starknet_api::patricia_key;
 use starknet_api::state::{EntryPoint, EntryPointType, FunctionIndex};
@@ -24,9 +34,18 @@ use starknet_types_core::felt::Felt;
 use super::objects::state::StateUpdate;
 use super::objects::transaction::IntermediateDeclareTransaction;
 use super::{
-    Block, ContractClass, GenericContractClass, PendingData, ReaderClientError, ReaderClientResult,
-    StarknetFeederGatewayClient, StarknetReader, BLOCK_NUMBER_QUERY, CLASS_HASH_QUERY,
-    GET_BLOCK_URL, GET_STATE_UPDATE_URL,
+    Block,
+    ContractClass,
+    GenericContractClass,
+    PendingData,
+    ReaderClientError,
+    ReaderClientResult,
+    StarknetFeederGatewayClient,
+    StarknetReader,
+    BLOCK_NUMBER_QUERY,
+    CLASS_HASH_QUERY,
+    GET_BLOCK_URL,
+    GET_STATE_UPDATE_URL,
 };
 use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
 use crate::test_utils::read_resource::read_resource_file;
@@ -183,7 +202,7 @@ async fn contract_class() {
         "GET",
         &format!(
             "/feeder_gateway/get_class_by_hash?blockNumber=pending&\
-         {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c"
+             {CLASS_HASH_QUERY}=0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c"
         )[..],
     )
     .with_status(200)
@@ -268,7 +287,7 @@ async fn deprecated_contract_class() {
         "GET",
         &format!(
             "/feeder_gateway/get_class_by_hash?blockNumber=pending&\
-         {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
+             {CLASS_HASH_QUERY}=0x7af612493193c771c1b12f511a8b4d3b0c6d0648242af4680c7cd0d06186f17"
         )[..],
     )
     .with_status(200)

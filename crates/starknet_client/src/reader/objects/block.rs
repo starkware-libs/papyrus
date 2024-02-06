@@ -6,7 +6,11 @@ use std::ops::Index;
 
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
-    Block as starknet_api_block, BlockHash, BlockNumber, BlockTimestamp, GasPrice,
+    Block as starknet_api_block,
+    BlockHash,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{ContractAddress, GlobalRoot};
 #[cfg(doc)]
@@ -15,7 +19,10 @@ use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_types_core::felt::Felt;
 
 use crate::reader::objects::transaction::{
-    L1ToL2Message, Transaction, TransactionReceipt, TransactionType,
+    L1ToL2Message,
+    Transaction,
+    TransactionReceipt,
+    TransactionType,
 };
 use crate::reader::{ReaderClientError, ReaderClientResult};
 

@@ -1,15 +1,27 @@
 use assert_matches::assert_matches;
 use camelpaste::paste;
 use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::transaction::{
-    AccountDeploymentData, Calldata, ContractAddressSalt, Fee, L1HandlerTransaction, PaymasterData,
-    Tip, Transaction, TransactionSignature, TransactionVersion,
+    AccountDeploymentData,
+    Calldata,
+    ContractAddressSalt,
+    Fee,
+    L1HandlerTransaction,
+    PaymasterData,
+    Tip,
+    Transaction,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_api::{calldata, contract_address, patricia_key};
 use starknet_client::writer::objects::transaction as client_transaction;
@@ -18,9 +30,17 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, G
 
 use super::super::transaction::{L1HandlerMsgHash, L1L2MsgHash};
 use super::{
-    DeployAccountTransaction, DeployAccountTransactionV1, DeployAccountTransactionV3,
-    InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1, InvokeTransactionV3,
-    ResourceBoundsMapping, TransactionOutput, TransactionVersion0, TransactionVersion1,
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    InvokeTransactionV3,
+    ResourceBoundsMapping,
+    TransactionOutput,
+    TransactionVersion0,
+    TransactionVersion1,
     TransactionVersion3,
 };
 

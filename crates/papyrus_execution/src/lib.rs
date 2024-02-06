@@ -26,13 +26,18 @@ use blockifier::block_context::{BlockContext, BlockInfo, ChainInfo, FeeTokenAddr
 use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
-    CallEntryPoint, CallType as BlockifierCallType, EntryPointExecutionContext, ExecutionResources,
+    CallEntryPoint,
+    CallType as BlockifierCallType,
+    EntryPointExecutionContext,
+    ExecutionResources,
 };
 use blockifier::state::cached_state::{CachedState, GlobalContractCache};
 use blockifier::state::state_api::State;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
-    AccountTransactionContext, DeprecatedAccountTransactionContext, TransactionExecutionInfo,
+    AccountTransactionContext,
+    DeprecatedAccountTransactionContext,
+    TransactionExecutionInfo,
 };
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
@@ -48,13 +53,23 @@ use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
-    ContractClass as DeprecatedContractClass, EntryPointType,
+    ContractClass as DeprecatedContractClass,
+    EntryPointType,
 };
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{
-    Calldata, DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2,
-    DeclareTransactionV3, DeployAccountTransaction, Fee, InvokeTransaction, L1HandlerTransaction,
-    Transaction, TransactionHash, TransactionVersion,
+    Calldata,
+    DeclareTransaction,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeclareTransactionV3,
+    DeployAccountTransaction,
+    Fee,
+    InvokeTransaction,
+    L1HandlerTransaction,
+    Transaction,
+    TransactionHash,
+    TransactionVersion,
 };
 use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
@@ -609,7 +624,7 @@ fn set_block_hash_contract(
     cached_state: &mut CachedState<ExecutionStateReader>,
 ) -> ExecutionResult<()> {
     if state_number.is_after(BlockNumber(10)) {
-        let block_min_10 = state_number.0 .0 - 10;
+        let block_min_10 = state_number.0.0 - 10;
         let header_10_blocks_ago = cached_state
             .state
             .storage_reader

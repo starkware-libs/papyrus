@@ -70,7 +70,13 @@ use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
-    FileHandlers, MarkerKind, MarkersTable, OffsetKind, StorageError, StorageResult, StorageTxn,
+    FileHandlers,
+    MarkerKind,
+    MarkersTable,
+    OffsetKind,
+    StorageError,
+    StorageResult,
+    StorageTxn,
 };
 
 type FileOffsetTable<'env> =

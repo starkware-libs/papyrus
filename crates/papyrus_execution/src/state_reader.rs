@@ -3,7 +3,9 @@
 mod state_reader_test;
 
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
+    ContractClass as BlockifierContractClass,
+    ContractClassV0,
+    ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::{StateReader as BlockifierStateReader, StateResult};

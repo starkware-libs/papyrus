@@ -7,14 +7,36 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
 };
 use starknet_api::transaction::{
-    AccountDeploymentData, Calldata, ContractAddressSalt, DeclareTransactionOutput,
-    DeployAccountTransactionOutput, DeployTransactionOutput, Event, Fee, InvokeTransactionOutput,
-    L1HandlerTransactionOutput, L1ToL2Payload, L2ToL1Payload, MessageToL1, PaymasterData,
-    ResourceBoundsMapping, Tip, TransactionExecutionStatus, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput, TransactionSignature, TransactionVersion,
+    AccountDeploymentData,
+    Calldata,
+    ContractAddressSalt,
+    DeclareTransactionOutput,
+    DeployAccountTransactionOutput,
+    DeployTransactionOutput,
+    Event,
+    Fee,
+    InvokeTransactionOutput,
+    L1HandlerTransactionOutput,
+    L1ToL2Payload,
+    L2ToL1Payload,
+    MessageToL1,
+    PaymasterData,
+    ResourceBoundsMapping,
+    Tip,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionOutput,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_types_core::felt::Felt;
 

@@ -12,11 +12,24 @@ use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
 };
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, DeployTransaction, Fee, L1HandlerTransaction, MessageToL1,
-    Resource, TransactionExecutionStatus, TransactionHash, TransactionSignature,
+    Calldata,
+    ContractAddressSalt,
+    DeployTransaction,
+    Fee,
+    L1HandlerTransaction,
+    MessageToL1,
+    Resource,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionSignature,
     TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;

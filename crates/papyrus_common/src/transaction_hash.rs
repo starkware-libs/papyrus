@@ -2,21 +2,33 @@
 #[path = "transaction_hash_test.rs"]
 mod transaction_hash_test;
 
-
-
 use lazy_static::lazy_static;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{calculate_contract_address, ChainId, ContractAddress};
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::transaction::{
-    DeclareTransaction, DeclareTransactionV0V1, DeclareTransactionV2, DeclareTransactionV3,
-    DeployAccountTransaction, DeployAccountTransactionV1, DeployAccountTransactionV3,
-    DeployTransaction, InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1,
-    InvokeTransactionV3, L1HandlerTransaction, Resource, ResourceBounds, ResourceBoundsMapping,
-    Tip, Transaction, TransactionHash, TransactionVersion,
+    DeclareTransaction,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeclareTransactionV3,
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
+    DeployTransaction,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    InvokeTransactionV3,
+    L1HandlerTransaction,
+    Resource,
+    ResourceBounds,
+    ResourceBoundsMapping,
+    Tip,
+    Transaction,
+    TransactionHash,
+    TransactionVersion,
 };
 use starknet_api::StarknetApiError;
-
 use starknet_types_core::felt::Felt;
 use starknet_types_core::hash::{Pedersen, Poseidon, StarkHash};
 
@@ -182,20 +194,12 @@ impl HashChain {
 
     // Chains a felt to the hash chain if a condition is true.
     pub fn chain_if(self, felt: &Felt, condition: bool) -> Self {
-        if condition {
-            self.chain(felt)
-        } else {
-            self
-        }
+        if condition { self.chain(felt) } else { self }
     }
 
     // Chains felt_if to the hash chain if a condition is true, otherwise chains felt_else.
     pub fn chain_if_else(self, felt_if: &Felt, felt_else: &Felt, condition: bool) -> Self {
-        if condition {
-            self.chain(felt_if)
-        } else {
-            self.chain(felt_else)
-        }
+        if condition { self.chain(felt_if) } else { self.chain(felt_else) }
     }
 
     // Chains many felts to the hash chain.

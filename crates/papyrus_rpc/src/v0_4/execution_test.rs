@@ -22,57 +22,99 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::StorageWriter;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{
-    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
+    BlockBody,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
     PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::{
-    ContractClass as SN_API_DeprecatedContractClass, EntryPointType,
+    ContractClass as SN_API_DeprecatedContractClass,
+    EntryPointType,
 };
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
-    Calldata, EventContent, Fee, L1HandlerTransaction, MessageToL1, TransactionHash,
-    TransactionOffsetInBlock, TransactionVersion,
+    Calldata,
+    EventContent,
+    Fee,
+    L1HandlerTransaction,
+    MessageToL1,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::{
-    IntermediateInvokeTransaction as ClientInvokeTransaction, Transaction as ClientTransaction,
+    IntermediateInvokeTransaction as ClientInvokeTransaction,
+    Transaction as ClientTransaction,
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
 use starknet_types_core::felt::Felt;
 use test_utils::{
-    auto_impl_get_test_instance, get_number_of_variants, get_rng, read_json_file, GetTestInstance,
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
 };
 use tokio::sync::RwLock;
 
 use super::api::api_impl::JsonRpcServerV0_4Impl;
 use super::api::{
-    decompress_program, FeeEstimate, SimulatedTransaction, SimulationFlag, TransactionTraceWithHash,
+    decompress_program,
+    FeeEstimate,
+    SimulatedTransaction,
+    SimulationFlag,
+    TransactionTraceWithHash,
 };
 use super::broadcasted_transaction::{
-    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction, BroadcastedTransaction,
+    BroadcastedDeclareTransaction,
+    BroadcastedDeclareV1Transaction,
+    BroadcastedTransaction,
 };
 use super::error::{BLOCK_NOT_FOUND, CONTRACT_ERROR, CONTRACT_NOT_FOUND};
 use super::execution::{
-    DeclareTransactionTrace, DeployAccountTransactionTrace, FunctionInvocation,
-    FunctionInvocationResult, InvokeTransactionTrace, L1HandlerTransactionTrace, TransactionTrace,
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    TransactionTrace,
 };
 use super::transaction::{
-    DeployAccountTransaction, InvokeTransaction, InvokeTransactionV1, MessageFromL1,
+    DeployAccountTransaction,
+    InvokeTransaction,
+    InvokeTransactionV1,
+    MessageFromL1,
     TransactionVersion1,
 };
 use crate::api::{BlockHashOrNumber, BlockId, CallRequest, Tag};
 use crate::test_utils::{
-    call_and_validate_schema_for_result, call_api_then_assert_and_validate_schema_for_result,
-    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
-    get_test_pending_classes, get_test_pending_data, get_test_rpc_config,
-    get_test_rpc_server_and_storage_writer, get_test_rpc_server_and_storage_writer_from_params,
-    validate_schema, SpecFile,
+    call_and_validate_schema_for_result,
+    call_api_then_assert_and_validate_schema_for_result,
+    get_starknet_spec_api_schema_for_components,
+    get_starknet_spec_api_schema_for_method_results,
+    get_test_pending_classes,
+    get_test_pending_data,
+    get_test_rpc_config,
+    get_test_rpc_server_and_storage_writer,
+    get_test_rpc_server_and_storage_writer_from_params,
+    validate_schema,
+    SpecFile,
 };
 use crate::version_config::VERSION_0_4;
 

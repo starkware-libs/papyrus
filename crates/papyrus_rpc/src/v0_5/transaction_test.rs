@@ -1,13 +1,22 @@
 use assert_matches::assert_matches;
 use camelpaste::paste;
 use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput, ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput, ThinTransactionOutput,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
+    ThinTransactionOutput,
 };
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::transaction::{
-    Calldata, ContractAddressSalt, Fee, L1HandlerTransaction, Transaction, TransactionSignature,
+    Calldata,
+    ContractAddressSalt,
+    Fee,
+    L1HandlerTransaction,
+    Transaction,
+    TransactionSignature,
     TransactionVersion,
 };
 use starknet_api::{calldata, contract_address, patricia_key};
@@ -16,8 +25,14 @@ use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
 use super::{
-    DeployAccountTransaction, DeployAccountTransactionV1, InvokeTransaction, InvokeTransactionV0,
-    InvokeTransactionV1, TransactionOutput, TransactionVersion0, TransactionVersion1,
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    TransactionOutput,
+    TransactionVersion0,
+    TransactionVersion1,
 };
 
 lazy_static::lazy_static! {

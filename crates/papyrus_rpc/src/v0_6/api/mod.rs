@@ -26,18 +26,34 @@ use tracing::debug;
 
 use super::block::Block;
 use super::broadcasted_transaction::{
-    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction, BroadcastedTransaction,
+    BroadcastedDeclareTransaction,
+    BroadcastedDeclareV1Transaction,
+    BroadcastedTransaction,
 };
 use super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::error::{
-    ContractError, JsonRpcError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND, INVALID_CONTINUATION_TOKEN,
+    ContractError,
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CONTRACT_NOT_FOUND,
+    INVALID_CONTINUATION_TOKEN,
 };
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
-    DeployAccountTransaction, DeployAccountTransactionV1, DeployAccountTransactionV3, Event,
-    GeneralTransactionReceipt, InvokeTransaction, InvokeTransactionV0, InvokeTransactionV1,
-    InvokeTransactionV3, MessageFromL1, TransactionStatus, TransactionWithHash,
-    TypedDeployAccountTransaction, TypedInvokeTransaction,
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
+    Event,
+    GeneralTransactionReceipt,
+    InvokeTransaction,
+    InvokeTransactionV0,
+    InvokeTransactionV1,
+    InvokeTransactionV3,
+    MessageFromL1,
+    TransactionStatus,
+    TransactionWithHash,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransaction,
 };
 use super::write_api_result::{AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult};
 use crate::api::{BlockId, CallRequest};

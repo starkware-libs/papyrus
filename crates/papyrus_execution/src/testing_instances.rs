@@ -13,10 +13,20 @@ use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::objects::{
-    CallType, DeclareTransactionTrace, DeployAccountTransactionTrace, FunctionCall,
-    FunctionInvocation, FunctionInvocationResult, InvokeTransactionTrace,
-    L1HandlerTransactionTrace, OrderedEvent, OrderedL2ToL1Message, PriceUnit, Retdata,
-    RevertReason, TransactionTrace,
+    CallType,
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionCall,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    OrderedEvent,
+    OrderedL2ToL1Message,
+    PriceUnit,
+    Retdata,
+    RevertReason,
+    TransactionTrace,
 };
 use crate::{BlockExecutionConfig, ExecutionConfigByBlock};
 

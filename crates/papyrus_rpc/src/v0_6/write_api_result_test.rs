@@ -2,7 +2,10 @@ use serde::Serialize;
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
 use starknet_api::transaction::TransactionHash;
 use starknet_client::writer::objects::response::{
-    DeclareResponse, DeployAccountResponse, InvokeResponse, SuccessfulStarknetErrorCode,
+    DeclareResponse,
+    DeployAccountResponse,
+    InvokeResponse,
+    SuccessfulStarknetErrorCode,
 };
 use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_rng, GetTestInstance};

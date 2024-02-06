@@ -14,7 +14,12 @@ use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{
-    ChainId, ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey,
+    ChainId,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{Calldata, Fee};
@@ -23,19 +28,39 @@ use starknet_types_core::felt::Felt;
 
 use crate::execution_utils::selector_from_name;
 use crate::objects::{
-    DeclareTransactionTrace, DeployAccountTransactionTrace, FunctionInvocationResult,
-    InvokeTransactionTrace, PriceUnit, TransactionSimulationOutput, TransactionTrace,
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    PriceUnit,
+    TransactionSimulationOutput,
+    TransactionTrace,
 };
 use crate::test_utils::{
-    execute_simulate_transactions, prepare_storage, TxsScenarioBuilder, ACCOUNT_ADDRESS,
-    ACCOUNT_CLASS_HASH, ACCOUNT_INITIAL_BALANCE, CHAIN_ID, CONTRACT_ADDRESS,
-    DEPRECATED_CONTRACT_ADDRESS, GAS_PRICE, NEW_ACCOUNT_ADDRESS, SEQUENCER_ADDRESS,
+    execute_simulate_transactions,
+    prepare_storage,
+    TxsScenarioBuilder,
+    ACCOUNT_ADDRESS,
+    ACCOUNT_CLASS_HASH,
+    ACCOUNT_INITIAL_BALANCE,
+    CHAIN_ID,
+    CONTRACT_ADDRESS,
+    DEPRECATED_CONTRACT_ADDRESS,
+    GAS_PRICE,
+    NEW_ACCOUNT_ADDRESS,
+    SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
 use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
 use crate::{
-    estimate_fee, execute_call, BlockExecutionConfig, ExecutableTransactionInput,
-    ExecutionConfigByBlock, ExecutionError, FeeEstimationResult, RevertedTransaction,
+    estimate_fee,
+    execute_call,
+    BlockExecutionConfig,
+    ExecutableTransactionInput,
+    ExecutionConfigByBlock,
+    ExecutionError,
+    FeeEstimationResult,
+    RevertedTransaction,
 };
 
 // Test calling entry points of a deprecated class.

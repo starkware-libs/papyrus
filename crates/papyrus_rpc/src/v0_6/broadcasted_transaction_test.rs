@@ -5,12 +5,21 @@ use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry as DeprecatedContractClassAbiEntry, EntryPoint as DeprecatedEntryPoint,
-    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry, StructAbiEntry,
+    ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    StructAbiEntry,
 };
 use starknet_api::state::EntryPoint;
 use starknet_api::transaction::{
-    AccountDeploymentData, Fee, PaymasterData, ResourceBounds, Tip, TransactionSignature,
+    AccountDeploymentData,
+    Fee,
+    PaymasterData,
+    ResourceBounds,
+    Tip,
+    TransactionSignature,
 };
 use starknet_client::writer::objects::transaction::DeprecatedContractClass;
 use starknet_types_core::felt::Felt;
@@ -18,8 +27,11 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, G
 
 use super::super::state::{ContractClass, EntryPointByType};
 use super::{
-    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction,
-    BroadcastedDeclareV2Transaction, BroadcastedDeclareV3Transaction, DeclareType,
+    BroadcastedDeclareTransaction,
+    BroadcastedDeclareV1Transaction,
+    BroadcastedDeclareV2Transaction,
+    BroadcastedDeclareV3Transaction,
+    DeclareType,
     ResourceBoundsMapping,
 };
 use crate::test_utils::{get_starknet_spec_api_schema_for_components, SpecFile};

@@ -4,8 +4,12 @@ use jsonschema::JSONSchema;
 use lazy_static::lazy_static;
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry as DeprecatedContractClassAbiEntry, EntryPoint as DeprecatedEntryPoint,
-    EntryPointType as DeprecatedEntryPointType, EventAbiEntry, FunctionAbiEntry, StructAbiEntry,
+    ContractClassAbiEntry as DeprecatedContractClassAbiEntry,
+    EntryPoint as DeprecatedEntryPoint,
+    EntryPointType as DeprecatedEntryPointType,
+    EventAbiEntry,
+    FunctionAbiEntry,
+    StructAbiEntry,
 };
 use starknet_api::state::EntryPoint;
 use starknet_api::transaction::{Fee, TransactionSignature};
@@ -15,8 +19,10 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, G
 
 use super::super::state::{ContractClass, EntryPointByType};
 use super::{
-    BroadcastedDeclareTransaction, BroadcastedDeclareV1Transaction,
-    BroadcastedDeclareV2Transaction, DeclareType,
+    BroadcastedDeclareTransaction,
+    BroadcastedDeclareV1Transaction,
+    BroadcastedDeclareV2Transaction,
+    DeclareType,
 };
 use crate::test_utils::{get_starknet_spec_api_schema_for_components, SpecFile};
 use crate::version_config::VERSION_0_4;

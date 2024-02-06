@@ -23,11 +23,19 @@ use tracing::{debug, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{
-    Block, BlockSignatureData, BlockSignatureMessage, TransactionReceiptsError,
+    Block,
+    BlockSignatureData,
+    BlockSignatureMessage,
+    TransactionReceiptsError,
 };
 pub use crate::reader::objects::pending_data::PendingData;
 pub use crate::reader::objects::state::{
-    ContractClass, DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate,
+    ContractClass,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StateDiff,
+    StateUpdate,
     StorageEntry,
 };
 #[cfg(doc)]

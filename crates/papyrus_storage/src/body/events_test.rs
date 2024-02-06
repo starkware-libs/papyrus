@@ -6,12 +6,16 @@ use pretty_assertions::assert_eq;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
-
 use test_utils::get_test_block;
 
 use crate::body::events::{
-    EventIndex, EventsReader, ThinDeclareTransactionOutput, ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput, ThinInvokeTransactionOutput, ThinL1HandlerTransactionOutput,
+    EventIndex,
+    EventsReader,
+    ThinDeclareTransactionOutput,
+    ThinDeployAccountTransactionOutput,
+    ThinDeployTransactionOutput,
+    ThinInvokeTransactionOutput,
+    ThinL1HandlerTransactionOutput,
     ThinTransactionOutput,
 };
 use crate::body::{BodyStorageWriter, TransactionIndex};
@@ -129,13 +133,15 @@ async fn revert_events() {
     );
 
     // Test iter events using the storage reader.
-    assert!(storage_reader
-        .begin_ro_txn()
-        .unwrap()
-        .iter_events(None, event_index, block_number)
-        .unwrap()
-        .last()
-        .is_some());
+    assert!(
+        storage_reader
+            .begin_ro_txn()
+            .unwrap()
+            .iter_events(None, event_index, block_number)
+            .unwrap()
+            .last()
+            .is_some()
+    );
 
     // Test events raw table.
     let txn = storage_reader.begin_ro_txn().unwrap();
@@ -162,13 +168,15 @@ async fn revert_events() {
         .0
         .commit()
         .unwrap();
-    assert!(storage_reader
-        .begin_ro_txn()
-        .unwrap()
-        .iter_events(None, event_index, block_number)
-        .unwrap()
-        .last()
-        .is_none());
+    assert!(
+        storage_reader
+            .begin_ro_txn()
+            .unwrap()
+            .iter_events(None, event_index, block_number)
+            .unwrap()
+            .last()
+            .is_none()
+    );
 
     let txn = storage_reader.begin_ro_txn().unwrap();
     let events_table = txn.txn.open_table(&txn.tables.events).unwrap();

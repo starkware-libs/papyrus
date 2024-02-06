@@ -8,7 +8,9 @@ use starknet_types_core::felt::Felt;
 use test_utils::read_json_file;
 
 use super::{
-    ascii_as_felt, get_transaction_hash, validate_transaction_hash,
+    ascii_as_felt,
+    get_transaction_hash,
+    validate_transaction_hash,
     CONSTRUCTOR_ENTRY_POINT_SELECTOR,
 };
 use crate::TransactionOptions;

@@ -9,7 +9,12 @@ use starknet_types_core::felt::Felt;
 
 use super::{Block, GlobalRoot, TransactionReceiptsError};
 use crate::reader::objects::state::{
-    DeclaredClassHashEntry, DeployedContract, ReplacedClass, StateDiff, StateUpdate, StorageEntry,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StateDiff,
+    StateUpdate,
+    StorageEntry,
 };
 use crate::reader::objects::transaction::TransactionReceipt;
 use crate::reader::ReaderClientError;

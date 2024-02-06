@@ -12,16 +12,33 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::{StorageReader, StorageWriter};
 use serde::de::DeserializeOwned;
 use starknet_api::block::{
-    BlockBody, BlockHash, BlockHeader, BlockNumber, BlockTimestamp, GasPrice,
+    BlockBody,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockTimestamp,
+    GasPrice,
 };
 use starknet_api::core::{
-    ChainId, ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey,
+    ChainId,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber};
 use starknet_api::transaction::{
-    Calldata, DeclareTransactionV0V1, DeclareTransactionV2, DeployAccountTransaction,
-    DeployAccountTransactionV1, Fee, InvokeTransaction, InvokeTransactionV1, TransactionHash,
+    Calldata,
+    DeclareTransactionV0V1,
+    DeclareTransactionV2,
+    DeployAccountTransaction,
+    DeployAccountTransactionV1,
+    Fee,
+    InvokeTransaction,
+    InvokeTransactionV1,
+    TransactionHash,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key};
 use starknet_types_core::felt::Felt;

@@ -7,7 +7,11 @@ use std::iter::zip;
 use starknet_api::block::{Block, BlockBody};
 use starknet_api::core::ChainId;
 use starknet_api::transaction::{
-    DeployAccountTransaction, Event, Transaction, TransactionHash, TransactionOutput,
+    DeployAccountTransaction,
+    Event,
+    Transaction,
+    TransactionHash,
+    TransactionOutput,
 };
 use starknet_api::StarknetApiError;
 use starknet_types_core::felt::Felt;
@@ -118,11 +122,7 @@ fn get_transaction_signature(transaction: &Transaction) -> Vec<Felt> {
 }
 
 fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<Felt> {
-    if let Transaction::Invoke(invoke) = transaction {
-        invoke.signature().0
-    } else {
-        vec![]
-    }
+    if let Transaction::Invoke(invoke) = transaction { invoke.signature().0 } else { vec![] }
 }
 
 // Returns the number of the events, and the Patricia root of the events.

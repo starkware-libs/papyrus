@@ -674,10 +674,12 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
-    assert!(state_reader
-        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-        .unwrap()
-        .is_some());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_some()
+    );
 
     // Revert the block and assert that the classes are no longer declared.
     let (txn, _) = writer.begin_rw_txn().unwrap().revert_state_diff(BlockNumber(0)).unwrap();
@@ -685,10 +687,12 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_none());
-    assert!(state_reader
-        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-        .unwrap()
-        .is_none());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_none()
+    );
 
     // Re-declaring reverted classes should be possible.
     writer
@@ -704,8 +708,10 @@ fn declare_revert_declare_scenario() {
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
-    assert!(state_reader
-        .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
-        .unwrap()
-        .is_some());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
+            .unwrap()
+            .is_some()
+    );
 }

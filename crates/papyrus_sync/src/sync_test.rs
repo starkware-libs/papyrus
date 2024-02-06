@@ -29,8 +29,13 @@ use crate::sources::base_layer::MockBaseLayerSourceTrait;
 use crate::sources::central::MockCentralSourceTrait;
 use crate::sources::pending::MockPendingSourceTrait;
 use crate::{
-    sort_state_diff, stream_new_base_layer_block, sync_pending_data, GenericStateSync,
-    StateSyncError, SyncConfig, SyncEvent,
+    sort_state_diff,
+    stream_new_base_layer_block,
+    sync_pending_data,
+    GenericStateSync,
+    StateSyncError,
+    SyncConfig,
+    SyncEvent,
 };
 
 // TODO(anatg): Add a test to check that the sync calls the sort_state_diff function
@@ -519,8 +524,8 @@ async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_h
 }
 
 #[tokio::test]
-async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_and_more_transactions(
-) {
+async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_and_more_transactions()
+ {
     const FIRST_BLOCK_HASH: BlockHash = BlockHash(Felt::ONE);
     let genesis_hash = BlockHash(Felt::from(GENESIS_HASH));
     // Storage with one block header.

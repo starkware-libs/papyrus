@@ -6,7 +6,9 @@ use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_rpc::{
-    AddInvokeOkResultRPC0_4, InvokeTransactionRPC0_4, InvokeTransactionV1RPC0_4,
+    AddInvokeOkResultRPC0_4,
+    InvokeTransactionRPC0_4,
+    InvokeTransactionV1RPC0_4,
     TransactionVersion1RPC0_4,
 };
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
@@ -85,7 +87,7 @@ async fn test_gw_integration_testnet() {
             Felt::ONE, // OpenZeppelin call array len (number of calls in this tx).
             // Call Array (4 elements per array struct element).
             Felt::from_hex(L2_ETH_CONTRACT_ADDRESS).unwrap(), // to
-            EntryPointSelector(Felt::from_hex(TRANSFER_ENTRY_POINT_SELECTOR).unwrap()).0, // selector.
+            EntryPointSelector(Felt::from_hex(TRANSFER_ENTRY_POINT_SELECTOR).unwrap()).0, /* selector. */
             Felt::ZERO, // data offset (in the calldata array)
             Felt::THREE, /* data len (of this call in the entire
                          * calldata array) */

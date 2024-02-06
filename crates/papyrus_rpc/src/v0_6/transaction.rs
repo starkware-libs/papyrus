@@ -17,14 +17,31 @@ use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::transaction::{
-    AccountDeploymentData, Calldata, ContractAddressSalt, DeployTransaction, Fee,
-    L1HandlerTransaction, MessageToL1, PaymasterData, Resource, ResourceBounds, Tip,
-    TransactionExecutionStatus, TransactionHash, TransactionSignature, TransactionVersion,
+    AccountDeploymentData,
+    Calldata,
+    ContractAddressSalt,
+    DeployTransaction,
+    Fee,
+    L1HandlerTransaction,
+    MessageToL1,
+    PaymasterData,
+    Resource,
+    ResourceBounds,
+    Tip,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
 use starknet_types_core::felt::Felt;

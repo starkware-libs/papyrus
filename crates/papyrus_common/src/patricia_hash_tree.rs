@@ -25,7 +25,6 @@
 mod patricia_hash_tree_test;
 
 use bitvec::prelude::{BitArray, Msb0};
-
 use starknet_types_core::felt::Felt;
 use starknet_types_core::hash::{Pedersen, StarkHash};
 

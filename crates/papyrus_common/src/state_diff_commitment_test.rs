@@ -1,6 +1,11 @@
 use pretty_assertions::assert_eq;
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::state::{StateDiff, StorageKey, ThinStateDiff};
 use starknet_api::{class_hash, contract_address, patricia_key};

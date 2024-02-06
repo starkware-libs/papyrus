@@ -28,34 +28,54 @@ use rand_chacha::ChaCha8Rng;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{
-    Block as StarknetApiBlock, BlockHash, BlockHeader, BlockNumber, BlockStatus, BlockTimestamp,
+    Block as StarknetApiBlock,
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockStatus,
+    BlockTimestamp,
 };
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::{
-    ContractClassAbiEntry, FunctionAbiEntry, FunctionStateMutability,
+    ContractClassAbiEntry,
+    FunctionAbiEntry,
+    FunctionStateMutability,
 };
 use starknet_api::hash::GENESIS_HASH;
 use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass as StarknetApiContractClass, StateDiff, StorageKey};
 use starknet_api::transaction::{
-    Event as StarknetApiEvent, EventContent, EventData, EventIndexInTransactionOutput, EventKey,
-    Transaction as StarknetApiTransaction, TransactionExecutionStatus, TransactionHash,
-    TransactionOffsetInBlock, TransactionOutput as StarknetApiTransactionOutput,
+    Event as StarknetApiEvent,
+    EventContent,
+    EventData,
+    EventIndexInTransactionOutput,
+    EventKey,
+    Transaction as StarknetApiTransaction,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionOutput as StarknetApiTransactionOutput,
 };
 use starknet_client::reader::objects::pending_data::{
-    PendingBlock, PendingStateUpdate as ClientPendingStateUpdate,
+    PendingBlock,
+    PendingStateUpdate as ClientPendingStateUpdate,
 };
 use starknet_client::reader::objects::state::{
     DeclaredClassHashEntry as ClientDeclaredClassHashEntry,
-    DeployedContract as ClientDeployedContract, ReplacedClass as ClientReplacedClass,
-    StateDiff as ClientStateDiff, StorageEntry as ClientStorageEntry,
+    DeployedContract as ClientDeployedContract,
+    ReplacedClass as ClientReplacedClass,
+    StateDiff as ClientStateDiff,
+    StorageEntry as ClientStorageEntry,
 };
 use starknet_client::reader::objects::transaction::{
-    Transaction as ClientTransaction, TransactionReceipt as ClientTransactionReceipt,
+    Transaction as ClientTransaction,
+    TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::starknet_error::{KnownStarknetErrorCode, StarknetError, StarknetErrorCode};
 use starknet_client::writer::objects::response::{
-    DeclareResponse, DeployAccountResponse, InvokeResponse,
+    DeclareResponse,
+    DeployAccountResponse,
+    InvokeResponse,
 };
 use starknet_client::writer::objects::transaction::{
     DeclareTransaction as ClientDeclareTransaction,
@@ -66,8 +86,14 @@ use starknet_client::writer::{MockStarknetWriter, WriterClientError, WriterClien
 use starknet_client::ClientError;
 use starknet_types_core::felt::Felt;
 use test_utils::{
-    auto_impl_get_test_instance, get_number_of_variants, get_rng, get_test_block, get_test_body,
-    get_test_state_diff, send_request, GetTestInstance,
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    get_test_block,
+    get_test_body,
+    get_test_state_diff,
+    send_request,
+    GetTestInstance,
 };
 
 use super::super::api::EventsChunk;
@@ -75,22 +101,53 @@ use super::super::block::{Block, GeneralBlockHeader, PendingBlockHeader};
 use super::super::broadcasted_transaction::BroadcastedDeclareTransaction;
 use super::super::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use super::super::error::{
-    unexpected_error, JsonRpcError, BLOCK_NOT_FOUND, CLASS_HASH_NOT_FOUND, COMPILATION_FAILED,
-    CONTRACT_NOT_FOUND, DUPLICATE_TX, INVALID_CONTINUATION_TOKEN, INVALID_TRANSACTION_INDEX,
-    NO_BLOCKS, PAGE_SIZE_TOO_BIG, TOO_MANY_KEYS_IN_FILTER, TRANSACTION_HASH_NOT_FOUND,
+    unexpected_error,
+    JsonRpcError,
+    BLOCK_NOT_FOUND,
+    CLASS_HASH_NOT_FOUND,
+    COMPILATION_FAILED,
+    CONTRACT_NOT_FOUND,
+    DUPLICATE_TX,
+    INVALID_CONTINUATION_TOKEN,
+    INVALID_TRANSACTION_INDEX,
+    NO_BLOCKS,
+    PAGE_SIZE_TOO_BIG,
+    TOO_MANY_KEYS_IN_FILTER,
+    TRANSACTION_HASH_NOT_FOUND,
 };
 use super::super::state::{
-    AcceptedStateUpdate, ClassHashes, ContractClass, ContractNonce, DeployedContract,
-    PendingStateUpdate, ReplacedClasses, StateUpdate, StorageDiff, StorageEntry, ThinStateDiff,
+    AcceptedStateUpdate,
+    ClassHashes,
+    ContractClass,
+    ContractNonce,
+    DeployedContract,
+    PendingStateUpdate,
+    ReplacedClasses,
+    StateUpdate,
+    StorageDiff,
+    StorageEntry,
+    ThinStateDiff,
 };
 use super::super::transaction::{
-    DeployAccountTransaction, Event, GeneralTransactionReceipt, InvokeTransactionV1,
-    PendingTransactionFinalityStatus, PendingTransactionOutput, PendingTransactionReceipt,
-    TransactionFinalityStatus, TransactionOutput, TransactionReceipt, TransactionWithHash,
-    Transactions, TypedDeployAccountTransaction, TypedInvokeTransactionV1,
+    DeployAccountTransaction,
+    Event,
+    GeneralTransactionReceipt,
+    InvokeTransactionV1,
+    PendingTransactionFinalityStatus,
+    PendingTransactionOutput,
+    PendingTransactionReceipt,
+    TransactionFinalityStatus,
+    TransactionOutput,
+    TransactionReceipt,
+    TransactionWithHash,
+    Transactions,
+    TypedDeployAccountTransaction,
+    TypedInvokeTransactionV1,
 };
 use super::super::write_api_result::{
-    AddDeclareOkResult, AddDeployAccountOkResult, AddInvokeOkResult,
+    AddDeclareOkResult,
+    AddDeployAccountOkResult,
+    AddInvokeOkResult,
 };
 use super::api_impl::{JsonRpcServerV0_4Impl, BLOCK_HASH_TABLE_ADDRESS};
 use super::{ContinuationToken, EventFilter, GatewayContractClass};
@@ -98,15 +155,27 @@ use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
     call_api_then_assert_and_validate_schema_for_err,
-    call_api_then_assert_and_validate_schema_for_result, get_method_names_from_spec,
-    get_starknet_spec_api_schema_for_components, get_starknet_spec_api_schema_for_method_results,
-    get_test_highest_block, get_test_pending_classes, get_test_pending_data, get_test_rpc_config,
-    get_test_rpc_server_and_storage_writer, get_test_rpc_server_and_storage_writer_from_params,
-    method_name_to_spec_method_name, raw_call, validate_schema, SpecFile,
+    call_api_then_assert_and_validate_schema_for_result,
+    get_method_names_from_spec,
+    get_starknet_spec_api_schema_for_components,
+    get_starknet_spec_api_schema_for_method_results,
+    get_test_highest_block,
+    get_test_pending_classes,
+    get_test_pending_data,
+    get_test_rpc_config,
+    get_test_rpc_server_and_storage_writer,
+    get_test_rpc_server_and_storage_writer_from_params,
+    method_name_to_spec_method_name,
+    raw_call,
+    validate_schema,
+    SpecFile,
 };
 use crate::version_config::VERSION_0_4;
 use crate::{
-    internal_server_error, internal_server_error_with_msg, run_server, ContinuationTokenAsStruct,
+    internal_server_error,
+    internal_server_error_with_msg,
+    run_server,
+    ContinuationTokenAsStruct,
 };
 const NODE_VERSION: &str = "NODE VERSION";
 

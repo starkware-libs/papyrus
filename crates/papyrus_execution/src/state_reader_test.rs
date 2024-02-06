@@ -1,6 +1,8 @@
 use assert_matches::assert_matches;
 use blockifier::execution::contract_class::{
-    ContractClass as BlockifierContractClass, ContractClassV0, ContractClassV1,
+    ContractClass as BlockifierContractClass,
+    ContractClassV0,
+    ContractClassV1,
 };
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
@@ -8,7 +10,10 @@ use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::{indexmap, IndexMap};
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{
-    DeclaredClassHashEntry, DeployedContract, ReplacedClass, StorageEntry,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    ReplacedClass,
+    StorageEntry,
 };
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;

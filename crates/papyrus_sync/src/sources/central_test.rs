@@ -13,14 +13,27 @@ use pretty_assertions::assert_eq;
 use reqwest::StatusCode;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::patricia_key;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
 use starknet_client::reader::{
-    Block, BlockSignatureData, ContractClass, DeclaredClassHashEntry, DeployedContract,
-    GenericContractClass, MockStarknetReader, ReaderClientError, ReplacedClass, StateUpdate,
+    Block,
+    BlockSignatureData,
+    ContractClass,
+    DeclaredClassHashEntry,
+    DeployedContract,
+    GenericContractClass,
+    MockStarknetReader,
+    ReaderClientError,
+    ReplacedClass,
+    StateUpdate,
     StorageEntry,
 };
 use starknet_client::ClientError;

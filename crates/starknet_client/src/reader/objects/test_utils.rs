@@ -1,13 +1,30 @@
 use std::collections::HashMap;
 
 use starknet_api::core::{
-    ClassHash, CompiledClassHash, ContractAddress, EntryPointSelector, EthAddress, Nonce,
+    ClassHash,
+    CompiledClassHash,
+    ContractAddress,
+    EntryPointSelector,
+    EthAddress,
+    Nonce,
 };
 use starknet_api::state::{EntryPoint, EntryPointType};
 use starknet_api::transaction::{
-    AccountDeploymentData, Calldata, ContractAddressSalt, Event, Fee, L1ToL2Payload, L2ToL1Payload,
-    PaymasterData, ResourceBoundsMapping, Tip, TransactionExecutionStatus, TransactionHash,
-    TransactionOffsetInBlock, TransactionSignature, TransactionVersion,
+    AccountDeploymentData,
+    Calldata,
+    ContractAddressSalt,
+    Event,
+    Fee,
+    L1ToL2Payload,
+    L2ToL1Payload,
+    PaymasterData,
+    ResourceBoundsMapping,
+    Tip,
+    TransactionExecutionStatus,
+    TransactionHash,
+    TransactionOffsetInBlock,
+    TransactionSignature,
+    TransactionVersion,
 };
 use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
@@ -15,9 +32,17 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestIns
 use super::transaction::Builtin;
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
-    DeployTransaction, ExecutionResources, IntermediateDeclareTransaction,
-    IntermediateDeployAccountTransaction, IntermediateInvokeTransaction, L1HandlerTransaction,
-    L1ToL2Message, L1ToL2Nonce, L2ToL1Message, ReservedDataAvailabilityMode, Transaction,
+    DeployTransaction,
+    ExecutionResources,
+    IntermediateDeclareTransaction,
+    IntermediateDeployAccountTransaction,
+    IntermediateInvokeTransaction,
+    L1HandlerTransaction,
+    L1ToL2Message,
+    L1ToL2Nonce,
+    L2ToL1Message,
+    ReservedDataAvailabilityMode,
+    Transaction,
     TransactionReceipt,
 };
 
