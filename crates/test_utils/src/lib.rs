@@ -46,6 +46,7 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    GasPricePerToken,
 };
 use starknet_api::core::{
     ClassHash,
@@ -53,11 +54,14 @@ use starknet_api::core::{
     ContractAddress,
     EntryPointSelector,
     EthAddress,
+    EventCommitment,
     GlobalRoot,
     Nonce,
+    SequencerContractAddress,
+    TransactionCommitment,
 };
 use starknet_api::crypto::Signature;
-use starknet_api::data_availability::DataAvailabilityMode;
+use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -405,11 +409,16 @@ auto_impl_get_test_instance! {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
-        pub eth_l1_gas_price: GasPrice,
-        pub strk_l1_gas_price: GasPrice,
+        pub l1_gas_price: GasPricePerToken,
+        pub l1_data_gas_price: GasPricePerToken,
         pub state_root: GlobalRoot,
-        pub sequencer: ContractAddress,
+        pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
+        pub l1_da_mode: L1DataAvailabilityMode,
+        pub transaction_commitment: TransactionCommitment,
+        pub event_commitment: EventCommitment,
+        pub n_transactions: usize,
+        pub n_events: usize,
     }
     pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
@@ -436,7 +445,7 @@ auto_impl_get_test_instance! {
     pub struct ContractAddressSalt(pub StarkHash);
     pub struct ContractClass {
         pub sierra_program: Vec<StarkFelt>,
-        pub entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
+        pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub abi: String,
     }
     pub struct DeprecatedContractClass {
@@ -536,6 +545,7 @@ auto_impl_get_test_instance! {
         pub from_address: ContractAddress,
         pub content: EventContent,
     }
+    pub struct EventCommitment(pub StarkHash);
     pub struct FunctionIndex(pub usize);
     pub struct EntryPointOffset(pub usize);
     pub struct EntryPointSelector(pub StarkHash);
@@ -567,6 +577,10 @@ auto_impl_get_test_instance! {
         View = 0,
     }
     pub struct GasPrice(pub u128);
+    pub struct GasPricePerToken {
+        pub price_in_fri: GasPrice,
+        pub price_in_wei: GasPrice,
+    }
     pub struct GlobalRoot(pub StarkHash);
     pub enum InvokeTransaction {
         V0(InvokeTransactionV0) = 0,
@@ -599,6 +613,10 @@ auto_impl_get_test_instance! {
         pub paymaster_data: PaymasterData,
         pub account_deployment_data: AccountDeploymentData,
     }
+    pub enum L1DataAvailabilityMode {
+        Calldata = 0,
+        Blob = 1,
+    }
     pub struct L1HandlerTransaction {
         pub version: TransactionVersion,
         pub nonce: Nonce,
@@ -618,6 +636,7 @@ auto_impl_get_test_instance! {
         pub payload: L1ToL2Payload,
     }
     pub struct Nonce(pub StarkFelt);
+    pub struct TransactionCommitment(pub StarkHash);
     pub struct PaymasterData(pub Vec<StarkFelt>);
     pub struct Program {
         pub attributes: serde_json::Value,
@@ -640,7 +659,8 @@ auto_impl_get_test_instance! {
         pub max_price_per_unit: u128,
     }
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
-        pub struct Signature {
+    pub struct SequencerContractAddress(pub ContractAddress);
+    pub struct Signature {
         pub r: StarkFelt,
         pub s: StarkFelt,
     }
