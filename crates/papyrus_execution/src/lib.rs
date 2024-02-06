@@ -283,8 +283,8 @@ fn create_block_context(
                 header.block_number,
                 header.timestamp,
                 GasPrices {
-                    eth_l1_gas_price: header.eth_l1_gas_price.0,
-                    strk_l1_gas_price: header.strk_l1_gas_price.0,
+                    eth_l1_gas_price: header.l1_gas_price.price_in_wei.0,
+                    strk_l1_gas_price: header.l1_gas_price.price_in_fri.0,
                 },
                 header.sequencer,
             )
@@ -295,7 +295,7 @@ fn create_block_context(
         chain_id,
         block_number,
         block_timestamp,
-        sequencer_address,
+        sequencer_address: sequencer_address.0,
         // TODO(barak, 01/10/2023): Change strk_fee_token_address once it exists.
         fee_token_addresses: FeeTokenAddresses {
             strk_fee_token_address: execution_config.fee_contract_address,
