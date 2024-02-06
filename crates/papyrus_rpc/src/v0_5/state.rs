@@ -170,10 +170,10 @@ pub struct EntryPointByType {
 }
 
 impl EntryPointByType {
-    pub fn from_hash_map(entry_point_by_type: HashMap<EntryPointType, Vec<EntryPoint>>) -> Self {
+    pub fn from_hash_map(entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>) -> Self {
         macro_rules! get_entrypoint_by_type {
             ($variant:ident) => {
-                (*(entry_point_by_type.get(&EntryPointType::$variant).unwrap_or(&vec![]))).to_vec()
+                (*(entry_points_by_type.get(&EntryPointType::$variant).unwrap_or(&vec![]))).to_vec()
             };
         }
 
@@ -205,7 +205,7 @@ impl From<starknet_api::state::ContractClass> for ContractClass {
         Self {
             sierra_program: class.sierra_program,
             contract_class_version: CONTRACT_CLASS_VERSION.to_owned(),
-            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_point_by_type),
+            entry_points_by_type: EntryPointByType::from_hash_map(class.entry_points_by_type),
             abi: class.abi,
         }
     }

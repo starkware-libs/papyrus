@@ -36,6 +36,7 @@ use starknet_api::block::{
     BlockNumber,
     BlockTimestamp,
     GasPrice,
+    GasPricePerToken,
 };
 use starknet_api::core::{
     ClassHash,
@@ -45,6 +46,7 @@ use starknet_api::core::{
     EthAddress,
     Nonce,
     PatriciaKey,
+    SequencerContractAddress,
 };
 use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -58,7 +60,11 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
-use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
+use starknet_client::reader::objects::pending_data::{
+    DeprecatedPendingBlock,
+    PendingBlockOrDeprecated,
+    PendingStateUpdate,
+};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::{
     IntermediateInvokeTransaction as ClientInvokeTransaction,
@@ -107,10 +113,14 @@ use crate::test_utils::{
 use crate::version_config::VERSION_0_5;
 
 lazy_static! {
-    pub static ref GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
-    pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.0);
+    pub static ref GAS_PRICE: GasPricePerToken = GasPricePerToken{
+        price_in_wei: GasPrice(100 * u128::pow(10, 9)),
+        price_in_fri: GasPrice(0),
+    };
+    pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.price_in_wei.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
-    pub static ref SEQUENCER_ADDRESS: ContractAddress = contract_address!("0xa");
+    pub static ref SEQUENCER_ADDRESS: SequencerContractAddress =
+        SequencerContractAddress(contract_address!("0xa"));
     pub static ref DEPRECATED_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1");
     pub static ref CONTRACT_ADDRESS: ContractAddress = contract_address!("0x2");
     pub static ref ACCOUNT_CLASS_HASH: ClassHash = class_hash!("0x333");
@@ -122,7 +132,7 @@ lazy_static! {
     // call.
     pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
         gas_consumed: stark_felt!("0x68b"),
-        gas_price: *GAS_PRICE,
+        gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(167500000000000,),
     };
 
@@ -316,7 +326,7 @@ async fn call_estimate_fee() {
     let account_address = ContractAddress(patricia_key!("0x444"));
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
+        max_fee: Fee(1000000 * GAS_PRICE.price_in_wei.0),
         version: TransactionVersion1::default(),
         sender_address: account_address,
         calldata: calldata![
@@ -372,7 +382,7 @@ async fn pending_call_estimate_fee() {
     let account_address = ContractAddress(patricia_key!("0x444"));
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
+        max_fee: Fee(1000000 * GAS_PRICE.price_in_wei.0),
         version: TransactionVersion1::default(),
         sender_address: account_address,
         calldata: calldata![
@@ -435,7 +445,7 @@ async fn test_call_simulate(
     block_context_number: BlockNumber,
 ) {
     let mut invoke_v1 = InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
+        max_fee: Fee(1000000 * GAS_PRICE.price_in_wei.0),
         version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
@@ -517,7 +527,7 @@ async fn call_simulate_skip_validate() {
     prepare_storage_for_execution(storage_writer);
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
+        max_fee: Fee(1000000 * GAS_PRICE.price_in_wei.0),
         version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
@@ -566,7 +576,7 @@ async fn call_simulate_skip_fee_charge() {
     prepare_storage_for_execution(storage_writer);
 
     let invoke = BroadcastedTransaction::Invoke(InvokeTransaction::Version1(InvokeTransactionV1 {
-        max_fee: Fee(1000000 * GAS_PRICE.0),
+        max_fee: Fee(1000000 * GAS_PRICE.price_in_wei.0),
         version: TransactionVersion1::default(),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![
@@ -653,7 +663,7 @@ async fn trace_block_transactions_regular_and_pending() {
         .append_header(
             BlockNumber(2),
             &BlockHeader {
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x2")),
@@ -723,8 +733,8 @@ async fn trace_block_transactions_regular_and_pending() {
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlock {
-            eth_l1_gas_price: *GAS_PRICE,
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            eth_l1_gas_price: GAS_PRICE.price_in_wei,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             parent_block_hash: BlockHash(stark_felt!("0x1")),
@@ -742,7 +752,7 @@ async fn trace_block_transactions_regular_and_pending() {
                 },
             ],
             ..Default::default()
-        },
+        }),
         state_update: PendingStateUpdate {
             old_root: Default::default(),
             state_diff: ClientStateDiff {
@@ -850,7 +860,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
             BlockNumber(2),
             &BlockHeader {
                 block_number: BlockNumber(2),
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x2")),
@@ -965,8 +975,8 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlock {
-            eth_l1_gas_price: *GAS_PRICE,
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            eth_l1_gas_price: GAS_PRICE.price_in_wei,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             parent_block_hash: BlockHash(stark_felt!("0x1")),
@@ -984,7 +994,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
                 },
             ],
             ..Default::default()
-        },
+        }),
         state_update: PendingStateUpdate {
             old_root: Default::default(),
             state_diff: ClientStateDiff {
@@ -1055,7 +1065,7 @@ async fn call_estimate_message_fee() {
     // is correct.
     let expected_fee_estimate = FeeEstimate {
         gas_consumed: stark_felt!("0x0"),
-        gas_price: *GAS_PRICE,
+        gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(0),
     };
 
@@ -1198,7 +1208,7 @@ auto_impl_get_test_instance! {
 fn get_calldata_for_test_execution_info(
     expected_block_number: BlockNumber,
     expected_block_timestamp: BlockTimestamp,
-    expected_sequencer_address: ContractAddress,
+    expected_sequencer_address: SequencerContractAddress,
     invoke_tx: &InvokeTransactionV1,
     tx_hash: TransactionHash,
     override_tx_version: Option<StarkFelt>,
@@ -1206,7 +1216,7 @@ fn get_calldata_for_test_execution_info(
     let entry_point_selector = selector_from_name("test_get_execution_info");
     let expected_block_number = stark_felt!(expected_block_number.0);
     let expected_block_timestamp = stark_felt!(expected_block_timestamp.0);
-    let expected_sequencer_address = *(expected_sequencer_address.0.key());
+    let expected_sequencer_address = *(expected_sequencer_address.0.0.key());
     let expected_caller_address = *(invoke_tx.sender_address.0.key());
     let expected_contract_address = *CONTRACT_ADDRESS.0.key();
     let expected_transaction_version = override_tx_version.unwrap_or(StarkFelt::ONE);
@@ -1308,12 +1318,12 @@ async fn write_block_0_as_pending(
     );
 
     *pending_data.write().await = PendingData {
-        block: PendingBlock {
-            eth_l1_gas_price: *GAS_PRICE,
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            eth_l1_gas_price: GAS_PRICE.price_in_wei,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             ..Default::default()
-        },
+        }),
         state_update: PendingStateUpdate {
             old_root: Default::default(),
             state_diff: ClientStateDiff {
@@ -1384,7 +1394,10 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
     .unwrap();
     let minter_var_address = get_storage_var_address("permitted_minter", &[]);
 
-    let different_gas_price = GasPrice(GAS_PRICE.0 + 100);
+    let different_gas_price = GasPricePerToken {
+        price_in_wei: GasPrice(GAS_PRICE.price_in_wei.0 + 100),
+        price_in_fri: GasPrice(0),
+    };
 
     storage_writer
         .begin_rw_txn()
@@ -1392,7 +1405,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -1445,7 +1458,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                eth_l1_gas_price: different_gas_price,
+                l1_gas_price: different_gas_price,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!("0x1")),
@@ -1471,7 +1484,7 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
