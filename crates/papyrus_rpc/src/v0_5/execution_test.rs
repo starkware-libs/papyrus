@@ -641,7 +641,7 @@ async fn trace_block_transactions_regular_and_pending() {
             Felt::ONE,                               // Calldata length.
             Felt::TWO                                // Calldata: num.
         ],
-        nonce: Some(Nonce(Felt::ZERO)),
+        nonce: Some(Nonce(Felt::ONE)),
         version: TransactionVersion::ONE,
         ..Default::default()
     });
@@ -801,7 +801,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         max_fee: *MAX_FEE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Nonce(Felt::ZERO),
+        nonce: Nonce(Felt::ONE),
         ..Default::default()
     };
 
@@ -932,7 +932,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
         max_fee: Some(*MAX_FEE),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Some(Nonce(Felt::ZERO)),
+        nonce: Some(Nonce(Felt::ONE)),
         version: TransactionVersion::ONE,
         ..Default::default()
     };
