@@ -34,7 +34,6 @@ use starknet_api::{patricia_key, stark_felt};
 use super::objects::state::StateUpdate;
 use super::objects::transaction::IntermediateDeclareTransaction;
 use super::{
-    Block,
     ContractClass,
     GenericContractClass,
     PendingData,
@@ -48,6 +47,7 @@ use super::{
     GET_STATE_UPDATE_URL,
 };
 use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
+use crate::reader::BlockOrDeprecated;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -86,7 +86,7 @@ async fn get_block_number() {
         .create();
     let latest_block = starknet_client.latest_block().await.unwrap();
     mock_block.assert();
-    assert_eq!(latest_block.unwrap().block_number, BlockNumber(319110));
+    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(319110));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -357,7 +357,7 @@ async fn get_block() {
         .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
     mock_block.assert();
-    let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let expected_block: BlockOrDeprecated = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
 
     // Non-existing block.
