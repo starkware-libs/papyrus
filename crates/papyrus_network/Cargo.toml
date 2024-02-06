@@ -36,6 +36,7 @@ prost-build.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
+deadqueue = { workspace = true, features = ["unlimited"] }
 libp2p-swarm-test.workspace = true
 mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
