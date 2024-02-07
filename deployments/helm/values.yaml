@@ -76,6 +76,12 @@ ingress:
   # Annotations to apply to the node ingress.
   annotations:
 
+# GrafanaDashboad CRD configuration
+# This is relevant for Grafana Operator users https://grafana.github.io/grafana-operator/docs/
+grafanadashboard:
+  # Should the GrafanaDashboard object be installed
+  enabled: false
+
 # Backup mode
 backup:
   enabled: false
