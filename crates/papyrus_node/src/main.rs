@@ -24,7 +24,7 @@ use papyrus_sync::{StateSync, StateSyncError};
 use starknet_api::block::BlockHash;
 use starknet_api::hash::{StarkFelt, GENESIS_HASH};
 use starknet_api::stark_felt;
-use starknet_client::reader::objects::pending_data::PendingBlock;
+use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -62,10 +62,12 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // The sync is the only writer of the syncing state.
     let shared_highest_block = Arc::new(RwLock::new(None));
     let pending_data = Arc::new(RwLock::new(PendingData {
-        block: PendingBlock {
+        // The pending data might change later to DeprecatedPendingBlock, depending on the response
+        // from the feeder gateway.
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
             parent_block_hash: BlockHash(stark_felt!(GENESIS_HASH)),
             ..Default::default()
-        },
+        }),
         ..Default::default()
     }));
     let pending_classes = Arc::new(RwLock::new(PendingClasses::default()));

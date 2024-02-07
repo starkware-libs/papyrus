@@ -174,7 +174,7 @@ fn estimate_fee_invoke() {
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, *GAS_PRICE);
+        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -185,7 +185,7 @@ fn estimate_fee_declare_deprecated_class() {
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, *GAS_PRICE);
+        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -196,7 +196,7 @@ fn estimate_fee_declare_class() {
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, *GAS_PRICE);
+        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -207,7 +207,7 @@ fn estimate_fee_deploy_account() {
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, *GAS_PRICE);
+        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -223,7 +223,7 @@ fn estimate_fee_combination() {
     let fees = estimate_fees(txs).expect("Fee estimation should succeed.");
     for fee in fees {
         assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, *GAS_PRICE);
+        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -322,7 +322,7 @@ fn simulate_invoke() {
                 fee_transfer_invocation: Some(_),
             }
         );
-        assert_eq!(charge_fee.gas_price, *GAS_PRICE);
+        assert_eq!(charge_fee.gas_price, GAS_PRICE.price_in_wei);
 
         assert_eq!(exec_only_trace.execute_invocation, charge_fee_trace.execute_invocation);
 

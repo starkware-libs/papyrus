@@ -17,7 +17,11 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
-use starknet_client::reader::objects::pending_data::{PendingBlock, PendingStateUpdate};
+use starknet_client::reader::objects::pending_data::{
+    DeprecatedPendingBlock,
+    PendingBlockOrDeprecated,
+    PendingStateUpdate,
+};
 use starknet_client::reader::objects::state::StateDiff as ClientStateDiff;
 use starknet_client::reader::objects::transaction::Transaction as ClientTransaction;
 use starknet_client::reader::{DeclaredClassHashEntry, PendingData};
@@ -292,15 +296,15 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let advanced_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![
                 ClientTransaction::get_test_instance(&mut rng),
@@ -308,22 +312,25 @@ async fn pending_sync_advances_only_when_new_data_has_more_transactions() {
                 ClientTransaction::get_test_instance(&mut rng),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let less_advanced_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![
                 ClientTransaction::get_test_instance(&mut rng),
                 ClientTransaction::get_test_instance(&mut rng),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::ONE), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::ONE),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -371,26 +378,29 @@ async fn pending_sync_new_data_has_more_advanced_hash_and_less_transactions() {
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![
                 ClientTransaction::get_test_instance(&mut rng),
                 ClientTransaction::get_test_instance(&mut rng),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: FIRST_BLOCK_HASH,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::TWO),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -421,20 +431,20 @@ async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_pending_datas = vec![PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             block_hash: Some(BlockHash(StarkHash::ONE)),
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     }];
     let expected_pending_data = old_pending_data.clone();
@@ -479,27 +489,30 @@ async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_h
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: FIRST_BLOCK_HASH,
             transactions: vec![
                 ClientTransaction::get_test_instance(&mut rng),
                 ClientTransaction::get_test_instance(&mut rng),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             block_hash: Some(FIRST_BLOCK_HASH),
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::TWO),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -547,15 +560,15 @@ async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: FIRST_BLOCK_HASH,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             block_hash: Some(FIRST_BLOCK_HASH),
             parent_block_hash: genesis_hash,
             transactions: vec![
@@ -563,11 +576,14 @@ async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_
                 ClientTransaction::get_test_instance(&mut rng),
             ],
             ..Default::default()
-        },
+        }),
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::TWO),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -601,11 +617,11 @@ async fn pending_sync_classes_request_only_new_classes() {
     let second_class_hash = ClassHash(StarkHash::TWO);
 
     let first_new_pending_data = PendingData {
-        block: PendingBlock {
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
-        },
+        }),
         state_update: PendingStateUpdate {
             state_diff: ClientStateDiff {
                 declared_classes: vec![DeclaredClassHashEntry {
@@ -618,10 +634,16 @@ async fn pending_sync_classes_request_only_new_classes() {
         },
     };
     let mut second_new_pending_data = first_new_pending_data.clone();
-    second_new_pending_data.block.transactions.push(ClientTransaction::get_test_instance(&mut rng));
+    second_new_pending_data
+        .block
+        .transactions_mutable()
+        .push(ClientTransaction::get_test_instance(&mut rng));
     second_new_pending_data.state_update.state_diff.old_declared_contracts.push(second_class_hash);
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::ONE), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::ONE),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 
@@ -637,7 +659,10 @@ async fn pending_sync_classes_request_only_new_classes() {
     expected_pending_classes.add_compiled_class(first_class_hash, compiled_class.clone());
 
     let old_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: genesis_hash, ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: genesis_hash,
+            ..Default::default()
+        }),
         ..Default::default()
     };
     let new_pending_datas =
@@ -684,15 +709,24 @@ async fn pending_sync_classes_are_cleaned_on_first_pending_data_from_latest_bloc
     let mut rng = get_rng();
 
     let old_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: genesis_hash, ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: genesis_hash,
+            ..Default::default()
+        }),
         ..Default::default()
     };
     let new_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: FIRST_BLOCK_HASH, ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: FIRST_BLOCK_HASH,
+            ..Default::default()
+        }),
         ..Default::default()
     };
     let new_block_pending_data = PendingData {
-        block: PendingBlock { parent_block_hash: BlockHash(StarkHash::TWO), ..Default::default() },
+        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
+            parent_block_hash: BlockHash(StarkHash::TWO),
+            ..Default::default()
+        }),
         ..Default::default()
     };
 

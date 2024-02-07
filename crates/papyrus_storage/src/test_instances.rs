@@ -1,5 +1,12 @@
-use starknet_api::block::BlockNumber;
-use starknet_api::core::ContractAddress;
+use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPricePerToken};
+use starknet_api::core::{
+    ContractAddress,
+    EventCommitment,
+    GlobalRoot,
+    SequencerContractAddress,
+    TransactionCommitment,
+};
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     ExecutionResources,
@@ -20,13 +27,28 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::compression_utils::IsCompressed;
-use crate::header::StarknetVersion;
+use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{EventIndex, MarkerKind, OffsetKind};
 
 auto_impl_get_test_instance! {
+    pub struct StorageBlockHeader {
+        pub block_hash: BlockHash,
+        pub parent_hash: BlockHash,
+        pub block_number: BlockNumber,
+        pub l1_gas_price: GasPricePerToken,
+        pub l1_data_gas_price: GasPricePerToken,
+        pub state_root: GlobalRoot,
+        pub sequencer: SequencerContractAddress,
+        pub timestamp: BlockTimestamp,
+        pub l1_da_mode: L1DataAvailabilityMode,
+        pub transaction_commitment: TransactionCommitment,
+        pub event_commitment: EventCommitment,
+        pub n_transactions: usize,
+        pub n_events: usize,
+    }
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
@@ -48,7 +70,6 @@ auto_impl_get_test_instance! {
         Casm = 2,
         DeprecatedContractClass = 3,
     }
-    pub struct StarknetVersion(pub String);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,

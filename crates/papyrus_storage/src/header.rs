@@ -38,16 +38,46 @@
 #[path = "header_test.rs"]
 mod header_test;
 
-use std::fmt::Display;
-
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::{
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockSignature,
+    BlockTimestamp,
+    GasPricePerToken,
+    StarknetVersion,
+};
+use starknet_api::core::{
+    EventCommitment,
+    GlobalRoot,
+    SequencerContractAddress,
+    TransactionCommitment,
+};
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use tracing::debug;
 
 use crate::db::serialization::NoVersionValueWrapper;
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageTxn};
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub(crate) struct StorageBlockHeader {
+    pub block_hash: BlockHash,
+    pub parent_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub l1_gas_price: GasPricePerToken,
+    pub l1_data_gas_price: GasPricePerToken,
+    pub state_root: GlobalRoot,
+    pub sequencer: SequencerContractAddress,
+    pub timestamp: BlockTimestamp,
+    pub l1_da_mode: L1DataAvailabilityMode,
+    pub transaction_commitment: TransactionCommitment,
+    pub event_commitment: EventCommitment,
+    pub n_transactions: usize,
+    pub n_events: usize,
+}
 
 type BlockHashToNumberTable<'env> =
     TableHandle<'env, BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
@@ -114,10 +144,6 @@ where
     ) -> StorageResult<Self>;
 }
 
-/// A version of the Starknet protocol used when creating a block.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
-pub struct StarknetVersion(pub String);
-
 impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode> {
     fn get_header_marker(&self) -> StorageResult<BlockNumber> {
         let markers_table = self.open_table(&self.tables.markers)?;
@@ -126,8 +152,28 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
 
     fn get_block_header(&self, block_number: BlockNumber) -> StorageResult<Option<BlockHeader>> {
         let headers_table = self.open_table(&self.tables.headers)?;
-        let block_header = headers_table.get(&self.txn, &block_number)?;
-        Ok(block_header)
+        let Some(block_header) = headers_table.get(&self.txn, &block_number)? else {
+            return Ok(None);
+        };
+        let Some(starknet_version) = self.get_starknet_version(block_number)? else {
+            return Ok(None);
+        };
+        Ok(Some(BlockHeader {
+            block_hash: block_header.block_hash,
+            parent_hash: block_header.parent_hash,
+            block_number: block_header.block_number,
+            l1_gas_price: block_header.l1_gas_price,
+            l1_data_gas_price: block_header.l1_data_gas_price,
+            state_root: block_header.state_root,
+            sequencer: block_header.sequencer,
+            timestamp: block_header.timestamp,
+            l1_da_mode: block_header.l1_da_mode,
+            transaction_commitment: block_header.transaction_commitment,
+            event_commitment: block_header.event_commitment,
+            n_transactions: block_header.n_transactions,
+            n_events: block_header.n_events,
+            starknet_version,
+        }))
     }
 
     fn get_block_number_by_hash(
@@ -139,6 +185,7 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
         Ok(block_number)
     }
 
+    // TODO(shahak): Internalize this function.
     fn get_starknet_version(
         &self,
         block_number: BlockNumber,
@@ -183,15 +230,35 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 
         update_marker(&self.txn, &markers_table, block_number)?;
 
-        // Write header.
-        headers_table.insert(&self.txn, &block_number, block_header)?;
+        let storage_block_header = StorageBlockHeader {
+            block_hash: block_header.block_hash,
+            parent_hash: block_header.parent_hash,
+            block_number: block_header.block_number,
+            l1_gas_price: block_header.l1_gas_price,
+            l1_data_gas_price: block_header.l1_data_gas_price,
+            state_root: block_header.state_root,
+            sequencer: block_header.sequencer,
+            timestamp: block_header.timestamp,
+            l1_da_mode: block_header.l1_da_mode,
+            transaction_commitment: block_header.transaction_commitment,
+            event_commitment: block_header.event_commitment,
+            n_transactions: block_header.n_transactions,
+            n_events: block_header.n_events,
+        };
 
-        // Write mapping.
-        update_hash_mapping(&self.txn, &block_hash_to_number_table, block_header, block_number)?;
+        headers_table.insert(&self.txn, &block_number, &storage_block_header)?;
 
-        Ok(self)
+        update_hash_mapping(
+            &self.txn,
+            &block_hash_to_number_table,
+            &storage_block_header,
+            block_number,
+        )?;
+
+        self.update_starknet_version(&block_number, &block_header.starknet_version)
     }
 
+    // TODO(shahak): Internalize this function.
     fn update_starknet_version(
         self,
         block_number: &BlockNumber,
@@ -240,7 +307,19 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         headers_table.delete(&self.txn, &block_number)?;
         block_hash_to_number_table.delete(&self.txn, &reverted_header.block_hash)?;
 
-        // Revert starknet version.
+        // Revert starknet version and get the version.
+        // TODO(shahak): Fix code duplication with get_starknet_version.
+        let mut cursor = starknet_version_table.cursor(&self.txn)?;
+        cursor.lower_bound(&block_number.next())?;
+        let res = cursor.prev()?;
+
+        let starknet_version = match res {
+            Some((_block_number, starknet_version)) => starknet_version,
+            None => unreachable!(
+                "Since block_number >= self.get_header_marker(), starknet_version_table should \
+                 have at least a single mapping."
+            ),
+        };
         starknet_version_table.delete(&self.txn, &block_number)?;
 
         // Revert block signature.
@@ -249,7 +328,26 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             block_signatures_table.delete(&self.txn, &block_number)?;
         }
 
-        Ok((self, Some(reverted_header), reverted_block_signature))
+        Ok((
+            self,
+            Some(BlockHeader {
+                block_hash: reverted_header.block_hash,
+                parent_hash: reverted_header.parent_hash,
+                block_number: reverted_header.block_number,
+                l1_gas_price: reverted_header.l1_gas_price,
+                l1_data_gas_price: reverted_header.l1_data_gas_price,
+                state_root: reverted_header.state_root,
+                sequencer: reverted_header.sequencer,
+                timestamp: reverted_header.timestamp,
+                l1_da_mode: reverted_header.l1_da_mode,
+                transaction_commitment: reverted_header.transaction_commitment,
+                event_commitment: reverted_header.event_commitment,
+                n_transactions: reverted_header.n_transactions,
+                n_events: reverted_header.n_events,
+                starknet_version,
+            }),
+            reverted_block_signature,
+        ))
     }
 
     fn append_block_signature(
@@ -274,7 +372,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
 fn update_hash_mapping<'env>(
     txn: &DbTransaction<'env, RW>,
     block_hash_to_number_table: &'env BlockHashToNumberTable<'env>,
-    block_header: &BlockHeader,
+    block_header: &StorageBlockHeader,
     block_number: BlockNumber,
 ) -> Result<(), StorageError> {
     block_hash_to_number_table.insert(txn, &block_header.block_hash, &block_number)?;
@@ -295,16 +393,4 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
     Ok(())
-}
-
-impl Default for StarknetVersion {
-    fn default() -> Self {
-        Self("0.0.0".to_string())
-    }
-}
-
-impl Display for StarknetVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
 }

@@ -17,6 +17,7 @@ use starknet_api::block::{
     BlockNumber,
     BlockTimestamp,
     GasPrice,
+    GasPricePerToken,
 };
 use starknet_api::core::{
     ChainId,
@@ -25,6 +26,7 @@ use starknet_api::core::{
     ContractAddress,
     Nonce,
     PatriciaKey,
+    SequencerContractAddress,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -50,10 +52,15 @@ use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery};
 
 lazy_static! {
     pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));
-    pub static ref GAS_PRICE: GasPrice = GasPrice(100 * u128::pow(10, 9)); // Given in units of wei.
-    pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.0);
+    pub static ref GAS_PRICE: GasPricePerToken = GasPricePerToken{
+        price_in_wei: GasPrice(100 * u128::pow(10, 9)),
+        // TODO(yair): add value and tests.
+        price_in_fri: GasPrice::default(),
+    };
+    pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.price_in_wei.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
-    pub static ref SEQUENCER_ADDRESS: ContractAddress = contract_address!("0xa");
+    pub static ref SEQUENCER_ADDRESS: SequencerContractAddress =
+        SequencerContractAddress(contract_address!("0xa"));
     pub static ref DEPRECATED_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1");
     pub static ref CONTRACT_ADDRESS: ContractAddress = contract_address!("0x2");
     pub static ref ACCOUNT_CLASS_HASH: ClassHash = class_hash!("0x333");
@@ -102,7 +109,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(0),
             &BlockHeader {
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -155,7 +162,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                eth_l1_gas_price: *GAS_PRICE,
+                l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 block_hash: BlockHash(stark_felt!(1_u128)),

@@ -18,7 +18,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
-use papyrus_storage::header::{HeaderStorageWriter, StarknetVersion};
+use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageScope;
@@ -35,8 +35,17 @@ use starknet_api::block::{
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    GasPricePerToken,
+    StarknetVersion,
 };
-use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce, PatriciaKey};
+use starknet_api::core::{
+    ClassHash,
+    ContractAddress,
+    GlobalRoot,
+    Nonce,
+    PatriciaKey,
+    SequencerContractAddress,
+};
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
     FunctionAbiEntry,
@@ -58,7 +67,8 @@ use starknet_api::transaction::{
 };
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{
-    PendingBlock,
+    DeprecatedPendingBlock,
+    PendingBlockOrDeprecated,
     PendingStateUpdate as ClientPendingStateUpdate,
 };
 use starknet_client::reader::objects::state::{
@@ -240,8 +250,6 @@ async fn block_hash_and_number() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .commit()
         .unwrap();
     call_api_then_assert_and_validate_schema_for_err::<_, BlockHashAndNumber>(
@@ -303,8 +311,6 @@ async fn block_number() {
         .begin_rw_txn()
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -391,8 +397,6 @@ async fn get_block_transaction_count() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
         .append_state_diff(
@@ -432,7 +436,7 @@ async fn get_block_transaction_count() {
     // Ask for pending block
     let pending_transaction_count = 3;
     let mut rng = get_rng();
-    pending_data.write().await.block.transactions.extend(
+    pending_data.write().await.block.transactions_mutable().extend(
         iter::repeat(ClientTransaction::get_test_instance(&mut rng))
             .take(pending_transaction_count),
     );
@@ -440,7 +444,8 @@ async fn get_block_transaction_count() {
     assert_eq!(res, pending_transaction_count);
 
     // Ask for pending block when it's not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res = module.call::<_, usize>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
     assert_eq!(res, 0);
 
@@ -479,18 +484,17 @@ async fn get_block_w_full_transactions() {
 
     let mut block = get_test_block(1, None, None, None);
     let block_hash = BlockHash(random::<u64>().into());
-    let sequencer_address: ContractAddress = random::<u64>().into();
+    let sequencer_address = SequencerContractAddress(random::<u64>().into());
     let timestamp = BlockTimestamp(random::<u64>());
     let starknet_version = StarknetVersion("test".to_owned());
     block.header.block_hash = block_hash;
     block.header.sequencer = sequencer_address;
     block.header.timestamp = timestamp;
+    block.header.starknet_version = starknet_version.clone();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -509,7 +513,7 @@ async fn get_block_w_full_transactions() {
     };
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Full(vec![expected_transaction]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -589,15 +593,16 @@ async fn get_block_w_full_transactions() {
         iter::repeat_with(|| generate_client_transaction_and_rpc_transaction(&mut rng))
             .take(3)
             .unzip();
-    let pending_sequencer_address: ContractAddress = random::<u64>().into();
+    let pending_sequencer_address = SequencerContractAddress(random::<u64>().into());
     let pending_timestamp = BlockTimestamp(random::<u64>());
-    let pending_eth_l1_gas_price = GasPrice(random::<u128>());
+    let pending_l1_gas_price =
+        GasPricePerToken { price_in_wei: GasPrice(random::<u128>()), price_in_fri: GasPrice(0) };
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            l1_gas_price: ResourcePrice { price_in_wei: pending_l1_gas_price.price_in_wei },
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -606,12 +611,12 @@ async fn get_block_w_full_transactions() {
     {
         let pending_block = &mut pending_data.write().await.block;
 
-        pending_block.transactions.extend(client_transactions);
-        pending_block.parent_block_hash = block_hash;
-        pending_block.timestamp = pending_timestamp;
-        pending_block.sequencer_address = pending_sequencer_address;
-        pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
-        pending_block.starknet_version = starknet_version.0;
+        pending_block.transactions_mutable().extend(client_transactions);
+        *pending_block.parent_block_hash_mutable() = block_hash;
+        *pending_block.timestamp_mutable() = pending_timestamp;
+        *pending_block.sequencer_address_mutable() = pending_sequencer_address;
+        pending_block.set_l1_gas_price(&pending_l1_gas_price);
+        *pending_block.starknet_version_mutable() = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -626,7 +631,8 @@ async fn get_block_w_full_transactions() {
     .await;
 
     // Get pending block when it's not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res_block =
         module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
     let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
@@ -651,18 +657,17 @@ async fn get_block_w_transaction_hashes() {
 
     let mut block = get_test_block(1, None, None, None);
     let block_hash = BlockHash(random::<u64>().into());
-    let sequencer_address: ContractAddress = random::<u64>().into();
+    let sequencer_address = SequencerContractAddress(random::<u64>().into());
     let timestamp = BlockTimestamp(random::<u64>());
     let starknet_version = StarknetVersion("test".to_owned());
     block.header.block_hash = block_hash;
     block.header.sequencer = sequencer_address;
     block.header.timestamp = timestamp;
+    block.header.starknet_version = starknet_version.clone();
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &starknet_version)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -677,7 +682,7 @@ async fn get_block_w_transaction_hashes() {
 
     let expected_block = Block {
         status: Some(BlockStatus::AcceptedOnL2),
-        header: GeneralBlockHeader::BlockHeader((block.header, starknet_version.clone()).into()),
+        header: GeneralBlockHeader::BlockHeader(block.header.into()),
         transactions: Transactions::Hashes(vec![block.body.transaction_hashes[0]]),
     };
     let GeneralBlockHeader::BlockHeader(expected_block_header) = expected_block.clone().header
@@ -758,15 +763,16 @@ async fn get_block_w_transaction_hashes() {
         iter::repeat_with(|| generate_client_transaction_and_rpc_transaction(&mut rng))
             .take(3)
             .unzip();
-    let pending_sequencer_address: ContractAddress = random::<u64>().into();
+    let pending_sequencer_address = SequencerContractAddress(random::<u64>().into());
     let pending_timestamp = BlockTimestamp(random::<u64>());
-    let pending_eth_l1_gas_price = GasPrice(random::<u128>());
+    let pending_l1_gas_price =
+        GasPricePerToken { price_in_wei: GasPrice(random::<u128>()), price_in_fri: GasPrice(0) };
     let expected_pending_block = Block {
         header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
             parent_hash: block_hash,
             sequencer_address: pending_sequencer_address,
             timestamp: pending_timestamp,
-            l1_gas_price: ResourcePrice { price_in_wei: pending_eth_l1_gas_price },
+            l1_gas_price: ResourcePrice { price_in_wei: pending_l1_gas_price.price_in_wei },
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -780,12 +786,12 @@ async fn get_block_w_transaction_hashes() {
     {
         let pending_block = &mut pending_data.write().await.block;
 
-        pending_block.transactions.extend(client_transactions);
-        pending_block.parent_block_hash = block_hash;
-        pending_block.timestamp = pending_timestamp;
-        pending_block.sequencer_address = pending_sequencer_address;
-        pending_block.eth_l1_gas_price = pending_eth_l1_gas_price;
-        pending_block.starknet_version = starknet_version.0;
+        pending_block.transactions_mutable().extend(client_transactions);
+        *pending_block.parent_block_hash_mutable() = block_hash;
+        *pending_block.timestamp_mutable() = pending_timestamp;
+        *pending_block.sequencer_address_mutable() = pending_sequencer_address;
+        pending_block.set_l1_gas_price(&pending_l1_gas_price);
+        *pending_block.starknet_version_mutable() = starknet_version.0;
     }
     // Using call_api_then_assert_and_validate_schema_for_result in order to validate the schema for
     // pending block.
@@ -800,7 +806,8 @@ async fn get_block_w_transaction_hashes() {
     .await;
 
     // Get pending block when it's not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res_block =
         module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
     let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
@@ -834,8 +841,6 @@ async fn get_class() {
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
-        .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(
             parent_header.block_number,
@@ -986,8 +991,6 @@ async fn get_transaction_status() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .commit()
@@ -1041,8 +1044,8 @@ async fn get_transaction_status() {
 
     {
         let pending_block = &mut pending_data.write().await.block;
-        pending_block.transactions.push(client_transaction.clone());
-        pending_block.transaction_receipts.push(client_transaction_receipt.clone());
+        pending_block.transactions_mutable().push(client_transaction.clone());
+        pending_block.transaction_receipts_mutable().push(client_transaction_receipt.clone());
     }
     let (json_response, result) = raw_call::<_, _, TransactionStatus>(
         &module,
@@ -1064,7 +1067,8 @@ async fn get_transaction_status() {
     ));
 
     // Ask for transaction status when the pending block is not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let (_, res) = raw_call::<_, _, TransactionStatus>(
         &module,
         method_name,
@@ -1097,8 +1101,6 @@ async fn get_transaction_receipt() {
         .begin_rw_txn()
         .unwrap()
         .append_header(block.header.block_number, &block.header)
-        .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
@@ -1159,8 +1161,8 @@ async fn get_transaction_receipt() {
 
     {
         let pending_block = &mut pending_data.write().await.block;
-        pending_block.transactions.push(client_transaction.clone());
-        pending_block.transaction_receipts.push(client_transaction_receipt.clone());
+        pending_block.transactions_mutable().push(client_transaction.clone());
+        pending_block.transaction_receipts_mutable().push(client_transaction_receipt.clone());
     }
 
     let expected_result = GeneralTransactionReceipt::PendingTransactionReceipt(expected_receipt);
@@ -1188,7 +1190,8 @@ async fn get_transaction_receipt() {
     ));
 
     // Ask for transaction receipt when the pending block is not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let (_, res) = raw_call::<_, _, TransactionReceipt>(
         &module,
         method_name,
@@ -1238,8 +1241,6 @@ async fn get_class_at() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
@@ -1265,7 +1266,7 @@ async fn get_class_at() {
         .state_diff
         .deployed_contracts
         .push(ClientDeployedContract { address: pending_address, class_hash: pending_class_hash });
-    pending_data.write().await.block.parent_block_hash = header.block_hash;
+    *pending_data.write().await.block.parent_block_hash_mutable() = header.block_hash;
     pending_classes.write().await.add_class(pending_class_hash, pending_class.clone());
 
     // Deprecated Class
@@ -1333,7 +1334,8 @@ async fn get_class_at() {
     assert_eq!(res, pending_class.try_into().unwrap());
 
     // Get class hash of pending block when it's not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     call_api_then_assert_and_validate_schema_for_err::<_, ContractClass>(
         &module,
         method_name,
@@ -1413,8 +1415,6 @@ async fn get_class_hash_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1431,7 +1431,7 @@ async fn get_class_hash_at() {
         .state_diff
         .deployed_contracts
         .push(ClientDeployedContract { address: pending_address, class_hash: pending_class_hash });
-    pending_data.write().await.block.parent_block_hash = header.block_hash;
+    *pending_data.write().await.block.parent_block_hash_mutable() = header.block_hash;
 
     // Get class hash by block hash.
     call_api_then_assert_and_validate_schema_for_result(
@@ -1497,7 +1497,8 @@ async fn get_class_hash_at() {
     assert_eq!(res, replaced_class_hash);
 
     // Get class hash of pending block when it's not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     call_api_then_assert_and_validate_schema_for_err::<_, ClassHash>(
         &module,
         method_name,
@@ -1569,8 +1570,6 @@ async fn get_nonce() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
         .commit()
@@ -1634,7 +1633,8 @@ async fn get_nonce() {
     .await;
 
     // Ask for nonce in pending block when the pending block is not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res =
         module.call::<_, Nonce>(method_name, (BlockId::Tag(Tag::Pending), *address)).await.unwrap();
     assert_eq!(res, *expected_nonce);
@@ -1706,8 +1706,6 @@ async fn get_storage_at() {
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
-        .unwrap()
-        .update_starknet_version(&header.block_number, &StarknetVersion::default())
         .unwrap()
         .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
         .unwrap()
@@ -1787,7 +1785,8 @@ async fn get_storage_at() {
     assert_eq!(res, other_value);
 
     // Ask for storage in pending block when the pending block is not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res = module
         .call::<_, StarkFelt>(method_name, (*address, other_key, BlockId::Tag(Tag::Pending)))
         .await
@@ -1980,7 +1979,7 @@ async fn get_transaction_by_hash() {
     // Ask for a transaction in the pending block.
     let (client_transaction, expected_transaction_with_hash) =
         generate_client_transaction_and_rpc_transaction(&mut get_rng());
-    pending_data.write().await.block.transactions.push(client_transaction.clone());
+    pending_data.write().await.block.transactions_mutable().push(client_transaction.clone());
     call_api_then_assert_and_validate_schema_for_result(
         &module,
         method_name,
@@ -1992,7 +1991,8 @@ async fn get_transaction_by_hash() {
     .await;
 
     // Get pending block when it's not updated.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
         method_name,
@@ -2047,8 +2047,6 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
-        .update_starknet_version(&block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
         .append_state_diff(
@@ -2092,7 +2090,7 @@ async fn get_transaction_by_block_id_and_index() {
     // Get transaction of pending block.
     let (client_transaction, expected_transaction_with_hash) =
         generate_client_transaction_and_rpc_transaction(&mut get_rng());
-    pending_data.write().await.block.transactions.push(client_transaction);
+    pending_data.write().await.block.transactions_mutable().push(client_transaction);
     let res = module
         .call::<_, TransactionWithHash>(method_name, (BlockId::Tag(Tag::Pending), 0))
         .await
@@ -2111,7 +2109,8 @@ async fn get_transaction_by_block_id_and_index() {
     .await;
 
     // Get transaction of pending block when the pending block is not up to date.
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
 
     call_api_then_assert_and_validate_schema_for_err::<_, TransactionWithHash>(
         &module,
@@ -2186,8 +2185,6 @@ async fn get_state_update() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .update_starknet_version(&parent_header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_state_diff(
             parent_header.block_number,
             starknet_api::state::StateDiff::default(),
@@ -2236,7 +2233,7 @@ async fn get_state_update() {
         old_root: expected_old_root,
         state_diff: expected_state_diff.clone(),
     });
-    pending_data.write().await.block.parent_block_hash = header.block_hash;
+    *pending_data.write().await.block.parent_block_hash_mutable() = header.block_hash;
     pending_data.write().await.state_update = ClientPendingStateUpdate {
         old_root: expected_old_root,
         state_diff: ClientStateDiff {
@@ -2296,7 +2293,8 @@ async fn get_state_update() {
         old_root: expected_pending_old_root,
         ..PendingStateUpdate::default()
     });
-    pending_data.write().await.block.parent_block_hash = BlockHash(random::<u64>().into());
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
     let res =
         module.call::<_, StateUpdate>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
     assert_eq!(res, expected_pending_update);
@@ -2338,8 +2336,6 @@ async fn get_state_update_with_empty_storage_diff() {
     };
     storage_writer
         .begin_rw_txn()
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
         .unwrap()
@@ -2429,11 +2425,11 @@ impl BlockMetadata {
         &self,
         rng: &mut ChaCha8Rng,
         parent_hash: BlockHash,
-    ) -> PendingBlock {
+    ) -> PendingBlockOrDeprecated {
         let transaction_hashes = iter::repeat_with(|| TransactionHash(rng.next_u64().into()))
             .take(self.0.len())
             .collect::<Vec<_>>();
-        PendingBlock {
+        PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
             parent_block_hash: parent_hash,
             transactions: transaction_hashes
                 .iter()
@@ -2458,7 +2454,7 @@ impl BlockMetadata {
                 })
                 .collect(),
             ..Default::default()
-        }
+        })
     }
 }
 
@@ -2511,8 +2507,6 @@ async fn test_get_events(
         rw_txn = rw_txn
             .append_header(block_number, &block.header)
             .unwrap()
-            .update_starknet_version(&block_number, &StarknetVersion::default())
-            .unwrap()
             .append_body(block_number, block.body)
             .unwrap()
             .append_state_diff(
@@ -2530,7 +2524,7 @@ async fn test_get_events(
         }
         let pending_block = pending_block_metadata.generate_pending_block(&mut rng, parent_hash);
 
-        for (i_transaction, receipt) in pending_block.transaction_receipts.iter().enumerate() {
+        for (i_transaction, receipt) in pending_block.transaction_receipts().iter().enumerate() {
             for (i_event, event) in receipt.events.iter().cloned().enumerate() {
                 event_index_to_event.insert(
                     EventIndex(
@@ -3106,8 +3100,6 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_header(parent_block.header.block_number, &parent_block.header)
         .unwrap()
-        .update_starknet_version(&parent_block.header.block_number, &StarknetVersion::default())
-        .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
         .append_state_diff(parent_block.header.block_number, StateDiff::default(), IndexMap::new())
@@ -3659,7 +3651,7 @@ fn spec_api_methods_coverage() {
 auto_impl_get_test_instance! {
     pub struct PendingBlockHeader {
         pub parent_hash: BlockHash,
-        pub sequencer_address: ContractAddress,
+        pub sequencer_address: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_gas_price: ResourcePrice,
         pub starknet_version: String,

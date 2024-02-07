@@ -30,7 +30,7 @@ fn test_dump_declared_classes() {
             ClassHash(i_felt),
             ContractClass {
                 sierra_program: vec![i_felt, i_felt],
-                entry_point_by_type: HashMap::new(),
+                entry_points_by_type: HashMap::new(),
                 abi: "".to_string(),
             },
         ));
@@ -62,13 +62,13 @@ fn test_dump_declared_classes() {
             class_hash: declared_classes[2].0,
             compiled_class_hash,
             sierra_program: declared_classes[2].1.sierra_program.clone(),
-            entry_points_by_type: declared_classes[2].1.entry_point_by_type.clone(),
+            entry_points_by_type: declared_classes[2].1.entry_points_by_type.clone(),
         },
         DumpDeclaredClass {
             class_hash: declared_classes[3].0,
             compiled_class_hash,
             sierra_program: declared_classes[3].1.sierra_program.clone(),
-            entry_points_by_type: declared_classes[3].1.entry_point_by_type.clone(),
+            entry_points_by_type: declared_classes[3].1.entry_points_by_type.clone(),
         },
     ];
     assert_eq!(file_content, serde_json::to_string(&expected_declared_classes).unwrap());

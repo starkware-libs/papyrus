@@ -143,8 +143,12 @@ fn append_2_headers(writer: &mut StorageWriter) {
 
 #[tokio::test]
 async fn starknet_version() {
-    fn block_header(hash: u8) -> BlockHeader {
-        BlockHeader { block_hash: BlockHash(stark_felt!(hash)), ..BlockHeader::default() }
+    fn block_header(hash: u8, starknet_version: StarknetVersion) -> BlockHeader {
+        BlockHeader {
+            block_hash: BlockHash(stark_felt!(hash)),
+            starknet_version,
+            ..BlockHeader::default()
+        }
     }
 
     let ((reader, mut writer), _temp_dir) = get_test_storage();
@@ -156,9 +160,7 @@ async fn starknet_version() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(0), &block_header(0))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .append_header(BlockNumber(0), &block_header(0, StarknetVersion::default()))
         .unwrap()
         .commit()
         .unwrap();
@@ -177,25 +179,15 @@ async fn starknet_version() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(1), &block_header(1))
+        .append_header(BlockNumber(1), &block_header(1, StarknetVersion::default()))
         .unwrap()
-        .update_starknet_version(&BlockNumber(1), &StarknetVersion::default())
+        .append_header(BlockNumber(2), &block_header(2, second_version.clone()))
         .unwrap()
-        .append_header(BlockNumber(2), &block_header(2))
+        .append_header(BlockNumber(3), &block_header(3, second_version.clone()))
         .unwrap()
-        .update_starknet_version(&BlockNumber(2), &second_version)
+        .append_header(BlockNumber(4), &block_header(4, yet_another_version.clone()))
         .unwrap()
-        .append_header(BlockNumber(3), &block_header(3))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(3), &second_version)
-        .unwrap()
-        .append_header(BlockNumber(4), &block_header(4))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(4), &yet_another_version)
-        .unwrap()
-        .append_header(BlockNumber(5), &block_header(5))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(5), &yet_another_version)
+        .append_header(BlockNumber(5), &block_header(5, yet_another_version.clone()))
         .unwrap()
         .commit()
         .unwrap();
