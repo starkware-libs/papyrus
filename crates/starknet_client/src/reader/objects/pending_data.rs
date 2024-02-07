@@ -131,6 +131,13 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => block.l1_gas_price = *val,
         }
     }
+    pub fn l1_data_gas_price(&self) -> GasPricePerToken {
+        match self {
+            // In older versions, data gas price was 0.
+            PendingBlockOrDeprecated::Deprecated(_) => GasPricePerToken::default(),
+            PendingBlockOrDeprecated::Current(block) => block.l1_data_gas_price,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]

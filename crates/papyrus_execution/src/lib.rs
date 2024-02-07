@@ -268,10 +268,7 @@ fn create_block_context(
         Some(pending_data) => (
             block_context_number.next(),
             pending_data.timestamp,
-            GasPrices {
-                eth_l1_gas_price: pending_data.eth_l1_gas_price.0,
-                strk_l1_gas_price: pending_data.strk_l1_gas_price.0,
-            },
+            pending_data.l1_gas_price,
             pending_data.sequencer,
         ),
         None => {
@@ -279,15 +276,7 @@ fn create_block_context(
                 .begin_ro_txn()?
                 .get_block_header(block_context_number)?
                 .expect("Should have block header.");
-            (
-                header.block_number,
-                header.timestamp,
-                GasPrices {
-                    eth_l1_gas_price: header.l1_gas_price.price_in_wei.0,
-                    strk_l1_gas_price: header.l1_gas_price.price_in_fri.0,
-                },
-                header.sequencer,
-            )
+            (header.block_number, header.timestamp, header.l1_gas_price, header.sequencer)
         }
     };
 
@@ -305,8 +294,10 @@ fn create_block_context(
         invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
         validate_max_n_steps: execution_config.validate_tx_max_n_steps,
         max_recursion_depth: execution_config.max_recursion_depth,
-        // TODO(barak, 01/10/2023): Change strk_l1_gas_price once it exists.
-        gas_prices,
+        gas_prices: GasPrices {
+            eth_l1_gas_price: gas_prices.price_in_wei.0,
+            strk_l1_gas_price: gas_prices.price_in_fri.0,
+        },
     })
 }
 

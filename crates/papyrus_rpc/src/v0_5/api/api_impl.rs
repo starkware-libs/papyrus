@@ -1157,11 +1157,19 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .collect();
             let maybe_pending_data = Some(ExecutionPendingData {
                 timestamp: pending_block.timestamp(),
-                eth_l1_gas_price: pending_block.l1_gas_price().price_in_wei,
+                l1_gas_price: pending_block.l1_gas_price(),
+                l1_data_gas_price: pending_block.l1_data_gas_price(),
                 sequencer: pending_block.sequencer_address(),
                 // The pending state diff should be empty since we look at the state in the
                 // start of the pending block.
-                ..Default::default()
+                // Not using ..Default::default() to avoid missing fields in the future.
+                storage_diffs: Default::default(),
+                deployed_contracts: Default::default(),
+                declared_classes: Default::default(),
+                old_declared_contracts: Default::default(),
+                nonces: Default::default(),
+                replaced_classes: Default::default(),
+                classes: Default::default(),
             });
             (
                 maybe_pending_data,
@@ -1272,11 +1280,19 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 Some(client_pending_data) => (
                     Some(ExecutionPendingData {
                         timestamp: client_pending_data.block.timestamp(),
-                        eth_l1_gas_price: client_pending_data.block.l1_gas_price().price_in_wei,
+                        l1_gas_price: client_pending_data.block.l1_gas_price(),
+                        l1_data_gas_price: client_pending_data.block.l1_data_gas_price(),
                         sequencer: client_pending_data.block.sequencer_address(),
                         // The pending state diff should be empty since we look at the state in the
                         // start of the pending block.
-                        ..Default::default()
+                        // Not using ..Default::default() to avoid missing fields in the future.
+                        storage_diffs: Default::default(),
+                        deployed_contracts: Default::default(),
+                        declared_classes: Default::default(),
+                        old_declared_contracts: Default::default(),
+                        nonces: Default::default(),
+                        replaced_classes: Default::default(),
+                        classes: Default::default(),
                     }),
                     client_pending_data
                         .block

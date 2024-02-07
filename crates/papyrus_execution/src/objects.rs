@@ -31,7 +31,7 @@ use papyrus_common::state::{
     StorageEntry,
 };
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockTimestamp, GasPrice};
+use starknet_api::block::{BlockTimestamp, GasPrice, GasPricePerToken};
 use starknet_api::core::{
     ClassHash,
     ContractAddress,
@@ -430,10 +430,10 @@ pub struct PendingData {
     pub replaced_classes: Vec<ReplacedClass>,
     /// The timestamp of the pending block.
     pub timestamp: BlockTimestamp,
-    /// The ETH gas price of the pending block.
-    pub eth_l1_gas_price: GasPrice,
-    /// The STRK gas price of the pending block.
-    pub strk_l1_gas_price: GasPrice,
+    /// The gas price of the pending block.
+    pub l1_gas_price: GasPricePerToken,
+    /// The data price of the pending block.
+    pub l1_data_gas_price: GasPricePerToken,
     /// The sequencer address of the pending block.
     pub sequencer: SequencerContractAddress,
     /// The classes and casms that were declared in the pending block.
