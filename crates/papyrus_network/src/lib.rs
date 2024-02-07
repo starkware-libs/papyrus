@@ -16,12 +16,19 @@ use std::time::Duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::crypto::Signature;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Direction {
     Forward,
     Backward,
+}
+
+#[derive(Debug)]
+pub struct SignedBlockHeader {
+    pub block_header: BlockHeader,
+    pub signatures: Vec<Signature>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

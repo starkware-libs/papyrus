@@ -8,10 +8,10 @@ use starknet_api::hash::StarkFelt;
 
 use super::super::Event;
 use super::BehaviourTrait;
-use crate::block_headers::{BlockHeaderData, SessionError};
+use crate::block_headers::SessionError;
 use crate::messages::{protobuf, ProtobufConversionError, TestInstance};
 use crate::streamed_data::{self, OutboundSessionId, SessionId};
-use crate::BlockQuery;
+use crate::{BlockQuery, SignedBlockHeader};
 
 type StreamedDataEvent = streamed_data::GenericEvent<
     protobuf::BlockHeadersRequest,
@@ -108,7 +108,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -189,7 +189,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -215,7 +215,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());

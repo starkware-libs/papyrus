@@ -14,12 +14,12 @@ use libp2p::swarm::{
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
 use starknet_api::block::BlockHeader;
 
-use super::{BlockHeaderData, Event, SessionError};
+use super::{Event, SessionError};
 use crate::db_executor::Data;
 use crate::messages::protobuf;
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::BlockQuery;
+use crate::{BlockQuery, SignedBlockHeader};
 
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
@@ -202,7 +202,7 @@ trait BehaviourTrait {
                     };
                     match sigs.try_into() {
                         Ok(signatures) => {
-                            data_received.push(BlockHeaderData { block_header, signatures })
+                            data_received.push(SignedBlockHeader { block_header, signatures })
                         }
                         Err(protobuf_conversion_error) => {
                             self.drop_session(outbound_session_id.into());
