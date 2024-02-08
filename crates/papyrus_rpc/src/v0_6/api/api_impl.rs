@@ -511,18 +511,13 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 StarknetApiTransaction::L1Handler(tx) => tx.version,
             };
 
-            let thin_tx_output = txn
+            let output = txn
                 .get_transaction_output(transaction_index)
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-            let events = txn
-                .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let msg_hash = match thin_tx_output {
-                papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
+            let msg_hash = match output {
+                starknet_api::transaction::TransactionOutput::L1Handler(_) => {
                     let starknet_api::transaction::Transaction::L1Handler(tx) = tx else {
                         panic!("tx {} should be L1 handler", transaction_hash);
                     };
@@ -531,12 +526,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 _ => None,
             };
 
-            let output = TransactionOutput::from_thin_transaction_output(
-                thin_tx_output,
-                tx_version,
-                events,
-                msg_hash,
-            );
+            let output = TransactionOutput::from((output, tx_version, msg_hash));
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
