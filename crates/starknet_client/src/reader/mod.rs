@@ -19,7 +19,7 @@ use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::{debug, instrument};
+use tracing::{debug, error, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{
@@ -237,7 +237,11 @@ impl StarknetReader for StarknetFeederGatewayClient {
         class_hash: ClassHash,
     ) -> ReaderClientResult<Option<GenericContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
-        let class_hash = serde_json::to_string(&class_hash)?;
+        let class_hash_result = serde_json::to_string(&class_hash);
+        if class_hash_result.is_err() {
+            error!("Failed to serialize {class_hash:?}");
+        }
+        let class_hash = class_hash_result?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
@@ -319,7 +323,11 @@ impl StarknetReader for StarknetFeederGatewayClient {
         }
 
         let mut url = self.urls.get_compiled_class_by_class_hash.clone();
-        let class_hash = serde_json::to_string(&class_hash)?;
+        let class_hash_result = serde_json::to_string(&class_hash);
+        if class_hash_result.is_err() {
+            error!("Failed to serialize {class_hash:?}");
+        }
+        let class_hash = class_hash_result?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
@@ -371,7 +379,13 @@ fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     error_message: String,
 ) -> ReaderClientResult<Option<Object>> {
     match response {
-        Ok(raw_object) => Ok(Some(serde_json::from_str(&raw_object)?)),
+        Ok(raw_object) => {
+            let result = serde_json::from_str(&raw_object);
+            if result.is_err() {
+                error!("Failed to deserialize {raw_object:?}");
+            }
+            Ok(Some(result?))
+        }
         Err(ReaderClientError::ClientError(ClientError::StarknetError(StarknetError {
             code: StarknetErrorCode::KnownErrorCode(error_code),
             message: _,

@@ -7816,6 +7816,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_repr",
+ "simple_logger",
  "starknet_api",
  "test_utils",
  "thiserror",
