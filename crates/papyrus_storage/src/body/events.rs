@@ -65,7 +65,7 @@ use starknet_api::transaction::{
 use super::TransactionOutputsTable;
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursor, DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{CommonPrefixFixedSize, DbCursor, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
 use crate::mmap_file::LocationInFile;
 use crate::serializers::ValuePlaceHolder;
@@ -527,7 +527,7 @@ impl From<TransactionOutput> for ThinTransactionOutput {
 type EventsTableKeyValue = (EventsTableKey, ValuePlaceHolder);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> =
-    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>;
+    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefixFixedSize>;
 /// A key-value pair of the transaction outputs table.
 // type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
 /// A cursor of the transaction outputs table.

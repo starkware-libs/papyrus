@@ -78,7 +78,7 @@ use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
-use db::table_types::Table;
+use db::table_types::{CommonPrefix, CommonPrefixFixedSize, Table, TableType};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -141,16 +141,16 @@ pub fn open_storage(
         block_hash_to_number: db_writer.create_simple_table("block_hash_to_number")?,
         block_signatures: db_writer.create_simple_table("block_signatures")?,
         casms: db_writer.create_simple_table("casms")?,
-        contract_storage: db_writer.create_simple_table("contract_storage")?,
+        contract_storage: db_writer.create_common_prefix_table("contract_storage")?,
         declared_classes: db_writer.create_simple_table("declared_classes")?,
         declared_classes_block: db_writer.create_simple_table("declared_classes_block")?,
         deprecated_declared_classes: db_writer
             .create_simple_table("deprecated_declared_classes")?,
-        deployed_contracts: db_writer.create_simple_table("deployed_contracts")?,
-        events: db_writer.create_simple_table("events")?,
+        deployed_contracts: db_writer.create_common_prefix_table("deployed_contracts")?,
+        events: db_writer.create_common_prefix_fixed_size_table("events")?,
         headers: db_writer.create_simple_table("headers")?,
         markers: db_writer.create_simple_table("markers")?,
-        nonces: db_writer.create_simple_table("nonces")?,
+        nonces: db_writer.create_common_prefix_table("nonces")?,
         file_offsets: db_writer.create_simple_table("file_offsets")?,
         state_diffs: db_writer.create_simple_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_simple_table("transaction_hash_to_idx")?,
@@ -402,10 +402,10 @@ impl<'env> StorageTxn<'env, RW> {
 }
 
 impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
-    pub(crate) fn open_table<K: Key + Debug, V: ValueSerde + Debug>(
+    pub(crate) fn open_table<K: Key + Debug, V: ValueSerde + Debug, T: TableType>(
         &self,
-        table_id: &TableIdentifier<K, V, SimpleTable>,
-    ) -> StorageResult<TableHandle<'_, K, V, SimpleTable>> {
+        table_id: &TableIdentifier<K, V, T>,
+    ) -> StorageResult<TableHandle<'_, K, V, T>> {
         if self.scope == StorageScope::StateOnly {
             let unused_tables = [
                 self.tables.events.name,
@@ -435,16 +435,16 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         block_signatures: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockSignature>, SimpleTable>,
         casms: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
+        contract_storage: TableIdentifier<(ContractAddress, (StorageKey, BlockNumber)), NoVersionValueWrapper<StarkFelt>, CommonPrefix>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
-        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
+        deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, CommonPrefix>,
 
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefixFixedSize>,
         headers: TableIdentifier<BlockNumber, VersionZeroWrapper<StorageBlockHeader>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
-        nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
+        nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, CommonPrefix>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
         state_diffs: TableIdentifier<BlockNumber, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>,
