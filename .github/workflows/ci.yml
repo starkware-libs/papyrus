@@ -54,6 +54,25 @@ jobs:
           target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
           & sleep 30 ; kill $!
 
+  executable-run-no-rpc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: Noelware/setup-protoc@1.1.0
+        with:
+          version: ${{env.PROTOC_VERSION}}
+      - run: mkdir data
+
+      - name: Build node
+        run: cargo build -r --no-default-features
+
+      - name: Run executable
+        run: >
+          target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
+          & sleep 30 ; kill $!
+
   test:
     runs-on: ubuntu-latest
     steps:
@@ -87,6 +106,19 @@ jobs:
       - run: >
           cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
           cargo run -r -p papyrus_node --bin central_source_integration_test
+
+  test-no-rpc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+
+      - run: |
+          cargo test -p papyrus_node --no-default-features
+        env:
+          SEED: 0
+
 
   rustfmt:
     runs-on: ubuntu-latest
