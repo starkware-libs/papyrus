@@ -318,13 +318,13 @@ fn create_block_context(
         // TODO(yair): What to do about blocks pre 0.13.1 where the data gas price were 0?
         gas_prices: GasPrices {
             eth_l1_gas_price: NonZeroU128::new(l1_gas_price.price_in_wei.0)
-                .unwrap_or(1.try_into().expect("1 is not zero")),
+                .unwrap_or(NonZeroU128::MIN),
             strk_l1_gas_price: NonZeroU128::new(l1_gas_price.price_in_fri.0)
-                .unwrap_or(1.try_into().expect("1 is not zero")),
+                .unwrap_or(NonZeroU128::MIN),
             eth_l1_data_gas_price: NonZeroU128::new(l1_data_gas_price.price_in_wei.0)
-                .unwrap_or(1.try_into().expect("1 is not zero")),
+                .unwrap_or(NonZeroU128::MIN),
             strk_l1_data_gas_price: NonZeroU128::new(l1_data_gas_price.price_in_fri.0)
-                .unwrap_or(1.try_into().expect("1 is not zero")),
+                .unwrap_or(NonZeroU128::MIN),
         },
     };
     let chain_info = ChainInfo {
@@ -337,14 +337,14 @@ fn create_block_context(
     };
 
     // TODO(yair): set the correct versioned constants for re-execution.
-    let versionend_constants = VersionedConstants::latest_constants().clone();
+    let versioned_constants = VersionedConstants::latest_constants().clone();
 
     Ok(pre_process_block(
         cached_state,
         ten_blocks_ago,
         block_info,
         chain_info,
-        versionend_constants,
+        versioned_constants,
     )?)
 }
 
