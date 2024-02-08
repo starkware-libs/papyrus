@@ -495,18 +495,13 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 .map_err(internal_server_error)?
                 .block_hash;
 
-            let thin_tx_output = txn
+            let output = txn
                 .get_transaction_output(transaction_index)
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-            let events = txn
-                .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let msg_hash = match thin_tx_output {
-                papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
+            let msg_hash = match output {
+                starknet_api::transaction::TransactionOutput::L1Handler(_) => {
                     let tx = txn
                         .get_transaction(transaction_index)
                         .map_err(internal_server_error)?
@@ -519,8 +514,7 @@ impl JsonRpcServer for JsonRpcServerV0_5Impl {
                 _ => None,
             };
 
-            let output =
-                TransactionOutput::from_thin_transaction_output(thin_tx_output, events, msg_hash);
+            let output = TransactionOutput::from((output, msg_hash));
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
