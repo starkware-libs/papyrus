@@ -16,6 +16,7 @@ use starknet_api::state::{EntryPoint, EntryPointType};
 use tracing::debug;
 
 use crate::compiled_class::CasmStorageReader;
+use crate::db::table_types::Table;
 use crate::db::RO;
 use crate::state::StateStorageReader;
 use crate::{open_storage, StorageConfig, StorageError, StorageReader, StorageResult, StorageTxn};
@@ -75,7 +76,7 @@ fn dump_declared_classes_table_by_block_range_internal(
                             class_hash: *class_hash,
                             compiled_class_hash: *compiled_class_hash,
                             sierra_program: contract_class.sierra_program.clone(),
-                            entry_points_by_type: contract_class.entry_point_by_type.clone(),
+                            entry_points_by_type: contract_class.entry_points_by_type.clone(),
                         },
                     )?;
                     first = false;

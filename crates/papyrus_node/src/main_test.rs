@@ -2,20 +2,31 @@ use std::time::Duration;
 
 use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_node::config::NodeConfig;
+use papyrus_rpc::RpcConfig;
 use papyrus_storage::{open_storage, StorageConfig};
 use tempfile::TempDir;
-use test_utils::prometheus_is_contained;
+use test_utils::{get_absolute_path, prometheus_is_contained};
 
 use crate::{run_threads, spawn_storage_metrics_collector};
 
+// The mission of this test is to ensure that if an error is returned from one of the spawned tasks,
+// the node will stop, and this error will be returned. This is done by checking the case of an
+// illegal central URL, which will cause the sync task to return an error.
 #[tokio::test]
 async fn run_threads_stop() {
     let mut config = NodeConfig::default();
-    config.storage.db_config.path_prefix = TempDir::new().unwrap().path().into();
+    let temp_dir = TempDir::new().unwrap();
+    config.storage.db_config.path_prefix = temp_dir.path().into();
+
+    // Fix the path to the execution config.
+    let default_execution_config_path = RpcConfig::default().execution_config;
+    config.rpc.execution_config =
+        get_absolute_path(default_execution_config_path.to_str().unwrap());
 
     // Error when not supplying legal central URL.
     config.central.url = "_not_legal_url".to_string();
-    assert!(run_threads(config.clone()).await.is_err());
+    let error = run_threads(config).await.expect_err("Should be an error.");
+    assert_eq!("relative URL without a base", error.to_string());
 }
 
 // TODO(dvir): use here metrics names from the storage instead of hard-coded ones. This will be done

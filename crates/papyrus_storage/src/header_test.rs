@@ -1,6 +1,6 @@
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 
@@ -54,7 +54,8 @@ async fn append_header() {
 #[tokio::test]
 async fn revert_non_existing_header_fails() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
-    let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5)).unwrap();
+    let (_, deleted_data, _) =
+        writer.begin_rw_txn().unwrap().revert_header(BlockNumber(5)).unwrap();
     assert!(deleted_data.is_none());
 }
 
@@ -75,7 +76,8 @@ async fn revert_last_header_success() {
 async fn revert_old_header_fails() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
-    let (_, deleted_data) = writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap();
+    let (_, deleted_data, _) =
+        writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap();
     assert!(deleted_data.is_none());
 }
 
@@ -141,8 +143,12 @@ fn append_2_headers(writer: &mut StorageWriter) {
 
 #[tokio::test]
 async fn starknet_version() {
-    fn block_header(hash: u8) -> BlockHeader {
-        BlockHeader { block_hash: BlockHash(stark_felt!(hash)), ..BlockHeader::default() }
+    fn block_header(hash: u8, starknet_version: StarknetVersion) -> BlockHeader {
+        BlockHeader {
+            block_hash: BlockHash(stark_felt!(hash)),
+            starknet_version,
+            ..BlockHeader::default()
+        }
     }
 
     let ((reader, mut writer), _temp_dir) = get_test_storage();
@@ -154,9 +160,7 @@ async fn starknet_version() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(0), &block_header(0))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(0), &StarknetVersion::default())
+        .append_header(BlockNumber(0), &block_header(0, StarknetVersion::default()))
         .unwrap()
         .commit()
         .unwrap();
@@ -175,25 +179,15 @@ async fn starknet_version() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_header(BlockNumber(1), &block_header(1))
+        .append_header(BlockNumber(1), &block_header(1, StarknetVersion::default()))
         .unwrap()
-        .update_starknet_version(&BlockNumber(1), &StarknetVersion::default())
+        .append_header(BlockNumber(2), &block_header(2, second_version.clone()))
         .unwrap()
-        .append_header(BlockNumber(2), &block_header(2))
+        .append_header(BlockNumber(3), &block_header(3, second_version.clone()))
         .unwrap()
-        .update_starknet_version(&BlockNumber(2), &second_version)
+        .append_header(BlockNumber(4), &block_header(4, yet_another_version.clone()))
         .unwrap()
-        .append_header(BlockNumber(3), &block_header(3))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(3), &second_version)
-        .unwrap()
-        .append_header(BlockNumber(4), &block_header(4))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(4), &yet_another_version)
-        .unwrap()
-        .append_header(BlockNumber(5), &block_header(5))
-        .unwrap()
-        .update_starknet_version(&BlockNumber(5), &yet_another_version)
+        .append_header(BlockNumber(5), &block_header(5, yet_another_version.clone()))
         .unwrap()
         .commit()
         .unwrap();
@@ -245,4 +239,49 @@ async fn starknet_version() {
     let block_3_starknet_version =
         reader.begin_ro_txn().unwrap().get_starknet_version(BlockNumber(3)).unwrap();
     assert_eq!(block_3_starknet_version.unwrap(), second_version);
+}
+
+#[test]
+fn block_signature() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+    assert!(reader.begin_ro_txn().unwrap().get_block_signature(BlockNumber(0)).unwrap().is_none());
+    let signature = BlockSignature::default();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_block_signature(BlockNumber(0), &signature)
+        .unwrap()
+        .commit()
+        .unwrap();
+    assert_eq!(
+        reader.begin_ro_txn().unwrap().get_block_signature(BlockNumber(0)).unwrap(),
+        Some(signature)
+    );
+}
+
+#[test]
+fn get_reverted_block_signature_returns_none() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+    let signature = BlockSignature::default();
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &BlockHeader::default())
+        .unwrap()
+        .append_block_signature(BlockNumber(0), &signature)
+        .unwrap()
+        .commit()
+        .unwrap();
+    assert_eq!(
+        reader.begin_ro_txn().unwrap().get_block_signature(BlockNumber(0)).unwrap(),
+        Some(signature)
+    );
+    let (txn, maybe_header, maybe_signature) =
+        writer.begin_rw_txn().unwrap().revert_header(BlockNumber(0)).unwrap();
+    txn.commit().unwrap();
+    assert!(maybe_header.is_some());
+    assert!(maybe_signature.is_some());
+    assert!(reader.begin_ro_txn().unwrap().get_block_signature(BlockNumber(0)).unwrap().is_none());
 }

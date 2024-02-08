@@ -43,6 +43,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;
 
 use crate::db::serialization::NoVersionValueWrapper;
+use crate::db::table_types::{SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::{FileHandlers, MarkerKind, MarkersTable, OffsetKind, StorageResult, StorageTxn};
@@ -106,7 +107,12 @@ impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
 fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<'_, BlockNumber, NoVersionValueWrapper<LocationInFile>>,
+    state_diffs_table: &'env TableHandle<
+        '_,
+        BlockNumber,
+        NoVersionValueWrapper<LocationInFile>,
+        SimpleTable,
+    >,
     file_handlers: FileHandlers<RW>,
     class_hash: &ClassHash,
 ) -> StorageResult<()> {

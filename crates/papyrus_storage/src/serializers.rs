@@ -24,11 +24,13 @@ use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
 use starknet_api::block::{
     BlockHash,
-    BlockHeader,
     BlockNumber,
+    BlockSignature,
     BlockStatus,
     BlockTimestamp,
     GasPrice,
+    GasPricePerToken,
+    StarknetVersion,
 };
 use starknet_api::core::{
     ClassHash,
@@ -36,11 +38,15 @@ use starknet_api::core::{
     ContractAddress,
     EntryPointSelector,
     EthAddress,
+    EventCommitment,
     GlobalRoot,
     Nonce,
     PatriciaKey,
+    SequencerContractAddress,
+    TransactionCommitment,
 };
-use starknet_api::data_availability::DataAvailabilityMode;
+use starknet_api::crypto::Signature;
+use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
@@ -123,7 +129,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::header::StarknetVersion;
+use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
 use crate::serializers::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -137,17 +143,23 @@ const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
-    pub struct BlockHeader {
+    pub struct StorageBlockHeader {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
-        pub eth_l1_gas_price: GasPrice,
-        pub strk_l1_gas_price: GasPrice,
+        pub l1_gas_price: GasPricePerToken,
+        pub l1_data_gas_price: GasPricePerToken,
         pub state_root: GlobalRoot,
-        pub sequencer: ContractAddress,
+        pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
+        pub l1_da_mode: L1DataAvailabilityMode,
+        pub transaction_commitment: TransactionCommitment,
+        pub event_commitment: EventCommitment,
+        pub n_transactions: usize,
+        pub n_events: usize,
     }
     pub struct BlockNumber(pub u64);
+    pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {
         Pending = 0,
         AcceptedOnL2 = 1,
@@ -240,6 +252,7 @@ auto_storage_serde! {
         pub keys: Vec<EventKey>,
         pub data: EventData,
     }
+    pub struct EventCommitment(pub StarkHash);
     pub struct EventData(pub Vec<StarkFelt>);
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct EventIndexInTransactionOutput(pub usize);
@@ -255,6 +268,10 @@ auto_storage_serde! {
         View = 0,
     }
     pub struct GasPrice(pub u128);
+    pub struct GasPricePerToken {
+        pub price_in_fri: GasPrice,
+        pub price_in_wei: GasPrice,
+    }
     pub struct GlobalRoot(pub StarkHash);
     pub struct H160(pub [u8; 20]);
     pub struct IndexedDeprecatedContractClass {
@@ -269,6 +286,10 @@ auto_storage_serde! {
     pub enum IsCompressed {
         No = 0,
         Yes = 1,
+    }
+    pub enum L1DataAvailabilityMode {
+        Calldata = 0,
+        Blob = 1,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -321,6 +342,11 @@ auto_storage_serde! {
         pub max_price_per_unit: u128,
     }
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
+    pub struct SequencerContractAddress(pub ContractAddress);
+    pub struct Signature {
+        pub r: StarkFelt,
+        pub s: StarkFelt,
+    }
     pub struct StructAbiEntry {
         pub name: String,
         pub size: usize,
@@ -355,6 +381,7 @@ auto_storage_serde! {
         pub execution_status: TransactionExecutionStatus,
         pub execution_resources: ExecutionResources,
     }
+    pub struct TransactionCommitment(pub StarkHash);
     pub struct TypedParameter {
         pub name: String,
         pub r#type: String,
@@ -862,7 +889,7 @@ impl StorageSerde for BigUint {
 impl StorageSerde for ContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         serialize_and_compress(&self.sierra_program)?.serialize_into(res)?;
-        self.entry_point_by_type.serialize_into(res)?;
+        self.entry_points_by_type.serialize_into(res)?;
         serialize_and_compress(&self.abi)?.serialize_into(res)?;
         Ok(())
     }
@@ -872,7 +899,7 @@ impl StorageSerde for ContractClass {
             sierra_program: Vec::<StarkFelt>::deserialize_from(
                 &mut decompress_from_reader(bytes)?.as_slice(),
             )?,
-            entry_point_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
+            entry_points_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(
                 bytes,
             )?,
             abi: String::deserialize_from(&mut decompress_from_reader(bytes)?.as_slice())?,

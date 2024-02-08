@@ -41,5 +41,6 @@ mockito.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 pretty_assertions.workspace = true
+simple_logger.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
 test_utils = { path = "../test_utils" }

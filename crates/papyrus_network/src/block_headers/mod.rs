@@ -1,13 +1,14 @@
 pub mod behaviour;
 
 use prost_types::Timestamp;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, GasPrice};
-use starknet_api::core::GlobalRoot;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
+use starknet_api::core::{ContractAddress, GlobalRoot, SequencerContractAddress};
 use starknet_api::crypto::Signature;
+use starknet_api::hash::StarkHash;
 
 use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::{self, SessionId};
-use crate::{BlockQuery, Direction};
+use crate::{BlockHashOrNumber, BlockQuery, Direction, SignedBlockHeader};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -15,6 +16,8 @@ pub enum SessionError {
     StreamedData(#[from] streamed_data::behaviour::SessionError),
     #[error("Incompatible data error")]
     IncompatibleDataError,
+    #[error(transparent)]
+    ProtobufConversionError(#[from] ProtobufConversionError),
     #[error("Pairing of header and signature error")]
     PairingError,
     #[error("Session closed unexpectedly")]
@@ -26,16 +29,29 @@ pub enum SessionError {
     ReceivedFin(i32),
     #[error("Incorrect session id")]
     IncorrectSessionId,
+    #[error("Received a message after Fin")]
+    ReceivedMessageAfterFin,
 }
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub enum Event {
-    NewInboundQuery { query: BlockQuery, inbound_session_id: streamed_data::InboundSessionId },
-    ReceivedData { data: BlockHeaderData, outbound_session_id: streamed_data::OutboundSessionId },
-    SessionFailed { session_id: SessionId, session_error: SessionError },
-    ProtobufConversionError(ProtobufConversionError),
-    SessionCompletedSuccessfully { session_id: SessionId },
+pub(crate) enum Event {
+    NewInboundQuery {
+        query: BlockQuery,
+        inbound_session_id: streamed_data::InboundSessionId,
+    },
+    ReceivedData {
+        data: Vec<SignedBlockHeader>,
+        outbound_session_id: streamed_data::OutboundSessionId,
+    },
+    SessionFailed {
+        session_id: SessionId,
+        session_error: SessionError,
+    },
+    QueryConversionError(ProtobufConversionError),
+    SessionCompletedSuccessfully {
+        session_id: SessionId,
+    },
 }
 
 impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
@@ -43,22 +59,32 @@ impl TryFrom<protobuf::BlockHeadersRequest> for BlockQuery {
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
         if let Some(value) = value.iteration {
             if let Some(start) = value.start {
-                match start {
+                let start_block = match start {
                     protobuf::iteration::Start::BlockNumber(block_number) => {
-                        let start_block = BlockNumber(block_number);
-                        let direction = match value.direction {
-                            0 => Direction::Forward,
-                            1 => Direction::Backward,
-                            _ => return Err(ProtobufConversionError::OutOfRangeValue),
-                        };
-                        let limit = value.limit;
-                        let step = value.step;
-                        Ok(Self { start_block, direction, limit, step })
+                        BlockHashOrNumber::Number(BlockNumber(block_number))
                     }
-                    protobuf::iteration::Start::Header(_) => {
-                        unimplemented!("BlockHash is not supported yet")
+                    protobuf::iteration::Start::Header(protobuf::Hash { elements: bytes }) => {
+                        let bytes: [u8; 32] = bytes
+                            .try_into()
+                            .map_err(|_| ProtobufConversionError::BytesDataLengthMismatch)?;
+                        let block_hash = BlockHash(StarkHash::new(bytes).map_err(|_| {
+                            // OutOfRange is the only StarknetApiError that StarkHash::new will
+                            // practically return
+                            // TODO(shahak): Enforce StarkHash::new to return only OutOfRange by
+                            // defining a more limited StarknetApiError.
+                            ProtobufConversionError::OutOfRangeValue
+                        })?);
+                        BlockHashOrNumber::Hash(block_hash)
                     }
-                }
+                };
+                let direction = match value.direction {
+                    0 => Direction::Forward,
+                    1 => Direction::Backward,
+                    _ => return Err(ProtobufConversionError::OutOfRangeValue),
+                };
+                let limit = value.limit;
+                let step = value.step;
+                Ok(Self { start_block, direction, limit, step })
             } else {
                 Err(ProtobufConversionError::MissingField)
             }
@@ -79,7 +105,16 @@ impl From<BlockQuery> for protobuf::BlockHeadersRequest {
                     },
                     limit: value.limit,
                     step: value.step,
-                    start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
+                    start: match value.start_block {
+                        BlockHashOrNumber::Number(BlockNumber(num)) => {
+                            Some(protobuf::iteration::Start::BlockNumber(num))
+                        }
+                        BlockHashOrNumber::Hash(BlockHash(stark_hash)) => {
+                            Some(protobuf::iteration::Start::Header(protobuf::Hash {
+                                elements: stark_hash.bytes().to_vec(),
+                            }))
+                        }
+                    },
                 }
             }),
         }
@@ -111,8 +146,12 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
 
         let sequencer_address = value
             .sequencer_address
-            .and_then(|sequencer_address| sequencer_address.try_into().ok())
-            .ok_or(ProtobufConversionError::MissingField)?;
+            .ok_or(ProtobufConversionError::MissingField)
+            .and_then(|sequencer_address| {
+                ContractAddress::try_from(sequencer_address)
+                    .map_err(|_| ProtobufConversionError::OutOfRangeValue)
+            })
+            .map(SequencerContractAddress)?;
 
         let timestamp = value
             .time
@@ -135,17 +174,9 @@ impl TryFrom<protobuf::BlockHeader> for BlockHeader {
             timestamp,
             state_root,
             // TODO: add missing fields.
-            block_hash: BlockHash::default(),
-            eth_l1_gas_price: GasPrice::default(),
-            strk_l1_gas_price: GasPrice::default(),
+            ..Default::default()
         })
     }
-}
-
-#[derive(Debug)]
-pub struct BlockHeaderData {
-    pub block_header: BlockHeader,
-    pub signatures: Vec<Signature>,
 }
 
 impl TryFrom<protobuf::Signatures> for Vec<Signature> {

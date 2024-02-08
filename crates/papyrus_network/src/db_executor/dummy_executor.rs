@@ -1,18 +1,17 @@
-use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::Poll;
 
+use futures::channel::mpsc::Sender;
 use futures::Stream;
-use starknet_api::block::{BlockHeader, BlockSignature};
 
-use super::{DBExecutor, Data, QueryId};
+use super::{DBExecutor, DBExecutorError, Data, QueryId};
 use crate::messages::protobuf;
 use crate::BlockQuery;
 
 pub struct DummyDBExecutor {
     _data: Vec<protobuf::BlockHeadersResponse>,
-    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, u64)>,
+    query_id_to_query_and_read_blocks_counter: HashMap<QueryId, (BlockQuery, Sender<Data>)>,
     query_conter: usize,
 }
 
@@ -43,48 +42,50 @@ impl DummyDBExecutor {
         }
         data
     }
-}
 
-impl Stream for DummyDBExecutor {
-    type Item = (QueryId, Data);
-
-    fn poll_next(
-        self: std::pin::Pin<&mut Self>,
-        _cx: &mut std::task::Context<'_>,
-    ) -> std::task::Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        if let Some((query_id, (query, read_blocks_counter))) =
-            unpinned_self.query_id_to_query_and_read_blocks_counter.iter_mut().next()
-        {
-            let res = match (*read_blocks_counter).cmp(&query.limit) {
-                Ordering::Less => {
-                    *read_blocks_counter += 1;
-                    Some((
-                        *query_id,
-                        Data::BlockHeaderAndSignature {
-                            header: BlockHeader::default(),
-                            signature: BlockSignature::default(),
-                        },
-                    ))
-                }
-                Ordering::Equal => {
-                    *read_blocks_counter += 1;
-                    Some((*query_id, Data::Fin))
-                }
-                Ordering::Greater => None,
-            };
-            Poll::Ready(res)
-        } else {
-            Poll::Pending
-        }
+    fn get_active_query(&mut self) -> Option<(QueryId, &mut BlockQuery, &mut Sender<Data>)> {
+        self.query_id_to_query_and_read_blocks_counter
+            .iter_mut()
+            .next()
+            .map(|(query_id, (query, sender))| (*query_id, query, sender))
     }
 }
 
 impl DBExecutor for DummyDBExecutor {
-    fn register_query(&mut self, query: BlockQuery) -> QueryId {
+    fn register_query(&mut self, query: BlockQuery, sender: Sender<Data>) -> QueryId {
         let query_id = QueryId(self.query_conter);
         self.query_conter += 1;
-        self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, 0));
+        self.query_id_to_query_and_read_blocks_counter.insert(query_id, (query, sender));
         query_id
+    }
+}
+
+impl Stream for DummyDBExecutor {
+    type Item = Result<QueryId, DBExecutorError>;
+
+    fn poll_next(
+        self: Pin<&mut Self>,
+        _cx: &mut std::task::Context<'_>,
+    ) -> Poll<Option<Self::Item>> {
+        let unpinned_self = Pin::into_inner(self);
+        let Some((query_id, query, sender)) = unpinned_self.get_active_query() else {
+            return Poll::Pending;
+        };
+        // TODO: add a way to configure an expected failure for a query.
+        for _blocks_counter in 0..=query.limit {
+            // TODO: use generated data instead of creating default data in each iteration.
+            let data = Data::BlockHeaderAndSignature {
+                header: Default::default(),
+                signature: Some(Default::default()),
+            };
+            if let Err(e) = sender.try_send(data) {
+                panic!("failed to send data to sender. error: {:?}", e);
+            }
+        }
+        if let Err(e) = sender.try_send(Data::Fin) {
+            panic!("failed to send fin to sender. error: {:?}", e);
+        }
+        unpinned_self.query_id_to_query_and_read_blocks_counter.remove(&query_id);
+        Poll::Ready(Some(Ok(query_id)))
     }
 }

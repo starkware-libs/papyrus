@@ -66,7 +66,7 @@ impl From<ContractClass> for starknet_api::state::ContractClass {
     fn from(class: ContractClass) -> Self {
         Self {
             sierra_program: class.sierra_program,
-            entry_point_by_type: class.entry_points_by_type,
+            entry_points_by_type: class.entry_points_by_type,
             abi: class.abi,
         }
     }

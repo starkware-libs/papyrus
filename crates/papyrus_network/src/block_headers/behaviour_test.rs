@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-use std::pin::Pin;
-use std::task::{Context, Poll};
+use std::collections::{HashMap, HashSet};
 
 use assert_matches::assert_matches;
-use futures::Stream;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHeader, BlockNumber};
@@ -11,11 +8,10 @@ use starknet_api::hash::StarkFelt;
 
 use super::super::Event;
 use super::BehaviourTrait;
-use crate::block_headers::{BlockHeaderData, SessionError};
-use crate::db_executor::{DBExecutor, Data, QueryId};
+use crate::block_headers::SessionError;
 use crate::messages::{protobuf, ProtobufConversionError, TestInstance};
 use crate::streamed_data::{self, OutboundSessionId, SessionId};
-use crate::BlockQuery;
+use crate::{BlockQuery, SignedBlockHeader};
 
 type StreamedDataEvent = streamed_data::GenericEvent<
     protobuf::BlockHeadersRequest,
@@ -65,11 +61,13 @@ fn map_streamed_data_behaviour_event_to_own_event_new_inbound_session() {
             peer_id,
             query: query.clone(),
         };
+    assert_eq!(behaviour.drop_session_call_count, 0);
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Some(Event::ProtobufConversionError(ProtobufConversionError::MissingField))
+        Some(Event::QueryConversionError(ProtobufConversionError::MissingField))
     );
+    assert_eq!(behaviour.drop_session_call_count, 1);
 }
 
 #[test]
@@ -110,7 +108,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -131,18 +129,13 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
         },
     };
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::SessionCompletedSuccessfully {session_id}) => {
-            assert_eq!(SessionId::OutboundSessionId(outbound_session_id), session_id);
-        }
-    );
-    assert_eq!(behaviour.close_outbound_session_call_count, 1);
+    assert_matches!(res_event, None);
 
     // Make sure no function was called unexpectedly
     assert_eq!(behaviour.store_header_pending_pairing_with_signature_call_count, 1);
     assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
-    assert_eq!(behaviour.close_outbound_session_call_count, 1);
+    assert_eq!(behaviour.drop_session_call_count, 0);
+    assert_eq!(behaviour.handle_session_finished_call_count, 0);
 }
 
 #[test]
@@ -196,7 +189,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -222,7 +215,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_se
     assert_matches!(
         res_event,
         Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data, BlockHeaderData { block_header, signatures}
+            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
                 signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
                 signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
@@ -303,7 +296,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
     };
     let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
 
-    // Send bad signature message - should return incompatible data error event
+    // Send bad signature message - should return ProtobufConversionError
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
         outbound_session_id,
         data: protobuf::BlockHeadersResponse {
@@ -327,7 +320,7 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             session_error,
         }) => {
             assert_eq!(session_id, outbound_session_id.into());
-            assert_matches!(session_error, SessionError::IncompatibleDataError)
+            assert_matches!(session_error, SessionError::ProtobufConversionError(ProtobufConversionError::MissingField))
         }
     );
 }
@@ -335,8 +328,10 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
 struct TestBehaviour {
     store_header_pending_pairing_with_signature_call_count: usize,
     fetch_pending_header_for_session_call_count: usize,
-    close_outbound_session_call_count: usize,
+    handle_session_finished_call_count: usize,
+    drop_session_call_count: usize,
     header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
+    sessions_pending_termination: HashSet<SessionId>,
 }
 
 impl TestBehaviour {
@@ -344,8 +339,10 @@ impl TestBehaviour {
         Self {
             store_header_pending_pairing_with_signature_call_count: 0,
             fetch_pending_header_for_session_call_count: 0,
-            close_outbound_session_call_count: 0,
+            handle_session_finished_call_count: 0,
+            drop_session_call_count: 0,
             header_pending_pairing: HashMap::new(),
+            sessions_pending_termination: HashSet::new(),
         }
     }
 
@@ -353,27 +350,13 @@ impl TestBehaviour {
     fn reset(&mut self) {
         self.store_header_pending_pairing_with_signature_call_count = 0;
         self.fetch_pending_header_for_session_call_count = 0;
-        self.close_outbound_session_call_count = 0;
+        self.handle_session_finished_call_count = 0;
+        self.drop_session_call_count = 0;
         self.header_pending_pairing = HashMap::new();
     }
 }
 
 impl BehaviourTrait for TestBehaviour {
-    fn handle_session_closed_by_request(&mut self, _session_id: SessionId) -> Event {
-        unimplemented!()
-    }
-
-    fn handle_outbound_session_closed_by_peer(
-        &mut self,
-        _outbound_session_id: OutboundSessionId,
-    ) -> Event {
-        unimplemented!()
-    }
-
-    fn close_outbound_session(&mut self, _outbound_session_id: OutboundSessionId) {
-        self.close_outbound_session_call_count += 1;
-    }
-
     fn fetch_header_pending_pairing_with_signature(
         &mut self,
         outbound_session_id: OutboundSessionId,
@@ -397,20 +380,17 @@ impl BehaviourTrait for TestBehaviour {
             .xor(Some(()))
             .ok_or_else(|| SessionError::PairingError)
     }
-}
 
-struct TestDBExecutor {}
-
-impl Stream for TestDBExecutor {
-    type Item = (QueryId, Data);
-
-    fn poll_next(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        Poll::Pending
+    fn handle_session_finished(&mut self, _session_id: SessionId) -> Option<Event> {
+        self.handle_session_finished_call_count += 1;
+        None
     }
-}
 
-impl DBExecutor for TestDBExecutor {
-    fn register_query(&mut self, _query: BlockQuery) -> QueryId {
-        QueryId(1)
+    fn drop_session(&mut self, _session_id: SessionId) {
+        self.drop_session_call_count += 1;
+    }
+
+    fn get_sessions_pending_termination(&mut self) -> &mut HashSet<SessionId> {
+        &mut self.sessions_pending_termination
     }
 }

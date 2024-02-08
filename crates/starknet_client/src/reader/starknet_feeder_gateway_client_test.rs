@@ -34,7 +34,6 @@ use starknet_api::{patricia_key, stark_felt};
 use super::objects::state::StateUpdate;
 use super::objects::transaction::IntermediateDeclareTransaction;
 use super::{
-    Block,
     ContractClass,
     GenericContractClass,
     PendingData,
@@ -48,6 +47,7 @@ use super::{
     GET_STATE_UPDATE_URL,
 };
 use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
+use crate::reader::BlockOrDeprecated;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -86,7 +86,7 @@ async fn get_block_number() {
         .create();
     let latest_block = starknet_client.latest_block().await.unwrap();
     mock_block.assert();
-    assert_eq!(latest_block.unwrap().block_number, BlockNumber(319110));
+    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(319110));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -357,7 +357,7 @@ async fn get_block() {
         .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
     mock_block.assert();
-    let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let expected_block: BlockOrDeprecated = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
 
     // Non-existing block.
@@ -437,6 +437,8 @@ async fn is_alive() {
     assert!(response);
 }
 
+// Empty storage diffs were filtered out in the past, but should not anymore (part of the inputs to
+// the state diff commitment).
 #[tokio::test]
 async fn state_update_with_empty_storage_diff() {
     let starknet_client = StarknetFeederGatewayClient::new(
@@ -447,7 +449,8 @@ async fn state_update_with_empty_storage_diff() {
     )
     .unwrap();
     let mut state_update = StateUpdate::default();
-    state_update.state_diff.storage_diffs = indexmap!(ContractAddress::default() => vec![]);
+    let empty_storage_diff = indexmap!(ContractAddress::default() => vec![]);
+    state_update.state_diff.storage_diffs = empty_storage_diff.clone();
 
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])
@@ -456,7 +459,7 @@ async fn state_update_with_empty_storage_diff() {
             .create();
     let state_update = starknet_client.state_update(BlockNumber(123456)).await.unwrap().unwrap();
     mock.assert();
-    assert!(state_update.state_diff.storage_diffs.is_empty());
+    assert_eq!(state_update.state_diff.storage_diffs, empty_storage_diff);
 }
 
 async fn test_unserializable<

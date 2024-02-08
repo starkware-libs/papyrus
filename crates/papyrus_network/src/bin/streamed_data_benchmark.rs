@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::iter;
 use std::time::{Duration, Instant};
 
 use clap::Parser;
@@ -34,6 +33,14 @@ struct Args {
     #[arg(short, long)]
     dial_address: Option<String>,
 
+    /// Amount of expected inbound sessions.
+    #[arg(short = 'i', long)]
+    num_expected_inbound_sessions: usize,
+
+    /// Amount of expected peers to connect to this peer (dial or listener).
+    #[arg(short = 'c', long)]
+    num_expected_connections: usize,
+
     /// Number of queries to send for each node that we connect to (whether we dialed to it or it
     /// dialed to us).
     #[arg(short = 'q', long, default_value_t)]
@@ -48,64 +55,77 @@ struct Args {
     message_size: u64,
 
     /// Amount of time (in seconds) to wait until closing an unactive connection.
-    #[arg(short = 't', long, default_value_t = 1)]
+    #[arg(short = 't', long, default_value_t = 10)]
     idle_connection_timeout: u64,
 }
 
-fn create_outbound_sessions(
+fn create_outbound_sessions_if_all_peers_connected(
     swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
     peer_id: PeerId,
     outbound_session_measurements: &mut HashMap<OutboundSessionId, OutboundSessionMeasurement>,
+    peers_pending_outbound_session: &mut Vec<PeerId>,
     args: &Args,
 ) {
-    for number in 0..args.num_queries_per_connection {
-        let outbound_session_id =
-            swarm.behaviour_mut().send_query(BasicMessage { number }, peer_id).expect(
-                "There's no connection to a peer immediately after we got a ConnectionEstablished \
-                 event",
-            );
-        outbound_session_measurements
-            .insert(outbound_session_id, OutboundSessionMeasurement::new());
+    peers_pending_outbound_session.push(peer_id);
+    if peers_pending_outbound_session.len() >= args.num_expected_connections {
+        for peer_id in peers_pending_outbound_session {
+            for number in 0..args.num_queries_per_connection {
+                let outbound_session_id =
+                    swarm.behaviour_mut().send_query(BasicMessage { number }, *peer_id).expect(
+                        "There's no connection to a peer immediately after we got a \
+                         ConnectionEstablished event",
+                    );
+                outbound_session_measurements
+                    .insert(outbound_session_id, OutboundSessionMeasurement::new());
+            }
+        }
     }
 }
 
-fn send_data_to_inbound_session(
+fn send_data_to_inbound_sessions(
     swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
-    inbound_session_id: InboundSessionId,
+    inbound_session_to_messages: &mut HashMap<InboundSessionId, Vec<Vec<u8>>>,
     args: &Args,
 ) {
-    swarm
-        .behaviour_mut()
-        .send_data(
-            StressTestMessage {
-                msg: Some(Msg::Start(InboundSessionStart {
-                    num_messages: args.num_messages_per_session,
-                    message_size: args.message_size,
-                })),
-            },
-            inbound_session_id,
-        )
-        .unwrap_or_else(|_| {
-            panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
-        });
-    for _ in 0..args.num_messages_per_session {
+    for inbound_session_id in inbound_session_to_messages.keys() {
         swarm
             .behaviour_mut()
             .send_data(
                 StressTestMessage {
-                    msg: Some(Msg::Content(
-                        iter::repeat(1u8).take(args.message_size as usize).collect(),
-                    )),
+                    msg: Some(Msg::Start(InboundSessionStart {
+                        num_messages: args.num_messages_per_session,
+                        message_size: args.message_size,
+                    })),
                 },
-                inbound_session_id,
+                *inbound_session_id,
             )
             .unwrap_or_else(|_| {
                 panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
             });
     }
-    swarm.behaviour_mut().close_session(inbound_session_id.into()).unwrap_or_else(|_| {
-        panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
-    });
+    while !inbound_session_to_messages.is_empty() {
+        inbound_session_to_messages.retain(|inbound_session_id, messages| match messages.pop() {
+            Some(message) => {
+                swarm
+                    .behaviour_mut()
+                    .send_data(
+                        StressTestMessage { msg: Some(Msg::Content(message)) },
+                        *inbound_session_id,
+                    )
+                    .unwrap_or_else(|_| {
+                        panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
+                    });
+
+                true
+            }
+            None => {
+                swarm.behaviour_mut().close_inbound_session(*inbound_session_id).unwrap_or_else(
+                    |_| panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id),
+                );
+                false
+            }
+        })
+    }
 }
 
 // TODO(shahak) extract to other file.
@@ -183,28 +203,61 @@ async fn main() {
     let args = Args::parse();
 
     let config = Config {
-        substream_timeout: Duration::from_secs(3600),
+        session_timeout: Duration::from_secs(3600),
         protocol_name: StreamProtocol::new("/papyrus/bench/1"),
     };
-    let mut swarm = build_swarm(args.listen_address.clone(), args.idle_connection_timeout, config);
-    dial_if_requested(&mut swarm, &args);
+    let mut swarm = build_swarm(
+        vec![args.listen_address.clone()],
+        Duration::from_secs(args.idle_connection_timeout),
+        Behaviour::new(config),
+    );
 
     let mut outbound_session_measurements = HashMap::new();
+    let mut inbound_session_to_messages = HashMap::new();
+    let mut connected_in_the_past = false;
+
+    let mut preprepared_messages = (0..args.num_expected_inbound_sessions)
+        .map(|_| {
+            (0..args.num_messages_per_session)
+                .map(|_| vec![1u8; args.message_size as usize])
+                .collect::<Vec<_>>()
+        })
+        .collect::<Vec<_>>();
+
+    let mut peers_pending_outbound_session = Vec::new();
+    println!("Preprepared messages for sending");
+
+    dial_if_requested(&mut swarm, &args);
+
     while let Some(event) = swarm.next().await {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to a peer!");
-                create_outbound_sessions(
+                connected_in_the_past = true;
+                create_outbound_sessions_if_all_peers_connected(
                     &mut swarm,
                     peer_id,
                     &mut outbound_session_measurements,
+                    &mut peers_pending_outbound_session,
                     &args,
                 );
             }
             SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
-                send_data_to_inbound_session(&mut swarm, inbound_session_id, &args);
+                inbound_session_to_messages.insert(
+                    inbound_session_id,
+                    preprepared_messages
+                        .pop()
+                        .expect("There are more inbound sessions than expected"),
+                );
+                if preprepared_messages.is_empty() {
+                    send_data_to_inbound_sessions(
+                        &mut swarm,
+                        &mut inbound_session_to_messages,
+                        &args,
+                    );
+                }
             }
-            SwarmEvent::Behaviour(Event::SessionClosedByPeer {
+            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
                 session_id: SessionId::OutboundSessionId(outbound_session_id),
             }) => {
                 outbound_session_measurements[&outbound_session_id].print();
@@ -236,20 +289,18 @@ async fn main() {
             }) => {
                 println!("Session {:?} failed on {}", session_id, io_error.kind());
             }
-            SwarmEvent::Behaviour(Event::SessionClosedByPeer {
-                session_id: SessionId::InboundSessionId(inbound_session_id),
-            }) => {
-                println!("Outbound peer closed before us in session {:?}", inbound_session_id);
-            }
-            SwarmEvent::NewListenAddr { .. }
-            | SwarmEvent::IncomingConnection { .. }
-            | SwarmEvent::Behaviour(Event::SessionClosedByRequest {
-                session_id: SessionId::InboundSessionId(..),
+            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
+                session_id: SessionId::InboundSessionId(_),
             })
+            | SwarmEvent::NewListenAddr { .. }
+            | SwarmEvent::IncomingConnection { .. }
             | SwarmEvent::ConnectionClosed { .. } => {}
             _ => {
                 panic!("Unexpected event {:?}", event);
             }
+        }
+        if connected_in_the_past && swarm.network_info().num_peers() == 0 {
+            break;
         }
     }
 }

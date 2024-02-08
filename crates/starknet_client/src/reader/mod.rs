@@ -19,11 +19,11 @@ use starknet_api::core::ClassHash;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
-use tracing::{debug, instrument};
+use tracing::{debug, error, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{
-    Block,
+    BlockOrDeprecated,
     BlockSignatureData,
     BlockSignatureMessage,
     TransactionReceiptsError,
@@ -76,10 +76,13 @@ pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 pub trait StarknetReader {
     /// Returns the last block in the system, returning [`None`] in case there are no blocks in the
     /// system.
-    async fn latest_block(&self) -> ReaderClientResult<Option<Block>>;
-    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case no such
-    /// block exists in the system.
-    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>>;
+    async fn latest_block(&self) -> ReaderClientResult<Option<BlockOrDeprecated>>;
+    /// Returns a [`BlockOrDeprecated`] corresponding to `block_number`, returning [`None`] in case
+    /// no such block exists in the system.
+    async fn block(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockOrDeprecated>>;
     /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(
         &self,
@@ -198,7 +201,7 @@ impl StarknetFeederGatewayClient {
     async fn request_block(
         &self,
         block_number: Option<BlockNumber>,
-    ) -> ReaderClientResult<Option<Block>> {
+    ) -> ReaderClientResult<Option<BlockOrDeprecated>> {
         let mut url = self.urls.get_block.clone();
         let block_number =
             block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
@@ -216,12 +219,15 @@ impl StarknetFeederGatewayClient {
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
     #[instrument(skip(self), level = "debug")]
-    async fn latest_block(&self) -> ReaderClientResult<Option<Block>> {
+    async fn latest_block(&self) -> ReaderClientResult<Option<BlockOrDeprecated>> {
         Ok(self.request_block(None).await?)
     }
 
     #[instrument(skip(self), level = "debug")]
-    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>> {
+    async fn block(
+        &self,
+        block_number: BlockNumber,
+    ) -> ReaderClientResult<Option<BlockOrDeprecated>> {
         self.request_block(Some(block_number)).await
     }
 
@@ -231,7 +237,11 @@ impl StarknetReader for StarknetFeederGatewayClient {
         class_hash: ClassHash,
     ) -> ReaderClientResult<Option<GenericContractClass>> {
         let mut url = self.urls.get_contract_by_hash.clone();
-        let class_hash = serde_json::to_string(&class_hash)?;
+        let class_hash_result = serde_json::to_string(&class_hash);
+        if class_hash_result.is_err() {
+            error!("Failed to serialize {class_hash:?}");
+        }
+        let class_hash = class_hash_result?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
@@ -257,14 +267,6 @@ impl StarknetReader for StarknetFeederGatewayClient {
                 "Failed to get state update for block number {block_number} from starknet server."
             ),
         )
-        .map(|option| {
-            option.map(|mut state_update: StateUpdate| {
-                // Remove empty storage diffs. The feeder gateway sometimes returns an empty
-                // storage diff.
-                state_update.state_diff.storage_diffs.retain(|_k, v| !v.is_empty());
-                state_update
-            })
-        })
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -321,7 +323,11 @@ impl StarknetReader for StarknetFeederGatewayClient {
         }
 
         let mut url = self.urls.get_compiled_class_by_class_hash.clone();
-        let class_hash = serde_json::to_string(&class_hash)?;
+        let class_hash_result = serde_json::to_string(&class_hash);
+        if class_hash_result.is_err() {
+            error!("Failed to serialize {class_hash:?}");
+        }
+        let class_hash = class_hash_result?;
         url.query_pairs_mut()
             .append_pair(CLASS_HASH_QUERY, &class_hash.as_str()[1..class_hash.len() - 1]);
         let response = self.request_with_retry_url(url).await;
@@ -373,7 +379,13 @@ fn load_object_from_response<Object: for<'a> Deserialize<'a>>(
     error_message: String,
 ) -> ReaderClientResult<Option<Object>> {
     match response {
-        Ok(raw_object) => Ok(Some(serde_json::from_str(&raw_object)?)),
+        Ok(raw_object) => {
+            let result = serde_json::from_str(&raw_object);
+            if result.is_err() {
+                error!("Failed to deserialize {raw_object:?}");
+            }
+            Ok(Some(result?))
+        }
         Err(ReaderClientError::ClientError(ClientError::StarknetError(StarknetError {
             code: StarknetErrorCode::KnownErrorCode(error_code),
             message: _,

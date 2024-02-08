@@ -9,7 +9,8 @@ use starknet_api::state::StorageKey;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
 use starknet_api::{patricia_key, stark_felt};
 
-use super::{Block, GlobalRoot, TransactionReceiptsError};
+use super::{BlockOrDeprecated, GlobalRoot, TransactionReceiptsError};
+use crate::reader::objects::block::DeprecatedBlock;
 use crate::reader::objects::state::{
     DeclaredClassHashEntry,
     DeployedContract,
@@ -25,7 +26,7 @@ use crate::test_utils::read_resource::read_resource_file;
 #[test]
 fn load_block_succeeds() {
     for block_path in ["reader/block.json", "reader/block_pre_v0_13.json"] {
-        serde_json::from_str::<Block>(&read_resource_file(block_path))
+        serde_json::from_str::<BlockOrDeprecated>(&read_resource_file(block_path))
             .unwrap_or_else(|_| panic!("Failed loading block in path {}", block_path));
     }
 }
@@ -112,13 +113,14 @@ fn load_block_state_update_succeeds() {
 
 #[tokio::test]
 async fn to_starknet_api_block_and_version() {
+    // TODO(yair): Add block.json for a 0.13.1 block.
     let raw_block = read_resource_file("reader/block.json");
-    let block: Block = serde_json::from_str(&raw_block).unwrap();
-    let expected_num_of_tx_outputs = block.transactions.len();
-    let (starknet_api_block, _version) = block.to_starknet_api_block_and_version().unwrap();
+    let block: BlockOrDeprecated = serde_json::from_str(&raw_block).unwrap();
+    let expected_num_of_tx_outputs = block.transactions().len();
+    let starknet_api_block = block.to_starknet_api_block_and_version().unwrap();
     assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs.len());
 
-    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let mut err_block: DeprecatedBlock = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts.pop();
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
@@ -132,7 +134,7 @@ async fn to_starknet_api_block_and_version() {
         )
     );
 
-    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let mut err_block: DeprecatedBlock = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_index = TransactionOffsetInBlock(1);
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
@@ -147,7 +149,7 @@ async fn to_starknet_api_block_and_version() {
         )
     );
 
-    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let mut err_block: DeprecatedBlock = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_hash = TransactionHash(stark_felt!("0x4"));
     let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
@@ -162,7 +164,7 @@ async fn to_starknet_api_block_and_version() {
         )
     );
 
-    let mut err_block: Block = serde_json::from_str(&raw_block).unwrap();
+    let mut err_block: DeprecatedBlock = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0] = TransactionReceipt {
         transaction_hash: err_block.transactions[1].transaction_hash(),
         ..err_block.transaction_receipts[0].clone()

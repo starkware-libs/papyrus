@@ -1,9 +1,14 @@
 use std::time::Duration;
 
-use futures::AsyncWriteExt;
+use futures::{AsyncReadExt, AsyncWriteExt};
 use pretty_assertions::assert_eq;
 
-use super::{read_message, write_message};
+use super::{
+    read_message,
+    read_message_without_length_prefix,
+    write_message,
+    write_message_without_length_prefix,
+};
 use crate::messages::protobuf;
 use crate::test_utils::{dummy_data, get_connected_streams};
 
@@ -17,6 +22,16 @@ async fn read_write_positive_flow() {
     for expected_message in &messages {
         assert_eq!(*expected_message, read_message(&mut stream2).await.unwrap().unwrap());
     }
+}
+
+#[tokio::test]
+async fn read_write_without_length_prefix_positive_flow() {
+    let (stream1, stream2, _) = get_connected_streams().await;
+    let (_read_stream1, write_stream1) = stream1.split();
+    let (read_stream2, _write_stream2) = stream2.split();
+    let message = dummy_data().first().unwrap().clone();
+    write_message_without_length_prefix(message.clone(), write_stream1).await.unwrap();
+    assert_eq!(message, read_message_without_length_prefix(read_stream2).await.unwrap());
 }
 
 #[tokio::test]
