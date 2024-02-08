@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
@@ -135,6 +135,13 @@ lazy_static! {
         gas_consumed: stark_felt!("0x68b"),
         gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(167500000000000,),
+        unit: PriceUnit::Wei,
+    };
+
+    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x68a"),
+        gas_price: GAS_PRICE.price_in_wei,
+        overall_fee: Fee(167400000000000,),
         unit: PriceUnit::Wei,
     };
 
@@ -613,7 +620,7 @@ async fn call_simulate_skip_validate() {
 
     let simulated_tx = res.pop().unwrap();
 
-    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 

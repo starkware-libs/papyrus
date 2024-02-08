@@ -11,7 +11,7 @@ testing = ["enum-iterator", "mockall", "rand", "rand_chacha", "test_utils"]
 
 [dependencies]
 async-trait.workspace = true
-cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
 enum-iterator = { workspace = true, optional = true }
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }

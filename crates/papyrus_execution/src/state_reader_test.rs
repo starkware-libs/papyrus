@@ -149,7 +149,7 @@ fn read_state() {
     let class_hash_after_block_0 = state_reader0.get_class_hash_at(address0).unwrap();
     assert_eq!(class_hash_after_block_0, ClassHash::default());
     let compiled_contract_class_after_block_0 =
-        state_reader0.get_compiled_contract_class(&class_hash0);
+        state_reader0.get_compiled_contract_class(class_hash0);
     assert_matches!(
         compiled_contract_class_after_block_0, Err(StateError::UndeclaredClassHash(class_hash))
         if class_hash == class_hash0
@@ -170,12 +170,12 @@ fn read_state() {
     let class_hash_after_block_1 = state_reader1.get_class_hash_at(address0).unwrap();
     assert_eq!(class_hash_after_block_1, class_hash0);
     let compiled_contract_class_after_block_1 =
-        state_reader1.get_compiled_contract_class(&class_hash0).unwrap();
+        state_reader1.get_compiled_contract_class(class_hash0).unwrap();
     assert_eq!(compiled_contract_class_after_block_1, blockifier_casm0);
 
     // Test that if we try to get a casm and it's missing, that an error is returned and the field
     // `missing_compiled_class` is set to its hash
-    state_reader1.get_compiled_contract_class(&class_hash5).unwrap_err();
+    state_reader1.get_compiled_contract_class(class_hash5).unwrap_err();
     assert_eq!(state_reader1.missing_compiled_class.unwrap(), class_hash5);
 
     let state_number2 = StateNumber::right_after_block(BlockNumber(2));
@@ -219,13 +219,13 @@ fn read_state() {
     assert_eq!(state_reader2.get_compiled_class_hash(class_hash2).unwrap(), compiled_class_hash2);
     assert_eq!(state_reader2.get_nonce_at(address0).unwrap(), nonce0);
     assert_eq!(state_reader2.get_nonce_at(address2).unwrap(), nonce1);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash0).unwrap(), blockifier_casm0);
-    assert_eq!(state_reader2.get_compiled_contract_class(&class_hash2).unwrap(), blockifier_casm1);
+    assert_eq!(state_reader2.get_compiled_contract_class(class_hash0).unwrap(), blockifier_casm0);
+    assert_eq!(state_reader2.get_compiled_contract_class(class_hash2).unwrap(), blockifier_casm1);
     // Test that if we only got the class without the casm then an error is returned.
-    state_reader2.get_compiled_contract_class(&class_hash3).unwrap_err();
+    state_reader2.get_compiled_contract_class(class_hash3).unwrap_err();
     // Test that if the class is deprecated it is returned.
     assert_eq!(
-        state_reader2.get_compiled_contract_class(&class_hash4).unwrap(),
+        state_reader2.get_compiled_contract_class(class_hash4).unwrap(),
         BlockifierContractClass::V0(ContractClassV0::try_from(class1).unwrap())
     );
 

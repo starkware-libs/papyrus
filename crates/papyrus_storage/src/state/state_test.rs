@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use async_stream::stream;
 use async_trait::async_trait;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use futures::stream::BoxStream;
 use futures_util::StreamExt;
 use indexmap::IndexMap;
