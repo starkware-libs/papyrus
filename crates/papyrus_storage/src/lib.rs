@@ -91,17 +91,17 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serializers::ValuePlaceHolder;
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
-use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
+use starknet_api::transaction::{Transaction, TransactionHash, TransactionOutput};
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
-use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
 use crate::db::table_types::SimpleTable;
 use crate::db::{
@@ -440,7 +440,8 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
+
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>,
         headers: TableIdentifier<BlockNumber, VersionZeroWrapper<StorageBlockHeader>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
@@ -577,11 +578,11 @@ pub(crate) type MarkersTable<'env> =
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
-    thin_state_diff: FileHandler<VersionZeroWrapper<ThinStateDiff>, Mode>,
-    contract_class: FileHandler<VersionZeroWrapper<ContractClass>, Mode>,
-    casm: FileHandler<VersionZeroWrapper<CasmContractClass>, Mode>,
-    deprecated_contract_class: FileHandler<VersionZeroWrapper<DeprecatedContractClass>, Mode>,
-    thin_transaction_output: FileHandler<VersionZeroWrapper<ThinTransactionOutput>, Mode>,
+    thin_state_diff: FileHandler<NoVersionValueWrapper<ThinStateDiff>, Mode>,
+    contract_class: FileHandler<NoVersionValueWrapper<ContractClass>, Mode>,
+    casm: FileHandler<NoVersionValueWrapper<CasmContractClass>, Mode>,
+    deprecated_contract_class: FileHandler<NoVersionValueWrapper<DeprecatedContractClass>, Mode>,
+    transaction_output: FileHandler<NoVersionValueWrapper<TransactionOutput>, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -617,11 +618,8 @@ impl FileHandlers<RW> {
     }
 
     // Appends a thin transaction output to the corresponding file and returns its location.
-    fn append_transaction_output(
-        &self,
-        transaction_output: &ThinTransactionOutput,
-    ) -> LocationInFile {
-        self.clone().thin_transaction_output.append(transaction_output)
+    fn append_transaction_output(&self, transaction_output: &TransactionOutput) -> LocationInFile {
+        self.clone().transaction_output.append(transaction_output)
     }
 }
 
@@ -664,14 +662,14 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
         })
     }
 
-    // Returns the thin transaction output at the given location or an error in case it doesn't
+    // Returns the transaction output at the given location or an error in case it doesn't
     // exist.
     fn get_transaction_output_unchecked(
         &self,
         location: LocationInFile,
-    ) -> StorageResult<ThinTransactionOutput> {
-        self.thin_transaction_output.get(location)?.ok_or(StorageError::DBInconsistency {
-            msg: format!("ThinTransactionOutput at location {:?} not found.", location),
+    ) -> StorageResult<TransactionOutput> {
+        self.transaction_output.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("TransactionOutput at location {:?} not found.", location),
         })
     }
 }
@@ -714,7 +712,7 @@ fn open_storage_files(
     )?;
 
     let transaction_output_offset =
-        table.get(&db_transaction, &OffsetKind::ThinTransactionOutput)?.unwrap_or_default();
+        table.get(&db_transaction, &OffsetKind::TransactionOutput)?.unwrap_or_default();
     let (transaction_output_writer, transaction_output_reader) = open_file(
         mmap_file_config,
         db_config.path().join("transaction_output.dat"),
@@ -727,14 +725,14 @@ fn open_storage_files(
             contract_class: contract_class_writer,
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
-            thin_transaction_output: transaction_output_writer,
+            transaction_output: transaction_output_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
-            thin_transaction_output: transaction_output_reader,
+            transaction_output: transaction_output_reader,
         },
     ))
 }
@@ -750,6 +748,6 @@ pub enum OffsetKind {
     Casm,
     /// A deprecated contract class file.
     DeprecatedContractClass,
-    /// A thin transaction output file.
-    ThinTransactionOutput,
+    /// A transaction output file.
+    TransactionOutput,
 }
