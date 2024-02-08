@@ -5693,6 +5693,7 @@ dependencies = [
  "async-stream",
  "clap",
  "const_format",
+ "futures",
  "futures-util",
  "insta",
  "itertools 0.10.5",
