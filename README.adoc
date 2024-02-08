@@ -148,11 +148,12 @@ For more information, see the papyrus-config https://github.com/starkware-libs/p
 [discrete]
 ==== Procedure
 
-. Make a local directory to use for the container’s data. You only need to complete this step the first time you run Papyrus.
+. Make a local directory to use for the container’s data, and set the correct permissions using the user and group IDs. You only need to complete this step the first time you run Papyrus.
 +
 [source,bash]
 ----
 mkdir <local-host-data-path>
+sudo chown -R $(id -u):$(id -g) /<local-host-data-path>
 ----
 . Run a Papyrus node with the default configuration. You must explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
 +
@@ -165,7 +166,6 @@ docker run --rm --name papyrus\
   -v /<local-host-data-path>:/app/data \
   ghcr.io/starkware-libs/papyrus:dev \
   --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
 ----
 +
 [NOTE]
@@ -195,7 +195,6 @@ docker run --rm --name papyrus\
   --memory 1g
   ghcr.io/starkware-libs/papyrus:dev \
   --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
 ----
 
 For more information, see https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory[Limit a container's access to memory] in the Docker documentation.
@@ -215,15 +214,15 @@ See the API specification at the https://github.com/starkware-libs/starknet-spec
 [source,bash]
 ----
 curl --location '<node_path>/rpc/<starknet-rpc-version-id>' --header 'Content-Type: application/json'\
- --data '\{"jsonrpc":"2.0","id":0,"method":"<method>", "params": "<params>"}'
+ --data '\{"jsonrpc":"2.0","id":0,"method":"<method>"}'
 ----
 
-For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
+For example, to send a request calling the `starknet_blockHashAndNumber` method, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
 
 [source,bash]
 ----
 curl --location 'localhost:8080/rpc/v0_4_0' --header 'Content-Type: application/json'\
- --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_getBlockTransactionCount", "params": [{"block_number": 100000}] }'
+ --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'
 ----
 
 == JSON RPC API endpoints
