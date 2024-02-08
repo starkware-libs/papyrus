@@ -75,7 +75,7 @@ use std::fmt::Debug;
 use std::sync::Arc;
 
 use body::events::EventIndex;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
 use db::serialization::{Key, NoVersionValueWrapper, ValueSerde};
 use db::table_types::Table;

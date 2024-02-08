@@ -2,7 +2,7 @@ use std::num::NonZeroUsize;
 use std::sync::{Arc, Mutex};
 
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use futures_util::pin_mut;
 use indexmap::{indexmap, IndexMap};
 use lru::LruCache;

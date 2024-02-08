@@ -4,7 +4,7 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use async_stream::stream;
 use async_trait::async_trait;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use futures::StreamExt;
 use indexmap::IndexMap;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses};

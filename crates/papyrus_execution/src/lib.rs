@@ -20,9 +20,11 @@ pub mod testing_instances;
 
 pub mod objects;
 use std::collections::{BTreeMap, HashMap};
+use std::num::NonZeroU128;
 use std::sync::Arc;
 
-use blockifier::block_context::{BlockContext, FeeTokenAddresses, GasPrices};
+use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
+use blockifier::context::{BlockContext, ChainInfo, FeeTokenAddresses, TransactionContext};
 use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
 use blockifier::execution::entry_point::{
@@ -31,17 +33,17 @@ use blockifier::execution::entry_point::{
     EntryPointExecutionContext,
     ExecutionResources,
 };
-use blockifier::state::cached_state::CachedState;
-use blockifier::state::state_api::State;
+use blockifier::state::cached_state::{CachedState, GlobalContractCache};
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
-    AccountTransactionContext,
-    DeprecatedAccountTransactionContext,
+    DeprecatedTransactionInfo,
     TransactionExecutionInfo,
+    TransactionInfo,
 };
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
 use blockifier::transaction::transactions::ExecutableTransaction;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use blockifier::versioned_constants::VersionedConstants;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::{PriceUnit, TransactionSimulationOutput};
 use papyrus_common::transaction_hash::get_transaction_hash;
@@ -50,13 +52,14 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
+use starknet_api::hash::StarkHash;
+use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
     DeclareTransaction,
@@ -71,11 +74,18 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::StarknetApiError;
+use starknet_api::{contract_address, patricia_key, StarknetApiError};
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
 use crate::objects::PendingData;
+
+// TODO(yair): understand what it is and whether the use of this constant should change.
+const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
+
+// TODO(Eitan): get from config.
+const STRK_FEE_TOKEN_ADDRESS: &str =
+    "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
@@ -154,6 +164,8 @@ pub enum ExecutionError {
     #[error("Missing compiled class with hash {class_hash} (The CASM table isn't synced)")]
     MissingCompiledClass { class_hash: ClassHash },
     #[error(transparent)]
+    StateError(#[from] blockifier::state::errors::StateError),
+    #[error(transparent)]
     StorageError(#[from] StorageError),
     #[error(
         "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
@@ -204,7 +216,18 @@ pub fn execute_call(
         initial_gas: execution_config.initial_gas_cost,
     };
 
+    let mut cached_state = CachedState::new(
+        ExecutionStateReader {
+            storage_reader: storage_reader.clone(),
+            state_number,
+            maybe_pending_data: maybe_pending_data.clone(),
+            missing_compiled_class: None,
+        },
+        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
+    );
+
     let block_context = create_block_context(
+        &mut cached_state,
         block_context_number,
         chain_id.clone(),
         &storage_reader,
@@ -212,16 +235,12 @@ pub fn execute_call(
         execution_config,
     )?;
 
-    let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader,
-        state_number,
-        maybe_pending_data,
-        missing_compiled_class: None,
-    });
     let mut context = EntryPointExecutionContext::new_invoke(
-        &block_context,
         // TODO(yair): fix when supporting v3 transactions
-        &AccountTransactionContext::Deprecated(DeprecatedAccountTransactionContext::default()),
+        Arc::new(TransactionContext {
+            block_context,
+            tx_info: TransactionInfo::Deprecated(DeprecatedTransactionInfo::default()),
+        }),
         true, // limit_steps_by_resources
     )
     .map_err(|err| ExecutionError::ContractError(err.into()))?;
@@ -258,47 +277,75 @@ fn verify_contract_exists(
 }
 
 fn create_block_context(
+    cached_state: &mut CachedState<ExecutionStateReader>,
     block_context_number: BlockNumber,
     chain_id: ChainId,
     storage_reader: &StorageReader,
     maybe_pending_data: Option<&PendingData>,
     execution_config: &BlockExecutionConfig,
 ) -> ExecutionResult<BlockContext> {
-    let (block_number, block_timestamp, gas_prices, sequencer_address) = match maybe_pending_data {
-        Some(pending_data) => (
-            block_context_number.next(),
-            pending_data.timestamp,
-            pending_data.l1_gas_price,
-            pending_data.sequencer,
-        ),
-        None => {
-            let header = storage_reader
-                .begin_ro_txn()?
-                .get_block_header(block_context_number)?
-                .expect("Should have block header.");
-            (header.block_number, header.timestamp, header.l1_gas_price, header.sequencer)
-        }
-    };
+    let (block_number, block_timestamp, l1_gas_price, l1_data_gas_price, sequencer_address) =
+        match maybe_pending_data {
+            Some(pending_data) => (
+                block_context_number.next(),
+                pending_data.timestamp,
+                pending_data.l1_gas_price,
+                pending_data.l1_data_gas_price,
+                pending_data.sequencer,
+            ),
+            None => {
+                let header = storage_reader
+                    .begin_ro_txn()?
+                    .get_block_header(block_context_number)?
+                    .expect("Should have block header.");
+                (
+                    header.block_number,
+                    header.timestamp,
+                    header.l1_gas_price,
+                    header.l1_data_gas_price,
+                    header.sequencer,
+                )
+            }
+        };
+    let ten_blocks_ago = get_10_blocks_ago(&block_context_number, cached_state)?;
 
-    Ok(BlockContext {
-        chain_id,
-        block_number,
+    let block_info = BlockInfo {
         block_timestamp,
         sequencer_address: sequencer_address.0,
-        // TODO(barak, 01/10/2023): Change strk_fee_token_address once it exists.
+        // TODO(yair): set to true when da mode is Blob (not supported yet).
+        use_kzg_da: false,
+        block_number,
+        // TODO(yair): What to do about blocks pre 0.13.1 where the data gas price were 0?
+        gas_prices: GasPrices {
+            eth_l1_gas_price: NonZeroU128::new(l1_gas_price.price_in_wei.0)
+                .unwrap_or(1.try_into().expect("1 is not zero")),
+            strk_l1_gas_price: NonZeroU128::new(l1_gas_price.price_in_fri.0)
+                .unwrap_or(1.try_into().expect("1 is not zero")),
+            eth_l1_data_gas_price: NonZeroU128::new(l1_data_gas_price.price_in_wei.0)
+                .unwrap_or(1.try_into().expect("1 is not zero")),
+            strk_l1_data_gas_price: NonZeroU128::new(l1_data_gas_price.price_in_fri.0)
+                .unwrap_or(1.try_into().expect("1 is not zero")),
+        },
+    };
+    let chain_info = ChainInfo {
+        chain_id,
+        // TODO(Eitan): add the correct fee token addresses to the execution config.
         fee_token_addresses: FeeTokenAddresses {
-            strk_fee_token_address: execution_config.fee_contract_address,
+            strk_fee_token_address: contract_address!(STRK_FEE_TOKEN_ADDRESS),
             eth_fee_token_address: execution_config.fee_contract_address,
         },
-        vm_resource_fee_cost: Arc::clone(&execution_config.vm_resource_fee_cost),
-        invoke_tx_max_n_steps: execution_config.invoke_tx_max_n_steps,
-        validate_max_n_steps: execution_config.validate_tx_max_n_steps,
-        max_recursion_depth: execution_config.max_recursion_depth,
-        gas_prices: GasPrices {
-            eth_l1_gas_price: gas_prices.price_in_wei.0,
-            strk_l1_gas_price: gas_prices.price_in_fri.0,
-        },
-    })
+    };
+
+    // TODO(yair): set the correct versioned constants for re-execution.
+    let versionend_constants = VersionedConstants::latest_constants().clone();
+
+    Ok(pre_process_block(
+        cached_state,
+        ten_blocks_ago,
+        block_info,
+        chain_info,
+        versionend_constants,
+    )?)
 }
 
 /// The transaction input to be executed.
@@ -467,8 +514,12 @@ pub fn estimate_fee(
                 Err(RevertedTransaction { index, revert_reason })
             } else {
                 let gas_price = match tx_execution_output.price_unit {
-                    PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
-                    PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+                    PriceUnit::Wei => {
+                        GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
+                    }
+                    PriceUnit::Fri => {
+                        GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
+                    }
                 };
                 Ok((
                     gas_price,
@@ -501,24 +552,25 @@ fn execute_transactions(
     charge_fee: bool,
     validate: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
+    // The starknet state will be from right before the block in which the transactions should run.
+    let mut cached_state = CachedState::new(
+        ExecutionStateReader {
+            storage_reader: storage_reader.clone(),
+            state_number,
+            maybe_pending_data: maybe_pending_data.clone(),
+            missing_compiled_class: None,
+        },
+        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
+    );
+
     let block_context = create_block_context(
+        &mut cached_state,
         block_context_block_number,
         chain_id.clone(),
         &storage_reader,
         maybe_pending_data.as_ref(),
         execution_config,
     )?;
-
-    // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::from(ExecutionStateReader {
-        storage_reader,
-        state_number,
-        maybe_pending_data,
-        missing_compiled_class: None,
-    });
-
-    // TODO(yair): this is a temporary bug fix, delete once the blockifier is fixed and add a test.
-    set_block_hash_contract(state_number, &mut cached_state)?;
 
     let (txs, tx_hashes) = match tx_hashes {
         Some(tx_hashes) => (txs, tx_hashes),
@@ -585,28 +637,23 @@ impl From<(usize, BlockifierTransactionExecutionError)> for ExecutionError {
     }
 }
 
-/// Sets the block hash contract (contract at address 1) with the block hash of the block 10 blocks
-/// ago.
-fn set_block_hash_contract(
-    state_number: StateNumber,
-    cached_state: &mut CachedState<ExecutionStateReader>,
-) -> ExecutionResult<()> {
-    if state_number.is_after(BlockNumber(10)) {
-        let block_min_10 = state_number.0.0 - 10;
-        let header_10_blocks_ago = cached_state
-            .state
-            .storage_reader
-            .begin_ro_txn()?
-            .get_block_header(BlockNumber(block_min_10))?
-            .expect("State should be > 10.");
-
-        cached_state.set_storage_at(
-            ContractAddress::from(1_u128),
-            StorageKey::from(block_min_10),
-            header_10_blocks_ago.block_hash.0,
-        );
+fn get_10_blocks_ago(
+    block_number: &BlockNumber,
+    cached_state: &CachedState<ExecutionStateReader>,
+) -> ExecutionResult<Option<BlockNumberHashPair>> {
+    if block_number.0 < 10 {
+        return Ok(None);
     }
-    Ok(())
+    let block_min_10 = BlockNumber(block_number.0 - 10);
+    let Some(header_10_blocks_ago) =
+        cached_state.state.storage_reader.begin_ro_txn()?.get_block_header(block_min_10)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(BlockNumberHashPair {
+        number: header_10_blocks_ago.block_number,
+        hash: header_10_blocks_ago.block_hash,
+    }))
 }
 
 fn to_blockifier_tx(
@@ -750,8 +797,12 @@ pub fn simulate_transactions(
         .map(|(tx_execution_output, trace_constructor)| {
             let fee = tx_execution_output.execution_info.actual_fee;
             let gas_price = match tx_execution_output.price_unit {
-                PriceUnit::Wei => GasPrice(block_context.gas_prices.eth_l1_gas_price),
-                PriceUnit::Fri => GasPrice(block_context.gas_prices.strk_l1_gas_price),
+                PriceUnit::Wei => {
+                    GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
+                }
+                PriceUnit::Fri => {
+                    GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
+                }
             };
             match trace_constructor(tx_execution_output.execution_info) {
                 Ok(transaction_trace) => Ok(TransactionSimulationOutput {

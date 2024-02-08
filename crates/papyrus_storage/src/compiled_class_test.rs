@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use pretty_assertions::assert_eq;
 use starknet_api::core::ClassHash;
 use test_utils::read_json_file;

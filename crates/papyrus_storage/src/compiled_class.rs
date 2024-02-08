@@ -8,7 +8,7 @@
 //! use papyrus_storage::open_storage;
 //! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::core::ChainId;
-//! use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+//! use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 //! use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 //! use starknet_api::core::ClassHash;
 //!
@@ -37,7 +37,7 @@
 #[path = "compiled_class_test.rs"]
 mod casm_test;
 
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ClassHash;

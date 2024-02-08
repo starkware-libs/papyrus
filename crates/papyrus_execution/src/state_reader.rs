@@ -75,12 +75,12 @@ impl BlockifierStateReader for ExecutionStateReader {
 
     fn get_compiled_contract_class(
         &mut self,
-        class_hash: &ClassHash,
+        class_hash: ClassHash,
     ) -> StateResult<BlockifierContractClass> {
         if let Some(pending_casm) = self
             .maybe_pending_data
             .as_ref()
-            .and_then(|pending_data| pending_data.classes.get_compiled_class(*class_hash))
+            .and_then(|pending_data| pending_data.classes.get_compiled_class(class_hash))
         {
             return Ok(BlockifierContractClass::V1(
                 ContractClassV1::try_from(pending_casm).map_err(StateError::ProgramError)?,
@@ -89,7 +89,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         if let Some(ApiContractClass::DeprecatedContractClass(pending_deprecated_class)) = self
             .maybe_pending_data
             .as_ref()
-            .and_then(|pending_data| pending_data.classes.get_class(*class_hash))
+            .and_then(|pending_data| pending_data.classes.get_class(class_hash))
         {
             return Ok(BlockifierContractClass::V0(
                 ContractClassV0::try_from(pending_deprecated_class)
@@ -98,13 +98,13 @@ impl BlockifierStateReader for ExecutionStateReader {
         }
         match get_contract_class(
             &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
-            class_hash,
+            &class_hash,
             self.state_number,
         ) {
             Ok(Some(contract_class)) => Ok(contract_class),
-            Ok(None) => Err(StateError::UndeclaredClassHash(*class_hash)),
+            Ok(None) => Err(StateError::UndeclaredClassHash(class_hash)),
             Err(ExecutionUtilsError::CasmTableNotSynced) => {
-                self.missing_compiled_class = Some(*class_hash);
+                self.missing_compiled_class = Some(class_hash);
                 Err(StateError::StateReadError("Casm table not fully synced".to_string()))
             }
             Err(ExecutionUtilsError::ProgramError(err)) => Err(StateError::ProgramError(err)),
