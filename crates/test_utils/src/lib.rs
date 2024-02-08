@@ -473,6 +473,13 @@ auto_impl_get_test_instance! {
         V2(DeclareTransactionV2) = 2,
         V3(DeclareTransactionV3) = 3,
     }
+    pub struct DeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -505,6 +512,14 @@ auto_impl_get_test_instance! {
         V1(DeployAccountTransactionV1) = 0,
         V3(DeployAccountTransactionV3) = 1,
     }
+    pub struct DeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -530,6 +545,14 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
         pub contract_address_salt: ContractAddressSalt,
         pub constructor_calldata: Calldata,
+    }
+    pub struct DeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
@@ -590,6 +613,13 @@ auto_impl_get_test_instance! {
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
     }
+    pub struct InvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct InvokeTransactionV0 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -626,6 +656,13 @@ auto_impl_get_test_instance! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+    }
+    pub struct L1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -701,6 +738,13 @@ auto_impl_get_test_instance! {
     }
     pub struct TransactionHash(pub StarkHash);
     pub struct TransactionOffsetInBlock(pub usize);
+    pub enum TransactionOutput {
+        Declare(DeclareTransactionOutput) = 0,
+        Deploy(DeployTransactionOutput) = 1,
+        DeployAccount(DeployAccountTransactionOutput) = 2,
+        Invoke(InvokeTransactionOutput) = 3,
+        L1Handler(L1HandlerTransactionOutput) = 4,
+    }
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct TypedParameter {

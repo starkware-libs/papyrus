@@ -474,24 +474,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 .map_err(internal_server_error)?
                 .block_hash;
 
-            let thin_tx_output = txn
+            let output = txn
                 .get_transaction_output(transaction_index)
                 .map_err(internal_server_error)?
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let events = txn
-                .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let output = TransactionOutput::from_thin_transaction_output(thin_tx_output, events);
 
             Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
                 finality_status: status.into(),
                 transaction_hash,
                 block_hash,
                 block_number,
-                output,
+                output: output.into(),
             }))
         } else {
             // The transaction is not in any non-pending block. Search for it in the pending block
