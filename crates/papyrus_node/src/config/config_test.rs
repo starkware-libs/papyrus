@@ -73,6 +73,8 @@ fn load_http_headers() {
     assert_eq!(config.central.http_headers.unwrap(), target_http_headers);
 }
 
+// insta doesn't work well with features, so we can either test rpc or not(rpc).
+#[cfg(feature = "rpc")]
 #[test]
 // Regression test which checks that the default config dumping hasn't changed.
 fn test_dump_default_config() {
@@ -95,11 +97,15 @@ fn test_default_config_process() {
 
 #[test]
 fn test_update_dumped_config_by_command() {
-    let args =
-        get_args(vec!["--rpc.max_events_keys", "1234", "--storage.db_config.path_prefix", "/abc"]);
+    let args = get_args(vec![
+        "--central.retry_config.retry_max_delay_millis",
+        "1234",
+        "--storage.db_config.path_prefix",
+        "/abc",
+    ]);
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
 
-    assert_eq!(config.rpc.max_events_keys, 1234);
+    assert_eq!(config.central.retry_config.retry_max_delay_millis, 1234);
     assert_eq!(config.storage.db_config.path_prefix.to_str(), Some("/abc"));
 }

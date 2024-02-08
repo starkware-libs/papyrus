@@ -1,0 +1,187 @@
+{
+  "base_layer.node_url": {
+    "description": "A required param! Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used.",
+    "param_type": "String",
+    "privacy": "Private"
+  },
+  "base_layer.starknet_contract_address": {
+    "description": "Starknet contract address in ethereum.",
+    "privacy": "Public",
+    "value": "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4"
+  },
+  "central.class_cache_size": {
+    "description": "Size of class cache, must be a positive integer.",
+    "privacy": "Public",
+    "value": 100
+  },
+  "central.concurrent_requests": {
+    "description": "Maximum number of concurrent requests to Starknet feeder-gateway for getting a type of data (for example, blocks).",
+    "privacy": "Public",
+    "value": 10
+  },
+  "central.http_headers": {
+    "description": "'k1:v1 k2:v2 ...' headers for SN-client.",
+    "privacy": "Private",
+    "value": ""
+  },
+  "central.max_classes_to_download": {
+    "description": "Maximum number of classes to download at a given time.",
+    "privacy": "Public",
+    "value": 20
+  },
+  "central.max_state_updates_to_download": {
+    "description": "Maximum number of state updates to download at a given time.",
+    "privacy": "Public",
+    "value": 20
+  },
+  "central.max_state_updates_to_store_in_memory": {
+    "description": "Maximum number of state updates to store in memory at a given time.",
+    "privacy": "Public",
+    "value": 20
+  },
+  "central.retry_config.max_retries": {
+    "description": "Maximum number of retries before the node stops retrying.",
+    "privacy": "Public",
+    "value": 10
+  },
+  "central.retry_config.retry_base_millis": {
+    "description": "Base waiting time after a failed request. After that, the time increases exponentially.",
+    "privacy": "Public",
+    "value": 30
+  },
+  "central.retry_config.retry_max_delay_millis": {
+    "description": "Max waiting time after a failed request.",
+    "privacy": "Public",
+    "value": 30000
+  },
+  "central.url": {
+    "description": "Starknet feeder-gateway URL. It should match chain_id.",
+    "pointer_target": "starknet_url",
+    "privacy": "Public"
+  },
+  "chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "privacy": "TemporaryValue",
+    "value": "SN_MAIN"
+  },
+  "collect_metrics": {
+    "description": "If true, collect metrics for the node.",
+    "privacy": "TemporaryValue",
+    "value": false
+  },
+  "monitoring_gateway.collect_metrics": {
+    "description": "If true, collect and return metrics in the monitoring gateway.",
+    "pointer_target": "collect_metrics",
+    "privacy": "Public"
+  },
+  "monitoring_gateway.metric_labels": {
+    "description": "'label1:value1 label2:value2 ...' additional labels for metrics.",
+    "privacy": "Public",
+    "value": ""
+  },
+  "monitoring_gateway.present_full_config_secret": {
+    "description": "A secret for presenting the full general config. If no value is provided, the system will generate one.",
+    "param_type": "String",
+    "privacy": "Private"
+  },
+  "monitoring_gateway.server_address": {
+    "description": "node's monitoring server.",
+    "privacy": "Public",
+    "value": "0.0.0.0:8081"
+  },
+  "monitoring_gateway.starknet_url": {
+    "description": "The URL of a centralized Starknet gateway.",
+    "pointer_target": "starknet_url",
+    "privacy": "Public"
+  },
+  "rpc.dummy_value": {
+    "description": "Dummy value because an empty config doesn't work.",
+    "privacy": "Public",
+    "value": false
+  },
+  "starknet_url": {
+    "description": "The URL of a centralized Starknet gateway.",
+    "privacy": "TemporaryValue",
+    "value": "https://alpha-mainnet.starknet.io/"
+  },
+  "storage.db_config.chain_id": {
+    "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
+    "pointer_target": "chain_id",
+    "privacy": "Public"
+  },
+  "storage.db_config.enforce_file_exists": {
+    "description": "Whether to enforce that the path exists. If true, `open_env` fails when the mdbx.dat file does not exist.",
+    "privacy": "Public",
+    "value": false
+  },
+  "storage.db_config.growth_step": {
+    "description": "The growth step in bytes, must be greater than zero to allow the database to grow.",
+    "privacy": "Public",
+    "value": 4294967296
+  },
+  "storage.db_config.max_size": {
+    "description": "The maximum size of the node's storage in bytes.",
+    "privacy": "Public",
+    "value": 1099511627776
+  },
+  "storage.db_config.min_size": {
+    "description": "The minimum size of the node's storage in bytes.",
+    "privacy": "Public",
+    "value": 1048576
+  },
+  "storage.db_config.path_prefix": {
+    "description": "Prefix of the path of the node's storage directory, the storage file path will be <path_prefix>/<chain_id>. The path is not created automatically.",
+    "privacy": "Public",
+    "value": "./data"
+  },
+  "storage.mmap_file_config.growth_step": {
+    "description": "The growth step in bytes, must be greater than max_object_size.",
+    "privacy": "Public",
+    "value": 1073741824
+  },
+  "storage.mmap_file_config.max_object_size": {
+    "description": "The maximum size of a single object in the file in bytes",
+    "privacy": "Public",
+    "value": 1048576
+  },
+  "storage.mmap_file_config.max_size": {
+    "description": "The maximum size of a memory mapped file in bytes. Must be greater than growth_step.",
+    "privacy": "Public",
+    "value": 1099511627776
+  },
+  "storage.scope": {
+    "description": "The categories of data saved in storage.",
+    "privacy": "Public",
+    "value": "FullArchive"
+  },
+  "sync.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": false
+  },
+  "sync.base_layer_propagation_sleep_duration": {
+    "description": "Time in seconds to poll the base layer to get the latest proved block.",
+    "privacy": "Public",
+    "value": 10
+  },
+  "sync.block_propagation_sleep_duration": {
+    "description": "Time in seconds before checking for a new block after the node is synchronized.",
+    "privacy": "Public",
+    "value": 2
+  },
+  "sync.blocks_max_stream_size": {
+    "description": "Max amount of blocks to download in a stream.",
+    "privacy": "Public",
+    "value": 1000
+  },
+  "sync.recoverable_error_sleep_duration": {
+    "description": "Waiting time in seconds before restarting synchronization after a recoverable error.",
+    "privacy": "Public",
+    "value": 3
+  },
+  "sync.state_updates_max_stream_size": {
+    "description": "Max amount of state updates to download in a stream.",
+    "privacy": "Public",
+    "value": 1000
+  }
+}
