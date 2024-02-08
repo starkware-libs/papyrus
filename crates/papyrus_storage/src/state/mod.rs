@@ -54,7 +54,7 @@ mod state_test;
 
 use std::collections::HashSet;
 
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
 use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;

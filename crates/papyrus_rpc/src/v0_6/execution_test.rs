@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
