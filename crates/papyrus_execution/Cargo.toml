@@ -12,7 +12,7 @@ testing = ["rand", "rand_chacha", "test_utils"]
 [dependencies]
 anyhow.workspace = true
 blockifier.workspace = true
-cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
 cairo-vm.workspace = true
 indexmap.workspace = true
 itertools.workspace = true

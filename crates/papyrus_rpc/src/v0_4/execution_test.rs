@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
@@ -146,6 +146,12 @@ lazy_static! {
         gas_consumed: stark_felt!("0x68b"),
         gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(167500000000000,),
+    };
+
+    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
+        gas_consumed: stark_felt!("0x68a"),
+        gas_price: GAS_PRICE.price_in_wei,
+        overall_fee: Fee(167400000000000,),
     };
 
     // A message from L1 contract at address 0x987 to the contract at CONTRACT_ADDRESS that calls
@@ -360,7 +366,7 @@ async fn call_estimate_fee() {
         ],
         &VERSION_0_4,
         SpecFile::StarknetApiOpenrpc,
-        &vec![EXPECTED_FEE_ESTIMATE.clone()],
+        &vec![EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE.clone()],
     )
     .await;
 
@@ -373,7 +379,7 @@ async fn call_estimate_fee() {
         )
         .await
         .unwrap();
-    assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
+    assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
     // the current contract is that the transaction hash appears in the calldata and thus it is
@@ -414,7 +420,7 @@ async fn pending_call_estimate_fee() {
         )
         .await
         .unwrap();
-    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
+    assert_eq!(res, vec![EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE.clone()]);
 
     // TODO(shahak): Write a new contract and test execution info. The reason we can't do this with
     // the current contract is that the transaction hash appears in the calldata and thus it is
@@ -571,7 +577,7 @@ async fn call_simulate_skip_validate() {
 
     let simulated_tx = res.pop().unwrap();
 
-    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE);
+    assert_eq!(simulated_tx.fee_estimation, *EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE);
 
     assert_matches!(simulated_tx.transaction_trace, TransactionTrace::Invoke(_));
 

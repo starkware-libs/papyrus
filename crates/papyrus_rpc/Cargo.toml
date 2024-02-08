@@ -39,7 +39,7 @@ validator = { workspace = true, features = ["derive"] }
 [dev-dependencies]
 assert_matches.workspace = true
 cairo-lang-casm.workspace = true
-cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
 camelpaste.workspace = true
 derive_more.workspace = true
 enum-iterator.workspace = true

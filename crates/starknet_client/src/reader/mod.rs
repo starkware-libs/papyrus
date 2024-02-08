@@ -9,7 +9,7 @@ mod starknet_feeder_gateway_client_test;
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 #[cfg(any(feature = "testing", test))]
 use mockall::automock;
 use papyrus_common::pending_classes::ApiContractClass;

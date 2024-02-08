@@ -21,12 +21,12 @@ use cairo_lang_casm::operand::{
     Register,
     ResOperand,
 };
-use cairo_lang_starknet::casm_contract_class::{
+use cairo_lang_starknet_classes::casm_contract_class::{
     CasmContractClass,
     CasmContractEntryPoint,
     CasmContractEntryPoints,
 };
-use cairo_lang_starknet::NestedIntList;
+use cairo_lang_starknet_classes::NestedIntList;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use num_bigint::BigUint;
