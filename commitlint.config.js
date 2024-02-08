@@ -28,6 +28,7 @@ const Configuration = {
             'load_test',
             'monitoring',
             'network',
+            'node',
             'release',
             'starknet_client',
             'storage',

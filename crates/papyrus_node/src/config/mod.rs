@@ -13,10 +13,15 @@ use std::{env, fs, io};
 use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::{chain, Itertools};
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
+#[cfg(not(feature = "rpc"))]
+use papyrus_config::dumping::ser_param;
 use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, SerializeConfig};
 use papyrus_config::loading::load_and_process_config;
+#[cfg(not(feature = "rpc"))]
+use papyrus_config::ParamPrivacyInput;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
+#[cfg(feature = "rpc")]
 use papyrus_rpc::RpcConfig;
 use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
@@ -89,4 +94,25 @@ pub fn node_command() -> Command {
     Command::new("Papyrus")
         .version(VERSION_FULL)
         .about("Papyrus is a StarkNet full node written in Rust.")
+}
+
+// TODO(shahak): Try to make this config empty.
+#[cfg(not(feature = "rpc"))]
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq, Validate)]
+pub struct RpcConfig {
+    // We need to add some field because empty configs are not supported, and that field needs to
+    // be one that exists in the real RpcConfig.
+    pub collect_metrics: bool,
+}
+
+#[cfg(not(feature = "rpc"))]
+impl SerializeConfig for RpcConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([ser_param(
+            "collect_metrics",
+            &self.collect_metrics,
+            "If true, collect metrics for the rpc.",
+            ParamPrivacyInput::Public,
+        )])
+    }
 }
