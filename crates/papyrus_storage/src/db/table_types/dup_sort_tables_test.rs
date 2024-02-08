@@ -1,6 +1,12 @@
 use crate::db::db_test::get_test_env;
+use crate::db::serialization::NoVersionValueWrapper;
 use crate::db::table_types::dup_sort_tables::add_one;
 use crate::db::table_types::test_utils::{random_table_test, table_cursor_test, table_test};
+use crate::db::table_types::Table;
+use crate::db::{DbError, DbReader, DbWriter, TableHandle, TableIdentifier};
+use assert_matches::assert_matches;
+
+use super::{DupSortTableType, DupSortUtils};
 
 #[test]
 fn common_prefix_table_test() {
@@ -69,4 +75,49 @@ fn add_one_test() {
     bytes = vec![1, 0, u8::MAX];
     add_one(&mut bytes);
     assert_eq!(bytes, vec![1, 1, 0]);
+}
+
+
+#[test]
+fn common_prefix_append_test() {
+    let ((reader, mut writer), _temp_dir) = get_test_env();
+    let table_id = writer.create_common_prefix_table("table").unwrap();
+    dup_sort_append_test(table_id, &reader, &mut writer);
+}
+
+#[test]
+fn common_prefix_fixed_size_append_test() {
+    let ((reader, mut writer), _temp_dir) = get_test_env();
+    let table_id = writer.create_common_prefix_fixed_size_table("table").unwrap();
+    dup_sort_append_test(table_id, &reader, &mut writer);
+}
+
+fn dup_sort_append_test<T: DupSortTableType>(
+    table_id: TableIdentifier<(u32, u32), NoVersionValueWrapper<u32>, T>,
+    reader: &DbReader,
+    writer: &mut DbWriter,
+)
+where
+T: DupSortUtils<(u32, u32), NoVersionValueWrapper<u32>>,
+{
+
+    let wtxn=writer.begin_rw_txn().unwrap();
+    let handle=wtxn.open_table(&table_id).unwrap();
+    handle.append(&wtxn, &(2,2), &1).unwrap();
+    handle.append(&wtxn, &(2,3), &2).unwrap();
+    // handle.append(&wtxn, &(2,3), &3).unwrap();
+    handle.append(&wtxn, &(0,0), &4).unwrap();
+    handle.append(&wtxn, &(3,0), &5).unwrap();
+    
+    let result=handle.append(&wtxn, &(2,2), &0);
+    assert_matches!(result, Err(DbError::Inner(libmdbx::Error::KeyMismatch)));
+
+    wtxn.commit().unwrap();
+
+    let rtxn=reader.begin_ro_txn().unwrap();
+    let handle=rtxn.open_table(&table_id).unwrap();
+    assert_eq!(handle.get(&rtxn, &(2,2)).unwrap(), Some(1));
+    assert_eq!(handle.get(&rtxn, &(2,3)).unwrap(), Some(2));
+    assert_eq!(handle.get(&rtxn, &(0,0)).unwrap(), Some(4));
+    assert_eq!(handle.get(&rtxn, &(3,0)).unwrap(), Some(5));
 }

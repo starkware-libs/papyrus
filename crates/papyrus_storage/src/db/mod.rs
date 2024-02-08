@@ -159,6 +159,9 @@ pub enum DbError {
     /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
+    /// An error that occurred when trying to append a key that is not the last in the table.
+    #[error("The key {0} is not the last in the table.")]
+    AppendError(String),
 }
 
 type DbResult<V> = result::Result<V, DbError>;
@@ -180,6 +183,25 @@ impl KeyAlreadyExistsError {
         Self { table_name, key: format!("{:?}", key), value: format!("{:?}", value) }
     }
 }
+
+// // TODO(dvir): consider adding also the key that come before.
+// /// A helper struct for DbError::AppendError.
+// #[derive(Debug)]
+// pub struct AppendError {
+//     /// The name of the table.
+//     pub table_name: &'static str,
+//     /// The key that already exists in the table.
+//     pub key: String,
+//     /// The value that was tried to be inserted.
+//     pub value: String,
+// }
+
+// impl AppendError {
+//     /// Creates a new KeyAlreadyExistsError.
+//     pub fn new(table_name: &'static str, key: &impl Debug, value: &impl Debug) -> Self {
+//         Self { table_name, key: format!("{:?}", key), value: format!("{:?}", value) }
+//     }
+// }
 
 /// Tries to open an MDBX environment and returns a reader and a writer to it.
 /// There is a single non clonable writer instance, to make sure there is only one write transaction

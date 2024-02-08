@@ -350,6 +350,36 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
     }
 }
 
+impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + DupSortUtils<K, V>> TableHandle<'env, K, V, T>{
+        pub(crate) fn append(
+            &'env self,
+            txn: &DbTransaction<'env, RW>,
+            key: &K,
+            value: &<V as ValueSerde>::Value,
+        ) -> DbResult<()> {
+            let main_key= T::get_main_key(key)?;
+            let sub_key_value = T::get_sub_key_value(key, value)?;
+        
+            let mut cursor=txn.txn.cursor(&self.database)?;
+            cursor.put(&main_key, &sub_key_value, WriteFlags::APPEND_DUP)?;
+            if let Some(prev)=cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()?{
+                println!("1111111111");
+                if prev.1.starts_with(&T::get_sub_key(key)?){
+                    println!("22222222222222");
+                    cursor.next_dup::<DbKeyType<'_>, DbValueType<'_>>()?;
+                    println!("333333333333");
+                    cursor.del(WriteFlags::empty())?;
+                    println!("4444444444444444");
+                    return Err(DbError::AppendError(format!("{key:?}")));
+                }
+            }
+            // txn.txn.put(&self.database, &main_key, &sub_key_value, WriteFlags::APPEND_DUP)?;
+        
+            Ok(())
+        }
+    }
+
+
 impl<
     'txn,
     Mode: TransactionKind,
