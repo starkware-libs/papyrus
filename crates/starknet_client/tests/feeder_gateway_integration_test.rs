@@ -74,6 +74,7 @@ fn into_block_number_vec<T: Serialize>(obj: T) -> Vec<BlockNumber> {
 #[tokio::test]
 #[ignore]
 async fn test_integration_testnet() {
+    let _ = simple_logger::init_with_env();
     let integration_testnet_data = TestEnvData {
         url: "https://external.integration.starknet.io".to_owned(),
         get_blocks: BlocksForGetBlock {
@@ -105,6 +106,7 @@ async fn test_integration_testnet() {
 #[tokio::test]
 #[ignore]
 async fn test_alpha_testnet() {
+    let _ = simple_logger::init_with_env();
     let alpha_testnet_data = TestEnvData {
         url: "https://alpha4.starknet.io/".to_owned(),
         get_blocks: BlocksForGetBlock {
