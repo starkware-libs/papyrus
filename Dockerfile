@@ -9,7 +9,7 @@
 # The reason we split it into two stages is to first copy all the files and then erase all
 # non-Cargo.toml files. This way, non-Cargo.toml files won't affect the cache of the second stage
 # (For more on docker stages, read https://docs.docker.com/build/building/multi-stage/).
-FROM rust:1.73 AS copy_toml
+FROM rust:1.75 AS copy_toml
 
 COPY crates/ /app/crates/
 COPY Cargo.toml /app/
@@ -32,7 +32,7 @@ RUN find /app \! -name "Cargo.toml" -type f -delete ; \
 # Starting a new stage so that the first build layer will be cached if a non-Cargo.toml file was
 # changed.
 # Use this image to compile the project to an alpine compatible binary.
-FROM clux/muslrust:1.73.0-stable AS builder
+FROM clux/muslrust:1.75.0-stable AS builder
 WORKDIR /app/
 
 RUN apt update && apt install -y clang protobuf-compiler
