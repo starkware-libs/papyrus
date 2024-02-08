@@ -82,7 +82,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 debug!("Query completed successfully. query_id: {query_id:?}");
             }
             Err(err) => {
-                debug!("Query failed. error: {err:?}");
+                println!("Query failed. error: {err:?}");
                 if let Some(query_id) = err.query_id() {
                     // TODO: Consider retrying based on error.
                     let inbound_session_id = self
