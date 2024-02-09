@@ -18,6 +18,7 @@ use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
 use starknet_api::state::{ContractClass, StateDiff, StorageKey};
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{
+    AcceptedOnL2ExtraData,
     DeprecatedPendingBlock,
     PendingBlockOrDeprecated,
     PendingStateUpdate,
@@ -440,7 +441,10 @@ async fn pending_sync_stops_when_data_has_block_hash_field_with_a_different_hash
     };
     let new_pending_datas = vec![PendingData {
         block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            block_hash: Some(BlockHash(StarkHash::ONE)),
+            accepted_on_l2_extra_data: Some(AcceptedOnL2ExtraData {
+                block_hash: BlockHash(StarkHash::ONE),
+                ..Default::default()
+            }),
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
@@ -501,7 +505,10 @@ async fn pending_sync_doesnt_stop_when_data_has_block_hash_field_with_the_same_h
     };
     let new_pending_data = PendingData {
         block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            block_hash: Some(FIRST_BLOCK_HASH),
+            accepted_on_l2_extra_data: Some(AcceptedOnL2ExtraData {
+                block_hash: FIRST_BLOCK_HASH,
+                ..Default::default()
+            }),
             parent_block_hash: genesis_hash,
             transactions: vec![ClientTransaction::get_test_instance(&mut rng)],
             ..Default::default()
@@ -569,7 +576,10 @@ async fn pending_sync_updates_when_data_has_block_hash_field_with_the_same_hash_
     };
     let new_pending_data = PendingData {
         block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            block_hash: Some(FIRST_BLOCK_HASH),
+            accepted_on_l2_extra_data: Some(AcceptedOnL2ExtraData {
+                block_hash: FIRST_BLOCK_HASH,
+                ..Default::default()
+            }),
             parent_block_hash: genesis_hash,
             transactions: vec![
                 ClientTransaction::get_test_instance(&mut rng),

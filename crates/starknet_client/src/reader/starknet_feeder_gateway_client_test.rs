@@ -320,8 +320,10 @@ async fn deprecated_contract_class() {
     assert!(class.is_none());
 }
 
+// TODO: Add test for pending_data.
+
 #[tokio::test]
-async fn pending_data() {
+async fn deprecated_pending_data() {
     let starknet_client = StarknetFeederGatewayClient::new(
         &mockito::server_url(),
         None,
@@ -329,14 +331,28 @@ async fn pending_data() {
         get_test_config(),
     )
     .unwrap();
-    let raw_pending_data = read_resource_file("reader/pending_data.json");
-    let mock =
+
+    // Pending
+    let raw_pending_data = read_resource_file("reader/deprecated_pending_data.json");
+    let mock_pending =
         mock("GET", "/feeder_gateway/get_state_update?blockNumber=pending&includeBlock=true")
             .with_status(200)
             .with_body(&raw_pending_data)
             .create();
     let pending_data = starknet_client.pending_data().await;
-    mock.assert();
+    mock_pending.assert();
+    let expected_pending_data: PendingData = serde_json::from_str(&raw_pending_data).unwrap();
+    assert_eq!(pending_data.unwrap().unwrap(), expected_pending_data);
+
+    // Accepted on L2.
+    let raw_pending_data = read_resource_file("reader/accepted_on_l2_deprecated_data.json");
+    let mock_accepted =
+        mock("GET", "/feeder_gateway/get_state_update?blockNumber=pending&includeBlock=true")
+            .with_status(200)
+            .with_body(&raw_pending_data)
+            .create();
+    let pending_data = starknet_client.pending_data().await;
+    mock_accepted.assert();
     let expected_pending_data: PendingData = serde_json::from_str(&raw_pending_data).unwrap();
     assert_eq!(pending_data.unwrap().unwrap(), expected_pending_data);
 }
