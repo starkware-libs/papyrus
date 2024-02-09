@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockTimestamp, GasPrice, GasPricePerToken};
+use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice, GasPricePerToken};
 use starknet_api::core::{GlobalRoot, SequencerContractAddress, TransactionCommitment};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
@@ -145,6 +145,8 @@ impl PendingBlockOrDeprecated {
 pub struct DeprecatedPendingBlock {
     #[serde(default)]
     pub block_hash: Option<BlockHash>,
+    pub block_number: Option<BlockNumber>,
+    pub state_root: Option<GlobalRoot>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     // In older versions, eth_l1_gas_price was named gas_price and there was no strk_l1_gas_price.
@@ -164,6 +166,8 @@ pub struct DeprecatedPendingBlock {
 pub struct PendingBlock {
     #[serde(default)]
     pub block_hash: Option<BlockHash>,
+    pub block_number: Option<BlockNumber>,
+    pub state_root: Option<GlobalRoot>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     pub l1_gas_price: GasPricePerToken,
