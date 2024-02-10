@@ -5,9 +5,9 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
-use blockifier::abi::constants::STEP_GAS_COST;
 use blockifier::execution::call_info::Retdata;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
+use blockifier::versioned_constants::VersionedConstants;
 use indexmap::indexmap;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
@@ -669,8 +669,9 @@ fn test_default_execution_config() {
         invoke_tx_max_n_steps: 3_000_000,
         validate_tx_max_n_steps: 1_000_000,
         max_recursion_depth: 50,
-        step_gas_cost: STEP_GAS_COST,
-        initial_gas_cost: 10_u64.pow(8) * STEP_GAS_COST,
+        step_gas_cost: VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
+        initial_gas_cost: 10_u64.pow(8)
+            * VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
         vm_resource_fee_cost,
     };
     let mut execution_config_segments = BTreeMap::new();

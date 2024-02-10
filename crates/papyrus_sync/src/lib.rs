@@ -14,7 +14,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_stream::try_stream;
-use cairo_lang_starknet::casm_contract_class::CasmContractClass;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;

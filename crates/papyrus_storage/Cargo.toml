@@ -11,8 +11,8 @@ testing = ["tempfile"]
 
 [dependencies]
 byteorder.workspace = true
-cairo-lang-starknet.workspace = true
-cairo-lang-casm.workspace = true
+cairo-lang-starknet-classes.workspace = true
+cairo-lang-casm = { workspace = true, features = ["parity-scale-codec"] }
 cairo-lang-utils.workspace = true
 clap.workspace = true
 flate2.workspace = true
@@ -24,8 +24,8 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-dev.1" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-rc.0" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.3.0-rc.0" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
@@ -38,6 +38,10 @@ validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 assert_matches.workspace = true
+cairo-lang-casm = { workspace = true, features = [
+    "parity-scale-codec",
+    "schemars",
+] }
 camelpaste.workspace = true
 insta = { workspace = true, features = ["yaml"] }
 metrics-exporter-prometheus.workspace = true

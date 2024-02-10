@@ -11,14 +11,14 @@ testing = ["enum-iterator", "mockall", "rand", "rand_chacha", "test_utils"]
 
 [dependencies]
 async-trait.workspace = true
-cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
 enum-iterator = { workspace = true, optional = true }
 http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.3.0-dev.1" }
-papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
+papyrus_common = { path = "../papyrus_common", version = "0.3.0-rc.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.3.0-rc.0" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }

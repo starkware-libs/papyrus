@@ -60,15 +60,15 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
-use crate::db::serialization::{NoVersionValueWrapper, StorageSerde};
+use crate::db::serialization::{NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type TransactionsTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<Transaction>, SimpleTable>;
+    TableHandle<'env, TransactionIndex, VersionZeroWrapper<Transaction>, SimpleTable>;
 type TransactionOutputsTable<'env> =
-    TableHandle<'env, TransactionIndex, NoVersionValueWrapper<ThinTransactionOutput>, SimpleTable>;
+    TableHandle<'env, TransactionIndex, VersionZeroWrapper<ThinTransactionOutput>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type TransactionIdxToHashTable<'env> =
@@ -288,11 +288,11 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
     // Helper function to get from 'table' all the values of entries with transaction index in
     // 'block_number'. The returned values are ordered by the transaction offset in block in
     // ascending order.
-    fn get_transactions_in_block<V: StorageSerde + Debug>(
+    fn get_transactions_in_block<V: ValueSerde + Debug>(
         &self,
         block_number: BlockNumber,
-        table: TableHandle<'env, TransactionIndex, NoVersionValueWrapper<V>, SimpleTable>,
-    ) -> StorageResult<Option<Vec<V>>> {
+        table: TableHandle<'env, TransactionIndex, V, SimpleTable>,
+    ) -> StorageResult<Option<Vec<V::Value>>> {
         if self.get_body_marker()? <= block_number {
             return Ok(None);
         }
