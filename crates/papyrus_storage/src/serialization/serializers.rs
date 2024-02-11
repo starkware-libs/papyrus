@@ -161,7 +161,6 @@ auto_storage_serde! {
         pub n_transactions: usize,
         pub n_events: usize,
     }
-    pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {
         Pending = 0,
@@ -940,6 +939,20 @@ impl StorageSerde for BigUint {
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let bytes_be = Vec::<u8>::deserialize_from(bytes)?;
         Some(BigUint::from_bytes_be(bytes_be.as_slice()))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+//  Custom serialization for storage reduction.
+////////////////////////////////////////////////////////////////////////
+// TODO(dvir): remove this when BlockNumber will be u32.
+impl StorageSerde for BlockNumber {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        (self.0 as u32).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(BlockNumber(u32::deserialize_from(bytes)? as u64))
     }
 }
 
