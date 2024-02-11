@@ -270,19 +270,27 @@ impl<V: ValueSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
 }
 
 // TODO(dan): use varint serialization.
+// This serialization write the offset as 6 bytes and the length as 4 bytes.
+// This means the size of the file is limit to  256TB (1<<48 bytes) and the length 4GB (1<<32
+// bytes).
 impl StorageSerde for LocationInFile {
     fn serialize_into(
         &self,
         res: &mut impl std::io::Write,
     ) -> Result<(), crate::db::serialization::StorageSerdeError> {
-        self.offset.serialize_into(res)?;
-        self.len.serialize_into(res)?;
+        let bytes = &self.len.to_le_bytes();
+        res.write_all(&bytes[0..4])?;
+        let bytes = &self.offset.to_le_bytes();
+        res.write_all(&bytes[0..6])?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let offset = usize::deserialize_from(bytes)?;
-        let len = usize::deserialize_from(bytes)?;
+        let mut arr = [0u8; 8];
+        bytes.read_exact(&mut arr[0..4]).ok()?;
+        let len = usize::from_le_bytes(arr);
+        bytes.read_exact(&mut arr[0..6]).ok()?;
+        let offset = usize::from_le_bytes(arr);
         Some(Self { offset, len })
     }
 }
