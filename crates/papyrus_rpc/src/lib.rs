@@ -5,6 +5,7 @@
 mod api;
 mod compression_utils;
 mod middleware;
+#[cfg(feature = "execution")]
 mod pending;
 mod rpc_metrics;
 #[cfg(test)]
@@ -13,8 +14,8 @@ mod syncing_state;
 #[cfg(test)]
 mod test_utils;
 mod v0_4;
-mod v0_5;
-mod v0_6;
+// mod v0_5;
+// mod v0_6;
 mod version_config;
 
 use std::collections::BTreeMap;
@@ -72,6 +73,7 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
+    #[cfg(feature = "execution")]
     #[validate(custom = "validate_path_exists")]
     pub execution_config: PathBuf,
 }
@@ -213,6 +215,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
+        #[cfg(feature = "execution")]
         config.execution_config.clone().try_into()?,
         storage_reader,
         config.max_events_chunk_size,

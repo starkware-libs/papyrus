@@ -3,6 +3,7 @@ use std::sync::Arc;
 use jsonrpsee::{Methods, RpcModule};
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
+#[cfg(feature = "execution")]
 use papyrus_execution::ExecutionConfigByBlock;
 use papyrus_storage::StorageReader;
 use serde::{Deserialize, Serialize};
@@ -14,8 +15,8 @@ use starknet_client::writer::StarknetWriter;
 use tokio::sync::RwLock;
 
 use crate::v0_4::api::api_impl::JsonRpcServerV0_4Impl;
-use crate::v0_5::api::api_impl::JsonRpcServerV0_5Impl;
-use crate::v0_6::api::api_impl::JsonRpcServerV0_6Impl;
+// use crate::v0_5::api::api_impl::JsonRpcServerV0_5Impl;
+// use crate::v0_6::api::api_impl::JsonRpcServerV0_6Impl;
 use crate::version_config;
 
 #[derive(Copy, Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -56,7 +57,7 @@ pub struct CallRequest {
 #[allow(clippy::too_many_arguments)]
 pub fn get_methods_from_supported_apis(
     chain_id: &ChainId,
-    execution_config: ExecutionConfigByBlock,
+    #[cfg(feature = "execution")] execution_config: ExecutionConfigByBlock,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
     max_events_keys: usize,
@@ -69,6 +70,7 @@ pub fn get_methods_from_supported_apis(
     let mut methods: Methods = Methods::new();
     let server_gen = JsonRpcServerImplGenerator {
         chain_id: chain_id.clone(),
+        #[cfg(feature = "execution")]
         execution_config,
         storage_reader,
         max_events_chunk_size,
@@ -90,12 +92,12 @@ pub fn get_methods_from_supported_apis(
                         version_config::VERSION_0_4 => {
                             server_gen.clone().generator::<JsonRpcServerV0_4Impl>()
                         }
-                        version_config::VERSION_0_5 => {
-                            server_gen.clone().generator::<JsonRpcServerV0_5Impl>()
-                        }
-                        version_config::VERSION_0_6 => {
-                            server_gen.clone().generator::<JsonRpcServerV0_6Impl>()
-                        }
+                        // version_config::VERSION_0_5 => {
+                        //     server_gen.clone().generator::<JsonRpcServerV0_5Impl>()
+                        // }
+                        // version_config::VERSION_0_6 => {
+                        //     server_gen.clone().generator::<JsonRpcServerV0_6Impl>()
+                        // }
                         // TODO(yair): remove this once the version is an enum instead of a string.
                         _ => unreachable!("Unrecognized RPC spec version: {}", version),
                     };
@@ -114,7 +116,7 @@ pub trait JsonRpcServerImpl: Sized {
     #[allow(clippy::too_many_arguments)]
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfigByBlock,
+        #[cfg(feature = "execution")] execution_config: ExecutionConfigByBlock,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -131,6 +133,7 @@ pub trait JsonRpcServerImpl: Sized {
 #[derive(Clone)]
 struct JsonRpcServerImplGenerator {
     chain_id: ChainId,
+    #[cfg(feature = "execution")]
     execution_config: ExecutionConfigByBlock,
     storage_reader: StorageReader,
     max_events_chunk_size: usize,
@@ -160,6 +163,7 @@ impl JsonRpcServerImplGenerator {
     fn get_params(self) -> JsonRpcServerImplParams {
         (
             self.chain_id,
+            #[cfg(feature = "execution")]
             self.execution_config,
             self.storage_reader,
             self.max_events_chunk_size,

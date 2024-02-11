@@ -1,3 +1,4 @@
+#[cfg(feature = "execution")]
 use papyrus_execution::objects::{CallType, FunctionCall, Retdata, RevertReason};
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, ContractAddress};
@@ -13,6 +14,7 @@ pub enum TransactionTrace {
     DeployAccount(DeployAccountTransactionTrace),
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::TransactionTrace> for TransactionTrace {
     fn from(value: papyrus_execution::objects::TransactionTrace) -> Self {
         match value {
@@ -38,6 +40,7 @@ pub struct L1HandlerTransactionTrace {
     pub function_invocation: FunctionInvocation,
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::L1HandlerTransactionTrace> for L1HandlerTransactionTrace {
     fn from(value: papyrus_execution::objects::L1HandlerTransactionTrace) -> Self {
         Self { function_invocation: value.function_invocation.into() }
@@ -56,6 +59,7 @@ pub struct InvokeTransactionTrace {
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::InvokeTransactionTrace> for InvokeTransactionTrace {
     fn from(value: papyrus_execution::objects::InvokeTransactionTrace) -> Self {
         Self {
@@ -83,6 +87,7 @@ pub struct DeclareTransactionTrace {
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::DeclareTransactionTrace> for DeclareTransactionTrace {
     fn from(value: papyrus_execution::objects::DeclareTransactionTrace) -> Self {
         Self {
@@ -104,6 +109,7 @@ pub struct DeployAccountTransactionTrace {
     pub fee_transfer_invocation: Option<FunctionInvocation>,
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::DeployAccountTransactionTrace>
     for DeployAccountTransactionTrace
 {
@@ -140,6 +146,7 @@ pub struct FunctionInvocation {
     pub messages: Vec<MessageToL1>,
 }
 
+#[cfg(feature = "execution")]
 impl From<papyrus_execution::objects::FunctionInvocation> for FunctionInvocation {
     fn from(value: papyrus_execution::objects::FunctionInvocation) -> Self {
         Self {

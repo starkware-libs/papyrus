@@ -5,6 +5,10 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[features]
+default = ["execution"]
+execution = ["papyrus_execution"]
+
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
@@ -20,7 +24,7 @@ lazy_static.workspace = true
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common", version = "0.3.0-dev.1" }
 papyrus_config = { path = "../papyrus_config", version = "0.3.0-dev.1" }
-papyrus_execution = { path = "../papyrus_execution" }
+papyrus_execution = { path = "../papyrus_execution", optional = true }
 papyrus_proc_macros = { path = "../papyrus_proc_macros" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.3.0-dev.1" }
 starknet_client = { path = "../starknet_client" }

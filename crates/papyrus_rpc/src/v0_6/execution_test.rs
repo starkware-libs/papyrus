@@ -11,7 +11,9 @@ use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
+#[cfg(feature = "execution")]
 use papyrus_execution::execution_utils::selector_from_name;
+#[cfg(feature = "execution")]
 use papyrus_execution::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
@@ -22,7 +24,9 @@ use papyrus_execution::objects::{
     RevertReason,
     TransactionTrace,
 };
+#[cfg(feature = "execution")]
 use papyrus_execution::testing_instances::get_storage_var_address;
+#[cfg(feature = "execution")]
 use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;

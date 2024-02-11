@@ -6,10 +6,12 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
+#[cfg(feature = "execution")]
 use papyrus_execution::objects::{
     PendingData as ExecutionPendingData,
     TransactionSimulationOutput,
 };
+#[cfg(feature = "execution")]
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -135,6 +137,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerV0_4Impl {
     pub chain_id: ChainId,
+    #[cfg(feature = "execution")]
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
@@ -145,6 +148,9 @@ pub struct JsonRpcServerV0_4Impl {
     pub pending_classes: Arc<RwLock<PendingClasses>>,
     pub writer_client: Arc<dyn StarknetWriter>,
 }
+
+const EXECUTION_FEATURE_OFF_MESSAGE: &str =
+    "Method not supported. Turn on compilation feature \"execution\" to add support.";
 
 #[async_trait]
 impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
@@ -814,6 +820,13 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }))
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn call(&self, _request: CallRequest, _block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -918,6 +931,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn estimate_fee(
+        &self,
+        _transactions: Vec<BroadcastedTransaction>,
+        _block_id: BlockId,
+    ) -> RpcResult<Vec<FeeEstimate>> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
     async fn estimate_fee(
         &self,
@@ -982,6 +1006,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn simulate_transactions(
+        &self,
+        _block_id: BlockId,
+        _transactions: Vec<BroadcastedTransaction>,
+        _simulation_flags: Vec<SimulationFlag>,
+    ) -> RpcResult<Vec<SimulatedTransaction>> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self, transactions), level = "debug", err, ret)]
     async fn simulate_transactions(
         &self,
@@ -1056,6 +1092,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn trace_transaction(
+        &self,
+        _transaction_hash: TransactionHash,
+    ) -> RpcResult<TransactionTrace> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self), level = "debug", err)]
     async fn trace_transaction(
         &self,
@@ -1204,6 +1250,16 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn trace_block_transactions(
+        &self,
+        _block_id: BlockId,
+    ) -> RpcResult<Vec<TransactionTraceWithHash>> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self), level = "debug", err)]
     async fn trace_block_transactions(
         &self,
@@ -1332,6 +1388,17 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         }
     }
 
+    #[cfg(not(feature = "execution"))]
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn estimate_message_fee(
+        &self,
+        _message: MessageFromL1,
+        _block_id: BlockId,
+    ) -> RpcResult<FeeEstimate> {
+        Err(internal_server_error(format!("{}", EXECUTION_FEATURE_OFF_MESSAGE)))
+    }
+
+    #[cfg(feature = "execution")]
     #[instrument(skip(self, message), level = "debug", err)]
     async fn estimate_message_fee(
         &self,
@@ -1449,7 +1516,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
 impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfigByBlock,
+        #[cfg(feature = "execution")] execution_config: ExecutionConfigByBlock,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,
@@ -1461,6 +1528,7 @@ impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
     ) -> Self {
         Self {
             chain_id,
+            #[cfg(feature = "execution")]
             execution_config,
             storage_reader,
             max_events_chunk_size,

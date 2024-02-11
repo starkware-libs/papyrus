@@ -6,11 +6,13 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
+#[cfg(feature = "execution")]
 use papyrus_execution::objects::{
     PendingData as ExecutionPendingData,
     TransactionSimulationOutput,
     TransactionTrace,
 };
+#[cfg(feature = "execution")]
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,

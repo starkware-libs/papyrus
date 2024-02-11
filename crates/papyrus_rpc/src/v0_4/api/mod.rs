@@ -7,6 +7,7 @@ use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
+#[cfg(feature = "execution")]
 use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -37,6 +38,7 @@ use super::error::{
     CONTRACT_NOT_FOUND,
     INVALID_CONTINUATION_TOKEN,
 };
+#[cfg(feature = "execution")]
 use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
@@ -307,6 +309,7 @@ pub enum SimulationFlag {
     SkipFeeCharge,
 }
 
+#[cfg(feature = "execution")]
 impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     type Error = ErrorObjectOwned;
     fn try_from(value: BroadcastedTransaction) -> Result<Self, Self::Error> {
@@ -318,6 +321,7 @@ impl TryFrom<BroadcastedTransaction> for ExecutableTransactionInput {
     }
 }
 
+#[cfg(feature = "execution")]
 pub(crate) fn stored_txn_to_executable_txn(
     stored_txn: starknet_api::transaction::Transaction,
     storage_txn: &StorageTxn<'_, RO>,
@@ -392,6 +396,7 @@ pub(crate) fn stored_txn_to_executable_txn(
     }
 }
 
+#[cfg(feature = "execution")]
 // For re-execution (traceTransaction, traceBlockTransactions) we need to get the class definition
 // of declare transactions from the storage before the execution. They are stored in the state after
 // the block in which they appeared, so we need to get it from the state after given block.
@@ -411,6 +416,7 @@ fn get_deprecated_class_for_re_execution(
         })
 }
 
+#[cfg(feature = "execution")]
 impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
     type Error = ErrorObjectOwned;
     fn try_from(value: BroadcastedDeclareTransaction) -> Result<Self, Self::Error> {
@@ -523,6 +529,7 @@ impl TryFrom<ApiContractClass> for GatewayContractClass {
     }
 }
 
+#[cfg(feature = "execution")]
 impl TryFrom<ExecutionError> for JsonRpcError {
     type Error = ErrorObjectOwned;
     fn try_from(value: ExecutionError) -> Result<Self, Self::Error> {
