@@ -7,6 +7,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
+use starknet_api::transaction::TransactionOffsetInBlock;
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
@@ -55,6 +56,7 @@ create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);
 create_storage_serde_test!(BlockNumber);
+create_storage_serde_test!(TransactionOffsetInBlock);
 
 #[test]
 fn block_number_endianness() {
