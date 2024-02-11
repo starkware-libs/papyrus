@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockTimestamp, GasPrice, GasPricePerToken};
+use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice, GasPricePerToken};
 use starknet_api::core::{GlobalRoot, SequencerContractAddress, TransactionCommitment};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
@@ -7,13 +7,13 @@ use super::block::BlockStatus;
 use super::transaction::{Transaction, TransactionReceipt};
 use crate::reader::StateDiff;
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Eq, PartialEq)]
 pub struct PendingData {
     pub block: PendingBlockOrDeprecated,
     pub state_update: PendingStateUpdate,
 }
 
-#[derive(Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 #[serde(untagged)]
 pub enum PendingBlockOrDeprecated {
     Deprecated(DeprecatedPendingBlock),
@@ -29,8 +29,12 @@ impl Default for PendingBlockOrDeprecated {
 impl PendingBlockOrDeprecated {
     pub fn block_hash(&self) -> Option<BlockHash> {
         match self {
-            PendingBlockOrDeprecated::Deprecated(block) => block.block_hash,
-            PendingBlockOrDeprecated::Current(block) => block.block_hash,
+            PendingBlockOrDeprecated::Deprecated(block) => {
+                block.accepted_on_l2_extra_data.as_ref().map(|data| data.block_hash)
+            }
+            PendingBlockOrDeprecated::Current(block) => {
+                block.accepted_on_l2_extra_data.as_ref().map(|data| data.block_hash)
+            }
         }
     }
     pub fn parent_block_hash(&self) -> BlockHash {
@@ -140,11 +144,11 @@ impl PendingBlockOrDeprecated {
     }
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DeprecatedPendingBlock {
-    #[serde(default)]
-    pub block_hash: Option<BlockHash>,
+    #[serde(flatten)]
+    pub accepted_on_l2_extra_data: Option<AcceptedOnL2ExtraData>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     // In older versions, eth_l1_gas_price was named gas_price and there was no strk_l1_gas_price.
@@ -159,11 +163,11 @@ pub struct DeprecatedPendingBlock {
     pub starknet_version: String,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Deserialize, Clone, Eq, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct PendingBlock {
-    #[serde(default)]
-    pub block_hash: Option<BlockHash>,
+    #[serde(flatten)]
+    pub accepted_on_l2_extra_data: Option<AcceptedOnL2ExtraData>,
     pub parent_block_hash: BlockHash,
     pub status: BlockStatus,
     pub l1_gas_price: GasPricePerToken,
@@ -186,4 +190,11 @@ pub struct PendingBlock {
 pub struct PendingStateUpdate {
     pub old_root: GlobalRoot,
     pub state_diff: StateDiff,
+}
+
+#[derive(Debug, Default, Clone, Eq, PartialEq, Deserialize)]
+pub struct AcceptedOnL2ExtraData {
+    pub block_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub state_root: GlobalRoot,
 }
