@@ -13,6 +13,7 @@ use starknet_api::transaction::{
     Fee,
     MessageToL1,
     TransactionExecutionStatus,
+    TransactionHash,
     TransactionOffsetInBlock,
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
@@ -31,7 +32,7 @@ use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OffsetKind};
+use crate::{EventIndex, MarkerKind, OffsetKind, TransactionMetadata};
 
 auto_impl_get_test_instance! {
     pub struct StorageBlockHeader {
@@ -113,6 +114,11 @@ auto_impl_get_test_instance! {
         DeployAccount(ThinDeployAccountTransactionOutput) = 2,
         Invoke(ThinInvokeTransactionOutput) = 3,
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
+    }
+    pub struct TransactionMetadata{
+        pub tx_hash: TransactionHash,
+        pub tx_location: LocationInFile,
+        pub tx_output_location: LocationInFile,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct Version(pub u32);
