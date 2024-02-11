@@ -42,7 +42,7 @@ use self::table_types::{DbCursor, DbCursorTrait};
 use crate::db::table_types::TableType;
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 20;
+const MAX_DBS: usize = 18;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
