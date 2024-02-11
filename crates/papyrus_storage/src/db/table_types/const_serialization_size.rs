@@ -18,7 +18,7 @@ pub(crate) trait ConstSerializationSize {
 
 // TODO(dvir): consider make this automatic like the auto_storage_serde macro.
 impl_const_serialization_size! {
-    BlockNumber: 8;
+    BlockNumber: 4;
     u32: 4;
 }
 
