@@ -136,9 +136,10 @@ jobs:
           version: ${{env.PROTOC_VERSION}}
 
       - run: echo "Skipping clippy for now"
-      # - run: >
-      #     cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
-      #     -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
+      - run: >
+          cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
+        -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
+        -A clippy::blocks_in_conditions  # This is because of a bug in tracing: https://github.com/tokio-rs/tracing/issues/2876
 
   doc:
     runs-on: ubuntu-latest
