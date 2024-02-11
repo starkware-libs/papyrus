@@ -1,8 +1,8 @@
 use super::{DBExecutorError, QueryId};
-use crate::{BlockQuery, Direction};
+use crate::{Direction, InternalQuery};
 
 pub(crate) fn calculate_block_number(
-    query: BlockQuery,
+    query: InternalQuery,
     start_block: u64,
     read_blocks_counter: u64,
     query_id: QueryId,
