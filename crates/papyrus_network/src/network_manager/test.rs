@@ -9,31 +9,32 @@ use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use libp2p::PeerId;
-use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
-use super::{GenericNetworkManager, NetworkManager};
+use super::GenericNetworkManager;
 use crate::block_headers::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::block_headers::Event as BehaviourEvent;
 use crate::db_executor::{poll_query_execution_set, DBExecutor, DBExecutorError, Data, QueryId};
 use crate::streamed_data::{InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, Direction, InternalQuery, NetworkConfig, Query};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query, SignedBlockHeader};
 
 #[derive(Default)]
 struct MockSwarm {
     pub pending_events: Queue<Event>,
+    pub sent_queries: Vec<(InternalQuery, PeerId)>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
+    next_outbound_session_id: usize,
 }
 
 impl Stream for MockSwarm {
     type Item = Event;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let fut = self.pending_events.pop().map(|x| Some(x));
+        let fut = self.pending_events.pop().map(Some);
         pin_mut!(fut);
         fut.poll_unpin(cx)
     }
@@ -50,6 +51,27 @@ impl MockSwarm {
             panic!("Called get_data_sent_to_inbound_session on {inbound_session_id:?} twice");
         }
         data_receiver.collect()
+    }
+
+    fn create_received_data_events_for_query(
+        &self,
+        query: InternalQuery,
+        outbound_session_id: OutboundSessionId,
+    ) {
+        let BlockHashOrNumber::Number(BlockNumber(start_block_number)) = query.start_block else {
+            unimplemented!("test does not support start block as block hash")
+        };
+        let block_max_number = start_block_number + (query.step * query.limit);
+        let block_number_iterator = (start_block_number..block_max_number)
+            .step_by(query.step.try_into().expect("step too large"));
+        let data = block_number_iterator
+            .map(|i| SignedBlockHeader {
+                block_header: BlockHeader { block_number: BlockNumber(i), ..Default::default() },
+                signatures: vec![],
+            })
+            .collect::<Vec<_>>();
+        self.pending_events
+            .push(Event::Behaviour(BehaviourEvent::ReceivedData { data, outbound_session_id }));
     }
 }
 
@@ -73,10 +95,14 @@ impl SwarmTrait for MockSwarm {
 
     fn send_query(
         &mut self,
-        _query: InternalQuery,
-        _peer_id: PeerId,
+        query: InternalQuery,
+        peer_id: PeerId,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        unimplemented!()
+        self.sent_queries.push((query, peer_id));
+        let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
+        self.create_received_data_events_for_query(query, outbound_session_id);
+        self.next_outbound_session_id += 1;
+        Ok(outbound_session_id)
     }
 }
 
@@ -129,15 +155,65 @@ const HEADER_BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
 async fn register_subscriber_and_use_channels() {
-    let ((storage_reader, _storage_writer), _temp_dir) = get_test_storage();
-    let mut network_manager = NetworkManager::new(NetworkConfig::default(), storage_reader);
+    // create mocked network manager
+    let mut network_manager = GenericNetworkManager::generic_new(
+        MockSwarm::default(),
+        MockDBExecutor::default(),
+        HEADER_BUFFER_SIZE,
+    );
+    // define query
+    let query_limit = 5;
+    let query = Query {
+        start_block: BlockNumber(0),
+        direction: Direction::Forward,
+        limit: query_limit,
+        step: 1,
+        data_type: DataType::SignedBlock,
+    };
 
-    let (mut query_sender, _response_receiver) = network_manager.register_subscriber();
-    let query = Query::default();
-    poll_fn(|cx| query_sender.poll_ready_unpin(cx)).await.unwrap();
-    query_sender.start_send_unpin(query).unwrap();
+    // register subscriber and send query
+    let (mut query_sender, mut response_receivers) = network_manager.register_subscriber();
+    query_sender.send(query).await.unwrap();
 
-    // TODO: receive data once network manager can get a swarm mock.
+    let signed_header_receiver_collector = async {
+        let mut received_data_counter = 0;
+        for i in 0..query_limit {
+            let res = response_receivers.signed_headers_receiver.next().await;
+            match res {
+                Some(signed_block_header) => {
+                    assert_eq!(signed_block_header.block_header.block_number.0, i);
+                    received_data_counter += 1;
+                }
+                None => break,
+            };
+        }
+        received_data_counter
+    };
+
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        res = signed_header_receiver_collector => {
+            assert_eq!(res, query_limit);
+        }
+        _ = sleep(Duration::from_secs(5)) => {
+            panic!("Test timed out");
+        }
+    }
+}
+
+#[tokio::test]
+async fn network_manager_run_works_without_sync_subscriber() {
+    let network_manager = GenericNetworkManager::generic_new(
+        MockSwarm::default(),
+        MockDBExecutor::default(),
+        HEADER_BUFFER_SIZE,
+    );
+
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        _ = sleep(Duration::from_secs(5)) => {}
+    }
+    // If the test reaches this point, it means that the network manager did not panic.
 }
 
 #[tokio::test]

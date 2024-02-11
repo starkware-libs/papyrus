@@ -3,15 +3,13 @@ use std::task::Poll;
 use assert_matches::assert_matches;
 use futures::future::poll_fn;
 use futures::{FutureExt, StreamExt};
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
-use rand::random;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockTimestamp};
-use starknet_api::core::SequencerContractAddress;
+use starknet_api::block::{BlockHeader, BlockNumber};
 
 use super::Data::BlockHeaderAndSignature;
 use crate::db_executor::{DBExecutor, DBExecutorError};
+use crate::test_utils::insert_to_storage_test_blocks_up_to;
 use crate::{BlockHashOrNumber, Direction, InternalQuery};
 const BUFFER_SIZE: usize = 10;
 
@@ -189,23 +187,4 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
     // executor should return an error.
     let res = db_executor.next().await;
     assert!(res.unwrap().is_err());
-}
-
-fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut StorageWriter) {
-    for i in 0..num_of_blocks {
-        let block_header = BlockHeader {
-            block_number: BlockNumber(i),
-            block_hash: BlockHash(random::<u64>().into()),
-            sequencer: SequencerContractAddress(random::<u64>().into()),
-            timestamp: BlockTimestamp(random::<u64>()),
-            ..Default::default()
-        };
-        storage_writer
-            .begin_rw_txn()
-            .unwrap()
-            .append_header(BlockNumber(i), &block_header)
-            .unwrap()
-            .commit()
-            .unwrap();
-    }
 }

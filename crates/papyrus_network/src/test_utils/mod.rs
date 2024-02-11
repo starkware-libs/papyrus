@@ -12,6 +12,11 @@ use futures::stream::{Stream as StreamTrait, StreamExt};
 use libp2p::swarm::{NetworkBehaviour, StreamProtocol, Swarm, SwarmEvent};
 use libp2p::{PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
+use papyrus_storage::header::HeaderStorageWriter;
+use papyrus_storage::StorageWriter;
+use rand::random;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockTimestamp};
+use starknet_api::core::SequencerContractAddress;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
 
@@ -128,4 +133,26 @@ where
     }
 
     StreamHashMap::new(swarms.into_iter().map(|swarm| (*swarm.local_peer_id(), swarm)).collect())
+}
+
+pub(crate) fn insert_to_storage_test_blocks_up_to(
+    num_of_blocks: u64,
+    storage_writer: &mut StorageWriter,
+) {
+    for i in 0..num_of_blocks {
+        let block_header = BlockHeader {
+            block_number: BlockNumber(i),
+            block_hash: BlockHash(random::<u64>().into()),
+            sequencer: SequencerContractAddress(random::<u64>().into()),
+            timestamp: BlockTimestamp(random::<u64>()),
+            ..Default::default()
+        };
+        storage_writer
+            .begin_rw_txn()
+            .unwrap()
+            .append_header(BlockNumber(i), &block_header)
+            .unwrap()
+            .commit()
+            .unwrap();
+    }
 }
