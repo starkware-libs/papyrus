@@ -539,7 +539,7 @@ struct_field_names! {
         // TODO(dvir): write transaction also to a file and combine all the mapping from tx_index to the same table.
         // Afterward add option to iterate over tx/output also with tx_hash.
         transaction_outputs: TableIdentifier<TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        transactions: TableIdentifier<TransactionIndex, VersionZeroWrapper<Transaction>, SimpleTable>,
+        transactions: TableIdentifier<TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>,
 
         // Version tables
         starknet_version: TableIdentifier<BlockNumber, VersionZeroWrapper<StarknetVersion>, SimpleTable>,
@@ -673,6 +673,7 @@ struct FileHandlers<Mode: TransactionKind> {
     casm: FileHandler<VersionZeroWrapper<CasmContractClass>, Mode>,
     deprecated_contract_class: FileHandler<VersionZeroWrapper<DeprecatedContractClass>, Mode>,
     thin_transaction_output: FileHandler<VersionZeroWrapper<ThinTransactionOutput>, Mode>,
+    transaction: FileHandler<VersionZeroWrapper<Transaction>, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -715,6 +716,11 @@ impl FileHandlers<RW> {
     ) -> LocationInFile {
         self.clone().thin_transaction_output.append(transaction_output)
     }
+
+    // Appends a transaction to the corresponding file and returns its location.
+    fn append_transaction(&self, transaction: &Transaction) -> LocationInFile {
+        self.clone().transaction.append(transaction)
+    }
 }
 
 impl<Mode: TransactionKind> FileHandlers<Mode> {
@@ -726,6 +732,7 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             ("casm".to_string(), self.casm.stats()),
             ("deprecated_contract_class".to_string(), self.deprecated_contract_class.stats()),
             ("thin_transaction_output".to_string(), self.thin_transaction_output.stats()),
+            ("transaction".to_string(), self.transaction.stats()),
         ])
     }
 
@@ -777,6 +784,13 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             msg: format!("ThinTransactionOutput at location {:?} not found.", location),
         })
     }
+
+    // Returns the transaction at the given location or an error in case it doesn't exist.
+    fn get_transaction_unchecked(&self, location: LocationInFile) -> StorageResult<Transaction> {
+        self.transaction.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("Transaction at location {:?} not found.", location),
+        })
+    }
 }
 
 fn open_storage_files(
@@ -788,6 +802,7 @@ fn open_storage_files(
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
 
+    // TODO(dvir): consider using a loop here to avoid code duplication.
     let thin_state_diff_offset =
         table.get(&db_transaction, &OffsetKind::ThinStateDiff)?.unwrap_or_default();
     let (thin_state_diff_writer, thin_state_diff_reader) = open_file(
@@ -819,10 +834,15 @@ fn open_storage_files(
     let transaction_output_offset =
         table.get(&db_transaction, &OffsetKind::ThinTransactionOutput)?.unwrap_or_default();
     let (transaction_output_writer, transaction_output_reader) = open_file(
-        mmap_file_config,
+        mmap_file_config.clone(),
         db_config.path().join("transaction_output.dat"),
         transaction_output_offset,
     )?;
+
+    let transaction_offset =
+        table.get(&db_transaction, &OffsetKind::Transaction)?.unwrap_or_default();
+    let (transaction_writer, transaction_reader) =
+        open_file(mmap_file_config, db_config.path().join("transaction.dat"), transaction_offset)?;
 
     Ok((
         FileHandlers {
@@ -831,6 +851,7 @@ fn open_storage_files(
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
             thin_transaction_output: transaction_output_writer,
+            transaction: transaction_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
@@ -838,6 +859,7 @@ fn open_storage_files(
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
             thin_transaction_output: transaction_output_reader,
+            transaction: transaction_reader,
         },
     ))
 }
@@ -855,6 +877,8 @@ pub enum OffsetKind {
     DeprecatedContractClass,
     /// A thin transaction output file.
     ThinTransactionOutput,
+    /// A transaction file.
+    Transaction,
 }
 
 /// A storage query. Used for benchmarking in the storage_benchmark binary.
