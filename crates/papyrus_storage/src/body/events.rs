@@ -58,13 +58,12 @@ use starknet_api::transaction::{
     TransactionOutput,
 };
 
-use super::TransactionOutputsTable;
+use super::TransactionMetadataTable;
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
-use crate::mmap_file::LocationInFile;
-use crate::{FileHandlers, StorageResult, StorageTxn};
+use crate::{FileHandlers, StorageResult, StorageTxn, TransactionMetadata};
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -110,6 +109,9 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     }
 }
 
+// TODO(dvir): add transaction hash to the return value. In the RPC when returning events this is
+// with the transaction hash. We can do it efficiently here because we anyway read the relevant
+// entry in the transaction_metadata table..
 #[allow(missing_docs)]
 /// A wrapper of two iterators [`EventIterByContractAddress`] and [`EventIterByEventIndex`].
 pub enum EventIter<'txn, 'env> {
@@ -144,7 +146,7 @@ pub struct EventIterByContractAddress<'env, 'txn> {
     // filled with the first transaction output.
     current_tx: Option<(TransactionIndex, TransactionOutput)>,
     cursor: EventsTableCursor<'txn>,
-    transaction_outputs_table: TransactionOutputsTable<'env>,
+    transaction_metadata_table: TransactionMetadataTable<'env>,
 }
 
 impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
@@ -161,11 +163,15 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
             || tx_index
                 != self.current_tx.as_ref().expect("The None case was checked previously.").0
         {
-            let Some(location) = self.transaction_outputs_table.get(self.txn, &tx_index)? else {
+            let Some(tx_metadata) = self.transaction_metadata_table.get(self.txn, &tx_index)?
+            else {
                 return Ok(None);
             };
-            self.current_tx =
-                Some((tx_index, self.file_handles.get_transaction_output_unchecked(location)?));
+            self.current_tx = Some((
+                tx_index,
+                self.file_handles
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            ));
         }
 
         self.current = self.cursor.next()?.map(|(key, _)| key);
@@ -194,7 +200,7 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
 pub struct EventIterByEventIndex<'txn> {
     file_handlers: &'txn FileHandlers<RO>,
     tx_current: Option<(TransactionIndex, TransactionOutput)>,
-    tx_cursor: TransactionOutputsTableCursor<'txn>,
+    tx_cursor: TransactionMetadataTableCursor<'txn>,
     event_index_in_tx_current: EventIndexInTransactionOutput,
     to_block_number: BlockNumber,
 }
@@ -239,12 +245,15 @@ impl EventIterByEventIndex<'_> {
 
             // There are no more events in the current transaction, so we go over the rest of the
             // transactions until we find an event.
-            let Some((tx_index, location)) = self.tx_cursor.next()? else {
+            let Some((tx_index, tx_metadata)) = self.tx_cursor.next()? else {
                 self.tx_current = None;
                 return Ok(());
             };
-            self.tx_current =
-                Some((tx_index, self.file_handlers.get_transaction_output_unchecked(location)?));
+            self.tx_current = Some((
+                tx_index,
+                self.file_handlers
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            ));
             self.event_index_in_tx_current = EventIndexInTransactionOutput(0);
         }
 
@@ -267,7 +276,7 @@ where
         &'env self,
         key: EventsTableKey,
     ) -> StorageResult<EventIterByContractAddress<'env, 'txn>> {
-        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
+        let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
         let current = cursor.lower_bound(&key)?.map(|(key, _)| key);
@@ -277,7 +286,7 @@ where
             current,
             current_tx: None,
             cursor,
-            transaction_outputs_table,
+            transaction_metadata_table,
         })
     }
 
@@ -295,14 +304,16 @@ where
         event_index: EventIndex,
         to_block_number: BlockNumber,
     ) -> StorageResult<EventIterByEventIndex<'txn>> {
-        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
-        let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
+        let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
+        let mut tx_cursor = transaction_metadata_table.cursor(&self.txn)?;
         let first_txn_location = tx_cursor.lower_bound(&event_index.0)?;
         let first_relevant_transaction = match first_txn_location {
             None => None,
-            Some((tx_index, location)) => {
-                Some((tx_index, self.file_handlers.get_transaction_output_unchecked(location)?))
-            }
+            Some((tx_index, tx_metadata)) => Some((
+                tx_index,
+                self.file_handlers
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            )),
         };
 
         let mut it = EventIterByEventIndex {
@@ -321,5 +332,5 @@ where
 type EventsTableCursor<'txn> =
     DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
 /// A cursor of the transaction outputs table.
-type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>;
+type TransactionMetadataTableCursor<'txn> =
+    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>;
