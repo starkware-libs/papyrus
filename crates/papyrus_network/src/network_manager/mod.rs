@@ -6,10 +6,11 @@ mod test;
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, Sender};
+use futures::future::pending;
 use futures::stream::{BoxStream, SelectAll};
-use futures::StreamExt;
+use futures::{FutureExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
-use libp2p::Swarm;
+use libp2p::{PeerId, Swarm};
 use papyrus_storage::StorageReader;
 use tracing::{debug, error};
 
@@ -40,6 +41,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
                 Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing(res),
+                Some(res) = self.sync_subscriber.as_mut()
+                .map(|(query_receiver, _)| query_receiver.next().boxed()).unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res),
             }
         }
     }
@@ -132,8 +135,18 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 self.query_results_router
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
-            Event::ReceivedData { .. } => {
-                // TODO: Do something with the received data.
+            Event::ReceivedData { data, outbound_session_id } => {
+                debug!(
+                    "Received data from peer for session id: {outbound_session_id:?}. sending to \
+                     sync subscriber."
+                );
+                if let Some((_, response_senders)) = self.sync_subscriber.as_mut() {
+                    data.into_iter().for_each(|data| {
+                        if let Err(e) = response_senders.signed_headers_sender.try_send(data) {
+                            error!("Failed to send data to sync subscriber. error: {e:?}");
+                        }
+                    });
+                }
             }
             Event::SessionFailed { session_id, session_error } => {
                 debug!("Session {session_id:?} failed on {session_error:?}");
@@ -159,6 +172,21 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         self.swarm.send_data(data, inbound_session_id).unwrap_or_else(|e| {
             error!("Failed to send data to peer. Session id not found error: {e:?}");
         })
+    }
+
+    fn handle_sync_subscriber_query(&mut self, query: Query) {
+        // TODO: get peer id somehow.
+        let peer_id = PeerId::random();
+        let internal_query = query.into();
+        match self.swarm.send_query(internal_query, peer_id) {
+            Ok(outboud_session_id) => {
+                debug!(
+                    "Sent query to peer. query: {internal_query:?}, peer_id: {peer_id:?}, \
+                     outbound_session_id: {outboud_session_id:?}"
+                );
+            }
+            Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),
+        }
     }
 }
 
