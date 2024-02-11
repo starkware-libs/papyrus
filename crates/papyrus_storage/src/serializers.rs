@@ -476,7 +476,6 @@ auto_storage_serde! {
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
-    pub struct TransactionOffsetInBlock(pub usize);
     pub enum TransactionOutput {
         Declare(DeclareTransactionOutput) = 0,
         Deploy(DeployTransactionOutput) = 1,
@@ -957,6 +956,26 @@ impl StorageSerde for BlockNumber {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         Some(BlockNumber(u32::deserialize_from(bytes)? as u64))
+    }
+}
+
+// This serialization write the offset as 3 bytes, which means that the maximum offset is ~16
+// million (1<<24 bytes).
+impl StorageSerde for TransactionOffsetInBlock {
+    fn serialize_into(
+        &self,
+        res: &mut impl std::io::Write,
+    ) -> Result<(), crate::db::serialization::StorageSerdeError> {
+        let bytes = &self.0.to_le_bytes();
+        res.write_all(&bytes[0..3])?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let mut arr = [0u8; 8];
+        bytes.read_exact(&mut arr[0..3]).ok()?;
+        let index = usize::from_le_bytes(arr);
+        Some(Self(index))
     }
 }
 
