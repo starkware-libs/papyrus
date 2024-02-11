@@ -159,6 +159,10 @@ pub enum DbError {
     /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
+    // TODO(dvir): consider add more details, table name, key, the last key.
+    /// An error that occurred when trying to append a key value pair.
+    #[error("Append to a table failed.")]
+    Append,
 }
 
 type DbResult<V> = result::Result<V, DbError>;
