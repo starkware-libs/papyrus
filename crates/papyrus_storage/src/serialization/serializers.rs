@@ -138,7 +138,7 @@ use crate::mmap_file::LocationInFile;
 use crate::serialization::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{MarkerKind, OffsetKind};
+use crate::{MarkerKind, OffsetKind, TransactionMetadata};
 
 // The threshold for compressing transactions.
 const COMPRESSION_THRESHOLD_BYTES: usize = 384;
@@ -431,6 +431,13 @@ auto_storage_serde! {
     pub struct TypedParameter {
         pub name: String,
         pub r#type: String,
+    }
+    // TODO(dvir): change the macro to get also pub(crate) and private visibility and change this struct
+    // visibility in the macro.
+    pub struct TransactionMetadata {
+        pub tx_hash: TransactionHash,
+        pub tx_location: LocationInFile,
+        pub tx_output_location: LocationInFile,
     }
     pub struct ThinInvokeTransactionOutput {
         pub actual_fee: Fee,
