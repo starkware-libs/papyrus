@@ -74,7 +74,7 @@ use crate::{
 };
 
 type TransactionsTable<'env> =
-    TableHandle<'env, TransactionIndex, VersionZeroWrapper<Transaction>, SimpleTable>;
+    TableHandle<'env, TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>;
 type TransactionOutputsTable<'env> =
     TableHandle<'env, TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
@@ -176,8 +176,11 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         transaction_index: TransactionIndex,
     ) -> StorageResult<Option<Transaction>> {
         let transactions_table = self.open_table(&self.tables.transactions)?;
-        let transaction = transactions_table.get(&self.txn, &transaction_index)?;
-        Ok(transaction)
+        let Some(tx_location) = transactions_table.get(&self.txn, &transaction_index)? else {
+            return Ok(None);
+        };
+        let transaction = self.file_handlers.get_transaction_unchecked(tx_location)?;
+        Ok(Some(transaction))
     }
 
     fn get_transaction_output(
@@ -220,7 +223,7 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
         block_number: BlockNumber,
     ) -> StorageResult<Option<Vec<Transaction>>> {
         let transactions_table = self.open_table(&self.tables.transactions)?;
-        self.get_transactions_in_block(block_number, transactions_table)
+        self.get_transaction_objects_in_block(block_number, transactions_table)
     }
 
     fn get_block_transaction_hashes(
@@ -314,6 +317,28 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
 
         Ok(Some(res))
     }
+
+    // TODO(dvir): remove this function when we have a general table interface also for values
+    // written to a file.
+    // Returns the transactions in the given block.
+    fn get_transaction_objects_in_block(
+        &self,
+        block_number: BlockNumber,
+        transaction_offsets_table: TransactionsTable<'env>,
+    ) -> StorageResult<Option<Vec<Transaction>>> {
+        let Some(locations) =
+            self.get_transactions_in_block(block_number, transaction_offsets_table)?
+        else {
+            return Ok(None);
+        };
+
+        let mut res = Vec::new();
+        for location in locations {
+            res.push(self.file_handlers.get_transaction_unchecked(location)?);
+        }
+
+        Ok(Some(res))
+    }
 }
 
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
@@ -334,6 +359,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             write_transactions(
                 &block_body,
                 &self.txn,
+                &self.file_handlers,
                 &transactions_table,
                 &transaction_hash_to_idx_table,
                 &transaction_idx_to_hash_table,
@@ -420,6 +446,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
 fn write_transactions<'env>(
     block_body: &BlockBody,
     txn: &DbTransaction<'env, RW>,
+    file_handlers: &FileHandlers<RW>,
     transactions_table: &'env TransactionsTable<'env>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     transaction_idx_to_hash_table: &'env TransactionIdxToHashTable<'env>,
@@ -437,7 +464,8 @@ fn write_transactions<'env>(
             tx_hash,
             transaction_index,
         )?;
-        transactions_table.insert(txn, &transaction_index, tx)?;
+        let location = file_handlers.append_transaction(tx);
+        transactions_table.insert(txn, &transaction_index, &location)?;
     }
     Ok(())
 }
