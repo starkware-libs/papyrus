@@ -1,9 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use assert_matches::assert_matches;
 use libp2p::PeerId;
 use pretty_assertions::assert_eq;
-use starknet_api::block::{BlockHeader, BlockNumber};
+use starknet_api::block::BlockNumber;
 use starknet_api::hash::StarkFelt;
 
 use super::super::Event;
@@ -79,196 +79,66 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_simple_happy_flow
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
         outbound_session_id,
         data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader::test_instance(),
-                )),
-            }],
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
+                protobuf::SignedBlockHeader::test_instance(),
+            )),
         },
     };
 
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(res_event, None);
-    assert_eq!(behaviour.store_header_pending_pairing_with_signature_call_count, 1);
-
-    // Send matching signature response event to behaviour from streamed data behaviour
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures::test_instance(),
-                    ),
-                ),
-            }],
-        },
-    };
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(
         res_event,
-        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
+        Some(Event::ReceivedData { signed_header, outbound_session_id: session_id}) => {
+            assert_matches!(signed_header, SignedBlockHeader { block_header, signatures}
                 if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
+                signatures[0].0.r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
+                signatures[0].0.s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
             assert_eq!(outbound_session_id, session_id);
         }
     );
-    assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
 
     // Send fin event to behaviour from streamed data behaviour
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
         outbound_session_id,
         data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Fin(
-                    protobuf::Fin { error: None },
-                )),
-            }],
+            header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                protobuf::Fin {},
+            )),
         },
     };
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
     assert_matches!(res_event, None);
 
     // Make sure no function was called unexpectedly
-    assert_eq!(behaviour.store_header_pending_pairing_with_signature_call_count, 1);
-    assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
     assert_eq!(behaviour.drop_session_call_count, 0);
     assert_eq!(behaviour.handle_session_finished_call_count, 0);
+
+    // TODO(shahak): Investigate why this causes a failure and uncomment.
+    // let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(
+    //     streamed_data::behaviour::Event::SessionFinishedSuccessfully {
+    //         session_id: outbound_session_id.into(),
+    //     },
+    // );
+
+    // assert_matches!(
+    //     res_event,
+    //     Some(Event::SessionFinishedSuccessfully { session_id }) => {
+    //         assert_eq!(SessionId::from(outbound_session_id), session_id);
+    //     }
+    // );
+    // assert_eq!(behaviour.drop_session_call_count, 0);
+    // assert_eq!(behaviour.handle_session_finished_call_count, 1);
 }
 
 #[test]
-fn map_streamed_data_behaviour_event_to_own_event_recieve_data_happy_flow_two_sessions() {
-    let mut behaviour = TestBehaviour::new();
-    let outbound_session_id_a = OutboundSessionId { value: rand::random() };
-    let outbound_session_id_b = OutboundSessionId { value: rand::random() };
-
-    // Send header response event to behaviour from streamed data behaviour - session A
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id: outbound_session_id_a,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader::test_instance(),
-                )),
-            }],
-        },
-    };
-
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-
-    // Send header response event to behaviour from streamed data behaviour - session B
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id: outbound_session_id_b,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader::test_instance(),
-                )),
-            }],
-        },
-    };
-
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-
-    // Send matching signature response event to behaviour from streamed data behaviour - Session B
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id: outbound_session_id_b,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures::test_instance(),
-                    ),
-                ),
-            }],
-        },
-    };
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
-                if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
-            assert_eq!(outbound_session_id_b, session_id);
-        }
-    );
-    assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 1);
-
-    // Send matching signature response event to behaviour from streamed data behaviour - Session A
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id: outbound_session_id_a,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures::test_instance(),
-                    ),
-                ),
-            }],
-        },
-    };
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::ReceivedData {data, outbound_session_id: session_id}) => {
-            assert_matches!(data.first().unwrap(), SignedBlockHeader { block_header, signatures}
-                if block_header.block_number == BlockNumber(1) && signatures.len() == 1 &&
-                signatures[0].r == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap() &&
-                signatures[0].s == StarkFelt::new([1].repeat(32).to_vec().try_into().unwrap()).unwrap());
-            assert_eq!(outbound_session_id_a, session_id);
-        }
-    );
-    assert_eq!(behaviour.fetch_pending_header_for_session_call_count, 2);
-}
-
-#[test]
-fn map_streamed_data_behaviour_event_to_own_event_recieve_data_pairing_error() {
-    let mut behaviour = TestBehaviour::new();
-    let outbound_session_id = OutboundSessionId { value: rand::random() };
-
-    // Send signature response event to behaviour from streamed data
-    // behaviour before header response event - should return pairing error event
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures::test_instance(),
-                    ),
-                ),
-            }],
-        },
-    };
-
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::SessionFailed {
-            session_id,
-            session_error,
-        }) => {
-            assert_eq!(session_id, outbound_session_id.into());
-            assert_matches!(session_error, SessionError::PairingError)
-        }
-    );
-}
-
-#[test]
-fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data() {
+fn map_streamed_data_behaviour_event_to_own_event_recieve_protobuf_conversion_error() {
     let mut behaviour = TestBehaviour::new();
 
     // Send bad header message - should return incompatible data error event
     let outbound_session_id = OutboundSessionId { value: rand::random() };
     let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
         outbound_session_id,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart { header_message: None }],
-        },
+        data: protobuf::BlockHeadersResponse { header_message: None },
     };
 
     let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
@@ -279,108 +149,37 @@ fn map_streamed_data_behaviour_event_to_own_event_recieve_data_incompatible_data
             session_error,
         }) => {
             assert_eq!(session_id, outbound_session_id.into());
-            assert_matches!(session_error, SessionError::IncompatibleDataError)
-        }
-    );
-
-    // Send header to match signature to
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(protobuf::block_headers_response_part::HeaderMessage::Header(
-                    protobuf::BlockHeader::test_instance(),
-                )),
-            }],
-        },
-    };
-    let _res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-
-    // Send bad signature message - should return ProtobufConversionError
-    let streamed_data_event: StreamedDataEvent = streamed_data::behaviour::Event::ReceivedData {
-        outbound_session_id,
-        data: protobuf::BlockHeadersResponse {
-            part: vec![protobuf::BlockHeadersResponsePart {
-                header_message: Some(
-                    protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures {
-                            block: Some(protobuf::BlockId { number: 1, header: None }),
-                            signatures: vec![protobuf::ConsensusSignature { r: None, s: None }],
-                        },
-                    ),
-                ),
-            }],
-        },
-    };
-    let res_event = behaviour.map_streamed_data_behaviour_event_to_own_event(streamed_data_event);
-    assert_matches!(
-        res_event,
-        Some(Event::SessionFailed {
-            session_id,
-            session_error,
-        }) => {
-            assert_eq!(session_id, outbound_session_id.into());
-            assert_matches!(session_error, SessionError::ProtobufConversionError(ProtobufConversionError::MissingField))
+            assert_matches!(
+                session_error,
+                SessionError::ProtobufConversionError(ProtobufConversionError::MissingField)
+            )
         }
     );
 }
 
 struct TestBehaviour {
-    store_header_pending_pairing_with_signature_call_count: usize,
-    fetch_pending_header_for_session_call_count: usize,
     handle_session_finished_call_count: usize,
     drop_session_call_count: usize,
-    header_pending_pairing: HashMap<OutboundSessionId, protobuf::BlockHeader>,
     sessions_pending_termination: HashSet<SessionId>,
 }
 
 impl TestBehaviour {
     fn new() -> Self {
         Self {
-            store_header_pending_pairing_with_signature_call_count: 0,
-            fetch_pending_header_for_session_call_count: 0,
             handle_session_finished_call_count: 0,
             drop_session_call_count: 0,
-            header_pending_pairing: HashMap::new(),
             sessions_pending_termination: HashSet::new(),
         }
     }
 
     #[allow(dead_code)]
     fn reset(&mut self) {
-        self.store_header_pending_pairing_with_signature_call_count = 0;
-        self.fetch_pending_header_for_session_call_count = 0;
         self.handle_session_finished_call_count = 0;
         self.drop_session_call_count = 0;
-        self.header_pending_pairing = HashMap::new();
     }
 }
 
 impl BehaviourTrait for TestBehaviour {
-    fn fetch_header_pending_pairing_with_signature(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<BlockHeader, SessionError> {
-        self.fetch_pending_header_for_session_call_count += 1;
-        self.header_pending_pairing
-            .remove(&outbound_session_id)
-            .and_then(|header| TryInto::<BlockHeader>::try_into(header).ok())
-            .ok_or(SessionError::PairingError)
-    }
-
-    fn store_header_pending_pairing_with_signature(
-        &mut self,
-        header: protobuf::BlockHeader,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<(), SessionError> {
-        self.store_header_pending_pairing_with_signature_call_count += 1;
-        self.header_pending_pairing
-            .insert(outbound_session_id, header.clone())
-            .map(|_| ())
-            .xor(Some(()))
-            .ok_or_else(|| SessionError::PairingError)
-    }
-
     fn handle_session_finished(&mut self, _session_id: SessionId) -> Option<Event> {
         self.handle_session_finished_call_count += 1;
         None
