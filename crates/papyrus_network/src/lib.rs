@@ -27,18 +27,18 @@ pub struct NetworkConfig {
     pub header_buffer_size: usize,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub enum DataType {
     #[default]
     SignedBlock,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Query {
     pub start_block: BlockNumber,
     pub direction: Direction,
-    pub limit: u64,
-    pub step: u64,
+    pub limit: usize,
+    pub step: usize,
     pub data_type: DataType,
 }
 
@@ -132,5 +132,16 @@ impl Default for NetworkConfig {
 impl ResponseReceivers {
     fn new(signed_headers_receiver: Receiver<SignedBlockHeader>) -> Self {
         Self { signed_headers_receiver }
+    }
+}
+
+impl From<Query> for InternalQuery {
+    fn from(query: Query) -> InternalQuery {
+        InternalQuery {
+            start_block: BlockHashOrNumber::Number(query.start_block),
+            direction: query.direction,
+            limit: query.limit as u64,
+            step: query.step as u64,
+        }
     }
 }
