@@ -73,12 +73,16 @@ pub struct Block {
     pub block_hash: BlockHash,
     pub block_number: BlockNumber,
     pub parent_block_hash: BlockHash,
+    #[serde(default)]
     pub sequencer_address: SequencerContractAddress,
     pub state_root: GlobalRoot,
     pub status: BlockStatus,
+    #[serde(default)]
     pub timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub transaction_receipts: Vec<TransactionReceipt>,
+    // Default since old blocks don't include this field.
+    #[serde(default)]
     pub starknet_version: String,
     // Additions to the block structure in V0.13.1.
     pub l1_da_mode: L1DataAvailabilityMode,
