@@ -95,8 +95,12 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 debug!("Query completed successfully. query_id: {query_id:?}");
             }
             Err(err) => {
-                if let Some(query_id) = err.query_id() {
+                if err.should_log_in_error_level() {
+                    error!("Query failed. error: {err:?}");
+                } else {
                     debug!("Query failed. error: {err:?}");
+                }
+                if let Some(query_id) = err.query_id() {
                     // TODO: Consider retrying based on error.
                     let Some(inbound_session_id) =
                         self.query_id_to_inbound_session_id.remove(&query_id)
@@ -111,9 +115,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                         );
                     }
                 } else {
-                    // Logging this error in an error level since it has no side effects and thus
-                    // it's harder to track.
-                    error!("Query failed. error: {err:?}");
                 }
             }
         };
@@ -143,7 +144,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 debug!("Failed to convert incoming query on {error:?}");
                 // TODO: Consider adding peer_id to event and handling reputation.
             }
-            Event::SessionCompletedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }

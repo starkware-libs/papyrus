@@ -10,10 +10,11 @@ use std::io;
 use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use prost::Message;
-use prost_types::Timestamp;
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use unsigned_varint::encode::usize_buffer;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
+pub const PATRICIA_HEIGHT: u32 = 251;
 
 pub async fn write_message<T: Message, Stream: AsyncWrite + Unpin>(
     message: T,
@@ -150,6 +151,30 @@ impl From<starknet_api::block::BlockHash> for protobuf::Hash {
     }
 }
 
+impl From<starknet_api::hash::StarkHash> for protobuf::Hash {
+    fn from(value: starknet_api::hash::StarkHash) -> Self {
+        Self { elements: value.bytes().to_vec() }
+    }
+}
+
+impl From<starknet_api::core::ContractAddress> for protobuf::Address {
+    fn from(value: starknet_api::core::ContractAddress) -> Self {
+        Self { elements: value.0.key().bytes().to_vec() }
+    }
+}
+
+impl From<u128> for protobuf::Uint128 {
+    fn from(value: u128) -> Self {
+        Self { high: (value >> 64) as u64, low: value as u64 }
+    }
+}
+
+impl From<protobuf::Uint128> for u128 {
+    fn from(value: protobuf::Uint128) -> Self {
+        u128::from(value.low) + (u128::from(value.high) << 64)
+    }
+}
+
 impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
@@ -186,34 +211,69 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
     }
 }
 
-pub trait TestInstance {
-    fn test_instance() -> Self;
-}
-
-impl TestInstance for protobuf::BlockHeader {
-    fn test_instance() -> Self {
-        Self {
-            number: 1,
-            parent_header: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
-            sequencer_address: Some(protobuf::Address { elements: [0].repeat(32).to_vec() }),
-            time: Some(Timestamp { seconds: 1, nanos: 0 }),
-            state: Some(protobuf::Patricia {
-                root: Some(protobuf::Hash { elements: [0].repeat(32).to_vec() }),
-                height: 0,
-            }),
-            ..Default::default()
-        }
+pub(crate) fn enum_int_to_l1_data_availability_mode(
+    value: i32,
+) -> Result<L1DataAvailabilityMode, ProtobufConversionError> {
+    match value {
+        0 => Ok(L1DataAvailabilityMode::Calldata),
+        1 => Ok(L1DataAvailabilityMode::Blob),
+        _ => Err(ProtobufConversionError::OutOfRangeValue),
     }
 }
 
-impl TestInstance for protobuf::Signatures {
+pub(crate) fn l1_data_availability_mode_to_enum_int(value: L1DataAvailabilityMode) -> i32 {
+    match value {
+        L1DataAvailabilityMode::Calldata => 0,
+        L1DataAvailabilityMode::Blob => 1,
+    }
+}
+
+#[cfg(test)]
+pub(crate) trait TestInstance {
+    fn test_instance() -> Self;
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::Hash {
+    fn test_instance() -> Self {
+        Self { elements: [0].repeat(32).to_vec() }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::Address {
+    fn test_instance() -> Self {
+        Self { elements: [0].repeat(32).to_vec() }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::Patricia {
+    fn test_instance() -> Self {
+        Self { height: PATRICIA_HEIGHT, root: Some(protobuf::Hash::test_instance()) }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::Merkle {
+    fn test_instance() -> Self {
+        Self { n_leaves: 0, root: Some(protobuf::Hash::test_instance()) }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::Uint128 {
+    fn test_instance() -> Self {
+        Self { low: 1, high: 0 }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::ConsensusSignature {
     fn test_instance() -> Self {
         Self {
-            block: Some(protobuf::BlockId { number: 1, header: None }),
-            signatures: vec![protobuf::ConsensusSignature {
-                r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
-                s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
-            }],
+            r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+            s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
         }
     }
 }

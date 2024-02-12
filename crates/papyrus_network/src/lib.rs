@@ -17,8 +17,7 @@ use std::usize;
 use futures::channel::mpsc::{Receiver, Sender};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
-use starknet_api::crypto::Signature;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 
 pub struct NetworkConfig {
     pub listen_addresses: Vec<String>,
@@ -53,7 +52,7 @@ pub enum Direction {
 #[derive(Debug)]
 pub struct SignedBlockHeader {
     pub block_header: BlockHeader,
-    pub signatures: Vec<Signature>,
+    pub signatures: Vec<BlockSignature>,
 }
 
 // TODO(shahak): Internalize this when we have a mixed behaviour.

@@ -10,7 +10,7 @@ use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use libp2p::PeerId;
 use papyrus_storage::test_utils::get_test_storage;
-use starknet_api::block::{BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -106,9 +106,10 @@ impl DBExecutor for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender
-                            .start_send(Data::BlockHeaderAndSignature { header, signature: None })
-                        {
+                        if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
+                            header,
+                            signature: BlockSignature::default(),
+                        }) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -174,7 +175,9 @@ async fn process_incoming_query() {
         inbound_session_data = get_data_fut => {
             let mut expected_data = headers
                 .into_iter()
-                .map(|header| Data::BlockHeaderAndSignature { header, signature: None })
+                .map(|header| Data::BlockHeaderAndSignature {
+                    header, signature: BlockSignature::default()
+                })
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin);
             assert_eq!(inbound_session_data, expected_data);
