@@ -20,13 +20,18 @@ message PeerID {
     bytes id = 1;
 }
 
+message Uint128 {
+    uint64 low = 1;
+    uint64 high = 2;
+}
+
 message ConsensusSignature {
     Felt252 r = 1;
     Felt252 s = 2;
 }
 
 message Merkle {
-    uint32 n_leaves = 1;  // needed to know the height, so as to how many nodes to expect in a proof.
+    uint64 n_leaves = 1;  // needed to know the height, so as to how many nodes to expect in a proof.
                           // and also when receiving all leaves, how many to expect
     Hash   root     = 2;
 }
@@ -39,6 +44,11 @@ message Patricia {
 message BlockID {
     uint64 number = 1;
     Hash   header = 2;
+}
+
+enum L1DataAvailabilityMode {
+    Calldata = 0;
+    Blob = 1;
 }
 
 message Iteration {
@@ -58,17 +68,4 @@ message Iteration {
 
 // mark the end of a stream of messages
 // TBD: may not be required if we open a stream per request.
-message Fin {
-    enum Error {
-        busy     = 0;
-        too_much = 1;
-        unknown  = 2;
-        pruned   = 3;
-    }
-    optional Error error = 1;
-}
-
-
-
-
-
+message Fin {}

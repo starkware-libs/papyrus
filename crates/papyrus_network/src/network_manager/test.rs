@@ -9,7 +9,7 @@ use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use libp2p::PeerId;
-use starknet_api::block::{BlockHeader, BlockNumber};
+use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -62,16 +62,21 @@ impl MockSwarm {
             unimplemented!("test does not support start block as block hash")
         };
         let block_max_number = start_block_number + (query.step * query.limit);
-        let block_number_iterator = (start_block_number..block_max_number)
-            .step_by(query.step.try_into().expect("step too large to convert to usize"));
-        let data = block_number_iterator
-            .map(|i| SignedBlockHeader {
-                block_header: BlockHeader { block_number: BlockNumber(i), ..Default::default() },
+        for block_number in (start_block_number..block_max_number)
+            .step_by(query.step.try_into().expect("step too large to convert to usize"))
+        {
+            let signed_header = SignedBlockHeader {
+                block_header: BlockHeader {
+                    block_number: BlockNumber(block_number),
+                    ..Default::default()
+                },
                 signatures: vec![],
-            })
-            .collect::<Vec<_>>();
-        self.pending_events
-            .push(Event::Behaviour(BehaviourEvent::ReceivedData { data, outbound_session_id }));
+            };
+            self.pending_events.push(Event::Behaviour(BehaviourEvent::ReceivedData {
+                signed_header,
+                outbound_session_id,
+            }));
+        }
     }
 }
 
@@ -132,9 +137,10 @@ impl DBExecutor for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender
-                            .start_send(Data::BlockHeaderAndSignature { header, signature: None })
-                        {
+                        if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
+                            header,
+                            signature: BlockSignature::default(),
+                        }) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -232,7 +238,9 @@ async fn process_incoming_query() {
         inbound_session_data = get_data_fut => {
             let mut expected_data = headers
                 .into_iter()
-                .map(|header| Data::BlockHeaderAndSignature { header, signature: None })
+                .map(|header| Data::BlockHeaderAndSignature {
+                    header, signature: BlockSignature::default()
+                })
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin);
             assert_eq!(inbound_session_data, expected_data);
