@@ -2,7 +2,7 @@
 mod main_test;
 
 use std::env::args;
-use std::future;
+use std::future::{self, pending};
 use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
@@ -124,7 +124,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
     ) -> Result<(), StateSyncError> {
-        let Some(sync_config) = config.sync else { return Ok(()) };
+        let Some(sync_config) = config.sync else { return pending().await };
         let central_source =
             CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
