@@ -35,7 +35,8 @@ pub enum SessionError {
 
 #[derive(Debug)]
 #[allow(dead_code)]
-pub(crate) enum Event {
+// TODO(shahak): Internalize this when we have a mixed behaviour.
+pub enum Event {
     NewInboundQuery {
         query: InternalQuery,
         inbound_session_id: streamed_data::InboundSessionId,

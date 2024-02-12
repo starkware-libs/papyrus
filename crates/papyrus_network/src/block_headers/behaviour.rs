@@ -31,7 +31,8 @@ mod flow_test;
 
 const PROTOCOL_NAME: &str = "/starknet/headers/1";
 
-pub(crate) struct Behaviour {
+// TODO(shahak): Internalize this when we have a mixed behaviour.
+pub struct Behaviour {
     streamed_data_behaviour: streamed_data::behaviour::Behaviour<
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
