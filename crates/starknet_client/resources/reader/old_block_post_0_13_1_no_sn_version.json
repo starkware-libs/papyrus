@@ -1,0 +1,109 @@
+{
+    "block_hash": "0x701aee1d390ab6e780e2bc179e544e4f3373f153c07ffa63ec6fe20b57ab898",
+    "parent_block_hash": "0xa3d8ca14d847e677462a65829b349a38fe3f921f93c208ddbf50f3acfac54e",
+    "block_number": 171486,
+    "state_root": "0x59a3850f3985d6c6c34b551e558c3fc707f752df53c266eb387b3d23cfe6575",
+    "transaction_commitment": "0x5df7360156f828b4e4df4775c5409c8fc794b06e32822948279ea6cd8ff4333",
+    "event_commitment": "0x0",
+    "status": "ACCEPTED_ON_L1",
+    "l1_da_mode": "CALLDATA",
+    "l1_gas_price": {
+        "price_in_wei": "0x59682f08",
+        "price_in_fri": "0x0"
+    },
+    "l1_data_gas_price": {
+        "price_in_wei": "0x0",
+        "price_in_fri": "0x0"
+    },
+    "transactions": [
+        {
+            "transaction_hash": "0x568cfd2278a1cf89b8fe80d3e19da135b1d313e514b63bd015bf5a22851defe",
+            "version": "0x0",
+            "contract_address": "0x5f1bfbbcf8b6ff245e962b386d5dddf6405874d5eabb0f9931f423909ca46e5",
+            "contract_address_salt": "0x33146533ca75702f5b71aa8e4a6327af14ced70daf1a2066fc965524147b28f",
+            "class_hash": "0x590267e2a8bdb5a5c5c6b8f51751fc661866d96e6dec956f8562f54ecdffabc",
+            "constructor_calldata": [
+                "0x104e9b1ebc4eecf6fbdd3eb345195e018b5b5da47659d862d798d9902f984fe",
+                "0x690523e438501f9c9b408269c158013f8c60dd698b4fbbeeac9718a0d1e8878"
+            ],
+            "type": "DEPLOY"
+        },
+        {
+            "transaction_hash": "0x63334023b88eac991734730c1ea44a27ebd3b4a0724a6036366d0d7c522e0bb",
+            "version": "0x0",
+            "contract_address": "0x27bb67bc0670bc7709d14f2a51ab89471ca30339a44a2795a87951e2f3c9ac6",
+            "contract_address_salt": "0x5569985cb92e31b277f35920ff3403831156d6f8bd3c3456a0e7089263fa11b",
+            "class_hash": "0x590267e2a8bdb5a5c5c6b8f51751fc661866d96e6dec956f8562f54ecdffabc",
+            "constructor_calldata": [
+                "0x74eb57094e1c13347ecba6a9fd2b1b23ebdbba8633f2c72c4e97704a573cd81",
+                "0x2bcc79d6c349a81eeadf4133c1774553db2a33bbcef87e066bd4eb743f9467b"
+            ],
+            "type": "DEPLOY"
+        },
+        {
+            "transaction_hash": "0x689a029835b5145a7920fd551d28bb4ca520b798b2a95ac192ae6d56be1deb5",
+            "version": "0x0",
+            "max_fee": "0x0",
+            "signature": [],
+            "nonce": "0x0",
+            "class_hash": "0x2753ce06a79a9a9c608787a608b424f79c56f465954f1f3a7f6785d575366fb",
+            "sender_address": "0x1",
+            "type": "DECLARE"
+        }
+    ],
+    "timestamp": 1654504622,
+    "sequencer_address": "0x46a89ae102987331d369645031b49c27738ed096f2789c24449966da4c6de6b",
+    "transaction_receipts": [
+        {
+            "execution_status": "SUCCEEDED",
+            "transaction_index": 0,
+            "transaction_hash": "0x568cfd2278a1cf89b8fe80d3e19da135b1d313e514b63bd015bf5a22851defe",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 29,
+                "builtin_instance_counter": {
+                    "pedersen_builtin": 0,
+                    "range_check_builtin": 0,
+                    "bitwise_builtin": 0,
+                    "output_builtin": 0,
+                    "ecdsa_builtin": 0
+                },
+                "n_memory_holes": 0
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "execution_status": "SUCCEEDED",
+            "transaction_index": 1,
+            "transaction_hash": "0x63334023b88eac991734730c1ea44a27ebd3b4a0724a6036366d0d7c522e0bb",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 29,
+                "builtin_instance_counter": {
+                    "pedersen_builtin": 0,
+                    "range_check_builtin": 0,
+                    "bitwise_builtin": 0,
+                    "output_builtin": 0,
+                    "ecdsa_builtin": 0
+                },
+                "n_memory_holes": 0
+            },
+            "actual_fee": "0x0"
+        },
+        {
+            "execution_status": "SUCCEEDED",
+            "transaction_index": 2,
+            "transaction_hash": "0x689a029835b5145a7920fd551d28bb4ca520b798b2a95ac192ae6d56be1deb5",
+            "l2_to_l1_messages": [],
+            "events": [],
+            "execution_resources": {
+                "n_steps": 0,
+                "builtin_instance_counter": {},
+                "n_memory_holes": 0
+            },
+            "actual_fee": "0x0"
+        }
+    ]
+}

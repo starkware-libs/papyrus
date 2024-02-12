@@ -79,6 +79,8 @@ pub struct Block {
     pub timestamp: BlockTimestamp,
     pub transactions: Vec<Transaction>,
     pub transaction_receipts: Vec<TransactionReceipt>,
+    // Default since old blocks don't include this field.
+    #[serde(default)]
     pub starknet_version: String,
     // Additions to the block structure in V0.13.1.
     pub l1_da_mode: L1DataAvailabilityMode,
