@@ -24,6 +24,9 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
         if let ParamPrivacy::Public = serialized_param.privacy {
             continue;
         }
+        if let ParamPrivacy::TemporaryValue = serialized_param.privacy {
+            continue;
+        }
 
         // Remove a non-public parameter.
         let mut config_hierarchy = param_path.split('.').collect_vec();

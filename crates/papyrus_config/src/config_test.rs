@@ -170,6 +170,38 @@ fn test_config_presentation() {
 }
 
 #[test]
+fn test_nested_config_presentation() {
+    let mut config = OuterConfig {
+        opt_elem: Some(1),
+        opt_config: Some(InnerConfig { o: 2 }),
+        inner_config: InnerConfig { o: 3 },
+    };
+
+    let presentation = get_config_presentation(&config, true).unwrap();
+    let keys: Vec<_> = presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+    let public_presentation = get_config_presentation(&config, false).unwrap();
+    let keys: Vec<_> = public_presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+
+    config.opt_elem = None;
+    let presentation = get_config_presentation(&config, true).unwrap();
+    let keys: Vec<_> = presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+    let public_presentation = get_config_presentation(&config, false).unwrap();
+    let keys: Vec<_> = public_presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+
+    config.opt_config = None;
+    let presentation = get_config_presentation(&config, true).unwrap();
+    let keys: Vec<_> = presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+    let public_presentation = get_config_presentation(&config, false).unwrap();
+    let keys: Vec<_> = public_presentation.as_object().unwrap().keys().collect();
+    assert_eq!(keys, vec!["inner_config", "opt_config", "opt_elem"]);
+}
+
+#[test]
 fn test_pointers_flow() {
     let config_map = BTreeMap::from([
         ser_param("a1", &json!(5), "This is a.", ParamPrivacyInput::Public),
