@@ -25,9 +25,15 @@ use crate::test_utils::read_resource::read_resource_file;
 
 #[test]
 fn load_block_succeeds() {
-    for block_path in ["reader/block.json", "reader/block_pre_v0_13.json"] {
-        serde_json::from_str::<BlockOrDeprecated>(&read_resource_file(block_path))
-            .unwrap_or_else(|_| panic!("Failed loading block in path {}", block_path));
+    for block_path in [
+        "reader/block.json",
+        "reader/block_pre_v0_13.json",
+        "reader/block_post_0_13_1.json",
+        "reader/old_block_post_0_13_1_no_sn_version.json",
+    ] {
+        serde_json::from_str::<BlockOrDeprecated>(&read_resource_file(block_path)).unwrap_or_else(
+            |err| panic!("Failed loading block in path {block_path}. Error: {err}"),
+        );
     }
 }
 
