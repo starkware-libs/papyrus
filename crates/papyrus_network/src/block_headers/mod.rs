@@ -1,34 +1,45 @@
 pub mod behaviour;
 
-use prost_types::Timestamp;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
-use starknet_api::core::{ContractAddress, GlobalRoot, SequencerContractAddress};
+use starknet_api::block::{
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockSignature,
+    GasPrice,
+    GasPricePerToken,
+    StarknetVersion,
+};
+use starknet_api::core::{
+    EventCommitment,
+    GlobalRoot,
+    SequencerContractAddress,
+    TransactionCommitment,
+};
 use starknet_api::crypto::Signature;
 use starknet_api::hash::StarkHash;
 
-use crate::messages::{protobuf, ProtobufConversionError};
+#[cfg(test)]
+use crate::messages::TestInstance;
+use crate::messages::{
+    enum_int_to_l1_data_availability_mode,
+    l1_data_availability_mode_to_enum_int,
+    protobuf,
+    ProtobufConversionError,
+};
 use crate::streamed_data::{self, SessionId};
 use crate::{BlockHashOrNumber, Direction, InternalQuery, SignedBlockHeader};
 
+// TODO(shahak) Consider splitting to InboundSessionError and OutboundSessionError.
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
     #[error(transparent)]
     StreamedData(#[from] streamed_data::behaviour::SessionError),
-    #[error("Incompatible data error")]
-    IncompatibleDataError,
+    // This error can only appear in outbound sessions
     #[error(transparent)]
     ProtobufConversionError(#[from] ProtobufConversionError),
-    #[error("Pairing of header and signature error")]
-    PairingError,
     #[error("Session closed unexpectedly")]
     SessionClosedUnexpectedly,
-    #[error("Waiting to complete pairing of header and signature")]
-    WaitingToCompletePairing,
-    // TODO: cast the i32 to the enum value of the error it represents.
-    #[error("Received fin")]
-    ReceivedFin(i32),
-    #[error("Incorrect session id")]
-    IncorrectSessionId,
+    // This error can only appear in outbound sessions
     #[error("Received a message after Fin")]
     ReceivedMessageAfterFin,
 }
@@ -41,7 +52,7 @@ pub(crate) enum Event {
         inbound_session_id: streamed_data::InboundSessionId,
     },
     ReceivedData {
-        data: Vec<SignedBlockHeader>,
+        signed_header: SignedBlockHeader,
         outbound_session_id: streamed_data::OutboundSessionId,
     },
     SessionFailed {
@@ -49,7 +60,7 @@ pub(crate) enum Event {
         session_error: SessionError,
     },
     QueryConversionError(ProtobufConversionError),
-    SessionCompletedSuccessfully {
+    SessionFinishedSuccessfully {
         session_id: SessionId,
     },
 }
@@ -121,101 +132,201 @@ impl From<InternalQuery> for protobuf::BlockHeadersRequest {
     }
 }
 
-impl TryFrom<protobuf::ConsensusSignature> for Signature {
+impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
     type Error = ProtobufConversionError;
-    fn try_from(value: protobuf::ConsensusSignature) -> Result<Self, Self::Error> {
-        let r = match value.r {
-            Some(r) => r.try_into(),
-            None => return Err(ProtobufConversionError::MissingField),
-        }?;
-        let s = match value.s {
-            Some(s) => s.try_into(),
-            None => return Err(ProtobufConversionError::MissingField),
-        }?;
-        Ok(Self { r, s })
-    }
-}
+    fn try_from(value: protobuf::SignedBlockHeader) -> Result<Self, Self::Error> {
+        let block_hash = value
+            .block_hash
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
+            .map(BlockHash)?;
 
-impl TryFrom<protobuf::BlockHeader> for BlockHeader {
-    type Error = ProtobufConversionError;
-    fn try_from(value: protobuf::BlockHeader) -> Result<Self, Self::Error> {
-        let parent_header = value
-            .parent_header
-            .and_then(|parent_header| parent_header.try_into().map(BlockHash).ok())
-            .ok_or(ProtobufConversionError::MissingField)?;
+        let parent_hash = value
+            .parent_hash
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
+            .map(BlockHash)?;
 
-        let sequencer_address = value
+        let timestamp = starknet_api::block::BlockTimestamp(value.time);
+
+        let sequencer = value
             .sequencer_address
-            .ok_or(ProtobufConversionError::MissingField)
-            .and_then(|sequencer_address| {
-                ContractAddress::try_from(sequencer_address)
-                    .map_err(|_| ProtobufConversionError::OutOfRangeValue)
-            })
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
             .map(SequencerContractAddress)?;
-
-        let timestamp = value
-            .time
-            .and_then(|timestamp| {
-                timestamp.seconds.try_into().map(starknet_api::block::BlockTimestamp).ok()
-            })
-            .ok_or(ProtobufConversionError::MissingField)?;
 
         let state_root = value
             .state
-            .and_then(|state_root| {
-                state_root.root.and_then(|root_hash| root_hash.try_into().map(GlobalRoot).ok())
-            })
-            .ok_or(ProtobufConversionError::MissingField)?;
+            .and_then(|state| state.root)
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
+            .map(GlobalRoot)?;
 
-        Ok(BlockHeader {
-            parent_hash: parent_header,
-            block_number: BlockNumber(value.number),
-            sequencer: sequencer_address,
-            timestamp,
-            state_root,
-            // TODO: add missing fields.
-            ..Default::default()
+        let n_transactions = value
+            .transactions
+            .as_ref()
+            .ok_or(ProtobufConversionError::MissingField)?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
+
+        let transaction_commitment = value
+            .transactions
+            .and_then(|transactions| transactions.root)
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
+            .map(TransactionCommitment)?;
+
+        let n_events = value
+            .events
+            .as_ref()
+            .ok_or(ProtobufConversionError::MissingField)?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
+
+        let event_commitment = value
+            .events
+            .and_then(|events| events.root)
+            .ok_or(ProtobufConversionError::MissingField)?
+            .try_into()
+            .map(EventCommitment)?;
+
+        let l1_da_mode = enum_int_to_l1_data_availability_mode(value.l1_data_availability_mode)?;
+
+        let starknet_version = StarknetVersion(value.protocol_version);
+
+        let l1_gas_price = GasPricePerToken {
+            price_in_fri: GasPrice(
+                value.gas_price_fri.ok_or(ProtobufConversionError::MissingField)?.into(),
+            ),
+            price_in_wei: GasPrice(
+                value.gas_price_wei.ok_or(ProtobufConversionError::MissingField)?.into(),
+            ),
+        };
+
+        let l1_data_gas_price = GasPricePerToken {
+            price_in_fri: GasPrice(
+                value.data_gas_price_fri.ok_or(ProtobufConversionError::MissingField)?.into(),
+            ),
+            price_in_wei: GasPrice(
+                value.data_gas_price_wei.ok_or(ProtobufConversionError::MissingField)?.into(),
+            ),
+        };
+
+        Ok(SignedBlockHeader {
+            block_header: BlockHeader {
+                block_hash,
+                parent_hash,
+                block_number: BlockNumber(value.number),
+                l1_gas_price,
+                l1_data_gas_price,
+                state_root,
+                sequencer,
+                timestamp,
+                l1_da_mode,
+                transaction_commitment,
+                event_commitment,
+                n_transactions,
+                n_events,
+                starknet_version,
+            },
+            // collect will convert from Vec<Result> to Result<Vec>.
+            signatures: value
+                .signatures
+                .into_iter()
+                .map(|signature| starknet_api::block::BlockSignature::try_from(signature))
+                .collect::<Result<Vec<_>, _>>()?,
         })
     }
 }
 
-impl TryFrom<protobuf::Signatures> for Vec<Signature> {
-    type Error = ProtobufConversionError;
-    fn try_from(value: protobuf::Signatures) -> Result<Self, Self::Error> {
-        let mut signatures = Vec::with_capacity(value.signatures.len());
-        for signature in value.signatures {
-            signatures.push(signature.try_into()?);
+impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
+    fn from((header, signature): (BlockHeader, BlockSignature)) -> Self {
+        Self {
+            block_hash: Some(header.block_hash.into()),
+            parent_hash: Some(header.parent_hash.into()),
+            number: header.block_number.0.try_into().expect("Converting usize to u64 failed"),
+            time: header.timestamp.0,
+            sequencer_address: Some(header.sequencer.0.into()),
+            // TODO(shahak): fill this.
+            state_diff_commitment: None,
+            state: Some(protobuf::Patricia {
+                // TODO(shahak): fill this.
+                height: 0,
+                root: Some(header.state_root.0.into()),
+            }),
+            transactions: Some(protobuf::Merkle {
+                n_leaves: header.n_transactions.try_into().expect("Converting usize to u64 failed"),
+                root: Some(header.transaction_commitment.0.into()),
+            }),
+            events: Some(protobuf::Merkle {
+                n_leaves: header.n_events.try_into().expect("Converting usize to u64 failed"),
+                root: Some(header.event_commitment.0.into()),
+            }),
+            // TODO(shahak): fill this.
+            receipts: None,
+            protocol_version: header.starknet_version.0,
+            gas_price_wei: Some(header.l1_gas_price.price_in_wei.0.into()),
+            gas_price_fri: Some(header.l1_gas_price.price_in_fri.0.into()),
+            data_gas_price_wei: Some(header.l1_data_gas_price.price_in_wei.0.into()),
+            data_gas_price_fri: Some(header.l1_data_gas_price.price_in_fri.0.into()),
+            l1_data_availability_mode: l1_data_availability_mode_to_enum_int(header.l1_da_mode),
+            // TODO(shahak): fill this.
+            num_storage_diffs: 0,
+            // TODO(shahak): fill this.
+            num_nonce_updates: 0,
+            // TODO(shahak): fill this.
+            num_declared_classes: 0,
+            // TODO(shahak): fill this.
+            num_deployed_contracts: 0,
+            // TODO(shahak): fill this.
+            signatures: vec![signature.into()],
         }
-        Ok(signatures)
     }
 }
 
-impl From<BlockHeader> for protobuf::BlockHeader {
-    fn from(value: BlockHeader) -> Self {
-        Self {
-            parent_header: Some(protobuf::Hash { elements: value.parent_hash.0.bytes().to_vec() }),
-            number: value.block_number.0,
-            sequencer_address: Some(protobuf::Address {
-                elements: value.sequencer.0.key().bytes().to_vec(),
-            }),
-            state: Some(protobuf::Patricia {
-                root: Some(protobuf::Hash { elements: value.state_root.0.bytes().to_vec() }),
-                height: 0,
-            }),
-            // TODO: fix timestamp conversion and
-            time: Some(Timestamp { seconds: value.timestamp.0.try_into().unwrap_or(0), nanos: 0 }),
-            // TODO: add missing fields.
-            state_diffs: None,
-            proof_fact: None,
-            transactions: None,
-            events: None,
-            receipts: None,
-        }
+impl TryFrom<protobuf::ConsensusSignature> for starknet_api::block::BlockSignature {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::ConsensusSignature) -> Result<Self, Self::Error> {
+        Ok(Self(Signature {
+            r: value.r.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
+            s: value.s.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
+        }))
     }
 }
 
 impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
     fn from(value: starknet_api::block::BlockSignature) -> Self {
         Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
+    }
+}
+
+#[cfg(test)]
+impl TestInstance for protobuf::SignedBlockHeader {
+    fn test_instance() -> Self {
+        Self {
+            block_hash: Some(protobuf::Hash::test_instance()),
+            parent_hash: Some(protobuf::Hash::test_instance()),
+            number: 1,
+            time: 1,
+            sequencer_address: Some(protobuf::Address::test_instance()),
+            state_diff_commitment: Some(protobuf::Hash::test_instance()),
+            state: Some(protobuf::Patricia::test_instance()),
+            transactions: Some(protobuf::Merkle::test_instance()),
+            events: Some(protobuf::Merkle::test_instance()),
+            receipts: Some(protobuf::Merkle::test_instance()),
+            protocol_version: "0.0.0".to_owned(),
+            gas_price_fri: Some(protobuf::Uint128::test_instance()),
+            gas_price_wei: Some(protobuf::Uint128::test_instance()),
+            data_gas_price_fri: Some(protobuf::Uint128::test_instance()),
+            data_gas_price_wei: Some(protobuf::Uint128::test_instance()),
+            l1_data_availability_mode: 0,
+            num_storage_diffs: 0,
+            num_nonce_updates: 0,
+            num_declared_classes: 0,
+            num_deployed_contracts: 0,
+            signatures: vec![protobuf::ConsensusSignature::test_instance()],
+        }
     }
 }

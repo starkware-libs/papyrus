@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
@@ -12,14 +12,13 @@ use libp2p::swarm::{
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
-use starknet_api::block::BlockHeader;
 
 use super::{Event, SessionError};
 use crate::db_executor::Data;
-use crate::messages::protobuf;
+use crate::messages::{protobuf, ProtobufConversionError};
 use crate::streamed_data::behaviour::Event as StreamedDataEvent;
 use crate::streamed_data::{self, Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{InternalQuery, SignedBlockHeader};
+use crate::{InternalQuery};
 
 #[cfg(test)]
 #[path = "behaviour_test.rs"]
@@ -36,7 +35,6 @@ pub(crate) struct Behaviour {
         protobuf::BlockHeadersRequest,
         protobuf::BlockHeadersResponse,
     >,
-    header_pending_pairing: HashMap<OutboundSessionId, BlockHeader>,
     sessions_pending_termination: HashSet<SessionId>,
 }
 
@@ -55,7 +53,6 @@ impl Behaviour {
                 session_timeout,
                 protocol_name: StreamProtocol::new(PROTOCOL_NAME),
             }),
-            header_pending_pairing: HashMap::new(),
             sessions_pending_termination: HashSet::new(),
         }
     }
@@ -69,55 +66,35 @@ impl Behaviour {
         self.streamed_data_behaviour.send_query(query.into(), peer_id).map_err(|e| e.into())
     }
 
-    /// Send data to the session that is mapped to this query id.
-    /// return false if the query id is not mapped to any session.
+    /// Send data to the session with the given id. Return Error if no such session exists.
     pub(crate) fn send_data(
         &mut self,
         data: Data,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let header_messages = match data {
+        let protobuf_data = match data {
             Data::BlockHeaderAndSignature { header, signature } => {
-                let mut res = vec![protobuf::block_headers_response_part::HeaderMessage::Header(
-                    header.clone().into(),
-                )];
-                if let Some(signature) = signature {
-                    res.push(protobuf::block_headers_response_part::HeaderMessage::Signatures(
-                        protobuf::Signatures {
-                            signatures: vec![signature.into()],
-                            block: Some(protobuf::BlockId {
-                                number: header.block_number.0,
-                                header: Some(header.block_hash.into()),
-                            }),
-                        },
-                    ));
-                }
-                res
+                protobuf::block_headers_response::HeaderMessage::Header((header, signature).into())
             }
-            Data::Fin { .. } => {
-                // TODO: handle different Fin messages
-                vec![protobuf::block_headers_response_part::HeaderMessage::Fin(Default::default())]
-            }
+            Data::Fin {} => protobuf::block_headers_response::HeaderMessage::Fin(protobuf::Fin {}),
         };
-        for header_message in header_messages {
-            self.streamed_data_behaviour.send_data(
-                protobuf::BlockHeadersResponse {
-                    part: vec![protobuf::BlockHeadersResponsePart {
-                        header_message: Some(header_message.clone()),
-                    }],
-                },
-                inbound_session_id,
-            )?;
-            if let protobuf::block_headers_response_part::HeaderMessage::Fin { .. } = header_message
-            {
-                // TODO: consider removing fin as a user sent mesages and have the user call
-                // close_inbound_session instead.
-                self.close_inbound_session(inbound_session_id);
-            }
+        let is_fin = matches!(
+            protobuf_data,
+            protobuf::block_headers_response::HeaderMessage::Fin(protobuf::Fin {})
+        );
+        self.streamed_data_behaviour.send_data(
+            protobuf::BlockHeadersResponse { header_message: Some(protobuf_data) },
+            inbound_session_id,
+        )?;
+        if is_fin {
+            // TODO: consider removing fin as a user sent mesages and have the user call
+            // close_inbound_session instead.
+            self.close_inbound_session(inbound_session_id);
         }
         Ok(())
     }
 
+    // TODO(shahak): Consider making this function private.
     /// Instruct behaviour to close an inbound session. A corresponding event will be emitted to
     /// report the session was closed.
     #[allow(dead_code)]
@@ -130,17 +107,6 @@ impl Behaviour {
 
 // functionality moved into this trait so that we can mock it in tests.
 trait BehaviourTrait {
-    fn store_header_pending_pairing_with_signature(
-        &mut self,
-        header: protobuf::BlockHeader,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<(), SessionError>;
-
-    fn fetch_header_pending_pairing_with_signature(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<BlockHeader, SessionError>;
-
     fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event>;
 
     fn drop_session(&mut self, session_id: SessionId);
@@ -159,85 +125,45 @@ trait BehaviourTrait {
                 session_error: SessionError::ReceivedMessageAfterFin,
             });
         }
-        if data.part.is_empty() {
+        let Some(message) = data.header_message else {
             self.drop_session(outbound_session_id.into());
             return Some(Event::SessionFailed {
                 session_id: outbound_session_id.into(),
-                session_error: SessionError::IncompatibleDataError,
+                session_error: SessionError::ProtobufConversionError(
+                    ProtobufConversionError::MissingField,
+                ),
             });
-        }
-        let mut data_received = Vec::new();
-        for message in data.part {
-            let Some(message) = message.header_message.clone() else {
-                self.drop_session(outbound_session_id.into());
-                return Some(Event::SessionFailed {
-                    session_id: outbound_session_id.into(),
-                    session_error: SessionError::IncompatibleDataError,
-                });
-            };
-            match message {
-                protobuf::block_headers_response_part::HeaderMessage::Header(header) => {
-                    if let Err(error) = self
-                        .store_header_pending_pairing_with_signature(header, outbound_session_id)
-                    {
+        };
+        match message {
+            protobuf::block_headers_response::HeaderMessage::Header(header_with_signatures) => {
+                match header_with_signatures.try_into() {
+                    Ok(signed_header) => {
+                        Some(Event::ReceivedData { signed_header, outbound_session_id })
+                    }
+                    Err(protobuf_conversion_error) => {
                         self.drop_session(outbound_session_id.into());
-                        return Some(Event::SessionFailed {
+                        Some(Event::SessionFailed {
                             session_id: outbound_session_id.into(),
-                            session_error: error,
-                        });
+                            session_error: SessionError::ProtobufConversionError(
+                                protobuf_conversion_error,
+                            ),
+                        })
                     }
                 }
-                protobuf::block_headers_response_part::HeaderMessage::Signatures(sigs) => {
-                    let block_header = match self
-                        .fetch_header_pending_pairing_with_signature(outbound_session_id)
-                    {
-                        Ok(block_header) => block_header,
-                        Err(e) => {
-                            self.drop_session(outbound_session_id.into());
-                            return Some(Event::SessionFailed {
-                                session_id: outbound_session_id.into(),
-                                session_error: e,
-                            });
-                        }
-                    };
-                    match sigs.try_into() {
-                        Ok(signatures) => {
-                            data_received.push(SignedBlockHeader { block_header, signatures })
-                        }
-                        Err(protobuf_conversion_error) => {
-                            self.drop_session(outbound_session_id.into());
-                            return Some(Event::SessionFailed {
-                                session_id: outbound_session_id.into(),
-                                session_error: SessionError::ProtobufConversionError(
-                                    protobuf_conversion_error,
-                                ),
-                            });
-                        }
-                    };
-                }
-                protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
-                    error: Some(error),
-                }) => {
+            }
+            protobuf::block_headers_response::HeaderMessage::Fin(protobuf::Fin {}) => {
+                let is_newly_inserted =
+                    self.get_sessions_pending_termination().insert(outbound_session_id.into());
+                if is_newly_inserted {
+                    None
+                } else {
                     self.drop_session(outbound_session_id.into());
-                    return Some(Event::SessionFailed {
+                    Some(Event::SessionFailed {
                         session_id: outbound_session_id.into(),
-                        session_error: SessionError::ReceivedFin(error),
-                    });
+                        session_error: SessionError::ReceivedMessageAfterFin,
+                    })
                 }
-                protobuf::block_headers_response_part::HeaderMessage::Fin(protobuf::Fin {
-                    error: None,
-                }) => {
-                    // TODO: handle errors here
-                    let _newly_inserted =
-                        self.get_sessions_pending_termination().insert(outbound_session_id.into());
-                }
-            };
-        }
-        if !data_received.is_empty() {
-            // TODO: add test for flows that return more then one data piece in the same event.
-            Some(Event::ReceivedData { data: data_received, outbound_session_id })
-        } else {
-            None
+            }
         }
     }
 
@@ -270,28 +196,9 @@ trait BehaviourTrait {
 }
 
 impl BehaviourTrait for Behaviour {
-    fn store_header_pending_pairing_with_signature(
-        &mut self,
-        header: protobuf::BlockHeader,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<(), SessionError> {
-        self.header_pending_pairing
-            .insert(outbound_session_id, header.try_into()?)
-            .map(|_| ())
-            .xor(Some(()))
-            .ok_or(SessionError::PairingError)
-    }
-
-    fn fetch_header_pending_pairing_with_signature(
-        &mut self,
-        outbound_session_id: OutboundSessionId,
-    ) -> Result<BlockHeader, SessionError> {
-        self.header_pending_pairing.remove(&outbound_session_id).ok_or(SessionError::PairingError)
-    }
-
     fn handle_session_finished(&mut self, session_id: SessionId) -> Option<Event> {
         if self.sessions_pending_termination.remove(&session_id) {
-            Some(Event::SessionCompletedSuccessfully { session_id })
+            Some(Event::SessionFinishedSuccessfully { session_id })
         } else {
             Some(Event::SessionFailed {
                 session_id,
@@ -382,7 +289,7 @@ impl NetworkBehaviour for Behaviour {
                         ignore_event_and_return_pending = true;
                         Event::SessionFailed {
                             session_id: OutboundSessionId::default().into(),
-                            session_error: SessionError::WaitingToCompletePairing,
+                            session_error: SessionError::SessionClosedUnexpectedly,
                         }
                     }
                 });

@@ -159,7 +159,7 @@ impl NetworkManager {
                 debug!("Failed to convert incoming query on {error:?}");
                 // TODO: Consider adding peer_id to event and handling reputation.
             }
-            Event::SessionCompletedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }

@@ -13,7 +13,6 @@ use tokio::task::JoinHandle;
 
 use crate::{BlockHashOrNumber, InternalQuery};
 
-pub mod dummy_executor;
 #[cfg(test)]
 mod test;
 mod utils;
@@ -23,7 +22,13 @@ pub struct QueryId(pub usize);
 
 #[cfg_attr(test, derive(Debug))]
 pub enum Data {
-    BlockHeaderAndSignature { header: BlockHeader, signature: Option<BlockSignature> },
+    // TODO(shahak): Consider uniting with SignedBlockHeader.
+    BlockHeaderAndSignature {
+        header: BlockHeader,
+        signature: BlockSignature,
+    },
+    // TODO(shahak): Investigate why Fin isn't used.
+    #[allow(dead_code)]
     Fin,
 }
 
@@ -135,7 +140,8 @@ impl DBExecutor for BlockHeaderDBExecutor {
                         Ok(()) => {
                             if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
                                 header,
-                                signature: None,
+                                // TODO: Get the real signature from the storage.
+                                signature: BlockSignature::default(),
                             }) {
                                 // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
