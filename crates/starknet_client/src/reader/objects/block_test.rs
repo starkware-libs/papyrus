@@ -30,6 +30,7 @@ fn load_block_succeeds() {
         "reader/block_pre_v0_13.json",
         "reader/block_post_0_13_1.json",
         "reader/old_block_post_0_13_1_no_sn_version.json",
+        "reader/old_block_post_0_13_1_no_sequencer.json",
     ] {
         serde_json::from_str::<BlockOrDeprecated>(&read_resource_file(block_path)).unwrap_or_else(
             |err| panic!("Failed loading block in path {block_path}. Error: {err}"),
