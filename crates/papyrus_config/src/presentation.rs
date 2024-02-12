@@ -21,23 +21,33 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
     // Iterates over flatten param paths for removing non-public parameters from the nested config.
     // For example, for the param path 'a.b.c.d', perform config_presentation[a][b][c].remove(d).
     for (param_path, serialized_param) in config.dump() {
-        if let ParamPrivacy::Public = serialized_param.privacy {
-            continue;
+        match serialized_param.privacy {
+            ParamPrivacy::Public => continue,
+            ParamPrivacy::TemporaryValue => continue,
+            ParamPrivacy::Private => {
+                remove_param_from_presentation(&param_path, &mut config_presentation)?
+            }
         }
-
-        // Remove a non-public parameter.
-        let mut config_hierarchy = param_path.split('.').collect_vec();
-        let Some(element_to_remove) = config_hierarchy.pop() else {
-            continue; // Empty param path.`
-        };
-        let most_inner_config = config_hierarchy
-            .iter()
-            .fold(&mut config_presentation, |entry, config_name| entry.index_mut(config_name));
-
-        most_inner_config
-            .as_object_mut()
-            .ok_or_else(|| ConfigError::ParamNotFound { param_path: param_path.to_string() })?
-            .remove(element_to_remove);
     }
     Ok(config_presentation)
+}
+
+fn remove_param_from_presentation(
+    param_path: &str,
+    config_presentation: &mut serde_json::Value,
+) -> Result<(), ConfigError> {
+    let mut config_hierarchy = param_path.split('.').collect_vec();
+    let Some(element_to_remove) = config_hierarchy.pop() else {
+        // TODO: Can we expect this to never happen?
+        return Ok(()); // Empty param path.`
+    };
+    let most_inner_config = config_hierarchy
+        .iter()
+        .fold(config_presentation, |entry, config_name| entry.index_mut(config_name));
+
+    most_inner_config
+        .as_object_mut()
+        .ok_or_else(|| ConfigError::ParamNotFound { param_path: param_path.to_string() })?
+        .remove(element_to_remove);
+    Ok(())
 }
