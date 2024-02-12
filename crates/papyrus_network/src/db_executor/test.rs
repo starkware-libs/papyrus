@@ -7,8 +7,7 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use rand::random;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockTimestamp};
-use starknet_api::core::SequencerContractAddress;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 
 use super::Data::BlockHeaderAndSignature;
 use crate::db_executor::{DBExecutor, DBExecutorError};
@@ -196,14 +195,16 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
         let block_header = BlockHeader {
             block_number: BlockNumber(i),
             block_hash: BlockHash(random::<u64>().into()),
-            sequencer: SequencerContractAddress(random::<u64>().into()),
-            timestamp: BlockTimestamp(random::<u64>()),
             ..Default::default()
         };
         storage_writer
             .begin_rw_txn()
             .unwrap()
             .append_header(BlockNumber(i), &block_header)
+            .unwrap()
+            // TODO(shahak): Put different signatures for each block to test that we retrieve the
+            // right signatures.
+            .append_block_signature(BlockNumber(i), &BlockSignature::default())
             .unwrap()
             .commit()
             .unwrap();
