@@ -5847,6 +5847,7 @@ dependencies = [
  "indexmap 2.1.0",
  "insta",
  "integer-encoding",
+ "lazy_static",
  "libmdbx",
  "memmap2",
  "metrics",

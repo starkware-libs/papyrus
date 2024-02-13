@@ -15,6 +15,7 @@ use cairo_lang_starknet_classes::NestedIntList;
 use cairo_lang_utils::bigint::BigUintAsHex;
 use indexmap::IndexMap;
 use integer_encoding::*;
+use lazy_static::lazy_static;
 use num_bigint::BigUint;
 use parity_scale_codec::{Decode, Encode};
 use primitive_types::H160;
@@ -113,6 +114,8 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use zstd::bulk::Decompressor;
+use zstd::dict::{DecoderDictionary, EncoderDictionary};
 
 use crate::body::events::{
     EventIndex,
@@ -131,7 +134,14 @@ use crate::compression_utils::{
     serialize_and_compress,
     IsCompressed,
 };
-use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::db::serialization::{
+    StorageSerde,
+    StorageSerdeError,
+    ValueSerde,
+    VersionOneWrapper,
+    VERSION_ONE,
+};
+use crate::db::DbError;
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
@@ -465,6 +475,14 @@ auto_storage_serde! {
         DeployAccount(DeployAccountTransaction) = 2,
         Invoke(InvokeTransaction) = 3,
         L1Handler(L1HandlerTransaction) = 4,
+    }
+    pub struct ThinStateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
+        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
     pub enum TransactionExecutionStatus {
         Succeeded = 0,
@@ -990,8 +1008,104 @@ impl StorageSerde for ValuePlaceHolder {
 }
 
 ////////////////////////////////////////////////////////////////////////
+//  Custom serialization with pre trained dictionaries compression.
+////////////////////////////////////////////////////////////////////////
+
+// TODO(dvir): fine tune the compression hyperparameters, especially compression level, magic_bytes
+// and back reference distance.
+
+// ThinStateDiff compression.
+const THIN_STATE_DIFF_COMPRESSION_DICT_V1: &[u8] = &[0];
+lazy_static! {
+    static ref THIN_STATE_DIFF_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::new(
+        THIN_STATE_DIFF_COMPRESSION_DICT_V1,
+        zstd::DEFAULT_COMPRESSION_LEVEL
+    );
+    static ref THIN_STATE_DIFF_DECODER_DICT_V1: DecoderDictionary<'static> =
+        DecoderDictionary::new(THIN_STATE_DIFF_COMPRESSION_DICT_V1);
+    static ref THIN_STATE_DIFF_DECODERS_ARRAY: [&'static DecoderDictionary<'static>; 1] =
+        [&THIN_STATE_DIFF_DECODER_DICT_V1];
+}
+
+impl ValueSerde for VersionOneWrapper<ThinStateDiff> {
+    type Value = ThinStateDiff;
+
+    fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError> {
+        serialize_with_compression(obj, VERSION_ONE, &THIN_STATE_DIFF_ENCODER_DICT)
+    }
+
+    fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value> {
+        deserialize_compressed(bytes, &*THIN_STATE_DIFF_DECODERS_ARRAY)
+    }
+}
+
+// An upper bound for the size of the decompressed data.
+const MAX_DECOMPRESSION_CAPACITY: usize = 1 << 32; // 4GB
+
+fn serialize_with_compression<T: StorageSerde>(
+    obj: &T,
+    version: u8,
+    encoder_dict: &EncoderDictionary<'static>,
+) -> Result<Vec<u8>, crate::db::DbError> {
+    let mut buff = Vec::new();
+    obj.serialize_into(&mut buff).map_err(|_| DbError::Serialization)?;
+    let compressed_buff_size = zstd::zstd_safe::compress_bound(buff.len());
+    // TODO(dvir): remove this when using the same buffer for all the serialization in write
+    // operation.
+    let mut res = vec![0; compressed_buff_size + 1];
+
+    // TODO(dvir): create one compressor for all the serialization in write operation.
+    let mut compressor = zstd::bulk::Compressor::with_prepared_dictionary(encoder_dict)
+        .map_err(|_| DbError::Compression)?;
+    res[0] = version;
+    let compressed_size = compressor
+        .compress_to_buffer(buff.as_slice(), &mut res[1..])
+        .map_err(|_| DbError::Compression)?;
+
+    // Truncate the buffer to get rid of the zeroes at the end.
+    res.truncate(compressed_size + 1);
+    Ok(res)
+}
+
+fn deserialize_compressed<T: StorageSerde>(
+    bytes: &mut impl std::io::Read,
+    dicts: &[&'static DecoderDictionary<'static>],
+) -> Option<T> {
+    let mut version = [0u8; 1];
+    bytes.read_exact(&mut version[..]).ok()?;
+
+    // TODO(dvir): try to create decompressor once for each thread.
+    if version[0] as usize > dicts.len() {
+        return None;
+    }
+    let decoder_dict = dicts[version[0] as usize - 1];
+    let mut decompressor = Decompressor::with_prepared_dictionary(decoder_dict).ok()?;
+
+    // TODO(dvir): consider change the ValueSerde trait to get &[u8] when deserializing and thus
+    // avoid to read the whole buffer first (this is copy all the buffer).
+    let mut to_decompress = Vec::new();
+    if bytes.read_to_end(&mut to_decompress).is_err() {
+        return None;
+    }
+    // TODO(dvir): try to create one buffer for each thread and decompress to it instead of
+    // creating new buffer each time.
+    let decompressed_bytes =
+        decompressor.decompress(&to_decompress, MAX_DECOMPRESSION_CAPACITY).ok()?;
+    let mut decompressed_bytes = decompressed_bytes.as_slice();
+    let res = T::deserialize_from(&mut decompressed_bytes);
+
+    // Make sure we are at EOF.
+    if !decompressed_bytes.is_empty() {
+        return None;
+    }
+
+    res
+}
+
+////////////////////////////////////////////////////////////////////////
 //  Custom serialization with compression.
 ////////////////////////////////////////////////////////////////////////
+
 impl StorageSerde for ContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         serialize_and_compress(&self.sierra_program)?.serialize_into(res)?;
@@ -1079,38 +1193,6 @@ impl StorageSerde for CasmContractClass {
 
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
-
-impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        let mut to_compress: Vec<u8> = Vec::new();
-        self.deployed_contracts.serialize_into(&mut to_compress)?;
-        self.storage_diffs.serialize_into(&mut to_compress)?;
-        self.declared_classes.serialize_into(&mut to_compress)?;
-        self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
-        self.nonces.serialize_into(&mut to_compress)?;
-        self.replaced_classes.serialize_into(&mut to_compress)?;
-        let compressed = compress(to_compress.as_slice())?;
-        compressed.serialize_into(res)?;
-        Ok(())
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
-        let data = &mut data.as_slice();
-        Some(Self {
-            deployed_contracts: IndexMap::deserialize_from(data)?,
-            storage_diffs: IndexMap::deserialize_from(data)?,
-            declared_classes: IndexMap::deserialize_from(data)?,
-            deprecated_declared_classes: Vec::deserialize_from(data)?,
-            nonces: IndexMap::deserialize_from(data)?,
-            replaced_classes: IndexMap::deserialize_from(data)?,
-        })
-    }
-}
-
-#[cfg(test)]
-create_storage_serde_test!(ThinStateDiff);
 
 // The following structs are conditionally compressed based on their serialized size.
 macro_rules! auto_storage_serde_conditionally_compressed {
