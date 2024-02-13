@@ -120,6 +120,8 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     ) -> bool {
         match inbound_session.poll_unpin(cx) {
             Poll::Ready(Err(io_error)) => {
+                // No need to wake those waiting for pending events because this function is called
+                // inside `poll`.
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
                         session_id: inbound_session_id.into(),
@@ -129,6 +131,8 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
                 true
             }
             Poll::Ready(Ok(())) => {
+                // No need to wake those waiting for pending events because this function is called
+                // inside `poll`.
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::GenerateEvent(
                         GenericEvent::SessionFinishedSuccessfully {
@@ -228,7 +232,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             }
         });
 
-        // Handling pending_events at the end of the function to avoid starvation.
+        // Handling pending_events at the end of the function to avoid starvation and to make sure
+        // we don't return Pending if the code above created an event.
         if let Some(event) = self.pending_events.pop_front() {
             return Poll::Ready(event);
         }
@@ -240,6 +245,9 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
             RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id } => {
                 // TODO(shahak) Consider extracting to a utility function to prevent forgetfulness
                 // of the timeout.
+
+                // No need to wake because the swarm guarantees that `poll` will be called after
+                // on_behaviour_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(
                         OutboundProtocol {
@@ -283,6 +291,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 if remove_result.is_none() {
                     self.dropped_outbound_sessions_non_negotiated.insert(outbound_session_id);
                 }
+                // No need to wake because the swarm guarantees that `poll` will be called after
+                // on_behaviour_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::NotifySessionDropped {
                         session_id: outbound_session_id.into(),
@@ -293,6 +303,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 session_id: SessionId::InboundSessionId(inbound_session_id),
             } => {
                 self.id_to_inbound_session.remove(&inbound_session_id);
+                // No need to wake because the swarm guarantees that `poll` will be called after
+                // on_behaviour_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::NotifySessionDropped {
                         session_id: inbound_session_id.into(),
@@ -344,6 +356,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 protocol: (query, write_stream),
                 info: inbound_session_id,
             }) => {
+                // No need to wake because the swarm guarantees that `poll` will be called after
+                // on_connection_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::GenerateEvent(GenericEvent::NewInboundSession {
                         query,
@@ -372,6 +386,8 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                     }
                     StreamUpgradeError::Io(error) => SessionError::IOError(error),
                 };
+                // No need to wake because the swarm guarantees that `poll` will be called after
+                // on_connection_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                     RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
                         session_id: outbound_session_id.into(),

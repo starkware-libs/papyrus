@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
-use std::task::{Context, Poll};
+use std::task::{Context, Poll, Waker};
 use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
@@ -121,6 +121,7 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
     dropped_sessions: HashSet<SessionId>,
+    wakers_waiting_for_event: Vec<Waker>,
 }
 
 impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
@@ -134,6 +135,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
             dropped_sessions: Default::default(),
+            wakers_waiting_for_event: Default::default(),
         }
     }
 
@@ -153,7 +155,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         self.session_id_to_peer_id_and_connection_id
             .insert(outbound_session_id.into(), (peer_id, connection_id));
 
-        self.pending_events.push_back(ToSwarm::NotifyHandler {
+        self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
             event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
@@ -170,7 +172,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
             self.get_peer_id_and_connection_id_from_session_id(inbound_session_id.into())?;
-        self.pending_events.push_back(ToSwarm::NotifyHandler {
+        self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
             event: RequestFromBehaviourEvent::SendData { data, inbound_session_id },
@@ -186,7 +188,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
             self.get_peer_id_and_connection_id_from_session_id(inbound_session_id.into())?;
-        self.pending_events.push_back(ToSwarm::NotifyHandler {
+        self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
             event: RequestFromBehaviourEvent::CloseInboundSession { inbound_session_id },
@@ -200,7 +202,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         let (peer_id, connection_id) =
             self.get_peer_id_and_connection_id_from_session_id(session_id)?;
         if self.dropped_sessions.insert(session_id) {
-            self.pending_events.push_back(ToSwarm::NotifyHandler {
+            self.add_event_to_queue(ToSwarm::NotifyHandler {
                 peer_id,
                 handler: NotifyHandler::One(connection_id),
                 event: RequestFromBehaviourEvent::DropSession { session_id },
@@ -217,6 +219,16 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             .get(&session_id)
             .copied()
             .ok_or(SessionIdNotFoundError)
+    }
+
+    fn add_event_to_queue(
+        &mut self,
+        event: ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>,
+    ) {
+        self.pending_events.push_back(event);
+        for waker in self.wakers_waiting_for_event.drain(..) {
+            waker.wake();
+        }
     }
 }
 
@@ -254,21 +266,23 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                 self.connection_ids_map.get_mut(peer_id).insert(connection_id);
             }
             FromSwarm::ConnectionClosed(ConnectionClosed { peer_id, connection_id, .. }) => {
+                let mut session_ids = Vec::new();
                 self.session_id_to_peer_id_and_connection_id.retain(
                     |session_id, (session_peer_id, session_connection_id)| {
                         if peer_id == *session_peer_id && connection_id == *session_connection_id {
-                            self.pending_events.push_back(ToSwarm::GenerateEvent(
-                                Event::SessionFailed {
-                                    session_id: *session_id,
-                                    error: SessionError::ConnectionClosed,
-                                },
-                            ));
+                            session_ids.push(session_id.clone());
                             false
                         } else {
                             true
                         }
                     },
                 );
+                for session_id in session_ids {
+                    self.add_event_to_queue(ToSwarm::GenerateEvent(Event::SessionFailed {
+                        session_id,
+                        error: SessionError::ConnectionClosed,
+                    }));
+                }
             }
             _ => {}
         }
@@ -304,7 +318,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                     }
                 }
                 if !is_event_muted {
-                    self.pending_events.push_back(ToSwarm::GenerateEvent(converted_event));
+                    self.add_event_to_queue(ToSwarm::GenerateEvent(converted_event));
                 }
             }
             RequestToBehaviourEvent::NotifySessionDropped { session_id } => {
@@ -315,12 +329,13 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
 
     fn poll(
         &mut self,
-        _cx: &mut Context<'_>,
+        cx: &mut Context<'_>,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
         if let Some(event) = self.pending_events.pop_front() {
             return Poll::Ready(event);
         }
+        self.wakers_waiting_for_event.push(cx.waker().clone());
         Poll::Pending
     }
 }
