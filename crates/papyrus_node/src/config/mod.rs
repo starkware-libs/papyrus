@@ -17,6 +17,7 @@ use papyrus_config::dumping::{append_sub_config_name, ser_optional_sub_config, S
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
+use papyrus_network::NetworkConfig;
 use papyrus_rpc::RpcConfig;
 use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
@@ -45,6 +46,7 @@ pub struct NodeConfig {
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,
+    pub network: Option<NetworkConfig>,
 }
 
 // Default configuration values.
@@ -57,6 +59,7 @@ impl Default for NodeConfig {
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
+            network: None,
         }
     }
 }
@@ -70,6 +73,7 @@ impl SerializeConfig for NodeConfig {
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
             ser_optional_sub_config(&self.sync, "sync"),
+            ser_optional_sub_config(&self.network, "network"),
         )
         .collect()
     }
