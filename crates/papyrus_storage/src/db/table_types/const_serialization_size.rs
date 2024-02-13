@@ -4,7 +4,7 @@ mod const_serialization_size_test;
 
 use starknet_api::block::BlockNumber;
 
-use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, VersionZeroWrapper};
+use crate::{body::events::EventIndex, db::serialization::{NoVersionValueWrapper, StorageSerde, VersionZeroWrapper}, serializers::ValuePlaceHolder};
 #[cfg(test)]
 use crate::db::table_types::const_serialization_size::const_serialization_size_test::{
     const_serialization_size_test,
@@ -20,6 +20,11 @@ pub(crate) trait ConstSerializationSize {
 impl_const_serialization_size! {
     BlockNumber: 4;
     u32: 4;
+    EventIndex: 15;
+}
+
+impl ConstSerializationSize for ValuePlaceHolder {
+    const SIZE: usize = 0;
 }
 
 // TODO(dvir): Make the creation of the tests automatic and do not repeat for each case. This will

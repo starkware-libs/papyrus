@@ -59,7 +59,7 @@ use tracing::debug;
 
 use crate::body::events::EventIndex;
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{CommonPrefixFixedSize, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::serializers::ValuePlaceHolder;
 use crate::{
@@ -79,7 +79,7 @@ type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> =
-    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>;
+    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefixFixedSize>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -456,7 +456,7 @@ fn write_transactions<'env>(
         let tx_output_location = file_handlers.append_transaction_output(tx_output);
         write_events(tx_output, txn, events_table, transaction_index)?;
         transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index)?;
-        transaction_metadata_table.insert(
+        transaction_metadata_table.append(
             txn,
             &transaction_index,
             &TransactionMetadata { tx_location, tx_output_location, tx_hash: *tx_hash },
@@ -473,7 +473,7 @@ fn write_events<'env>(
 ) -> StorageResult<()> {
     for (index, event) in tx_output.events().iter().enumerate() {
         let event_index = EventIndex(transaction_index, EventIndexInTransactionOutput(index));
-        events_table.insert(txn, &(event.from_address, event_index), &ValuePlaceHolder)?;
+        events_table.append(txn, &(event.from_address, event_index), &ValuePlaceHolder)?;
     }
     Ok(())
 }
