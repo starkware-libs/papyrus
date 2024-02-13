@@ -109,6 +109,16 @@
     "privacy": "Public",
     "value": 10
   },
+  "network.peer_id": {
+    "description": "Peer ID to send requests to. If not set, the peer will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+    "privacy": "Public",
+    "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N"
+  },
+  "network.peer_id.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
   "network.quic_port": {
     "description": "The port that the peer listens on for incoming quic connections.",
     "privacy": "Public",
