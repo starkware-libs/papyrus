@@ -123,8 +123,18 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "network.peer_id": {
+    "description": "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+    "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N",
+    "privacy": "Public"
+  },
+  "network.peer_id.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
   "network.quic_port": {
-    "description": "The port that the peer listens on for incoming quic connections.",
+    "description": "The port that the node listens on for incoming quic connections.",
     "value": {
       "$serde_json::private::Number": "10001"
     },
@@ -138,7 +148,7 @@ expression: dumped_default_config
     "privacy": "Public"
   },
   "network.tcp_port": {
-    "description": "The port that the peer listens on for incoming tcp connections.",
+    "description": "The port that the node listens on for incoming tcp connections.",
     "value": {
       "$serde_json::private::Number": "10000"
     },

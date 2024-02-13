@@ -166,6 +166,7 @@ async fn register_subscriber_and_use_channels() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
+        Some(PeerId::random()),
     );
     // define query
     let query_limit = 5;
@@ -229,7 +230,7 @@ async fn process_incoming_query() {
     let get_data_fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
 
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
 
     select! {
         inbound_session_data = get_data_fut => {
