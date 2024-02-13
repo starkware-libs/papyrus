@@ -19,35 +19,55 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
     }
 
     // Iterates over flatten param paths for removing non-public parameters from the nested config.
-    // For example, for the param path 'a.b.c.d', perform config_presentation[a][b][c].remove(d).
     for (param_path, serialized_param) in config.dump() {
         match serialized_param.privacy {
             ParamPrivacy::Public => continue,
             ParamPrivacy::TemporaryValue => continue,
-            ParamPrivacy::Private => {
-                remove_param_from_presentation(&param_path, &mut config_presentation)?
-            }
+            ParamPrivacy::Private => remove_path_from_json(&param_path, &mut config_presentation)?,
         }
     }
     Ok(config_presentation)
 }
 
-fn remove_param_from_presentation(
+// Gets a json in the format:
+// {
+//      a: {
+//          b: {
+//              v1: 1,
+//              v2: 2
+//          }
+//      }
+// }
+// and a param path, for example 'a.b.v1', and removes the v1 from the json.
+// The result will be:
+// {
+//      a: {
+//          b: {
+//              v2: 2
+//          }
+//      }
+// }
+fn remove_path_from_json(
     param_path: &str,
-    config_presentation: &mut serde_json::Value,
+    json: &mut serde_json::Value,
 ) -> Result<(), ConfigError> {
-    let mut config_hierarchy = param_path.split('.').collect_vec();
-    let Some(element_to_remove) = config_hierarchy.pop() else {
+    // given param_path = "a.b.v1", path_to_entry will be ["a", "b"] and entry_to_remove will
+    // be "v1".
+    let mut path_to_entry = param_path.split('.').collect_vec();
+    let Some(entry_to_remove) = path_to_entry.pop() else {
         // TODO: Can we expect this to never happen?
-        return Ok(()); // Empty param path.`
+        return Ok(()); // Empty param path.
     };
-    let most_inner_config = config_hierarchy
-        .iter()
-        .fold(config_presentation, |entry, config_name| entry.index_mut(config_name));
 
-    most_inner_config
+    // Traverse the json using path_to_entry to get to the part of the json that contains the entry
+    // to remove, I.E. get json[a][b].
+    let most_inner_json =
+        path_to_entry.iter().fold(json, |entry, config_name| entry.index_mut(config_name));
+
+    // Remove the entry from from the json.
+    most_inner_json
         .as_object_mut()
         .ok_or_else(|| ConfigError::ParamNotFound { param_path: param_path.to_string() })?
-        .remove(element_to_remove);
+        .remove(entry_to_remove);
     Ok(())
 }
