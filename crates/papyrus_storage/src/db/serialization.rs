@@ -73,7 +73,15 @@ pub(crate) struct VersionZeroWrapper<T: StorageSerde> {
     _value_type: PhantomData<T>,
 }
 
+#[derive(Clone, Debug)]
+/// A generic wrapper for values with version one. These values are serialized with a leading byte
+/// that is set to one.
+pub(crate) struct VersionOneWrapper<T: StorageSerde> {
+    _value_type: PhantomData<T>,
+}
+
 const VERSION_ZERO: u8 = 0;
+pub(crate) const VERSION_ONE: u8 = 1;
 
 impl<T: StorageSerde + Debug> ValueSerde for VersionZeroWrapper<T> {
     type Value = T;
