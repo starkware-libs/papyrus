@@ -163,6 +163,9 @@ pub enum DbError {
     /// An error that occurred when trying to append a key value pair.
     #[error("Append to a table failed.")]
     Append,
+    /// An error that occurred during compression or decompression.
+    #[error("Compression failed.")]
+    Compression,
 }
 
 type DbResult<V> = result::Result<V, DbError>;

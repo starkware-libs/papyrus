@@ -6,11 +6,11 @@ use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{StorageKey, ThinStateDiff};
 use starknet_api::transaction::TransactionOffsetInBlock;
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
-use crate::db::serialization::StorageSerde;
+use crate::db::serialization::{StorageSerde, ValueSerde, VersionOneWrapper};
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -110,4 +110,22 @@ fn serialization_precision() {
     let serialized = serde_json::from_str::<serde_json::Value>(input).unwrap();
     let deserialized = serde_json::to_string(&serialized).unwrap();
     assert_eq!(input, deserialized);
+}
+
+#[test]
+fn thin_state_diff_version_one_wrapper_test() {
+    wrapper_with_compression_value_serde_test::<ThinStateDiff>();
+}
+
+// TODO(dvir): when adding a new dictionary, change this function to also include the
+// deserialization of objects that were compressed with the old dictionary.
+fn wrapper_with_compression_value_serde_test<T: StorageSerde + GetTestInstance + Debug + Eq>()
+where
+    VersionOneWrapper<T>: ValueSerde<Value = T>,
+{
+    let mut rng = get_rng();
+    let item = T::get_test_instance(&mut rng);
+    let bytes = VersionOneWrapper::<T>::serialize(&item).unwrap();
+    let deserialized = VersionOneWrapper::<T>::deserialize(&mut bytes.as_slice());
+    assert_eq!(item, deserialized.unwrap());
 }
