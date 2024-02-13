@@ -109,6 +109,11 @@
     "privacy": "Public",
     "value": 10
   },
+  "network.peer_id": {
+    "description": "Peer ID to send requests to.",
+    "privacy": "Public",
+    "value": null
+  },
   "network.quic_port": {
     "description": "The port that the peer listens on for incoming quic connections.",
     "privacy": "Public",

@@ -38,6 +38,7 @@ async fn main() {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),
             header_buffer_size: 100000,
+            peer_id: None,
         },
         storage_reader,
     );

@@ -123,6 +123,11 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "network.peer_id": {
+    "description": "Peer ID to send requests to.",
+    "value": null,
+    "privacy": "Public"
+  },
   "network.quic_port": {
     "description": "The port that the peer listens on for incoming quic connections.",
     "value": {

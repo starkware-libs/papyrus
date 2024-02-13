@@ -30,6 +30,7 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
+    pub peer_id: Option<String>,
 }
 
 #[derive(Default, Debug)]
@@ -122,6 +123,12 @@ impl SerializeConfig for NetworkConfig {
                 "Size of the buffer for headers read from the storage.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "peer_id",
+                &self.peer_id,
+                "Peer ID to send requests to.",
+                ParamPrivacyInput::Public,
+            ),
         ])
     }
 }
@@ -134,6 +141,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
+            peer_id: None,
         }
     }
 }
