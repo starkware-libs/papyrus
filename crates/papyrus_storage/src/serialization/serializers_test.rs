@@ -7,7 +7,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
-use starknet_api::transaction::TransactionOffsetInBlock;
+use starknet_api::transaction::{Transaction, TransactionOffsetInBlock, TransactionOutput};
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::{StorageSerde, ValueSerde, VersionOneWrapper};
@@ -115,6 +115,16 @@ fn serialization_precision() {
 #[test]
 fn thin_state_diff_version_one_wrapper_test() {
     wrapper_with_compression_value_serde_test::<ThinStateDiff>();
+}
+
+#[test]
+fn transaction_version_one_wrapper_test() {
+    wrapper_with_compression_value_serde_test::<Transaction>();
+}
+
+#[test]
+fn transaction_output_version_one_wrapper_test() {
+    wrapper_with_compression_value_serde_test::<TransactionOutput>();
 }
 
 // TODO(dvir): when adding a new dictionary, change this function to also include the

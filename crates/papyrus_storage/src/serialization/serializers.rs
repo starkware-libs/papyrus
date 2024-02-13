@@ -150,9 +150,6 @@ use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{MarkerKind, OffsetKind, TransactionMetadata};
 
-// The threshold for compressing transactions.
-const COMPRESSION_THRESHOLD_BYTES: usize = 384;
-
 auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
@@ -247,6 +244,32 @@ auto_storage_serde! {
         pub execution_status: TransactionExecutionStatus,
         pub execution_resources: ExecutionResources,
     }
+    pub struct DeployAccountTransactionV1 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+    }
+    pub struct DeployAccountTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+    }
+    pub struct DeployTransaction {
+        pub version: TransactionVersion,
+        pub class_hash: ClassHash,
+        pub contract_address_salt: ContractAddressSalt,
+        pub constructor_calldata: Calldata,
+    }
     pub struct DeployTransactionOutput {
         pub actual_fee: Fee,
         pub messages_sent: Vec<MessageToL1>,
@@ -329,6 +352,32 @@ auto_storage_serde! {
         pub execution_status: TransactionExecutionStatus,
         pub execution_resources: ExecutionResources,
     }
+    pub struct InvokeTransactionV0 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV1 {
+        pub max_fee: Fee,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+    }
+    pub struct InvokeTransactionV3 {
+        pub resource_bounds: ResourceBoundsMapping,
+        pub tip: Tip,
+        pub signature: TransactionSignature,
+        pub nonce: Nonce,
+        pub sender_address: ContractAddress,
+        pub calldata: Calldata,
+        pub nonce_data_availability_mode: DataAvailabilityMode,
+        pub fee_data_availability_mode: DataAvailabilityMode,
+        pub paymaster_data: PaymasterData,
+        pub account_deployment_data: AccountDeploymentData,
+    }
     pub enum IsCompressed {
         No = 0,
         Yes = 1,
@@ -336,6 +385,13 @@ auto_storage_serde! {
     pub enum L1DataAvailabilityMode {
         Calldata = 0,
         Blob = 1,
+    }
+    pub struct L1HandlerTransaction {
+        pub version: TransactionVersion,
+        pub nonce: Nonce,
+        pub contract_address: ContractAddress,
+        pub entry_point_selector: EntryPointSelector,
+        pub calldata: Calldata,
     }
     pub struct L1HandlerTransactionOutput {
         pub actual_fee: Fee,
@@ -1039,6 +1095,55 @@ impl ValueSerde for VersionOneWrapper<ThinStateDiff> {
     }
 }
 
+// Transaction compression.
+const TRANSACTION_COMPRESSION_DICT_V1: &[u8] = &[0];
+lazy_static! {
+    static ref TRANSACTION_ENCODER_DICT: EncoderDictionary<'static> =
+        EncoderDictionary::new(TRANSACTION_COMPRESSION_DICT_V1, zstd::DEFAULT_COMPRESSION_LEVEL);
+    static ref TRANSACTION_DECODER_DICT_V1: DecoderDictionary<'static> =
+        DecoderDictionary::new(TRANSACTION_COMPRESSION_DICT_V1);
+    static ref TRANSACTION_DECODERS_ARRAY: [&'static DecoderDictionary<'static>; 1] =
+        [&TRANSACTION_DECODER_DICT_V1];
+}
+
+// TODO(dvir): consider conditionally compress those objects.
+impl ValueSerde for VersionOneWrapper<Transaction> {
+    type Value = Transaction;
+
+    fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError> {
+        serialize_with_compression(obj, VERSION_ONE, &TRANSACTION_ENCODER_DICT)
+    }
+
+    fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value> {
+        deserialize_compressed(bytes, &*TRANSACTION_DECODERS_ARRAY)
+    }
+}
+
+// TransactionOutput compression.
+const TRANSACTION_OUTPUT_COMPRESSION_DICT_V1: &[u8] = &[0];
+lazy_static! {
+    static ref TRANSACTION_OUTPUT_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::new(
+        TRANSACTION_OUTPUT_COMPRESSION_DICT_V1,
+        zstd::DEFAULT_COMPRESSION_LEVEL
+    );
+    static ref TRANSACTION_OUTPUT_DECODER_DICT_V1: DecoderDictionary<'static> =
+        DecoderDictionary::new(TRANSACTION_OUTPUT_COMPRESSION_DICT_V1);
+    static ref TRANSACTION_OUTPUT_DECODERS_ARRAY: [&'static DecoderDictionary<'static>; 1] =
+        [&TRANSACTION_OUTPUT_DECODER_DICT_V1];
+}
+
+impl ValueSerde for VersionOneWrapper<TransactionOutput> {
+    type Value = TransactionOutput;
+
+    fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError> {
+        serialize_with_compression(obj, VERSION_ONE, &TRANSACTION_OUTPUT_ENCODER_DICT)
+    }
+
+    fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value> {
+        deserialize_compressed(bytes, &*TRANSACTION_OUTPUT_DECODERS_ARRAY)
+    }
+}
+
 // An upper bound for the size of the decompressed data.
 const MAX_DECOMPRESSION_CAPACITY: usize = 1 << 32; // 4GB
 
@@ -1194,7 +1299,13 @@ impl StorageSerde for CasmContractClass {
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
 
+// TODO(dvir): delete this macro and constant if they not in use.
+// The threshold for compressing transactions.
+#[allow(dead_code)]
+const COMPRESSION_THRESHOLD_BYTES: usize = 384;
+
 // The following structs are conditionally compressed based on their serialized size.
+#[allow(unused_macros)]
 macro_rules! auto_storage_serde_conditionally_compressed {
     () => {};
     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
@@ -1233,73 +1344,4 @@ macro_rules! auto_storage_serde_conditionally_compressed {
         create_storage_serde_test!($name);
         auto_storage_serde_conditionally_compressed!($($rest)*);
     };
-}
-
-// The following transactions have variable length Calldata and are conditionally compressed.
-auto_storage_serde_conditionally_compressed! {
-    pub struct DeployAccountTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-    }
-
-    pub struct DeployAccountTransactionV3 {
-        pub resource_bounds: ResourceBoundsMapping,
-        pub tip: Tip,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-        pub nonce_data_availability_mode: DataAvailabilityMode,
-        pub fee_data_availability_mode: DataAvailabilityMode,
-        pub paymaster_data: PaymasterData,
-    }
-
-    pub struct DeployTransaction {
-        pub version: TransactionVersion,
-        pub class_hash: ClassHash,
-        pub contract_address_salt: ContractAddressSalt,
-        pub constructor_calldata: Calldata,
-    }
-
-    pub struct InvokeTransactionV0 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: Calldata,
-    }
-
-    pub struct InvokeTransactionV1 {
-        pub max_fee: Fee,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
-        pub calldata: Calldata,
-    }
-
-    pub struct InvokeTransactionV3 {
-        pub resource_bounds: ResourceBoundsMapping,
-        pub tip: Tip,
-        pub signature: TransactionSignature,
-        pub nonce: Nonce,
-        pub sender_address: ContractAddress,
-        pub calldata: Calldata,
-        pub nonce_data_availability_mode: DataAvailabilityMode,
-        pub fee_data_availability_mode: DataAvailabilityMode,
-        pub paymaster_data: PaymasterData,
-        pub account_deployment_data: AccountDeploymentData,
-    }
-
-    pub struct L1HandlerTransaction {
-        pub version: TransactionVersion,
-        pub nonce: Nonce,
-        pub contract_address: ContractAddress,
-        pub entry_point_selector: EntryPointSelector,
-        pub calldata: Calldata,
-    }
 }
