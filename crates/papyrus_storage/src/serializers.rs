@@ -1075,7 +1075,8 @@ impl StorageSerde for ValuePlaceHolder {
 // and back reference distance.
 
 // ThinStateDiff compression.
-const THIN_STATE_DIFF_COMPRESSION_DICT_V1: &[u8] = &[0];
+const THIN_STATE_DIFF_COMPRESSION_DICT_V1: &[u8] =
+    include_bytes!("../compression_dictionaries/state_diff_dict.dat");
 lazy_static! {
     static ref THIN_STATE_DIFF_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::new(
         THIN_STATE_DIFF_COMPRESSION_DICT_V1,
@@ -1100,7 +1101,8 @@ impl ValueSerde for VersionOneWrapper<ThinStateDiff> {
 }
 
 // Transaction compression.
-const TRANSACTION_COMPRESSION_DICT_V1: &[u8] = &[0];
+const TRANSACTION_COMPRESSION_DICT_V1: &[u8] =
+    include_bytes!("../compression_dictionaries/transaction_dict.dat");
 lazy_static! {
     static ref TRANSACTION_ENCODER_DICT: EncoderDictionary<'static> =
         EncoderDictionary::new(TRANSACTION_COMPRESSION_DICT_V1, zstd::DEFAULT_COMPRESSION_LEVEL);
@@ -1124,7 +1126,8 @@ impl ValueSerde for VersionOneWrapper<Transaction> {
 }
 
 // TransactionOutput compression.
-const TRANSACTION_OUTPUT_COMPRESSION_DICT_V1: &[u8] = &[0];
+const TRANSACTION_OUTPUT_COMPRESSION_DICT_V1: &[u8] =
+    include_bytes!("../compression_dictionaries/transaction_output_dict.dat");
 lazy_static! {
     static ref TRANSACTION_OUTPUT_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::new(
         TRANSACTION_OUTPUT_COMPRESSION_DICT_V1,
