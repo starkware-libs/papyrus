@@ -60,9 +60,13 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::body::events::{EventIndex, ThinTransactionOutput};
-use crate::db::serialization::{NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
+use crate::serialization::serialization_traits::{
+    NoVersionValueWrapper,
+    ValueSerde,
+    VersionZeroWrapper,
+};
 use crate::{MarkerKind, MarkersTable, StorageError, StorageResult, StorageScope, StorageTxn};
 
 type TransactionsTable<'env> =

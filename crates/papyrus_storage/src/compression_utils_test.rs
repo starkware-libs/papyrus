@@ -3,7 +3,7 @@ use starknet_api::deprecated_contract_class::Program;
 use test_utils::read_json_file;
 
 use super::{compress, decompress, decompress_from_reader, serialize_and_compress};
-use crate::db::serialization::StorageSerde;
+use crate::serialization::serialization_traits::StorageSerde;
 
 #[test]
 fn bytes_compression() {

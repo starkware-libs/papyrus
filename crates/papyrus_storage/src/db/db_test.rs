@@ -3,9 +3,13 @@ use libmdbx::PageSize;
 use pretty_assertions::assert_eq;
 use tempfile::TempDir;
 
-use crate::db::serialization::{NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use crate::db::table_types::Table;
 use crate::db::{get_page_size, open_env, DbError, DbIter, DbReader, DbResult, DbWriter};
+use crate::serialization::serialization_traits::{
+    NoVersionValueWrapper,
+    ValueSerde,
+    VersionZeroWrapper,
+};
 use crate::test_utils::get_test_config;
 
 pub(crate) fn get_test_env() -> ((DbReader, DbWriter), TempDir) {

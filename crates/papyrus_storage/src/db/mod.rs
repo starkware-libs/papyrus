@@ -16,9 +16,6 @@ mod db_test;
 
 /// Statistics and information about the database.
 pub mod db_stats;
-// TODO(yair): Make the serialization module pub(crate).
-#[doc(hidden)]
-pub mod serialization;
 pub(crate) mod table_types;
 
 use std::borrow::Cow;
@@ -37,9 +34,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::core::ChainId;
 use validator::Validate;
 
-use self::serialization::{Key, ValueSerde};
 use self::table_types::{DbCursor, DbCursorTrait};
 use crate::db::table_types::TableType;
+use crate::serialization::serialization_traits::{Key, ValueSerde};
 
 // Maximum number of Sub-Databases.
 const MAX_DBS: usize = 20;

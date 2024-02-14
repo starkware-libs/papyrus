@@ -6,7 +6,7 @@ use tempfile::tempdir;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
-use crate::db::serialization::NoVersionValueWrapper;
+use crate::serialization::serialization_traits::NoVersionValueWrapper;
 use crate::test_utils::get_mmap_file_test_config;
 
 #[test]

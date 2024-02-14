@@ -62,9 +62,9 @@ use starknet_api::transaction::{
 };
 
 use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
-use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursor, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
+use crate::serialization::serialization_traits::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::{StorageResult, StorageTxn};
 
 /// An identifier of an event.

@@ -1,7 +1,11 @@
 use super::{Table, TableType};
-use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, StorageSerdeError};
 use crate::db::table_types::{DbCursor, DbCursorTrait};
 use crate::db::{DbReader, DbWriter, TableHandle, TableIdentifier, RO};
+use crate::serialization::serialization_traits::{
+    NoVersionValueWrapper,
+    StorageSerde,
+    StorageSerdeError,
+};
 use crate::serialization::serializers::auto_storage_serde;
 
 type TableKey = (u32, u32);

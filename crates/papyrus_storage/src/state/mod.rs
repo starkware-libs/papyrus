@@ -64,10 +64,10 @@ use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
-use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
+use crate::serialization::serialization_traits::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
     FileHandlers,

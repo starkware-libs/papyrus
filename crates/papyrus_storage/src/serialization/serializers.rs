@@ -124,9 +124,9 @@ use crate::compression_utils::{
     serialize_and_compress,
     IsCompressed,
 };
-use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
+use crate::serialization::serialization_traits::{StorageSerde, StorageSerdeError};
 #[cfg(test)]
 use crate::serialization::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;

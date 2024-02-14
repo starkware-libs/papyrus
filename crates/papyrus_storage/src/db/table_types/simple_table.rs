@@ -7,9 +7,9 @@ use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use libmdbx::{TableFlags, WriteFlags};
+use tracing::error;
 
 use super::{DbResult, Table, TableType};
-use crate::db::serialization::{Key as KeyTrait, ValueSerde};
 use crate::db::table_types::DbCursorTrait;
 use crate::db::{
     DbCursor,
@@ -24,6 +24,7 @@ use crate::db::{
     TransactionKind,
     RW,
 };
+use crate::serialization::serialization_traits::{Key as KeyTrait, ValueSerde};
 
 // A simple mapping between key and value.
 pub(crate) struct SimpleTable;
@@ -73,7 +74,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         key: &Self::Key,
     ) -> DbResult<Option<<Self::Value as ValueSerde>::Value>> {
         // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
-        let bin_key = key.serialize()?;
+        let bin_key = key.serialize().map_err(|err| {
+            error!("Failed to serialize key {:?}. Error: {}", key, err);
+            DbError::Serialization
+        })?;
         let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
             return Ok(None);
         };
@@ -88,8 +92,14 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         key: &Self::Key,
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()> {
-        let data = <Self::Value>::serialize(value)?;
-        let bin_key = key.serialize()?;
+        let data = <Self::Value>::serialize(value).map_err(|err| {
+            error!("Failed to serialize value {:?}. Error: {}", value, err);
+            DbError::Serialization
+        })?;
+        let bin_key = key.serialize().map_err(|err| {
+            error!("Failed to serialize key {:?}. Error: {}", key, err);
+            DbError::Serialization
+        })?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::UPSERT)?;
         Ok(())
     }
@@ -100,8 +110,14 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         key: &Self::Key,
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()> {
-        let data = <Self::Value>::serialize(value)?;
-        let bin_key = key.serialize()?;
+        let data = <Self::Value>::serialize(value).map_err(|err| {
+            error!("Failed to serialize value {:?}. Error: {}", value, err);
+            DbError::Serialization
+        })?;
+        let bin_key = key.serialize().map_err(|err| {
+            error!("Failed to serialize key {:?}. Error: {}", key, err);
+            DbError::Serialization
+        })?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::NO_OVERWRITE).map_err(|err| {
             match err {
                 libmdbx::Error::KeyExist => {
@@ -115,7 +131,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
 
     #[allow(dead_code)]
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
-        let bin_key = key.serialize()?;
+        let bin_key = key.serialize().map_err(|err| {
+            error!("Failed to serialize key {:?}. Error: {}", key, err);
+            DbError::Serialization
+        })?;
         txn.txn.del(&self.database, bin_key, None)?;
         Ok(())
     }
@@ -160,7 +179,10 @@ impl<'txn, Mode: TransactionKind, K: KeyTrait + Debug, V: ValueSerde + Debug> Db
         &mut self,
         key: &K,
     ) -> DbResult<Option<(K, <Self::Value as ValueSerde>::Value)>> {
-        let key_bytes = key.serialize()?;
+        let key_bytes = key.serialize().map_err(|err| {
+            error!("Failed to serialize key {:?}. Error: {}", key, err);
+            DbError::Serialization
+        })?;
         let prev_cursor_res =
             self.cursor.set_range::<DbKeyType<'_>, DbValueType<'_>>(&key_bytes)?;
         match prev_cursor_res {

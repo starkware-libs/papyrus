@@ -7,7 +7,7 @@ use std::io::Read;
 use flate2::bufread::{GzDecoder, GzEncoder};
 use flate2::Compression;
 
-use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::serialization::serialization_traits::{StorageSerde, StorageSerdeError};
 
 // TODO: consider changing the compression hyperparameters: compression level and algorithm.
 

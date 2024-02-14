@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use papyrus_storage::db::serialization::StorageSerdeError;
+use papyrus_storage::serialization::serialization_traits::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::deprecated_contract_class::{ContractClassAbiEntry, EntryPoint, EntryPointType};
 

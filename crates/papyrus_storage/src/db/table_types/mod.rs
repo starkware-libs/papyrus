@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 
 use libmdbx::Cursor;
 
-use super::serialization::{Key as KeyTrait, ValueSerde};
 use super::{DbResult, DbTransaction, TransactionKind, RW};
+use crate::serialization::serialization_traits::{Key as KeyTrait, ValueSerde};
 
 mod simple_table;
 pub(crate) use simple_table::SimpleTable;

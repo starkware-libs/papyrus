@@ -10,7 +10,7 @@
 #[path = "broadcasted_transaction_test.rs"]
 mod broadcasted_transaction_test;
 
-use papyrus_storage::db::serialization::StorageSerdeError;
+use papyrus_storage::serialization::serialization_traits::StorageSerdeError;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::transaction::{Fee, TransactionSignature, TransactionVersion};

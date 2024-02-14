@@ -9,7 +9,7 @@ use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
-use crate::db::serialization::StorageSerde;
+use crate::serialization::serialization_traits::StorageSerde;
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();

@@ -27,8 +27,8 @@ use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
-use crate::db::serialization::{StorageSerde, ValueSerde};
 use crate::db::{TransactionKind, RO, RW};
+use crate::serialization::serialization_traits::{StorageSerde, ValueSerde};
 
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
 
@@ -274,7 +274,7 @@ impl StorageSerde for LocationInFile {
     fn serialize_into(
         &self,
         res: &mut impl std::io::Write,
-    ) -> Result<(), crate::db::serialization::StorageSerdeError> {
+    ) -> Result<(), crate::serialization::serialization_traits::StorageSerdeError> {
         self.offset.serialize_into(res)?;
         self.len.serialize_into(res)?;
         Ok(())

@@ -3,7 +3,7 @@
 mod compression_utils_test;
 
 use papyrus_storage::compression_utils::serialize_and_compress;
-use papyrus_storage::db::serialization::{StorageSerde, StorageSerdeError};
+use papyrus_storage::serialization::serialization_traits::{StorageSerde, StorageSerdeError};
 
 pub fn compress_and_encode(value: serde_json::Value) -> Result<String, StorageSerdeError> {
     Ok(base64::encode(serialize_and_compress(&JsonValue(value))?))

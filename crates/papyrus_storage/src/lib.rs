@@ -60,7 +60,7 @@ pub mod compression_utils;
 pub mod db;
 pub mod header;
 pub mod mmap_file;
-mod serialization;
+pub mod serialization;
 pub mod state;
 mod version;
 
@@ -77,7 +77,6 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use db::table_types::Table;
 use mmap_file::{
     open_file,
@@ -91,6 +90,12 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serialization::serialization_traits::{
+    Key,
+    NoVersionValueWrapper,
+    ValueSerde,
+    VersionZeroWrapper,
+};
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
