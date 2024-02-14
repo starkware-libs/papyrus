@@ -1,0 +1,752 @@
+---
+source: crates/papyrus_storage/src/serialization/serializers_test.rs
+expression: hint_schema
+---
+$schema: "http://json-schema.org/draft-07/schema#"
+title: CoreHintBase
+anyOf:
+  - $ref: "#/definitions/CoreHint"
+  - $ref: "#/definitions/DeprecatedHint"
+definitions:
+  CoreHint:
+    oneOf:
+      - type: object
+        required:
+          - AllocSegment
+        properties:
+          AllocSegment:
+            type: object
+            required:
+              - dst
+            properties:
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - TestLessThan
+        properties:
+          TestLessThan:
+            type: object
+            required:
+              - dst
+              - lhs
+              - rhs
+            properties:
+              lhs:
+                $ref: "#/definitions/ResOperand"
+              rhs:
+                $ref: "#/definitions/ResOperand"
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - TestLessThanOrEqual
+        properties:
+          TestLessThanOrEqual:
+            type: object
+            required:
+              - dst
+              - lhs
+              - rhs
+            properties:
+              lhs:
+                $ref: "#/definitions/ResOperand"
+              rhs:
+                $ref: "#/definitions/ResOperand"
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Multiplies two 128-bit integers and returns two 128-bit integers: the high and low parts of the product."
+        type: object
+        required:
+          - WideMul128
+        properties:
+          WideMul128:
+            type: object
+            required:
+              - high
+              - lhs
+              - low
+              - rhs
+            properties:
+              lhs:
+                $ref: "#/definitions/ResOperand"
+              rhs:
+                $ref: "#/definitions/ResOperand"
+              high:
+                $ref: "#/definitions/CellRef"
+              low:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Computes lhs/rhs and returns the quotient and remainder.\n\nNote: the hint may be used to write an already assigned memory cell."
+        type: object
+        required:
+          - DivMod
+        properties:
+          DivMod:
+            type: object
+            required:
+              - lhs
+              - quotient
+              - remainder
+              - rhs
+            properties:
+              lhs:
+                $ref: "#/definitions/ResOperand"
+              rhs:
+                $ref: "#/definitions/ResOperand"
+              quotient:
+                $ref: "#/definitions/CellRef"
+              remainder:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Divides dividend (represented by 2 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 2 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
+        type: object
+        required:
+          - Uint256DivMod
+        properties:
+          Uint256DivMod:
+            type: object
+            required:
+              - dividend0
+              - dividend1
+              - divisor0
+              - divisor1
+              - quotient0
+              - quotient1
+              - remainder0
+              - remainder1
+            properties:
+              dividend0:
+                $ref: "#/definitions/ResOperand"
+              dividend1:
+                $ref: "#/definitions/ResOperand"
+              divisor0:
+                $ref: "#/definitions/ResOperand"
+              divisor1:
+                $ref: "#/definitions/ResOperand"
+              quotient0:
+                $ref: "#/definitions/CellRef"
+              quotient1:
+                $ref: "#/definitions/CellRef"
+              remainder0:
+                $ref: "#/definitions/CellRef"
+              remainder1:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Divides dividend (represented by 4 128bit limbs) by divisor (represented by 2 128bit limbs). Returns the quotient (represented by 4 128bit limbs) and remainder (represented by 2 128bit limbs). In all cases - `name`0 is the least significant limb."
+        type: object
+        required:
+          - Uint512DivModByUint256
+        properties:
+          Uint512DivModByUint256:
+            type: object
+            required:
+              - dividend0
+              - dividend1
+              - dividend2
+              - dividend3
+              - divisor0
+              - divisor1
+              - quotient0
+              - quotient1
+              - quotient2
+              - quotient3
+              - remainder0
+              - remainder1
+            properties:
+              dividend0:
+                $ref: "#/definitions/ResOperand"
+              dividend1:
+                $ref: "#/definitions/ResOperand"
+              dividend2:
+                $ref: "#/definitions/ResOperand"
+              dividend3:
+                $ref: "#/definitions/ResOperand"
+              divisor0:
+                $ref: "#/definitions/ResOperand"
+              divisor1:
+                $ref: "#/definitions/ResOperand"
+              quotient0:
+                $ref: "#/definitions/CellRef"
+              quotient1:
+                $ref: "#/definitions/CellRef"
+              quotient2:
+                $ref: "#/definitions/CellRef"
+              quotient3:
+                $ref: "#/definitions/CellRef"
+              remainder0:
+                $ref: "#/definitions/CellRef"
+              remainder1:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - SquareRoot
+        properties:
+          SquareRoot:
+            type: object
+            required:
+              - dst
+              - value
+            properties:
+              value:
+                $ref: "#/definitions/ResOperand"
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Computes the square root of value_low<<128+value_high, stores the 64bit limbs of the result in sqrt0 and sqrt1 as well as the 128bit limbs of the remainder in remainder_low and remainder_high. The remainder is defined as `value - sqrt**2`. Lastly it checks weather `2*sqrt - remainder >= 2**128`."
+        type: object
+        required:
+          - Uint256SquareRoot
+        properties:
+          Uint256SquareRoot:
+            type: object
+            required:
+              - remainder_high
+              - remainder_low
+              - sqrt0
+              - sqrt1
+              - sqrt_mul_2_minus_remainder_ge_u128
+              - value_high
+              - value_low
+            properties:
+              value_low:
+                $ref: "#/definitions/ResOperand"
+              value_high:
+                $ref: "#/definitions/ResOperand"
+              sqrt0:
+                $ref: "#/definitions/CellRef"
+              sqrt1:
+                $ref: "#/definitions/CellRef"
+              remainder_low:
+                $ref: "#/definitions/CellRef"
+              remainder_high:
+                $ref: "#/definitions/CellRef"
+              sqrt_mul_2_minus_remainder_ge_u128:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Finds some `x` and `y` such that `x * scalar + y = value` and `x <= max_x`."
+        type: object
+        required:
+          - LinearSplit
+        properties:
+          LinearSplit:
+            type: object
+            required:
+              - max_x
+              - scalar
+              - value
+              - x
+              - y
+            properties:
+              value:
+                $ref: "#/definitions/ResOperand"
+              scalar:
+                $ref: "#/definitions/ResOperand"
+              max_x:
+                $ref: "#/definitions/ResOperand"
+              x:
+                $ref: "#/definitions/CellRef"
+              y:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Allocates a new dict segment, and write its start address into the dict_infos segment."
+        type: object
+        required:
+          - AllocFelt252Dict
+        properties:
+          AllocFelt252Dict:
+            type: object
+            required:
+              - segment_arena_ptr
+            properties:
+              segment_arena_ptr:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: "Fetch the previous value of a key in a dict, and write it in a new dict access."
+        type: object
+        required:
+          - Felt252DictEntryInit
+        properties:
+          Felt252DictEntryInit:
+            type: object
+            required:
+              - dict_ptr
+              - key
+            properties:
+              dict_ptr:
+                $ref: "#/definitions/ResOperand"
+              key:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: "Similar to Felt252DictWrite, but updates an existing entry and does not write the previous value to the stack."
+        type: object
+        required:
+          - Felt252DictEntryUpdate
+        properties:
+          Felt252DictEntryUpdate:
+            type: object
+            required:
+              - dict_ptr
+              - value
+            properties:
+              dict_ptr:
+                $ref: "#/definitions/ResOperand"
+              value:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: Retrieves the index of the given dict in the dict_infos segment.
+        type: object
+        required:
+          - GetSegmentArenaIndex
+        properties:
+          GetSegmentArenaIndex:
+            type: object
+            required:
+              - dict_end_ptr
+              - dict_index
+            properties:
+              dict_end_ptr:
+                $ref: "#/definitions/ResOperand"
+              dict_index:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Initialized the lists of accesses of each key of a dict as a preparation of squash_dict.
+        type: object
+        required:
+          - InitSquashData
+        properties:
+          InitSquashData:
+            type: object
+            required:
+              - big_keys
+              - dict_accesses
+              - first_key
+              - n_accesses
+              - ptr_diff
+            properties:
+              dict_accesses:
+                $ref: "#/definitions/ResOperand"
+              ptr_diff:
+                $ref: "#/definitions/ResOperand"
+              n_accesses:
+                $ref: "#/definitions/ResOperand"
+              big_keys:
+                $ref: "#/definitions/CellRef"
+              first_key:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Retrieves the current index of a dict access to process.
+        type: object
+        required:
+          - GetCurrentAccessIndex
+        properties:
+          GetCurrentAccessIndex:
+            type: object
+            required:
+              - range_check_ptr
+            properties:
+              range_check_ptr:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: Writes if the squash_dict loop should be skipped.
+        type: object
+        required:
+          - ShouldSkipSquashLoop
+        properties:
+          ShouldSkipSquashLoop:
+            type: object
+            required:
+              - should_skip_loop
+            properties:
+              should_skip_loop:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Writes the delta from the current access index to the next one.
+        type: object
+        required:
+          - GetCurrentAccessDelta
+        properties:
+          GetCurrentAccessDelta:
+            type: object
+            required:
+              - index_delta_minus1
+            properties:
+              index_delta_minus1:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Writes if the squash_dict loop should be continued.
+        type: object
+        required:
+          - ShouldContinueSquashLoop
+        properties:
+          ShouldContinueSquashLoop:
+            type: object
+            required:
+              - should_continue
+            properties:
+              should_continue:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Writes the next dict key to process.
+        type: object
+        required:
+          - GetNextDictKey
+        properties:
+          GetNextDictKey:
+            type: object
+            required:
+              - next_key
+            properties:
+              next_key:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Finds the two small arcs from within [(0,a),(a,b),(b,PRIME)] and writes it to the range_check segment."
+        type: object
+        required:
+          - AssertLeFindSmallArcs
+        properties:
+          AssertLeFindSmallArcs:
+            type: object
+            required:
+              - a
+              - b
+              - range_check_ptr
+            properties:
+              range_check_ptr:
+                $ref: "#/definitions/ResOperand"
+              a:
+                $ref: "#/definitions/ResOperand"
+              b:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: "Writes if the arc (0,a) was excluded."
+        type: object
+        required:
+          - AssertLeIsFirstArcExcluded
+        properties:
+          AssertLeIsFirstArcExcluded:
+            type: object
+            required:
+              - skip_exclude_a_flag
+            properties:
+              skip_exclude_a_flag:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Writes if the arc (a,b) was excluded."
+        type: object
+        required:
+          - AssertLeIsSecondArcExcluded
+        properties:
+          AssertLeIsSecondArcExcluded:
+            type: object
+            required:
+              - skip_exclude_b_minus_a
+            properties:
+              skip_exclude_b_minus_a:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Samples a random point on the EC.
+        type: object
+        required:
+          - RandomEcPoint
+        properties:
+          RandomEcPoint:
+            type: object
+            required:
+              - x
+              - y
+            properties:
+              x:
+                $ref: "#/definitions/CellRef"
+              y:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Computes the square root of `val`, if `val` is a quadratic residue, and of `3 * val` otherwise.\n\nSince 3 is not a quadratic residue, exactly one of `val` and `3 * val` is a quadratic residue (unless `val` is 0). This allows proving that `val` is not a quadratic residue."
+        type: object
+        required:
+          - FieldSqrt
+        properties:
+          FieldSqrt:
+            type: object
+            required:
+              - sqrt
+              - val
+            properties:
+              val:
+                $ref: "#/definitions/ResOperand"
+              sqrt:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Prints the values from start to end. Both must be pointers.
+        type: object
+        required:
+          - DebugPrint
+        properties:
+          DebugPrint:
+            type: object
+            required:
+              - end
+              - start
+            properties:
+              start:
+                $ref: "#/definitions/ResOperand"
+              end:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: "Returns an address with `size` free locations afterwards."
+        type: object
+        required:
+          - AllocConstantSize
+        properties:
+          AllocConstantSize:
+            type: object
+            required:
+              - dst
+              - size
+            properties:
+              size:
+                $ref: "#/definitions/ResOperand"
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: "Provides the inverse of b (represented by 2 128-bit limbs) modulo n (represented by 2 128-bit limbs), or a proof that b has no inverse.\n\nIn case b has an inverse: Returns `r` and `k` such that: * `r = 1 / b (mod n)` * `k = (r * b - 1) / n` * `g0_or_no_inv = 0`\n\nIn case b has no inverse: Returns `g`, `s`, and `t`, such that: `g > 1` `g == 2 || g % 2 == 1` (in particular, `g0_or_no_inv = g0 != 0`) `g * s = b` `g * t = n`\n\nThe case `n == 1` is considered \"no-inverse\" (special case). In this case: Returns `g == 1`, `s == b` and `t == 1`. All no-inverse requirements are satisfied, except for `g > 1`.\n\nIn all cases - `name`0 is the least significant limb."
+        type: object
+        required:
+          - U256InvModN
+        properties:
+          U256InvModN:
+            type: object
+            required:
+              - b0
+              - b1
+              - g0_or_no_inv
+              - g1_option
+              - n0
+              - n1
+              - s_or_r0
+              - s_or_r1
+              - t_or_k0
+              - t_or_k1
+            properties:
+              b0:
+                $ref: "#/definitions/ResOperand"
+              b1:
+                $ref: "#/definitions/ResOperand"
+              n0:
+                $ref: "#/definitions/ResOperand"
+              n1:
+                $ref: "#/definitions/ResOperand"
+              g0_or_no_inv:
+                $ref: "#/definitions/CellRef"
+              g1_option:
+                $ref: "#/definitions/CellRef"
+              s_or_r0:
+                $ref: "#/definitions/CellRef"
+              s_or_r1:
+                $ref: "#/definitions/CellRef"
+              t_or_k0:
+                $ref: "#/definitions/CellRef"
+              t_or_k1:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+  CellRef:
+    description: "Represents an operand of the form [reg + offset]."
+    type: object
+    required:
+      - offset
+      - register
+    properties:
+      register:
+        $ref: "#/definitions/Register"
+      offset:
+        type: integer
+        format: int16
+  Register:
+    type: string
+    enum:
+      - AP
+      - FP
+  ResOperand:
+    oneOf:
+      - type: object
+        required:
+          - Deref
+        properties:
+          Deref:
+            $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - DoubleDeref
+        properties:
+          DoubleDeref:
+            type: array
+            items:
+              - $ref: "#/definitions/CellRef"
+              - type: integer
+                format: int16
+            maxItems: 2
+            minItems: 2
+        additionalProperties: false
+      - type: object
+        required:
+          - Immediate
+        properties:
+          Immediate:
+            $ref: "#/definitions/BigInt"
+        additionalProperties: false
+      - type: object
+        required:
+          - BinOp
+        properties:
+          BinOp:
+            $ref: "#/definitions/BinOpOperand"
+        additionalProperties: false
+  BigInt:
+    type: object
+    required:
+      - data
+      - sign
+    properties:
+      sign:
+        $ref: "#/definitions/Sign"
+      data:
+        $ref: "#/definitions/BigUint"
+  Sign:
+    type: string
+    enum:
+      - Minus
+      - NoSign
+      - Plus
+  BigUint:
+    type: object
+    required:
+      - data
+    properties:
+      data:
+        type: array
+        items:
+          type: integer
+          format: uint64
+          minimum: 0
+  BinOpOperand:
+    type: object
+    required:
+      - a
+      - b
+      - op
+    properties:
+      op:
+        $ref: "#/definitions/Operation"
+      a:
+        $ref: "#/definitions/CellRef"
+      b:
+        $ref: "#/definitions/DerefOrImmediate"
+  Operation:
+    type: string
+    enum:
+      - Add
+      - Mul
+  DerefOrImmediate:
+    oneOf:
+      - type: object
+        required:
+          - Deref
+        properties:
+          Deref:
+            $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - Immediate
+        properties:
+          Immediate:
+            $ref: "#/definitions/BigInt"
+        additionalProperties: false
+  DeprecatedHint:
+    description: Represents a deprecated hint which is kept for backward compatibility of previously deployed contracts.
+    oneOf:
+      - description: Asserts that the current access indices list is empty (after the loop).
+        type: string
+        enum:
+          - AssertCurrentAccessIndicesIsEmpty
+      - description: Asserts that the number of used accesses is equal to the length of the original accesses list.
+        type: object
+        required:
+          - AssertAllAccessesUsed
+        properties:
+          AssertAllAccessesUsed:
+            type: object
+            required:
+              - n_used_accesses
+            properties:
+              n_used_accesses:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Asserts that the keys list is empty.
+        type: string
+        enum:
+          - AssertAllKeysUsed
+      - description: "Asserts that the arc (b, PRIME) was excluded."
+        type: string
+        enum:
+          - AssertLeAssertThirdArcExcluded
+      - description: Asserts that the input represents integers and that a<b.
+        type: object
+        required:
+          - AssertLtAssertValidInput
+        properties:
+          AssertLtAssertValidInput:
+            type: object
+            required:
+              - a
+              - b
+            properties:
+              a:
+                $ref: "#/definitions/ResOperand"
+              b:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+      - description: Retrieves and writes the value corresponding to the given dict and key from the vm dict_manager.
+        type: object
+        required:
+          - Felt252DictRead
+        properties:
+          Felt252DictRead:
+            type: object
+            required:
+              - dict_ptr
+              - key
+              - value_dst
+            properties:
+              dict_ptr:
+                $ref: "#/definitions/ResOperand"
+              key:
+                $ref: "#/definitions/ResOperand"
+              value_dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - description: Sets the value corresponding to the key in the vm dict_manager.
+        type: object
+        required:
+          - Felt252DictWrite
+        properties:
+          Felt252DictWrite:
+            type: object
+            required:
+              - dict_ptr
+              - key
+              - value
+            properties:
+              dict_ptr:
+                $ref: "#/definitions/ResOperand"
+              key:
+                $ref: "#/definitions/ResOperand"
+              value:
+                $ref: "#/definitions/ResOperand"
+        additionalProperties: false
+
