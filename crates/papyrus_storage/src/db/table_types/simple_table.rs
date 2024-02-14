@@ -77,9 +77,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
             return Ok(None);
         };
-        let value =
-            <Self::Value>::deserialize(&mut bytes.as_ref()).ok_or(DbError::InnerDeserialization)?;
-        Ok(Some(value))
+        Ok(<Self::Value>::deserialize(&mut bytes.as_ref()))
     }
 
     fn upsert(
