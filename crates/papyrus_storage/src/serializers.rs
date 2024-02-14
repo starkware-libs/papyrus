@@ -5,6 +5,7 @@ mod serializers_test;
 use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::Hash;
+use std::io::Write;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -141,9 +142,11 @@ use crate::compression_utils::{
 use crate::db::serialization::{
     StorageSerde,
     StorageSerdeError,
+    StorageSerdeEx,
     ValueSerde,
     VersionOneWrapper,
     VERSION_ONE,
+    VERSION_ZERO,
 };
 use crate::db::DbError;
 use crate::header::StorageBlockHeader;
@@ -1112,7 +1115,6 @@ lazy_static! {
         [&TRANSACTION_DECODER_DICT_V1];
 }
 
-// TODO(dvir): consider conditionally compress those objects.
 impl ValueSerde for VersionOneWrapper<Transaction> {
     type Value = Transaction;
 
@@ -1154,6 +1156,10 @@ impl ValueSerde for VersionOneWrapper<TransactionOutput> {
 // An upper bound for the size of the decompressed data.
 const MAX_DECOMPRESSION_CAPACITY: usize = 1 << 32; // 4GB
 
+// TODO(dvir): fine tune this value and consider using different value for different objects.
+// If the compression saves less than this amount of bytes, don't compress the data.
+const COMPRESSION_THRESHOLD: usize = 5;
+
 fn serialize_with_compression<T: StorageSerde>(
     obj: &T,
     version: u8,
@@ -1169,13 +1175,22 @@ fn serialize_with_compression<T: StorageSerde>(
     // TODO(dvir): create one compressor for all the serialization in write operation.
     let mut compressor = zstd::bulk::Compressor::with_prepared_dictionary(encoder_dict)
         .map_err(|_| DbError::Compression)?;
-    res[0] = version;
     let compressed_size = compressor
         .compress_to_buffer(buff.as_slice(), &mut res[1..])
         .map_err(|_| DbError::Compression)?;
 
-    // Truncate the buffer to get rid of the zeroes at the end.
-    res.truncate(compressed_size + 1);
+    if compressed_size + COMPRESSION_THRESHOLD > buff.len() {
+        // Compression does not save much space, so don't compress the data.
+        res[0] = VERSION_ZERO;
+        (&mut res[1..]).write_all(buff.as_slice()).map_err(|_| DbError::Serialization)?;
+        // Truncate the buffer to get rid of the garbage bytes at the end.
+        res.truncate(buff.len() + 1);
+    } else {
+        res[0] = version;
+        // Truncate the buffer to get rid of the zeroes at the end.
+        res.truncate(compressed_size + 1);
+    }
+
     Ok(res)
 }
 
@@ -1185,6 +1200,10 @@ fn deserialize_compressed<T: StorageSerde>(
 ) -> Option<T> {
     let mut version = [0u8; 1];
     bytes.read_exact(&mut version[..]).ok()?;
+
+    if version[0] == VERSION_ZERO {
+        return T::deserialize(bytes);
+    }
 
     // TODO(dvir): try to create decompressor once for each thread.
     if version[0] as usize > dicts.len() {
