@@ -5,9 +5,10 @@ use flate2::bufread::GzDecoder;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
 use jsonrpsee::types::ErrorObjectOwned;
+use papyrus_common::deprecated_class_abi::calculate_deprecated_class_abi_length;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::{ExecutableTransactionInput, ExecutionError};
+use papyrus_execution::{AbiSize, ExecutableTransactionInput, ExecutionError, SierraSize};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::serialization::StorageSerdeError;
@@ -329,22 +330,22 @@ pub(crate) fn stored_txn_to_executable_txn(
         ) => {
             // Copy the class hash before the value moves.
             let class_hash = value.class_hash;
-            Ok(ExecutableTransactionInput::DeclareV0(
-                value,
-                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
-                false,
-            ))
+            let deprecated_class =
+                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?;
+            let abi_length = calculate_deprecated_class_abi_length(&deprecated_class)
+                .map_err(internal_server_error)?;
+            Ok(ExecutableTransactionInput::DeclareV0(value, deprecated_class, abi_length, false))
         }
         starknet_api::transaction::Transaction::Declare(
             starknet_api::transaction::DeclareTransaction::V1(value),
         ) => {
             // Copy the class hash before the value moves.
             let class_hash = value.class_hash;
-            Ok(ExecutableTransactionInput::DeclareV1(
-                value,
-                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?,
-                false,
-            ))
+            let deprecated_class =
+                get_deprecated_class_for_re_execution(storage_txn, state_number, class_hash)?;
+            let abi_length = calculate_deprecated_class_abi_length(&deprecated_class)
+                .map_err(internal_server_error)?;
+            Ok(ExecutableTransactionInput::DeclareV1(value, deprecated_class, abi_length, false))
         }
         starknet_api::transaction::Transaction::Declare(
             starknet_api::transaction::DeclareTransaction::V2(value),
@@ -358,7 +359,15 @@ pub(crate) fn stored_txn_to_executable_txn(
                         value.class_hash
                     ))
                 })?;
-            Ok(ExecutableTransactionInput::DeclareV2(value, casm, false))
+            let (sierra_program_length, abi_length) =
+                get_class_lengths(storage_txn, state_number, value.class_hash)?;
+            Ok(ExecutableTransactionInput::DeclareV2(
+                value,
+                casm,
+                sierra_program_length,
+                abi_length,
+                false,
+            ))
         }
         starknet_api::transaction::Transaction::Declare(
             starknet_api::transaction::DeclareTransaction::V3(value),
@@ -372,7 +381,15 @@ pub(crate) fn stored_txn_to_executable_txn(
                         value.class_hash
                     ))
                 })?;
-            Ok(ExecutableTransactionInput::DeclareV3(value, casm, false))
+            let (sierra_program_length, abi_length) =
+                get_class_lengths(storage_txn, state_number, value.class_hash)?;
+            Ok(ExecutableTransactionInput::DeclareV3(
+                value,
+                casm,
+                sierra_program_length,
+                abi_length,
+                false,
+            ))
         }
         starknet_api::transaction::Transaction::Deploy(_) => {
             Err(internal_server_error("Deploy txns not supported in execution"))
@@ -411,6 +428,23 @@ fn get_deprecated_class_for_re_execution(
         })
 }
 
+fn get_class_lengths(
+    storage_txn: &StorageTxn<'_, RO>,
+    state_number: StateNumber,
+    class_hash: ClassHash,
+) -> Result<(SierraSize, AbiSize), ErrorObjectOwned> {
+    let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
+    storage_txn
+        .get_state_reader()
+        .map_err(internal_server_error)?
+        .get_class_definition_at(state_number_after_block, &class_hash)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| {
+            internal_server_error(format!("Missing deprecated class definition of {class_hash}."))
+        })
+        .map(|contract_class| (contract_class.sierra_program.len(), contract_class.abi.len()))
+}
+
 impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
     type Error = ErrorObjectOwned;
     fn try_from(value: BroadcastedDeclareTransaction) -> Result<Self, Self::Error> {
@@ -422,19 +456,26 @@ impl TryFrom<BroadcastedDeclareTransaction> for ExecutableTransactionInput {
                 nonce,
                 max_fee,
                 signature,
-            }) => Ok(Self::DeclareV1(
-                starknet_api::transaction::DeclareTransactionV0V1 {
-                    max_fee,
-                    signature,
-                    nonce,
-                    // The blockifier doesn't need the class hash, but it uses the SN_API
-                    // DeclareTransactionV0V1 which requires it.
-                    class_hash: ClassHash::default(),
-                    sender_address,
-                },
-                user_deprecated_contract_class_to_sn_api(contract_class)?,
-                false,
-            )),
+            }) => {
+                let sn_api_contract_class =
+                    user_deprecated_contract_class_to_sn_api(contract_class)?;
+                let abi_length = calculate_deprecated_class_abi_length(&sn_api_contract_class)
+                    .map_err(internal_server_error)?;
+                Ok(Self::DeclareV1(
+                    starknet_api::transaction::DeclareTransactionV0V1 {
+                        max_fee,
+                        signature,
+                        nonce,
+                        // The blockifier doesn't need the class hash, but it uses the SN_API
+                        // DeclareTransactionV0V1 which requires it.
+                        class_hash: ClassHash::default(),
+                        sender_address,
+                    },
+                    sn_api_contract_class,
+                    abi_length,
+                    false,
+                ))
+            }
             BroadcastedDeclareTransaction::V2(_) => {
                 // TODO(yair): We need a way to get the casm of a declare V2 transaction.
                 Err(internal_server_error("Declare V2 is not supported yet in execution."))
