@@ -84,7 +84,7 @@ pub(crate) struct VersionOneWrapper<T: StorageSerde> {
     _value_type: PhantomData<T>,
 }
 
-const VERSION_ZERO: u8 = 0;
+pub(crate) const VERSION_ZERO: u8 = 0;
 pub(crate) const VERSION_ONE: u8 = 1;
 
 impl<T: StorageSerde + Debug> ValueSerde for VersionZeroWrapper<T> {

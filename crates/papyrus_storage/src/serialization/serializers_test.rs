@@ -2,6 +2,7 @@ use std::fmt::Debug;
 
 use cairo_lang_casm::hints::CoreHintBase;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
+use lazy_static::lazy_static;
 use pretty_assertions::assert_eq;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
@@ -9,8 +10,17 @@ use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 use starknet_api::transaction::{Transaction, TransactionOffsetInBlock, TransactionOutput};
 use test_utils::{get_rng, read_json_file, GetTestInstance};
+use zstd::dict::{DecoderDictionary, EncoderDictionary};
 
-use crate::db::serialization::{StorageSerde, ValueSerde, VersionOneWrapper};
+use crate::db::serialization::{
+    StorageSerde,
+    ValueSerde,
+    VersionOneWrapper,
+    VERSION_ONE,
+    VERSION_ZERO,
+};
+use crate::db::DbError;
+use crate::serializers::{deserialize_compressed, serialize_with_compression};
 
 pub trait StorageSerdeTest: StorageSerde {
     fn storage_serde_test();
@@ -112,6 +122,45 @@ fn serialization_precision() {
     assert_eq!(input, deserialized);
 }
 
+// TODO(dvir): when adding a new dictionary, change this function to also include the
+// deserialization of objects that were compressed with the old dictionary.
+#[test]
+fn compression_wrapper_auto_impl_test() {
+    const DICT: &[u8] = &[0];
+    lazy_static! {
+        static ref ENCODER_DICT: EncoderDictionary<'static> =
+            EncoderDictionary::new(DICT, zstd::DEFAULT_COMPRESSION_LEVEL);
+        static ref DECODER_DICT_V1: DecoderDictionary<'static> = DecoderDictionary::new(DICT);
+        static ref DECODERS_ARRAY: [&'static DecoderDictionary<'static>; 1] = [&DECODER_DICT_V1];
+    }
+
+    impl ValueSerde for VersionOneWrapper<Vec<u8>> {
+        type Value = Vec<u8>;
+
+        fn serialize(obj: &Self::Value) -> Result<Vec<u8>, DbError> {
+            serialize_with_compression(obj, VERSION_ONE, &ENCODER_DICT)
+        }
+
+        fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self::Value> {
+            deserialize_compressed(bytes, &*DECODERS_ARRAY)
+        }
+    }
+
+    // Test for uncompressed object.
+    let obj = vec![0; 1];
+    let bytes = VersionOneWrapper::<Vec<u8>>::serialize(&obj).unwrap();
+    assert_eq!(bytes[0], VERSION_ZERO);
+    let deserialized = VersionOneWrapper::<Vec<u8>>::deserialize(&mut bytes.as_slice());
+    assert_eq!(obj, deserialized.unwrap());
+
+    // Test for compressed object.
+    let obj = vec![0; 1000];
+    let bytes = VersionOneWrapper::<Vec<u8>>::serialize(&obj).unwrap();
+    assert_eq!(bytes[0], VERSION_ONE);
+    let deserialized = VersionOneWrapper::<Vec<u8>>::deserialize(&mut bytes.as_slice());
+    assert_eq!(obj, deserialized.unwrap());
+}
+
 #[test]
 fn thin_state_diff_version_one_wrapper_test() {
     wrapper_with_compression_value_serde_test::<ThinStateDiff>();
@@ -127,8 +176,6 @@ fn transaction_output_version_one_wrapper_test() {
     wrapper_with_compression_value_serde_test::<TransactionOutput>();
 }
 
-// TODO(dvir): when adding a new dictionary, change this function to also include the
-// deserialization of objects that were compressed with the old dictionary.
 fn wrapper_with_compression_value_serde_test<T: StorageSerde + GetTestInstance + Debug + Eq>()
 where
     VersionOneWrapper<T>: ValueSerde<Value = T>,
