@@ -132,16 +132,16 @@ lazy_static! {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x68b"),
+        gas_consumed: stark_felt!("0x680"),
         gas_price: GAS_PRICE.price_in_wei,
-        overall_fee: Fee(167500000000000,),
+        overall_fee: Fee(166400000000000,),
         unit: PriceUnit::Wei,
     };
 
     pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x68a"),
+        gas_consumed: stark_felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
-        overall_fee: Fee(167400000000000,),
+        overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
     };
 
@@ -1157,7 +1157,7 @@ fn broadcasted_to_executable_declare_v1() {
         BroadcastedTransaction::Declare(BroadcastedDeclareTransaction::V1(tx));
     assert_matches!(
         broadcasted_declare_v1.try_into(),
-        Ok(ExecutableTransactionInput::DeclareV1(_tx, _class, _only_query))
+        Ok(ExecutableTransactionInput::DeclareV1(_tx, _class, _abi_length, _only_query))
     );
 }
 

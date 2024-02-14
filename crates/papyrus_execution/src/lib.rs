@@ -31,7 +31,6 @@ use blockifier::execution::entry_point::{
     CallEntryPoint,
     CallType as BlockifierCallType,
     EntryPointExecutionContext,
-    ExecutionResources,
 };
 use blockifier::state::cached_state::{CachedState, GlobalContractCache};
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
@@ -41,9 +40,10 @@ use blockifier::transaction::objects::{
     TransactionInfo,
 };
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
-use blockifier::transaction::transactions::ExecutableTransaction;
+use blockifier::transaction::transactions::{ClassInfo, ExecutableTransaction};
 use blockifier::versioned_constants::VersionedConstants;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
+use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::{PriceUnit, TransactionSimulationOutput};
 use papyrus_common::transaction_hash::get_transaction_hash;
@@ -356,10 +356,14 @@ fn create_block_context(
 pub enum ExecutableTransactionInput {
     Invoke(InvokeTransaction, OnlyQuery),
     // todo(yair): Do we need to support V0?
-    DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass, OnlyQuery),
-    DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass, OnlyQuery),
-    DeclareV2(DeclareTransactionV2, CasmContractClass, OnlyQuery),
-    DeclareV3(DeclareTransactionV3, CasmContractClass, OnlyQuery),
+    // The usize is the abi size.
+    DeclareV0(DeclareTransactionV0V1, DeprecatedContractClass, usize, OnlyQuery),
+    // The usize is the abi size.
+    DeclareV1(DeclareTransactionV0V1, DeprecatedContractClass, usize, OnlyQuery),
+    // The first usize is the sierra size and the second is the abi size.
+    DeclareV2(DeclareTransactionV2, CasmContractClass, usize, usize, OnlyQuery),
+    // The first usize is the sierra size and the second is the abi size.
+    DeclareV3(DeclareTransactionV3, CasmContractClass, usize, usize, OnlyQuery),
     DeployAccount(DeployAccountTransaction, OnlyQuery),
     L1Handler(L1HandlerTransaction, Fee, OnlyQuery),
 }
@@ -390,37 +394,49 @@ impl ExecutableTransactionInput {
                 };
                 (Self::Invoke(tx, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV0(tx, class, only_query) => {
+            ExecutableTransactionInput::DeclareV0(tx, class, abi_length, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V0(tx));
                 let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V0(tx)) = as_transaction else {
                     unreachable!("Should be declare v0 transaction.")
                 };
-                (Self::DeclareV0(tx, class, only_query), res)
+                (Self::DeclareV0(tx, class, abi_length, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV1(tx, class, only_query) => {
+            ExecutableTransactionInput::DeclareV1(tx, class, abi_length, only_query) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V1(tx));
                 let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V1(tx)) = as_transaction else {
                     unreachable!("Should be declare v1 transaction.")
                 };
-                (Self::DeclareV1(tx, class, only_query), res)
+                (Self::DeclareV1(tx, class, abi_length, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV2(tx, class, only_query) => {
+            ExecutableTransactionInput::DeclareV2(
+                tx,
+                class,
+                sierra_program_length,
+                abi_length,
+                only_query,
+            ) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V2(tx));
                 let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V2(tx)) = as_transaction else {
                     unreachable!("Should be declare v2 transaction.")
                 };
-                (Self::DeclareV2(tx, class, only_query), res)
+                (Self::DeclareV2(tx, class, sierra_program_length, abi_length, only_query), res)
             }
-            ExecutableTransactionInput::DeclareV3(tx, class, only_query) => {
+            ExecutableTransactionInput::DeclareV3(
+                tx,
+                class,
+                sierra_program_length,
+                abi_length,
+                only_query,
+            ) => {
                 let as_transaction = Transaction::Declare(DeclareTransaction::V3(tx));
                 let res = func(&as_transaction, only_query);
                 let Transaction::Declare(DeclareTransaction::V3(tx)) = as_transaction else {
                     unreachable!("Should be declare v3 transaction.")
                 };
-                (Self::DeclareV3(tx, class, only_query), res)
+                (Self::DeclareV3(tx, class, sierra_program_length, abi_length, only_query), res)
             }
             ExecutableTransactionInput::DeployAccount(tx, only_query) => {
                 let as_transaction = Transaction::DeployAccount(tx);
@@ -597,9 +613,11 @@ fn execute_transactions(
                 DeclareTransactionV0V1 { class_hash, .. },
                 _,
                 _,
+                _,
             ) => Some(*class_hash),
             ExecutableTransactionInput::DeclareV1(
                 DeclareTransactionV0V1 { class_hash, .. },
+                _,
                 _,
                 _,
             ) => Some(*class_hash),
@@ -688,7 +706,12 @@ fn to_blockifier_tx(
             .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
 
-        ExecutableTransactionInput::DeclareV0(declare_tx, deprecated_class, only_query) => {
+        ExecutableTransactionInput::DeclareV0(
+            declare_tx,
+            deprecated_class,
+            abi_length,
+            only_query,
+        ) => {
             let class_v0 = BlockifierContractClass::V0(deprecated_class.try_into().map_err(
                 |e: cairo_vm::types::errors::program_errors::ProgramError| {
                     ExecutionError::TransactionExecutionError {
@@ -700,49 +723,66 @@ fn to_blockifier_tx(
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V0(declare_tx)),
                 tx_hash,
-                Some(class_v0),
+                Some(ClassInfo { contract_class: class_v0, sierra_program_length: 0, abi_length }),
                 None,
                 None,
                 only_query,
             )
             .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
-        ExecutableTransactionInput::DeclareV1(declare_tx, deprecated_class, only_query) => {
+        ExecutableTransactionInput::DeclareV1(
+            declare_tx,
+            deprecated_class,
+            abi_length,
+            only_query,
+        ) => {
             let class_v0 = BlockifierContractClass::V0(
                 deprecated_class.try_into().map_err(BlockifierError::new)?,
             );
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V1(declare_tx)),
                 tx_hash,
-                Some(class_v0),
+                Some(ClassInfo { contract_class: class_v0, sierra_program_length: 0, abi_length }),
                 None,
                 None,
                 only_query,
             )
             .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
-        ExecutableTransactionInput::DeclareV2(declare_tx, compiled_class, only_query) => {
+        ExecutableTransactionInput::DeclareV2(
+            declare_tx,
+            compiled_class,
+            sierra_program_length,
+            abi_length,
+            only_query,
+        ) => {
             let class_v1 = BlockifierContractClass::V1(
                 compiled_class.try_into().map_err(BlockifierError::new)?,
             );
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V2(declare_tx)),
                 tx_hash,
-                Some(class_v1),
+                Some(ClassInfo { contract_class: class_v1, sierra_program_length, abi_length }),
                 None,
                 None,
                 only_query,
             )
             .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
-        ExecutableTransactionInput::DeclareV3(declare_tx, compiled_class, only_query) => {
+        ExecutableTransactionInput::DeclareV3(
+            declare_tx,
+            compiled_class,
+            sierra_program_length,
+            abi_length,
+            only_query,
+        ) => {
             let class_v1 = BlockifierContractClass::V1(
                 compiled_class.try_into().map_err(BlockifierError::new)?,
             );
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V3(declare_tx)),
                 tx_hash,
-                Some(class_v1),
+                Some(ClassInfo { contract_class: class_v1, sierra_program_length, abi_length }),
                 None,
                 None,
                 only_query,

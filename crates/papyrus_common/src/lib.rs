@@ -5,6 +5,7 @@ pub mod block_hash;
 pub mod metrics;
 pub mod patricia_hash_tree;
 pub mod pending_classes;
+pub mod python_json_formatter;
 pub mod state;
 pub mod state_diff_commitment;
 pub mod transaction_hash;
