@@ -2,7 +2,7 @@ use std::collections::VecDeque;
 use std::future::Future;
 use std::io;
 use std::pin::Pin;
-use std::task::{Context, Poll, Waker};
+use std::task::{ready, Context, Poll, Waker};
 
 use futures::future::BoxFuture;
 use futures::io::WriteHalf;
@@ -60,7 +60,7 @@ impl<Data: DataBound> InboundSession<Data> {
         })
     }
 
-    fn handle_waiting(&mut self, cx: &mut Context<'_>) {
+    fn handle_waiting(&mut self, cx: &mut Context<'_>) -> Poll<()> {
         if let Some(data) = self.pending_messages.pop_front() {
             replace_with_or_abort(&mut self.current_task, |current_task| {
                 let WriteMessageTask::Waiting(mut write_stream) = current_task else {
@@ -74,34 +74,34 @@ impl<Data: DataBound> InboundSession<Data> {
                     .boxed(),
                 )
             });
+            Poll::Ready(())
         } else {
             self.wakers_waiting_for_new_message.push(cx.waker().clone());
+            Poll::Pending
         }
     }
 
-    fn handle_running(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
+    fn handle_running(&mut self, cx: &mut Context<'_>) -> Poll<Option<FinishReason>> {
         let WriteMessageTask::Running(fut) = &mut self.current_task else {
             panic!("Called handle_running while not running.");
         };
-        match fut.poll_unpin(cx) {
-            Poll::Pending => None,
-            Poll::Ready(Ok(write_stream)) => {
+        fut.poll_unpin(cx).map(|result| match result {
+            Ok(write_stream) => {
                 self.current_task = WriteMessageTask::Waiting(write_stream);
                 None
             }
-            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
-        }
+            Err(io_error) => Some(FinishReason::Error(io_error)),
+        })
     }
 
-    fn handle_closing(&mut self, cx: &mut Context<'_>) -> Option<FinishReason> {
+    fn handle_closing(&mut self, cx: &mut Context<'_>) -> Poll<FinishReason> {
         let WriteMessageTask::Closing(fut) = &mut self.current_task else {
             panic!("Called handle_closing while not closing.");
         };
-        match fut.poll_unpin(cx) {
-            Poll::Pending => None,
-            Poll::Ready(Ok(())) => Some(FinishReason::Closed),
-            Poll::Ready(Err(io_error)) => Some(FinishReason::Error(io_error)),
-        }
+        fut.poll_unpin(cx).map(|result| match result {
+            Ok(()) => FinishReason::Closed,
+            Err(io_error) => FinishReason::Error(io_error),
+        })
     }
 }
 
@@ -110,37 +110,24 @@ impl<Data: DataBound> Future for InboundSession<Data> {
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         let unpinned_self = Pin::into_inner(self);
-        let mut is_waiting = false;
-        let mut is_running = false;
-        let mut result = None;
-        loop {
+        let finish_reason = loop {
             match &mut unpinned_self.current_task {
                 WriteMessageTask::Running(_) => {
-                    if is_running {
-                        break;
+                    if let Some(finish_reason) = ready!(unpinned_self.handle_running(cx)) {
+                        break finish_reason;
                     }
-                    is_running = true;
-                    is_waiting = false;
-                    result = unpinned_self.handle_running(cx);
                 }
                 WriteMessageTask::Waiting(_) => {
-                    if is_waiting {
-                        break;
-                    }
-                    is_waiting = true;
-                    is_running = false;
-                    unpinned_self.handle_waiting(cx);
+                    ready!(unpinned_self.handle_waiting(cx));
                 }
                 WriteMessageTask::Closing(_) => {
-                    result = unpinned_self.handle_closing(cx);
-                    break;
+                    break ready!(unpinned_self.handle_closing(cx));
                 }
             }
-        }
-        match result {
-            Some(FinishReason::Error(io_error)) => Poll::Ready(Err(io_error)),
-            Some(FinishReason::Closed) => Poll::Ready(Ok(())),
-            None => Poll::Pending,
+        };
+        match finish_reason {
+            FinishReason::Error(io_error) => Poll::Ready(Err(io_error)),
+            FinishReason::Closed => Poll::Ready(Ok(())),
         }
     }
 }
