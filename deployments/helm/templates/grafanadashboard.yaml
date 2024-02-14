@@ -5,7 +5,7 @@ metadata:
   name: {{ .Release.Namespace | quote }}
   namespace: {{ .Release.Namespace | quote }}
   labels:
-    app: grafana-dashboard
+    {{- include "papyrus.labels" . | nindent 4 }}
 spec:
   json: |
     {{- (.Files.Get "Monitoring/alerts_grafana.json") | nindent 4 }}
