@@ -271,6 +271,7 @@ impl TxsScenarioBuilder {
                 ..Default::default()
             },
             get_test_deprecated_contract_class(),
+            0,
             false,
         );
         self.txs.push(tx);
@@ -287,6 +288,8 @@ impl TxsScenarioBuilder {
                 ..Default::default()
             },
             get_test_casm(),
+            0,
+            0,
             false,
         );
         self.txs.push(tx);

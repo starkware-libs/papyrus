@@ -289,7 +289,7 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                     OrderedL2ToL1Message::from(ordered_message, call_info.call.storage_address)
                 })
                 .collect(),
-            execution_resources: vm_resources_to_execution_resources(call_info.vm_resources)?,
+            execution_resources: vm_resources_to_execution_resources(call_info.resources)?,
         })
     }
 }
