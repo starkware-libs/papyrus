@@ -184,6 +184,7 @@ async fn main() -> anyhow::Result<()> {
         clap_err.exit();
     }
 
+    // Comment.
     configure_tracing();
 
     let config = config?;
