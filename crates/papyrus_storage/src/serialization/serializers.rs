@@ -1041,15 +1041,15 @@ impl StorageSerde for TransactionOffsetInBlock {
         &self,
         res: &mut impl std::io::Write,
     ) -> Result<(), crate::db::serialization::StorageSerdeError> {
-        let bytes = &self.0.to_le_bytes();
-        res.write_all(&bytes[0..3])?;
+        let bytes = &self.0.to_be_bytes();
+        res.write_all(&bytes[5..])?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let mut arr = [0u8; 8];
-        bytes.read_exact(&mut arr[0..3]).ok()?;
-        let index = usize::from_le_bytes(arr);
+        bytes.read_exact(&mut arr[5..]).ok()?;
+        let index = usize::from_be_bytes(arr);
         Some(Self(index))
     }
 }

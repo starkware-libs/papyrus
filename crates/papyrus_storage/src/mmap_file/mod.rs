@@ -278,19 +278,19 @@ impl StorageSerde for LocationInFile {
         &self,
         res: &mut impl std::io::Write,
     ) -> Result<(), crate::db::serialization::StorageSerdeError> {
-        let bytes = &self.len.to_le_bytes();
-        res.write_all(&bytes[0..4])?;
-        let bytes = &self.offset.to_le_bytes();
-        res.write_all(&bytes[0..6])?;
+        let bytes = &self.len.to_be_bytes();
+        res.write_all(&bytes[4..])?;
+        let bytes = &self.offset.to_be_bytes();
+        res.write_all(&bytes[2..])?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let mut arr = [0u8; 8];
-        bytes.read_exact(&mut arr[0..4]).ok()?;
-        let len = usize::from_le_bytes(arr);
-        bytes.read_exact(&mut arr[0..6]).ok()?;
-        let offset = usize::from_le_bytes(arr);
+        bytes.read_exact(&mut arr[4..]).ok()?;
+        let len = usize::from_be_bytes(arr);
+        bytes.read_exact(&mut arr[2..]).ok()?;
+        let offset = usize::from_be_bytes(arr);
         Some(Self { offset, len })
     }
 }
