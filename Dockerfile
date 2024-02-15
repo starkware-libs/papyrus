@@ -13,6 +13,7 @@ FROM rust:1.75 AS copy_toml
 
 COPY crates/ /app/crates/
 COPY Cargo.toml /app/
+COPY Cargo.lock /app/
 
 WORKDIR /app/
 
