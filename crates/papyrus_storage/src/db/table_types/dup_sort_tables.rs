@@ -357,7 +357,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
     // Append a new value to the given key. The sub key must be the last for the given main key,
     // otherwise an error will be returned.
     #[allow(dead_code)]
-    fn append(
+    pub(crate) fn append(
         &'env self,
         txn: &DbTransaction<'env, RW>,
         key: &K,
