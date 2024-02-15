@@ -15,7 +15,8 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::core::ClassHash;
+use starknet_api::core::{ClassHash, SequencerPublicKey};
+use starknet_api::crypto::PublicKey;
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
 use starknet_api::state::StateDiff;
@@ -86,25 +87,31 @@ async fn check_storage(
     false
 }
 
+fn get_test_sync_config(verify_blocks: bool) -> SyncConfig {
+    SyncConfig {
+        block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
+        base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
+        recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
+        blocks_max_stream_size: STREAM_SIZE,
+        state_updates_max_stream_size: STREAM_SIZE,
+        verify_blocks,
+    }
+}
+
 // Runs sync loop with a mocked central - infinite loop unless panicking.
 async fn run_sync(
     reader: StorageReader,
     writer: StorageWriter,
     central: impl CentralSourceTrait + Send + Sync + 'static,
     base_layer: impl BaseLayerSourceTrait + Send + Sync,
+    config: SyncConfig,
 ) -> StateSyncResult {
     // Mock to the pending source that always returns the default pending data.
     let mut pending_source = MockPendingSourceTrait::new();
     pending_source.expect_get_pending_data().returning(|| Ok(PendingData::default()));
 
     let mut state_sync = GenericStateSync {
-        config: SyncConfig {
-            block_propagation_sleep_duration: SYNC_SLEEP_DURATION,
-            base_layer_propagation_sleep_duration: BASE_LAYER_SLEEP_DURATION,
-            recoverable_error_sleep_duration: SYNC_SLEEP_DURATION,
-            blocks_max_stream_size: STREAM_SIZE,
-            state_updates_max_stream_size: STREAM_SIZE,
-        },
+        config,
         shared_highest_block: Arc::new(RwLock::new(None)),
         pending_data: Arc::new(RwLock::new(PendingData::default())),
         central_source: Arc::new(central),
@@ -113,6 +120,7 @@ async fn run_sync(
         base_layer_source: Arc::new(base_layer),
         reader,
         writer,
+        sequencer_pub_key: None,
     };
 
     state_sync.run().await?;
@@ -132,7 +140,13 @@ async fn sync_empty_chain() {
     base_layer_mock.expect_latest_proved_block().returning(|| Ok(None));
 
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock);
+    let sync_future = run_sync(
+        reader.clone(),
+        writer,
+        central_mock,
+        base_layer_mock,
+        get_test_sync_config(false),
+    );
 
     // Check that the header marker is 0.
     let check_storage_future = check_storage(reader.clone(), Duration::from_millis(50), |reader| {
@@ -225,7 +239,13 @@ async fn sync_happy_flow() {
     });
 
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock);
+    let sync_future = run_sync(
+        reader.clone(),
+        writer,
+        central_mock,
+        base_layer_mock,
+        get_test_sync_config(false),
+    );
 
     // Check that the storage reached N_BLOCKS within MAX_TIME_TO_SYNC_MS.
     let check_storage_future =
@@ -282,7 +302,8 @@ async fn sync_with_revert() {
     let mock = MockedCentralWithRevert { reverted: reverted_mutex.clone() };
     let mut base_layer_mock = MockBaseLayerSourceTrait::new();
     base_layer_mock.expect_latest_proved_block().returning(|| Ok(None));
-    let sync_future = run_sync(reader.clone(), writer, mock, base_layer_mock);
+    let sync_future =
+        run_sync(reader.clone(), writer, mock, base_layer_mock, get_test_sync_config(false));
 
     // Prepare functions that check that the sync worked up to N_BLOCKS_BEFORE_REVERT and then
     // reacted correctly to the revert.
@@ -554,6 +575,10 @@ async fn sync_with_revert() {
         ) -> Result<CasmContractClass, CentralError> {
             unimplemented!();
         }
+
+        async fn get_sequencer_pub_key(&self) -> Result<SequencerPublicKey, CentralError> {
+            unimplemented!()
+        }
     }
 }
 
@@ -607,13 +632,58 @@ async fn test_unrecoverable_sync_error_flow() {
         .returning(|_| Ok(Some(create_block_hash(WRONG_BLOCK_NUMBER, false))));
 
     let ((reader, writer), _temp_dir) = get_test_storage();
-    let sync_future = run_sync(reader.clone(), writer, mock, MockBaseLayerSourceTrait::new());
+    let sync_future = run_sync(
+        reader.clone(),
+        writer,
+        mock,
+        MockBaseLayerSourceTrait::new(),
+        get_test_sync_config(false),
+    );
     let sync_res = tokio::join! {sync_future};
     assert!(sync_res.0.is_err());
     // expect sync to raise the unrecoverable error it gets. In this case a DB Inconsistency error.
     assert_matches!(
         sync_res.0.unwrap_err(),
         StateSyncError::StorageError(StorageError::DBInconsistency { msg: _ })
+    );
+}
+
+#[tokio::test]
+async fn sequencer_pub_key_management() {
+    let _ = simple_logger::init_with_env();
+
+    let first_sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x111")));
+    let second_sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x222")));
+    let first_copy = first_sequencer_pub_key;
+
+    let mut central_mock = MockCentralSourceTrait::new();
+    // Mock error in sync loop so the public key will be requested again over and over.
+    central_mock
+        .expect_get_latest_block()
+        .returning(|| Err(CentralError::BlockNotFound { block_number: BlockNumber(0) }));
+
+    // Mock sequencer pub key change after the second request.
+    central_mock.expect_get_sequencer_pub_key().times(2).returning(move || Ok(first_copy));
+    central_mock.expect_get_sequencer_pub_key().returning(move || Ok(second_sequencer_pub_key));
+
+    // Mock base_layer without any block.
+    let mut base_layer_mock = MockBaseLayerSourceTrait::new();
+    base_layer_mock.expect_latest_proved_block().returning(|| Ok(None));
+
+    let ((reader, writer), _temp_dir) = get_test_storage();
+    let config = get_test_sync_config(true);
+    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock, config);
+
+    let sync_result =
+        tokio::time::timeout(config.block_propagation_sleep_duration * 4, sync_future)
+            .await
+            .unwrap()
+            .expect_err("Expecting sync to fail due to sequencer pub key change.");
+
+    assert_matches!(
+        sync_result,
+        StateSyncError::SequencerPubKeyChanged { old, new }
+            if old == first_copy && new == second_sequencer_pub_key
     );
 }
 

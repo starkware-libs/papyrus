@@ -198,6 +198,7 @@ fn store_base_layer_block_test() {
         base_layer_source: Arc::new(MockBaseLayerSourceTrait::new()),
         reader,
         writer,
+        sequencer_pub_key: None,
     };
 
     // Trying to store a block without a header in the storage.
