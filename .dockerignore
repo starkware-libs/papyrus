@@ -2,7 +2,6 @@
 /deployments
 /logs
 /target
-/Cargo.lock
 .git
 **/resources
 !crates/papyrus_load_test/resources
