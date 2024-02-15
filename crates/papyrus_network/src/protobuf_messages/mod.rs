@@ -8,12 +8,12 @@ pub const PATRICIA_HEIGHT: u32 = 251;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
-    #[error("Out of range value")]
-    OutOfRangeValue,
-    #[error("Missing field")]
-    MissingField,
-    #[error("Bytes data length mismatch")]
-    BytesDataLengthMismatch,
+    #[error("Type `{type_description}` got out of range value {value_as_str}")]
+    OutOfRangeValue { type_description: &'static str, value_as_str: String },
+    #[error("Missing field `{field_description}`")]
+    MissingField { field_description: &'static str },
+    #[error("Type `{type_description}` should be {num_expected} bytes but it got {value:?}.")]
+    BytesDataLengthMismatch { type_description: &'static str, num_expected: usize, value: Vec<u8> },
 }
 
 impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
@@ -24,7 +24,10 @@ impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
         if let Ok(stark_felt) = Self::new(felt) {
             Ok(stark_felt)
         } else {
-            Err(ProtobufConversionError::OutOfRangeValue)
+            Err(ProtobufConversionError::OutOfRangeValue {
+                type_description: "Felt252",
+                value_as_str: format!("{felt:?}"),
+            })
         }
     }
 }
@@ -70,13 +73,20 @@ impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
     fn try_from(value: protobuf::Hash) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
         if value.elements.len() != 32 {
-            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+            return Err(ProtobufConversionError::BytesDataLengthMismatch {
+                type_description: "Hash",
+                num_expected: 32,
+                value: value.elements,
+            });
         }
         felt.copy_from_slice(&value.elements);
         if let Ok(stark_hash) = Self::new(felt) {
             Ok(stark_hash)
         } else {
-            Err(ProtobufConversionError::OutOfRangeValue)
+            Err(ProtobufConversionError::OutOfRangeValue {
+                type_description: "Hash",
+                value_as_str: format!("{felt:?}"),
+            })
         }
     }
 }
@@ -86,17 +96,27 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
     fn try_from(value: protobuf::Address) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
         if value.elements.len() != 32 {
-            return Err(ProtobufConversionError::BytesDataLengthMismatch);
+            return Err(ProtobufConversionError::BytesDataLengthMismatch {
+                type_description: "Address",
+                num_expected: 32,
+                value: value.elements,
+            });
         }
         felt.copy_from_slice(&value.elements);
         if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
             if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
                 Ok(starknet_api::core::ContractAddress(stark_felt))
             } else {
-                Err(ProtobufConversionError::OutOfRangeValue)
+                Err(ProtobufConversionError::OutOfRangeValue {
+                    type_description: "Address",
+                    value_as_str: format!("{felt:?}"),
+                })
             }
         } else {
-            Err(ProtobufConversionError::OutOfRangeValue)
+            Err(ProtobufConversionError::OutOfRangeValue {
+                type_description: "Address",
+                value_as_str: format!("{felt:?}"),
+            })
         }
     }
 }
@@ -107,7 +127,10 @@ pub(crate) fn enum_int_to_l1_data_availability_mode(
     match value {
         0 => Ok(L1DataAvailabilityMode::Calldata),
         1 => Ok(L1DataAvailabilityMode::Blob),
-        _ => Err(ProtobufConversionError::OutOfRangeValue),
+        _ => Err(ProtobufConversionError::OutOfRangeValue {
+            type_description: "DataAvailabilityMode",
+            value_as_str: format!("{value}"),
+        }),
     }
 }
 
