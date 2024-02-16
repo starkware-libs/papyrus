@@ -439,6 +439,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         // Write state except declared classes.
         write_deployed_contracts(
             &state_diff.deployed_contracts,
+            &state_diff.nonces,
             &self.txn,
             block_number,
             &deployed_contracts_table,
@@ -687,6 +688,7 @@ fn write_deprecated_declared_classes<'env>(
 
 fn write_deployed_contracts<'env>(
     deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
+    nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
@@ -695,6 +697,7 @@ fn write_deployed_contracts<'env>(
     for (address, class_hash) in deployed_contracts {
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
+        if !nonces.contains_key(address) {
         nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
             if matches!(err, DbError::KeyAlreadyExists(..)) {
                 StorageError::NonceReWrite {
@@ -705,7 +708,9 @@ fn write_deployed_contracts<'env>(
             } else {
                 StorageError::from(err)
             }
-        })?;
+        })?
+        ;
+    }
     }
     Ok(())
 }

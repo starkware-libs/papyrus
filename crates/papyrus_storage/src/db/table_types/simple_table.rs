@@ -133,9 +133,13 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> TableHandle<'env, K, V, S
     ) -> DbResult<()> {
         let data = V::serialize(value)?;
         let bin_key = key.serialize()?;
-        txn.txn
-            .put(&self.database, bin_key, data, WriteFlags::APPEND)
-            .map_err(|_| DbError::Append)?;
+        let x=txn.txn
+            .put(&self.database, bin_key, data, WriteFlags::APPEND);
+            // .map_err(|_| DbError::Append)?;
+        if x.is_err() {
+            tracing::error!("Append Failed, Table: {}, Key: {:?}, Value: {:?}", self.name, key, value);
+            return Err(DbError::Append);
+        }
         Ok(())
     }
 }
