@@ -147,7 +147,7 @@ pub fn open_storage(
         deprecated_declared_classes: db_writer
             .create_simple_table("deprecated_declared_classes")?,
         deployed_contracts: db_writer.create_common_prefix_table("deployed_contracts")?,
-        events: db_writer.create_common_prefix_fixed_size_table("events")?,
+        events: db_writer.create_common_prefix_table("events")?,
         headers: db_writer.create_simple_table("headers")?,
         markers: db_writer.create_simple_table("markers")?,
         nonces: db_writer.create_common_prefix_table("nonces")?,
@@ -436,7 +436,7 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, CommonPrefix>,
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefixFixedSize>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefix>,
         headers: TableIdentifier<BlockNumber, VersionZeroWrapper<StorageBlockHeader>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, CommonPrefix>,

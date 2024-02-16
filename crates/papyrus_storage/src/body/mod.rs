@@ -59,7 +59,7 @@ use tracing::debug;
 
 use crate::body::events::EventIndex;
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{CommonPrefixFixedSize, DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{CommonPrefix, CommonPrefixFixedSize, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::serializers::ValuePlaceHolder;
 use crate::{
@@ -79,7 +79,7 @@ type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> =
-    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefixFixedSize>;
+    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, CommonPrefix>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
