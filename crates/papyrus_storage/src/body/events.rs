@@ -65,7 +65,14 @@ use starknet_api::transaction::{
 use super::TransactionMetadataTable;
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{CommonPrefix, CommonPrefixFixedSize, DbCursor, DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{
+    CommonPrefix,
+    CommonPrefixFixedSize,
+    DbCursor,
+    DbCursorTrait,
+    SimpleTable,
+    Table,
+};
 use crate::db::{DbTransaction, RO};
 use crate::serializers::ValuePlaceHolder;
 use crate::{FileHandlers, StorageResult, StorageTxn, TransactionMetadata};

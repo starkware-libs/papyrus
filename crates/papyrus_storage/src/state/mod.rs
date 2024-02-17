@@ -698,23 +698,25 @@ fn write_deployed_contracts<'env>(
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
         if !nonces.contains_key(address) {
-        nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
-            if matches!(err, DbError::KeyAlreadyExists(..)) {
-                StorageError::NonceReWrite {
-                    contract_address: *address,
-                    nonce: Nonce::default(),
-                    block_number,
-                }
-            } else {
-                StorageError::from(err)
-            }
-        })?
-        ;
-    }
+            nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(
+                |err| {
+                    if matches!(err, DbError::KeyAlreadyExists(..)) {
+                        StorageError::NonceReWrite {
+                            contract_address: *address,
+                            nonce: Nonce::default(),
+                            block_number,
+                        }
+                    } else {
+                        StorageError::from(err)
+                    }
+                },
+            )?;
+        }
     }
     Ok(())
 }
 
+#[latency_histogram("write_nonces_latency_seconds")]
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -722,7 +724,7 @@ fn write_nonces<'env>(
     contracts_table: &'env NoncesTable<'env>,
 ) -> StorageResult<()> {
     for (contract_address, nonce) in nonces {
-        contracts_table.append(txn, &(*contract_address, block_number), nonce)?;
+        contracts_table.append_unchecked(txn, &(*contract_address, block_number), nonce)?;
     }
     Ok(())
 }
@@ -739,6 +741,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("write_storage_diffs_latency_seconds")]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,
@@ -747,7 +750,7 @@ fn write_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
-            storage_table.append(txn, &((*address, *key), block_number), value)?;
+            storage_table.append_unchecked(txn, &((*address, *key), block_number), value)?;
         }
     }
     Ok(())

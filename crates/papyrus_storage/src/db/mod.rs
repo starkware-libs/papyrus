@@ -208,6 +208,7 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
             })
             .set_max_tables(MAX_DBS)
             .set_max_readers(MAX_READERS)
+            .set_flags(libmdbx::DatabaseFlags { no_rdahead: true, ..Default::default() })
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))

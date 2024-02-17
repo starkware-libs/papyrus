@@ -4,12 +4,14 @@ mod const_serialization_size_test;
 
 use starknet_api::block::BlockNumber;
 
-use crate::{body::events::EventIndex, db::serialization::{NoVersionValueWrapper, StorageSerde, VersionZeroWrapper}, serializers::ValuePlaceHolder};
+use crate::body::events::EventIndex;
+use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, VersionZeroWrapper};
 #[cfg(test)]
 use crate::db::table_types::const_serialization_size::const_serialization_size_test::{
     const_serialization_size_test,
     wrappers_const_size_serialization_test,
 };
+use crate::serializers::ValuePlaceHolder;
 
 // A type that has a known serialization size.
 pub(crate) trait ConstSerializationSize {

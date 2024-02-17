@@ -372,14 +372,46 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
             .map_err(|_| DbError::Append)?;
         if let Some(prev) = cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()? {
             if prev.1.starts_with(&T::get_sub_key(key)?) {
-                tracing::error!("Append Failed, Table: {}, Key: {:?}, Value: {:?}", self.name, key, value);
-                println!("=======\nprev: {prev:?}\nprev values: {:?}\nsub_key: {:?}\n=======", T::get_key_value_pair(&prev.0, &prev.1),T::get_sub_key(key)?);
+                tracing::error!(
+                    "Append Failed, Table: {}, Key: {:?}, Value: {:?}",
+                    self.name,
+                    key,
+                    value
+                );
+                println!(
+                    "=======\nprev: {prev:?}\nprev values: {:?}\nsub_key: {:?}\n=======",
+                    T::get_key_value_pair(&prev.0, &prev.1),
+                    T::get_sub_key(key)?
+                );
                 cursor.next_dup::<DbKeyType<'_>, DbValueType<'_>>()?;
                 cursor.del(WriteFlags::empty())?;
                 return Err(DbError::Append);
             }
         }
 
+        Ok(())
+    }
+
+    pub(crate) fn append_unchecked(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let main_key = T::get_main_key(key)?;
+        let sub_key_value = T::get_sub_key_value(key, value)?;
+
+        let x = txn.txn.put(&self.database, main_key, sub_key_value, WriteFlags::APPEND_DUP);
+        // .map_err(|_| DbError::Append)?;
+        if x.is_err() {
+            tracing::error!(
+                "Append Failed, Table: {}, Key: {:?}, Value: {:?}",
+                self.name,
+                key,
+                value
+            );
+            return Err(DbError::Append);
+        }
         Ok(())
     }
 }

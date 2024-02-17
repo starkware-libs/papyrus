@@ -59,7 +59,13 @@ use tracing::debug;
 
 use crate::body::events::EventIndex;
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{CommonPrefix, CommonPrefixFixedSize, DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{
+    CommonPrefix,
+    CommonPrefixFixedSize,
+    DbCursorTrait,
+    SimpleTable,
+    Table,
+};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::serializers::ValuePlaceHolder;
 use crate::{
