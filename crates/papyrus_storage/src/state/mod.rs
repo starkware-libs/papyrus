@@ -710,6 +710,7 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+#[latency_histogram("write_nonces_latency_seconds")]
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -734,6 +735,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("write_storage_diffs_latency_seconds")]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,
