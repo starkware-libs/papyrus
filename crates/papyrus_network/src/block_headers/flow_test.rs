@@ -1,104 +1,134 @@
 use std::time::Duration;
 
-use futures::{select, FutureExt, StreamExt};
+use assert_matches::assert_matches;
+use futures::{FutureExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 
 use super::Behaviour;
 use crate::block_headers::Event;
-use crate::db_executor::{self, DBExecutor};
+use crate::db_executor::Data;
+use crate::streamed_data::SessionId;
 use crate::test_utils::create_fully_connected_swarms_stream;
 use crate::{BlockHashOrNumber, Direction, InternalQuery};
 
-const BUFFER_SIZE: usize = 10;
+const NUM_OF_BLOCKS: u64 = 10;
+const START_BLOCK: u64 = 5;
 
 #[tokio::test]
 async fn one_sends_to_the_other() {
-    let mut db_executor = db_executor::dummy_executor::DummyDBExecutor::new();
     let mut swarms_stream =
         create_fully_connected_swarms_stream(2, || Behaviour::new(Duration::from_secs(5))).await;
 
-    let mut swarms_mut = swarms_stream.values_mut();
-    let outbound_swarm = swarms_mut.next().unwrap();
-    let inbound_swarm = swarms_mut.next().unwrap();
-    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    // Putting this code in a block to drop all references to swarms_stream after it is finished.
+    let (outbound_peer_id, inbound_peer_id, outbound_session_id, inbound_session_id) = {
+        let mut peer_ids = swarms_stream.keys();
+        let outbound_peer_id = *peer_ids.next().unwrap();
+        let inbound_peer_id = *peer_ids.next().unwrap();
 
-    // Side A - send query
-    let number_of_blocks = (BUFFER_SIZE - 1) as u64;
-    let sent_query = InternalQuery {
-        start_block: BlockHashOrNumber::Number(BlockNumber(1)),
-        direction: Direction::Forward,
-        limit: number_of_blocks,
-        step: 1,
-    };
-    let outbound_session_id = outbound_swarm
-        .behaviour_mut()
-        .send_query(sent_query, *inbound_swarm.local_peer_id())
-        .unwrap();
-    outbound_swarm.next().now_or_never();
+        let mut swarms_mut = swarms_stream.values_mut();
+        let outbound_swarm = swarms_mut.next().unwrap();
+        let inbound_swarm = swarms_mut.next().unwrap();
 
-    // Side B - receive query
-    let event = inbound_swarm.next().await.unwrap();
-    let (inbound_session_id, received_query) = match event {
-        SwarmEvent::Behaviour(Event::NewInboundQuery { query, inbound_session_id }) => {
-            assert_eq!(sent_query, query);
-            (inbound_session_id, query)
+        // Side A - send query
+        let sent_query = InternalQuery {
+            start_block: BlockHashOrNumber::Number(BlockNumber(START_BLOCK)),
+            direction: Direction::Forward,
+            limit: NUM_OF_BLOCKS,
+            step: 1,
+        };
+        let outbound_session_id = outbound_swarm
+            .behaviour_mut()
+            .send_query(sent_query, *inbound_swarm.local_peer_id())
+            .unwrap();
+        outbound_swarm.next().now_or_never();
+
+        // Side B - receive query
+        let event = inbound_swarm.next().await.unwrap();
+        let inbound_session_id = match event {
+            SwarmEvent::Behaviour(Event::NewInboundQuery { query, inbound_session_id }) => {
+                assert_eq!(sent_query, query);
+                inbound_session_id
+            }
+            _ => panic!("Unexpected event: {:?}", event),
+        };
+
+        // Side B - Send data responding to the query
+
+        for i in START_BLOCK..(START_BLOCK + NUM_OF_BLOCKS) {
+            inbound_swarm
+                .behaviour_mut()
+                .send_data(
+                    Data::BlockHeaderAndSignature {
+                        header: BlockHeader { block_number: BlockNumber(i), ..Default::default() },
+                        signature: BlockSignature::default(),
+                    },
+                    inbound_session_id,
+                )
+                .unwrap();
         }
-        _ => panic!("Unexpected event: {:?}", event),
+        (outbound_peer_id, inbound_peer_id, outbound_session_id, inbound_session_id)
     };
 
-    // Side B - register query
-    let _query_id = db_executor.register_query(received_query, sender);
+    // Side A - Receive data and validate its correctness.
+    for i in START_BLOCK..(START_BLOCK + NUM_OF_BLOCKS) {
+        let (peer_id, event) = loop {
+            let (peer_id, swarm_event) = swarms_stream.next().await.unwrap();
+            let SwarmEvent::Behaviour(event) = swarm_event else {
+                continue;
+            };
+            break (peer_id, event);
+        };
+        assert_eq!(
+            peer_id, outbound_peer_id,
+            "Unexpected event from inbound peer while outbound peer waits for data {event:?}"
+        );
+        assert_matches!(
+            event,
+            Event::ReceivedData { signed_header, outbound_session_id: event_outbound_session_id }
+                if signed_header.block_header.block_number.0 == i &&
+                    outbound_session_id == event_outbound_session_id
+        );
+    }
 
-    let mut receiver_stream = receiver.map(|data| (data, inbound_session_id));
+    // Side B - Send Fin.
+    swarms_stream
+        .get_mut(&inbound_peer_id)
+        .unwrap()
+        .behaviour_mut()
+        .send_data(Data::Fin, inbound_session_id)
+        .unwrap();
 
-    let mut data_counter = 0;
-    loop {
-        select! {
-            // Side B - get data from channel and send to behaviour
-            res = receiver_stream.next().fuse() => {
-                if let Some((data, inbound_session_id)) = res {
-                    inbound_swarm.behaviour_mut().send_data(data, inbound_session_id).unwrap();
-                }
-            },
-            // Side B - poll DB to make sure data is starting to be sent. should not return.
-            res = db_executor.next().fuse() => {
-                match res {
-                    Some(Ok(query_id)) => println!("Query completed successfully. query_id: {:?}", query_id),
-                    Some(Err(err)) => panic!("Query failed. error: {:?}", err),
-                    None => panic!("DB executor should not return")
-                }
-            },
-            // Side B - poll to perform data sending
-            event = inbound_swarm.next().fuse() => {
-                let event = event.unwrap();
-                match event {
-                    SwarmEvent::Behaviour(Event::SessionCompletedSuccessfully { .. }) => {
-                        break;
-                    },
-                    _ => panic!("Inbound - Unexpected event: {:?}", event),
-                };
-            },
-            // Side A - receive data
-            event = outbound_swarm.next().fuse() => {
-                let event = event.unwrap();
-                match event {
-                    SwarmEvent::Behaviour(Event::ReceivedData {
-                        data: _,
-                        outbound_session_id: cur_outbound_session_id,
-                    }) => {
-                        assert_eq!(outbound_session_id, cur_outbound_session_id);
-                        data_counter += 1;
-                    },
-                    SwarmEvent::Behaviour(Event::SessionCompletedSuccessfully { .. }) => {
-                        // Once all data is sent the inbound session is closed.
-                        assert_eq!(data_counter, number_of_blocks);
-                        break;
-                    },
-                    _ => panic!("Outbound - Unexpected event: {:?}", event),
-                };
-            },
-            complete => break,
+    // Side A and B - Wait for SessionFinishedSuccessfully event.
+    let mut outbound_finished = false;
+    let mut inbound_finished = false;
+
+    for _ in 0..2 {
+        let (peer_id, event) = loop {
+            let (peer_id, swarm_event) = swarms_stream.next().await.unwrap();
+            let SwarmEvent::Behaviour(event) = swarm_event else {
+                continue;
+            };
+            break (peer_id, event);
+        };
+        match event {
+            Event::SessionFinishedSuccessfully {
+                session_id: SessionId::OutboundSessionId(event_outbound_session_id),
+            } => {
+                assert_eq!(outbound_session_id, event_outbound_session_id);
+                assert_eq!(peer_id, outbound_peer_id);
+                outbound_finished = true;
+            }
+            Event::SessionFinishedSuccessfully {
+                session_id: SessionId::InboundSessionId(event_inbound_session_id),
+            } => {
+                assert_eq!(inbound_session_id, event_inbound_session_id);
+                assert_eq!(peer_id, inbound_peer_id);
+                inbound_finished = true;
+            }
+            _ => panic!("Unexpected event {event:?} while waiting for SessionFinishedSuccessfully"),
         }
     }
+    assert!(outbound_finished);
+    assert!(inbound_finished);
 }

@@ -99,8 +99,12 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 debug!("Query completed successfully. query_id: {query_id:?}");
             }
             Err(err) => {
-                if let Some(query_id) = err.query_id() {
+                if err.should_log_in_error_level() {
+                    error!("Query failed. error: {err:?}");
+                } else {
                     debug!("Query failed. error: {err:?}");
+                }
+                if let Some(query_id) = err.query_id() {
                     // TODO: Consider retrying based on error.
                     let Some(inbound_session_id) =
                         self.query_id_to_inbound_session_id.remove(&query_id)
@@ -114,10 +118,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                              but the session was already closed"
                         );
                     }
-                } else {
-                    // Logging this error in an error level since it has no side effects and thus
-                    // it's harder to track.
-                    error!("Query failed. error: {err:?}");
                 }
             }
         };
@@ -136,17 +136,15 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 self.query_results_router
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
-            Event::ReceivedData { data, outbound_session_id } => {
+            Event::ReceivedData { signed_header, outbound_session_id } => {
                 debug!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
                 );
                 if let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() {
-                    data.into_iter().for_each(|data| {
-                        if let Err(e) = response_senders.signed_headers_sender.try_send(data) {
-                            error!("Failed to send data to sync subscriber. error: {e:?}");
-                        }
-                    });
+                    if let Err(e) = response_senders.signed_headers_sender.try_send(signed_header) {
+                        error!("Failed to send data to sync subscriber. error: {e:?}");
+                    }
                 }
             }
             Event::SessionFailed { session_id, session_error } => {
@@ -157,7 +155,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 debug!("Failed to convert incoming query on {error:?}");
                 // TODO: Consider adding peer_id to event and handling reputation.
             }
-            Event::SessionCompletedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }
