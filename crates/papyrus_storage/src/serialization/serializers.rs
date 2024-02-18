@@ -39,6 +39,7 @@ use starknet_api::core::{
     Nonce,
     PatriciaKey,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::crypto::Signature;
@@ -57,7 +58,7 @@ use starknet_api::deprecated_contract_class::{
     StructMember,
     TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass,
     EntryPoint,
@@ -125,7 +126,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::header::StorageBlockHeader;
+use crate::header::{StorageBlockHeader, StorageBlockHeaderV0};
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
 use crate::serialization::serializers_test::{create_storage_serde_test, StorageSerdeTest};
@@ -140,6 +141,22 @@ auto_storage_serde! {
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct StorageBlockHeader {
+        pub block_hash: BlockHash,
+        pub parent_hash: BlockHash,
+        pub block_number: BlockNumber,
+        pub l1_gas_price: GasPricePerToken,
+        pub l1_data_gas_price: GasPricePerToken,
+        pub state_root: GlobalRoot,
+        pub sequencer: SequencerContractAddress,
+        pub timestamp: BlockTimestamp,
+        pub l1_da_mode: L1DataAvailabilityMode,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
+        pub transaction_commitment: Option<TransactionCommitment>,
+        pub event_commitment: Option<EventCommitment>,
+        pub n_transactions: Option<usize>,
+        pub n_events: Option<usize>,
+    }
+    pub struct StorageBlockHeaderV0 {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
@@ -317,6 +334,7 @@ auto_storage_serde! {
         DeprecatedContractClass = 3,
     }
     pub struct PaymasterData(pub Vec<StarkFelt>);
+    pub struct PoseidonHash(pub StarkFelt);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -353,6 +371,7 @@ auto_storage_serde! {
         pub offset: usize,
     }
     pub struct StarknetVersion(pub String);
+    pub struct StateDiffCommitment(pub PoseidonHash);
     pub struct Tip(pub u64);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,

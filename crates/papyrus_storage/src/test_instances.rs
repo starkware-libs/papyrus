@@ -4,6 +4,7 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -27,7 +28,7 @@ use crate::body::events::{
 };
 use crate::body::TransactionIndex;
 use crate::compression_utils::IsCompressed;
-use crate::header::StorageBlockHeader;
+use crate::header::{StorageBlockHeader, StorageBlockHeaderV0};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
@@ -35,6 +36,22 @@ use crate::{EventIndex, MarkerKind, OffsetKind};
 
 auto_impl_get_test_instance! {
     pub struct StorageBlockHeader {
+        pub block_hash: BlockHash,
+        pub parent_hash: BlockHash,
+        pub block_number: BlockNumber,
+        pub l1_gas_price: GasPricePerToken,
+        pub l1_data_gas_price: GasPricePerToken,
+        pub state_root: GlobalRoot,
+        pub sequencer: SequencerContractAddress,
+        pub timestamp: BlockTimestamp,
+        pub l1_da_mode: L1DataAvailabilityMode,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
+        pub transaction_commitment: Option<TransactionCommitment>,
+        pub event_commitment: Option<EventCommitment>,
+        pub n_transactions: Option<usize>,
+        pub n_events: Option<usize>,
+    }
+    pub struct StorageBlockHeaderV0 {
         pub block_hash: BlockHash,
         pub parent_hash: BlockHash,
         pub block_number: BlockNumber,
