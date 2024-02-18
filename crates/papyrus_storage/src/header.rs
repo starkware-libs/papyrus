@@ -52,6 +52,7 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -73,10 +74,11 @@ pub(crate) struct StorageBlockHeader {
     pub sequencer: SequencerContractAddress,
     pub timestamp: BlockTimestamp,
     pub l1_da_mode: L1DataAvailabilityMode,
-    pub transaction_commitment: TransactionCommitment,
-    pub event_commitment: EventCommitment,
-    pub n_transactions: usize,
-    pub n_events: usize,
+    pub state_diff_commitment: Option<StateDiffCommitment>,
+    pub transaction_commitment: Option<TransactionCommitment>,
+    pub event_commitment: Option<EventCommitment>,
+    pub n_transactions: Option<usize>,
+    pub n_events: Option<usize>,
 }
 
 type BlockHashToNumberTable<'env> =
@@ -168,6 +170,7 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
             sequencer: block_header.sequencer,
             timestamp: block_header.timestamp,
             l1_da_mode: block_header.l1_da_mode,
+            state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
             n_transactions: block_header.n_transactions,
@@ -240,6 +243,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             sequencer: block_header.sequencer,
             timestamp: block_header.timestamp,
             l1_da_mode: block_header.l1_da_mode,
+            state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
             n_transactions: block_header.n_transactions,
@@ -340,6 +344,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 sequencer: reverted_header.sequencer,
                 timestamp: reverted_header.timestamp,
                 l1_da_mode: reverted_header.l1_da_mode,
+                state_diff_commitment: reverted_header.state_diff_commitment,
                 transaction_commitment: reverted_header.transaction_commitment,
                 event_commitment: reverted_header.event_commitment,
                 n_transactions: reverted_header.n_transactions,
@@ -393,4 +398,59 @@ fn update_marker<'env>(
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
     Ok(())
+}
+
+// TODO(yair): Consider moving to a separate file.
+#[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub(crate) struct StorageBlockHeaderV0 {
+    pub block_hash: BlockHash,
+    pub parent_hash: BlockHash,
+    pub block_number: BlockNumber,
+    pub l1_gas_price: GasPricePerToken,
+    pub l1_data_gas_price: GasPricePerToken,
+    pub state_root: GlobalRoot,
+    pub sequencer: SequencerContractAddress,
+    pub timestamp: BlockTimestamp,
+    pub l1_da_mode: L1DataAvailabilityMode,
+    pub transaction_commitment: TransactionCommitment,
+    pub event_commitment: EventCommitment,
+    pub n_transactions: usize,
+    pub n_events: usize,
+}
+
+impl From<StorageBlockHeaderV0> for StorageBlockHeader {
+    fn from(v0_header: StorageBlockHeaderV0) -> Self {
+        // In some cases, the transaction_commitment and event_commitment are 0 instead of None.
+        let missing_commitments_data = v0_header.transaction_commitment
+            == TransactionCommitment::default()
+            && v0_header.event_commitment == EventCommitment::default();
+        Self {
+            block_hash: v0_header.block_hash,
+            parent_hash: v0_header.parent_hash,
+            block_number: v0_header.block_number,
+            l1_gas_price: v0_header.l1_gas_price,
+            l1_data_gas_price: v0_header.l1_data_gas_price,
+            state_root: v0_header.state_root,
+            sequencer: v0_header.sequencer,
+            timestamp: v0_header.timestamp,
+            l1_da_mode: v0_header.l1_da_mode,
+            state_diff_commitment: None,
+            transaction_commitment: if missing_commitments_data {
+                None
+            } else {
+                Some(v0_header.transaction_commitment)
+            },
+            event_commitment: if missing_commitments_data {
+                None
+            } else {
+                Some(v0_header.event_commitment)
+            },
+            n_transactions: if missing_commitments_data {
+                None
+            } else {
+                Some(v0_header.n_transactions)
+            },
+            n_events: if missing_commitments_data { None } else { Some(v0_header.n_events) },
+        }
+    }
 }

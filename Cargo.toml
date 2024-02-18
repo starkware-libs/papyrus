@@ -109,6 +109,7 @@ strum = "0.25.0"
 strum_macros = "0.25.2"
 tempfile = "3.3.0"
 test-case = "3.2.1"
+test-log = "0.2.14"
 thiserror = "1.0.31"
 tokio = "1.18.2"
 tokio-retry = "0.3"
@@ -119,3 +120,6 @@ tower = "0.4"
 unsigned-varint = "0.8.0"
 url = "2.2.2"
 validator = "0.12"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api.git", rev = "18127ba310625c76ea80245c246e317e1fdcf388" }
