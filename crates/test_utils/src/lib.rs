@@ -59,6 +59,7 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::crypto::Signature;
@@ -77,7 +78,7 @@ use starknet_api::deprecated_contract_class::{
     StructMember,
     TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
 use starknet_api::stark_felt;
 use starknet_api::state::{
     ContractClass,
@@ -416,10 +417,11 @@ auto_impl_get_test_instance! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub transaction_commitment: TransactionCommitment,
-        pub event_commitment: EventCommitment,
-        pub n_transactions: usize,
-        pub n_events: usize,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
+        pub transaction_commitment: Option<TransactionCommitment>,
+        pub event_commitment: Option<EventCommitment>,
+        pub n_transactions: Option<usize>,
+        pub n_events: Option<usize>,
         pub starknet_version: StarknetVersion,
     }
     pub struct BlockNumber(pub u64);
@@ -641,6 +643,7 @@ auto_impl_get_test_instance! {
     pub struct Nonce(pub StarkFelt);
     pub struct TransactionCommitment(pub StarkHash);
     pub struct PaymasterData(pub Vec<StarkFelt>);
+    pub struct PoseidonHash(pub StarkFelt);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -675,6 +678,7 @@ auto_impl_get_test_instance! {
         pub nonces: IndexMap<ContractAddress, Nonce>,
         pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
     }
+    pub struct StateDiffCommitment(pub PoseidonHash);
     pub struct StructMember {
         pub param: TypedParameter,
         pub offset: usize,

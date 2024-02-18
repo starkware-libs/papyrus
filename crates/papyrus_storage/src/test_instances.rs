@@ -4,6 +4,7 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -44,11 +45,13 @@ auto_impl_get_test_instance! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub transaction_commitment: TransactionCommitment,
-        pub event_commitment: EventCommitment,
-        pub n_transactions: usize,
-        pub n_events: usize,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
+        pub transaction_commitment: Option<TransactionCommitment>,
+        pub event_commitment: Option<EventCommitment>,
+        pub n_transactions: Option<usize>,
+        pub n_events: Option<usize>,
     }
+
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,

@@ -39,6 +39,7 @@ use starknet_api::core::{
     Nonce,
     PatriciaKey,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::crypto::Signature;
@@ -57,7 +58,7 @@ use starknet_api::deprecated_contract_class::{
     StructMember,
     TypedParameter,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
 use starknet_api::state::{
     ContractClass,
     EntryPoint,
@@ -149,10 +150,11 @@ auto_storage_serde! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub transaction_commitment: TransactionCommitment,
-        pub event_commitment: EventCommitment,
-        pub n_transactions: usize,
-        pub n_events: usize,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
+        pub transaction_commitment: Option<TransactionCommitment>,
+        pub event_commitment: Option<EventCommitment>,
+        pub n_transactions: Option<usize>,
+        pub n_events: Option<usize>,
     }
     pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
@@ -317,6 +319,7 @@ auto_storage_serde! {
         DeprecatedContractClass = 3,
     }
     pub struct PaymasterData(pub Vec<StarkFelt>);
+    pub struct PoseidonHash(pub StarkFelt);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -353,6 +356,7 @@ auto_storage_serde! {
         pub offset: usize,
     }
     pub struct StarknetVersion(pub String);
+    pub struct StateDiffCommitment(pub PoseidonHash);
     pub struct Tip(pub u64);
     pub struct ThinDeclareTransactionOutput {
         pub actual_fee: Fee,

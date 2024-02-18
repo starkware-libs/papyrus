@@ -226,10 +226,11 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 sequencer,
                 timestamp,
                 l1_da_mode,
-                transaction_commitment,
-                event_commitment,
-                n_transactions,
-                n_events,
+                state_diff_commitment: None,
+                transaction_commitment: Some(transaction_commitment),
+                event_commitment: Some(event_commitment),
+                n_transactions: Some(n_transactions),
+                n_events: Some(n_events),
                 starknet_version,
             },
             // collect will convert from Vec<Result> to Result<Vec>.
@@ -258,12 +259,20 @@ impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
                 root: Some(header.state_root.0.into()),
             }),
             transactions: Some(protobuf::Merkle {
-                n_leaves: header.n_transactions.try_into().expect("Converting usize to u64 failed"),
-                root: Some(header.transaction_commitment.0.into()),
+                n_leaves: header
+                    .n_transactions
+                    .unwrap_or_default()
+                    .try_into()
+                    .expect("Converting usize to u64 failed"),
+                root: Some(header.transaction_commitment.unwrap_or_default().0.into()),
             }),
             events: Some(protobuf::Merkle {
-                n_leaves: header.n_events.try_into().expect("Converting usize to u64 failed"),
-                root: Some(header.event_commitment.0.into()),
+                n_leaves: header
+                    .n_events
+                    .unwrap_or_default()
+                    .try_into()
+                    .expect("Converting usize to u64 failed"),
+                root: Some(header.event_commitment.unwrap_or_default().0.into()),
             }),
             // TODO(shahak): fill this.
             receipts: None,

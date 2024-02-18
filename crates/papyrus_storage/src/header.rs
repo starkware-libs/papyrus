@@ -52,6 +52,7 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
@@ -73,10 +74,11 @@ pub(crate) struct StorageBlockHeader {
     pub sequencer: SequencerContractAddress,
     pub timestamp: BlockTimestamp,
     pub l1_da_mode: L1DataAvailabilityMode,
-    pub transaction_commitment: TransactionCommitment,
-    pub event_commitment: EventCommitment,
-    pub n_transactions: usize,
-    pub n_events: usize,
+    pub state_diff_commitment: Option<StateDiffCommitment>,
+    pub transaction_commitment: Option<TransactionCommitment>,
+    pub event_commitment: Option<EventCommitment>,
+    pub n_transactions: Option<usize>,
+    pub n_events: Option<usize>,
 }
 
 type BlockHashToNumberTable<'env> =
@@ -168,6 +170,7 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
             sequencer: block_header.sequencer,
             timestamp: block_header.timestamp,
             l1_da_mode: block_header.l1_da_mode,
+            state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
             n_transactions: block_header.n_transactions,
@@ -240,6 +243,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             sequencer: block_header.sequencer,
             timestamp: block_header.timestamp,
             l1_da_mode: block_header.l1_da_mode,
+            state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
             n_transactions: block_header.n_transactions,
@@ -340,6 +344,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 sequencer: reverted_header.sequencer,
                 timestamp: reverted_header.timestamp,
                 l1_da_mode: reverted_header.l1_da_mode,
+                state_diff_commitment: reverted_header.state_diff_commitment,
                 transaction_commitment: reverted_header.transaction_commitment,
                 event_commitment: reverted_header.event_commitment,
                 n_transactions: reverted_header.n_transactions,
