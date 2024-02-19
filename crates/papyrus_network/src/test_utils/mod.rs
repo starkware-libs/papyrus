@@ -15,7 +15,7 @@ use libp2p_swarm_test::SwarmExt;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt as TokioStreamExt;
 
-use crate::messages::protobuf;
+use crate::streamed_bytes::Bytes;
 
 /// Create two streams that are connected to each other. Return them and a join handle for a thread
 /// that will perform the sends between the streams (this thread will run forever so it shouldn't
@@ -41,17 +41,16 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     )
 }
 
-pub(crate) fn dummy_data() -> Vec<protobuf::BasicMessage> {
-    vec![
-        protobuf::BasicMessage { number: 1 },
-        protobuf::BasicMessage { number: 2 },
-        protobuf::BasicMessage { number: 3 },
-    ]
+pub(crate) fn dummy_data() -> Vec<Bytes> {
+    vec![vec![1u8], vec![2u8, 3u8], vec![4u8, 5u8, 6u8]]
 }
 
-impl crate::streamed_data::Config {
+impl crate::streamed_bytes::Config {
     pub fn get_test_config() -> Self {
-        Self { session_timeout: Duration::MAX, protocol_name: StreamProtocol::new("/") }
+        Self {
+            session_timeout: Duration::MAX,
+            supported_inbound_protocols: vec![StreamProtocol::new("/")],
+        }
     }
 }
 

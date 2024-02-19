@@ -2,7 +2,6 @@ pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/_.rs"));
 }
 
-use prost::Message;
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
 pub const PATRICIA_HEIGHT: u32 = 251;
