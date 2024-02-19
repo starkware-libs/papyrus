@@ -25,7 +25,6 @@ pub struct QueryId(pub usize);
 pub enum Data {
     // TODO(shahak): Consider uniting with SignedBlockHeader.
     BlockHeaderAndSignature { header: BlockHeader, signature: BlockSignature },
-    Fin,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -58,6 +57,7 @@ pub enum DBExecutorError {
     },
 }
 
+#[allow(dead_code)]
 impl DBExecutorError {
     pub fn query_id(&self) -> Option<QueryId> {
         match self {

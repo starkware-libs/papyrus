@@ -30,31 +30,34 @@ use libp2p::PeerId;
 use tracing::debug;
 
 use self::inbound_session::InboundSession;
+use super::messages::read_message;
 use super::protocol::{InboundProtocol, OutboundProtocol};
-use super::{
-    Config,
-    DataBound,
-    GenericEvent,
-    InboundSessionId,
-    OutboundSessionId,
-    QueryBound,
-    SessionId,
-};
-use crate::messages::read_message;
+use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
 #[allow(dead_code)]
-pub enum RequestFromBehaviourEvent<Query, Data> {
-    CreateOutboundSession { query: Query, outbound_session_id: OutboundSessionId },
-    SendData { data: Data, inbound_session_id: InboundSessionId },
-    CloseInboundSession { inbound_session_id: InboundSessionId },
-    DropSession { session_id: SessionId },
+pub enum RequestFromBehaviourEvent {
+    CreateOutboundSession {
+        query: Bytes,
+        outbound_session_id: OutboundSessionId,
+        protocol_name: StreamProtocol,
+    },
+    SendData {
+        data: Bytes,
+        inbound_session_id: InboundSessionId,
+    },
+    CloseInboundSession {
+        inbound_session_id: InboundSessionId,
+    },
+    DropSession {
+        session_id: SessionId,
+    },
 }
 
 #[derive(Debug)]
-pub enum RequestToBehaviourEvent<Query: QueryBound, Data: DataBound> {
-    GenerateEvent(GenericEvent<Query, Data, SessionError>),
+pub enum RequestToBehaviourEvent {
+    GenerateEvent(GenericEvent<SessionError>),
     NotifySessionDropped { session_id: SessionId },
 }
 
@@ -66,8 +69,8 @@ pub enum SessionError {
     Timeout { session_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
-    #[error("Remote peer doesn't support the {protocol_name} protocol.")]
-    RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    #[error("Remote peer doesn't support the given protocol.")]
+    RemoteDoesntSupportProtocol,
     // TODO(shahak) erase this.
     #[error("In an inbound session, remote peer sent data after sending the query.")]
     OtherOutboundPeerSentData,
@@ -79,13 +82,14 @@ type HandlerEvent<H> = ConnectionHandlerEvent<
     <H as ConnectionHandler>::ToBehaviour,
 >;
 
-pub struct Handler<Query: QueryBound, Data: DataBound> {
+pub struct Handler {
     // TODO(shahak): Consider changing to Arc<Config> if the config becomes heavy to clone.
     config: Config,
     next_inbound_session_id: Arc<AtomicUsize>,
     peer_id: PeerId,
-    id_to_inbound_session: HashMap<InboundSessionId, InboundSession<Data>>,
-    id_to_outbound_session: HashMap<OutboundSessionId, BoxStream<'static, Result<Data, io::Error>>>,
+    id_to_inbound_session: HashMap<InboundSessionId, InboundSession>,
+    id_to_outbound_session:
+        HashMap<OutboundSessionId, BoxStream<'static, Result<Bytes, io::Error>>>,
     // TODO(shahak): Use deadqueue if using a VecDeque is a bug (libp2p uses VecDeque, so we opened
     // an issue on it https://github.com/libp2p/rust-libp2p/issues/5147)
     pending_events: VecDeque<HandlerEvent<Self>>,
@@ -93,7 +97,7 @@ pub struct Handler<Query: QueryBound, Data: DataBound> {
     dropped_outbound_sessions_non_negotiated: HashSet<OutboundSessionId>,
 }
 
-impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
+impl Handler {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
     // TODO(shahak) remove allow(dead_code).
     #[allow(dead_code)]
@@ -113,7 +117,7 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     /// Poll an inbound session, inserting any events needed to pending_events, and return whether
     /// the inbound session has finished.
     fn poll_inbound_session(
-        inbound_session: &mut InboundSession<Data>,
+        inbound_session: &mut InboundSession,
         inbound_session_id: InboundSessionId,
         pending_events: &mut VecDeque<HandlerEvent<Self>>,
         cx: &mut Context<'_>,
@@ -147,17 +151,17 @@ impl<Query: QueryBound, Data: DataBound> Handler<Query, Data> {
     }
 }
 
-impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Data> {
-    type FromBehaviour = RequestFromBehaviourEvent<Query, Data>;
-    type ToBehaviour = RequestToBehaviourEvent<Query, Data>;
-    type InboundProtocol = InboundProtocol<Query>;
-    type OutboundProtocol = OutboundProtocol<Query>;
+impl ConnectionHandler for Handler {
+    type FromBehaviour = RequestFromBehaviourEvent;
+    type ToBehaviour = RequestToBehaviourEvent;
+    type InboundProtocol = InboundProtocol;
+    type OutboundProtocol = OutboundProtocol;
     type InboundOpenInfo = InboundSessionId;
     type OutboundOpenInfo = OutboundSessionId;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
         SubstreamProtocol::new(
-            InboundProtocol::new(self.config.protocol_name.clone()),
+            InboundProtocol::new(self.config.supported_inbound_protocols.clone()),
             InboundSessionId { value: self.next_inbound_session_id.fetch_add(1, Ordering::AcqRel) },
         )
         .with_timeout(self.config.session_timeout)
@@ -242,7 +246,11 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
 
     fn on_behaviour_event(&mut self, event: Self::FromBehaviour) {
         match event {
-            RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id } => {
+            RequestFromBehaviourEvent::CreateOutboundSession {
+                query,
+                outbound_session_id,
+                protocol_name,
+            } => {
                 // TODO(shahak) Consider extracting to a utility function to prevent forgetfulness
                 // of the timeout.
 
@@ -250,10 +258,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 // on_behaviour_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(
-                        OutboundProtocol {
-                            query,
-                            protocol_name: self.config.protocol_name.clone(),
-                        },
+                        OutboundProtocol { query, protocol_name },
                         outbound_session_id,
                     )
                     .with_timeout(self.config.session_timeout),
@@ -336,7 +341,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                     outbound_session_id,
                     stream! {
                         loop {
-                            let result_opt = read_message::<Data, _>(&mut read_stream).await;
+                            let result_opt = read_message(&mut read_stream).await;
                             let result = match result_opt {
                                 Ok(Some(data)) => Ok(data),
                                 Ok(None) => break,
@@ -353,7 +358,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                 );
             }
             ConnectionEvent::FullyNegotiatedInbound(FullyNegotiatedInbound {
-                protocol: (query, write_stream),
+                protocol: (query, write_stream, protocol_name),
                 info: inbound_session_id,
             }) => {
                 // No need to wake because the swarm guarantees that `poll` will be called after
@@ -363,6 +368,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                         query,
                         inbound_session_id,
                         peer_id: self.peer_id,
+                        protocol_name,
                     }),
                 ));
                 self.id_to_inbound_session
@@ -380,9 +386,7 @@ impl<Query: QueryBound, Data: DataBound> ConnectionHandler for Handler<Query, Da
                         SessionError::IOError(outbound_protocol_error)
                     }
                     StreamUpgradeError::NegotiationFailed => {
-                        SessionError::RemoteDoesntSupportProtocol {
-                            protocol_name: self.config.protocol_name.clone(),
-                        }
+                        SessionError::RemoteDoesntSupportProtocol
                     }
                     StreamUpgradeError::Io(error) => SessionError::IOError(error),
                 };

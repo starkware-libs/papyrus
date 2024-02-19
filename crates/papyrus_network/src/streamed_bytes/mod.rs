@@ -1,5 +1,6 @@
 pub mod behaviour;
 pub mod handler;
+mod messages;
 pub mod protocol;
 
 #[cfg(test)]
@@ -10,7 +11,8 @@ use std::time::Duration;
 use derive_more::Display;
 use libp2p::swarm::StreamProtocol;
 use libp2p::PeerId;
-use prost::Message;
+
+pub type Bytes = Vec<u8>;
 
 #[derive(Clone, Copy, Debug, Default, Display, Eq, Hash, PartialEq)]
 pub struct OutboundSessionId {
@@ -40,25 +42,32 @@ impl From<InboundSessionId> for SessionId {
     }
 }
 
-// This is a workaround for the unstable feature trait aliases
-// https://doc.rust-lang.org/beta/unstable-book/language-features/trait-alias.html
-pub trait QueryBound: Message + 'static + Default + Clone {}
-impl<T> QueryBound for T where T: Message + 'static + Default + Clone {}
-
-pub trait DataBound: Message + 'static + Unpin + Default {}
-impl<T> DataBound for T where T: Message + 'static + Unpin + Default {}
-
 #[derive(Debug)]
-pub enum GenericEvent<Query: QueryBound, Data: DataBound, SessionError> {
-    NewInboundSession { query: Query, inbound_session_id: InboundSessionId, peer_id: PeerId },
-    ReceivedData { outbound_session_id: OutboundSessionId, data: Data },
-    SessionFailed { session_id: SessionId, error: SessionError },
-    SessionFinishedSuccessfully { session_id: SessionId },
+pub enum GenericEvent<SessionError> {
+    NewInboundSession {
+        query: Bytes,
+        inbound_session_id: InboundSessionId,
+        peer_id: PeerId,
+        protocol_name: StreamProtocol,
+    },
+    ReceivedData {
+        outbound_session_id: OutboundSessionId,
+        data: Bytes,
+    },
+    SessionFailed {
+        session_id: SessionId,
+        error: SessionError,
+    },
+    SessionFinishedSuccessfully {
+        session_id: SessionId,
+    },
 }
 
 // TODO(shahak): Consider removing protocol_name from here.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Config {
     pub session_timeout: Duration,
-    pub protocol_name: StreamProtocol,
+    // If we put multiple versions of the same protocol, they should be inserted sorted where the
+    // latest is the first (They don't have to appear continuously among the other protocols).
+    pub supported_inbound_protocols: Vec<StreamProtocol>,
 }
