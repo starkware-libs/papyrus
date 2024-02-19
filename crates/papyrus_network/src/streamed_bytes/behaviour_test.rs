@@ -3,29 +3,28 @@ use std::task::{Context, Poll};
 
 use assert_matches::assert_matches;
 use futures::{FutureExt, Stream, StreamExt};
+use lazy_static::lazy_static;
 use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{ConnectionClosed, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm};
+use libp2p::swarm::{
+    ConnectionClosed,
+    ConnectionId,
+    FromSwarm,
+    NetworkBehaviour,
+    StreamProtocol,
+    ToSwarm,
+};
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
-use super::super::{
-    Config,
-    DataBound,
-    GenericEvent,
-    InboundSessionId,
-    OutboundSessionId,
-    QueryBound,
-    SessionId,
-};
+use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use super::{Behaviour, Event, SessionError};
-use crate::messages::protobuf;
 use crate::test_utils::dummy_data;
 
-impl<Query: QueryBound, Data: DataBound> Unpin for Behaviour<Query, Data> {}
+impl Unpin for Behaviour {}
 
-impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
-    type Item = ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>;
+impl Stream for Behaviour {
+    type Item = ToSwarm<Event, RequestFromBehaviourEvent>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx) {
@@ -35,10 +34,13 @@ impl<Query: QueryBound, Data: DataBound> Stream for Behaviour<Query, Data> {
     }
 }
 
-fn simulate_connection_established<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
-    peer_id: PeerId,
-) {
+lazy_static! {
+    static ref QUERY: Bytes = vec![1u8, 2u8, 3u8];
+    static ref PROTOCOL_NAME: StreamProtocol =
+        Config::get_test_config().supported_inbound_protocols.first().unwrap().clone();
+}
+
+fn simulate_connection_established(behaviour: &mut Behaviour, peer_id: PeerId) {
     let connection_id = ConnectionId::new_unchecked(0);
     let address = Multiaddr::empty();
     let role_override = Endpoint::Dialer;
@@ -54,10 +56,7 @@ fn simulate_connection_established<Query: QueryBound, Data: DataBound>(
     }));
 }
 
-fn simulate_listener_connection<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
-    peer_id: PeerId,
-) {
+fn simulate_listener_connection(behaviour: &mut Behaviour, peer_id: PeerId) {
     let connection_id = ConnectionId::new_unchecked(0);
     let address = Multiaddr::empty();
     let local_addr = Multiaddr::empty();
@@ -74,11 +73,11 @@ fn simulate_listener_connection<Query: QueryBound, Data: DataBound>(
     }));
 }
 
-fn simulate_new_inbound_session<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
+fn simulate_new_inbound_session(
+    behaviour: &mut Behaviour,
     peer_id: PeerId,
     inbound_session_id: InboundSessionId,
-    query: Query,
+    query: Bytes,
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
@@ -87,14 +86,15 @@ fn simulate_new_inbound_session<Query: QueryBound, Data: DataBound>(
             query,
             inbound_session_id,
             peer_id,
+            protocol_name: PROTOCOL_NAME.clone(),
         }),
     );
 }
 
-fn simulate_received_data<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
+fn simulate_received_data(
+    behaviour: &mut Behaviour,
     peer_id: PeerId,
-    data: Data,
+    data: Bytes,
     outbound_session_id: OutboundSessionId,
 ) {
     behaviour.on_connection_handler_event(
@@ -107,8 +107,8 @@ fn simulate_received_data<Query: QueryBound, Data: DataBound>(
     );
 }
 
-fn simulate_session_finished_successfully<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
+fn simulate_session_finished_successfully(
+    behaviour: &mut Behaviour,
     peer_id: PeerId,
     session_id: SessionId,
 ) {
@@ -121,10 +121,7 @@ fn simulate_session_finished_successfully<Query: QueryBound, Data: DataBound>(
     );
 }
 
-fn simulate_connection_closed<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
-    peer_id: PeerId,
-) {
+fn simulate_connection_closed(behaviour: &mut Behaviour, peer_id: PeerId) {
     // This is the same connection_id from simulate_connection_established
     let connection_id = ConnectionId::new_unchecked(0);
     behaviour.on_swarm_event(FromSwarm::ConnectionClosed(ConnectionClosed {
@@ -140,11 +137,7 @@ fn simulate_connection_closed<Query: QueryBound, Data: DataBound>(
     }))
 }
 
-fn simulate_session_dropped<Query: QueryBound, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
-    peer_id: PeerId,
-    session_id: SessionId,
-) {
+fn simulate_session_dropped(behaviour: &mut Behaviour, peer_id: PeerId, session_id: SessionId) {
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
@@ -152,10 +145,10 @@ fn simulate_session_dropped<Query: QueryBound, Data: DataBound>(
     );
 }
 
-async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_create_outbound_session_event(
+    behaviour: &mut Behaviour,
     peer_id: &PeerId,
-    query: &Query,
+    query: &Bytes,
     outbound_session_id: &OutboundSessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -163,19 +156,20 @@ async fn validate_create_outbound_session_event<Query: QueryBound + PartialEq, D
         event,
         ToSwarm::NotifyHandler {
             peer_id: event_peer_id,
-            event: RequestFromBehaviourEvent::CreateOutboundSession { query: event_query, outbound_session_id: event_outbound_session_id },
+            event: RequestFromBehaviourEvent::CreateOutboundSession { query: event_query, outbound_session_id: event_outbound_session_id, protocol_name },
             ..
         } if *peer_id == event_peer_id
             && *outbound_session_id == event_outbound_session_id
             && *query == event_query
+            && protocol_name == PROTOCOL_NAME.clone()
     );
 }
 
-async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data: DataBound>(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_new_inbound_session_event(
+    behaviour: &mut Behaviour,
     peer_id: &PeerId,
     inbound_session_id: InboundSessionId,
-    query: &Query,
+    query: &Bytes,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
@@ -184,15 +178,17 @@ async fn validate_new_inbound_session_event<Query: QueryBound + PartialEq, Data:
             query: event_query,
             inbound_session_id: event_inbound_session_id,
             peer_id: event_peer_id,
+            protocol_name,
         }) if event_query == *query
             && event_inbound_session_id == inbound_session_id
             && event_peer_id == *peer_id
+            && protocol_name == PROTOCOL_NAME.clone()
     );
 }
 
-async fn validate_received_data_event<Query: QueryBound, Data: DataBound + PartialEq>(
-    behaviour: &mut Behaviour<Query, Data>,
-    data: &Data,
+async fn validate_received_data_event(
+    behaviour: &mut Behaviour,
+    data: &Bytes,
     outbound_session_id: OutboundSessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -204,10 +200,10 @@ async fn validate_received_data_event<Query: QueryBound, Data: DataBound + Parti
     );
 }
 
-async fn validate_request_send_data_event<Query: QueryBound, Data: DataBound + PartialEq>(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_request_send_data_event(
+    behaviour: &mut Behaviour,
     peer_id: &PeerId,
-    data: &Data,
+    data: &Bytes,
     inbound_session_id: InboundSessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -225,11 +221,8 @@ async fn validate_request_send_data_event<Query: QueryBound, Data: DataBound + P
     );
 }
 
-async fn validate_request_close_inbound_session_event<
-    Query: QueryBound,
-    Data: DataBound + PartialEq,
->(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_request_close_inbound_session_event(
+    behaviour: &mut Behaviour,
     peer_id: &PeerId,
     inbound_session_id: InboundSessionId,
 ) {
@@ -247,8 +240,8 @@ async fn validate_request_close_inbound_session_event<
     );
 }
 
-async fn validate_request_drop_session_event<Query: QueryBound, Data: DataBound + PartialEq>(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_request_drop_session_event(
+    behaviour: &mut Behaviour,
     peer_id: &PeerId,
     session_id: SessionId,
 ) {
@@ -265,11 +258,8 @@ async fn validate_request_drop_session_event<Query: QueryBound, Data: DataBound 
     );
 }
 
-async fn validate_session_finished_successfully_event<
-    Query: QueryBound,
-    Data: DataBound + PartialEq,
->(
-    behaviour: &mut Behaviour<Query, Data>,
+async fn validate_session_finished_successfully_event(
+    behaviour: &mut Behaviour,
     session_id: SessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -282,23 +272,21 @@ async fn validate_session_finished_successfully_event<
 }
 
 // TODO(shahak): Fix code duplication with handler test.
-fn validate_no_events<Query: QueryBound, Data: DataBound>(behaviour: &mut Behaviour<Query, Data>) {
+fn validate_no_events(behaviour: &mut Behaviour) {
     assert!(behaviour.next().now_or_never().is_none());
 }
 
 #[tokio::test]
 async fn process_inbound_session() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
-    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
 
     simulate_listener_connection(&mut behaviour, peer_id);
 
-    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, query.clone());
-    validate_new_inbound_session_event(&mut behaviour, &peer_id, inbound_session_id, &query).await;
+    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
+    validate_new_inbound_session_event(&mut behaviour, &peer_id, inbound_session_id, &QUERY).await;
     validate_no_events(&mut behaviour);
 
     let dummy_data_vec = dummy_data();
@@ -324,16 +312,15 @@ async fn process_inbound_session() {
 
 #[tokio::test]
 async fn create_and_process_outbound_session() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
-    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
+    let outbound_session_id =
+        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
 
-    validate_create_outbound_session_event(&mut behaviour, &peer_id, &query, &outbound_session_id)
+    validate_create_outbound_session_event(&mut behaviour, &peer_id, &QUERY, &outbound_session_id)
         .await;
     validate_no_events(&mut behaviour);
 
@@ -356,21 +343,20 @@ async fn create_and_process_outbound_session() {
 // TODO(shahak): Test the other variants of SessionError.
 #[tokio::test]
 async fn connection_closed() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
 
-    let query = protobuf::BasicMessage::default();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
+    let outbound_session_id =
+        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
 
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
     let inbound_session_id = InboundSessionId::default();
-    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, query.clone());
+    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
 
     // Consume the event to notify the user about the new inbound session.
     behaviour.next().await.unwrap();
@@ -405,15 +391,14 @@ async fn connection_closed() {
 
 #[tokio::test]
 async fn drop_outbound_session() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
     let peer_id = PeerId::random();
 
     simulate_connection_established(&mut behaviour, peer_id);
 
-    let query = protobuf::BasicMessage::default();
-    let outbound_session_id = behaviour.send_query(query.clone(), peer_id).unwrap();
+    let outbound_session_id =
+        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
 
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
@@ -439,16 +424,14 @@ async fn drop_outbound_session() {
 
 #[tokio::test]
 async fn drop_inbound_session() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
-    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
 
     simulate_listener_connection(&mut behaviour, peer_id);
 
-    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, query.clone());
+    simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
 
     // Consume the event that a new inbound session was created.
     behaviour.next().await.unwrap();
@@ -468,15 +451,13 @@ async fn drop_inbound_session() {
 
 #[test]
 fn close_non_existing_session_fails() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
     behaviour.close_inbound_session(InboundSessionId::default()).unwrap_err();
 }
 
 #[test]
 fn send_data_non_existing_session_fails() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
     for data in dummy_data() {
         behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
@@ -484,11 +465,9 @@ fn send_data_non_existing_session_fails() {
 
 #[test]
 fn send_query_peer_not_connected_fails() {
-    let mut behaviour =
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config::get_test_config());
+    let mut behaviour = Behaviour::new(Config::get_test_config());
 
-    let query = protobuf::BasicMessage::default();
     let peer_id = PeerId::random();
 
-    behaviour.send_query(query.clone(), peer_id).unwrap_err();
+    behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap_err();
 }

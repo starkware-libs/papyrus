@@ -58,6 +58,7 @@ pub enum DBExecutorError {
     },
 }
 
+#[allow(dead_code)]
 impl DBExecutorError {
     pub fn query_id(&self) -> Option<QueryId> {
         match self {

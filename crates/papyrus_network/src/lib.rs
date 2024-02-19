@@ -3,14 +3,15 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
-pub mod block_headers;
+// pub mod block_headers;
 mod converters;
 mod db_executor;
-pub mod messages;
-pub mod network_manager;
-pub mod streamed_data;
+// pub mod network_manager;
+pub mod protobuf_messages;
+pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
+
 use std::collections::BTreeMap;
 use std::str::FromStr;
 use std::time::Duration;
@@ -95,6 +96,7 @@ pub struct ResponseReceivers {
     pub signed_headers_receiver: Receiver<SignedBlockHeader>,
 }
 
+#[allow(dead_code)]
 struct ResponseSenders {
     pub signed_headers_sender: Sender<SignedBlockHeader>,
 }
@@ -188,6 +190,7 @@ impl Default for PeerAddressConfig {
 }
 
 impl ResponseReceivers {
+    #[allow(dead_code)]
     fn new(signed_headers_receiver: Receiver<SignedBlockHeader>) -> Self {
         Self { signed_headers_receiver }
     }

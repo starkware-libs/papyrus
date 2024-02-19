@@ -7,17 +7,17 @@ use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures::channel::mpsc::Sender;
-use futures_util::future::BoxFuture;
-use futures_util::FutureExt;
+// use futures::channel::mpsc::Sender;
+// use futures_util::future::BoxFuture;
+// use futures_util::FutureExt;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_network::network_manager::NetworkError;
-use papyrus_network::{network_manager, NetworkConfig, Query, ResponseReceivers};
+// use papyrus_network::network_manager::NetworkError;
+// use papyrus_network::{network_manager, NetworkConfig, Query, ResponseReceivers};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_rpc::run_server;
@@ -90,9 +90,9 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // P2P network.
-    let (network_future, _maybe_query_sender_and_response_receivers) =
-        run_network(config.network.clone(), storage_reader.clone());
-    let network_handle = tokio::spawn(network_future);
+    // let (network_future, _maybe_query_sender_and_response_receivers) =
+    //     run_network(config.network.clone(), storage_reader.clone());
+    // let network_handle = tokio::spawn(network_future);
 
     // Sync task.
     let sync_future = run_sync(
@@ -122,10 +122,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             error!("Sync stopped.");
             res??
         }
-        res = network_handle => {
-            error!("Network stopped.");
-            res??
-        }
+        // res = network_handle => {
+        //     error!("Network stopped.");
+        //     res??
+        // }
     };
     error!("Task ended with unexpected Ok.");
     return Ok(());
@@ -161,16 +161,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     }
 }
 
-type NetworkRunReturn =
-    (BoxFuture<'static, Result<(), NetworkError>>, Option<(Sender<Query>, ResponseReceivers)>);
+// type NetworkRunReturn =
+//     (BoxFuture<'static, Result<(), NetworkError>>, Option<(Sender<Query>, ResponseReceivers)>);
 
-fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn {
-    let Some(network_config) = config else { return (pending().boxed(), None) };
-    let mut network_manager =
-        network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
-    let (query_sender, response_receivers) = network_manager.register_subscriber();
-    (network_manager.run().boxed(), Some((query_sender, response_receivers)))
-}
+// fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn
+// {     let Some(network_config) = config else { return (pending().boxed(), None) };
+//     let mut network_manager =
+//         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
+//     let (query_sender, response_receivers) = network_manager.register_subscriber();
+//     (network_manager.run().boxed(), Some((query_sender, response_receivers)))
+// }
 
 // TODO(yair): add dynamic level filtering.
 // TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
