@@ -2,7 +2,6 @@ pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/_.rs"));
 }
 
-use prost::Message;
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
 pub const PATRICIA_HEIGHT: u32 = 251;
@@ -102,6 +101,7 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn enum_int_to_l1_data_availability_mode(
     value: i32,
 ) -> Result<L1DataAvailabilityMode, ProtobufConversionError> {
@@ -112,6 +112,7 @@ pub(crate) fn enum_int_to_l1_data_availability_mode(
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn l1_data_availability_mode_to_enum_int(value: L1DataAvailabilityMode) -> i32 {
     match value {
         L1DataAvailabilityMode::Calldata => 0,

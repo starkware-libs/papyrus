@@ -9,13 +9,14 @@ use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event};
-use super::{InboundSessionId, OutboundSessionId, SessionId};
-use crate::messages::protobuf;
-use crate::streamed_data::Config;
+use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
 
 const NUM_PEERS: usize = 3;
 const NUM_MESSAGES_PER_SESSION: usize = 5;
+
+pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/example");
+pub const OTHER_PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/other");
 
 type SwarmEventAlias<BehaviourTrait> = SwarmEvent<<BehaviourTrait as NetworkBehaviour>::ToSwarm>;
 
@@ -58,7 +59,7 @@ fn perform_action_on_swarms<BehaviourTrait: NetworkBehaviour>(
 }
 
 fn send_query_and_update_map(
-    outbound_swarm: &mut Swarm<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    outbound_swarm: &mut Swarm<Behaviour>,
     inbound_peer_id: PeerId,
     outbound_session_id_to_peer_id: &mut HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) {
@@ -66,17 +67,16 @@ fn send_query_and_update_map(
     let outbound_session_id = outbound_swarm
         .behaviour_mut()
         .send_query(
-            protobuf::BasicMessage {
-                number: get_number_for_query(outbound_peer_id, inbound_peer_id),
-            },
+            get_bytes_from_query_indices(outbound_peer_id, inbound_peer_id),
             inbound_peer_id,
+            PROTOCOL_NAME,
         )
         .unwrap();
     outbound_session_id_to_peer_id.insert((outbound_peer_id, outbound_session_id), inbound_peer_id);
 }
 
 fn send_data(
-    inbound_swarm: &mut Swarm<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    inbound_swarm: &mut Swarm<Behaviour>,
     outbound_peer_id: PeerId,
     inbound_session_ids: &HashMap<(PeerId, PeerId), InboundSessionId>,
 ) {
@@ -85,9 +85,7 @@ fn send_data(
         inbound_swarm
             .behaviour_mut()
             .send_data(
-                protobuf::BasicMessage {
-                    number: get_number_for_data(inbound_peer_id, outbound_peer_id, i),
-                },
+                get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, i),
                 inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
             )
             .unwrap();
@@ -95,7 +93,7 @@ fn send_data(
 }
 
 fn close_inbound_session(
-    inbound_swarm: &mut Swarm<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    inbound_swarm: &mut Swarm<Behaviour>,
     outbound_peer_id: PeerId,
     inbound_session_ids: &HashMap<(PeerId, PeerId), InboundSessionId>,
 ) {
@@ -108,22 +106,28 @@ fn close_inbound_session(
 
 fn check_new_inbound_session_event_and_return_id(
     inbound_peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    swarm_event: SwarmEventAlias<Behaviour>,
 ) -> Option<(PeerId, InboundSessionId)> {
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::NewInboundSession { query, inbound_session_id, peer_id: outbound_peer_id } = event
+    let Event::NewInboundSession {
+        query,
+        inbound_session_id,
+        peer_id: outbound_peer_id,
+        protocol_name,
+    } = event
     else {
         panic!("Got unexpected event {:?} when expecting NewInboundSession", event);
     };
-    assert_eq!(query.number, get_number_for_query(outbound_peer_id, inbound_peer_id));
+    assert_eq!(query, get_bytes_from_query_indices(outbound_peer_id, inbound_peer_id));
+    assert_eq!(protocol_name, PROTOCOL_NAME);
     Some((outbound_peer_id, inbound_session_id))
 }
 
 fn check_received_data_event(
     outbound_peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    swarm_event: SwarmEventAlias<Behaviour>,
     current_message: &mut DefaultHashMap<(PeerId, PeerId), usize>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
@@ -135,14 +139,14 @@ fn check_received_data_event(
     };
     let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
-    assert_eq!(data.number, get_number_for_data(inbound_peer_id, outbound_peer_id, message_index));
+    assert_eq!(data, get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, message_index),);
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);
     Some((inbound_peer_id, ()))
 }
 
 fn check_outbound_session_finished_event(
     peer_id: PeerId,
-    swarm_event: SwarmEventAlias<Behaviour<protobuf::BasicMessage, protobuf::BasicMessage>>,
+    swarm_event: SwarmEventAlias<Behaviour>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
     let SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
@@ -155,27 +159,27 @@ fn check_outbound_session_finished_event(
     Some((outbound_session_id_to_peer_id[&(peer_id, outbound_session_id)], ()))
 }
 
-fn get_number_for_query(peer_id1: PeerId, peer_id2: PeerId) -> u64 {
+fn get_bytes_from_query_indices(peer_id1: PeerId, peer_id2: PeerId) -> Bytes {
     let mut hasher = DefaultHasher::new();
     peer_id1.hash(&mut hasher);
     peer_id2.hash(&mut hasher);
-    hasher.finish()
+    hasher.finish().to_be_bytes().to_vec()
 }
 
-fn get_number_for_data(peer_id1: PeerId, peer_id2: PeerId, message_index: usize) -> u64 {
+fn get_bytes_from_data_indices(peer_id1: PeerId, peer_id2: PeerId, message_index: usize) -> Bytes {
     let mut hasher = DefaultHasher::new();
     peer_id1.hash(&mut hasher);
     peer_id2.hash(&mut hasher);
     message_index.hash(&mut hasher);
-    hasher.finish()
+    hasher.finish().to_be_bytes().to_vec()
 }
 
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::<protobuf::BasicMessage, protobuf::BasicMessage>::new(Config {
+        Behaviour::new(Config {
             session_timeout: Duration::from_secs(5),
-            protocol_name: StreamProtocol::new("/"),
+            supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
         })
     })
     .await;
