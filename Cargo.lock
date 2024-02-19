@@ -5686,6 +5686,7 @@ dependencies = [
  "defaultmap",
  "derive_more",
  "futures",
+ "lazy_static",
  "libp2p",
  "libp2p-swarm-test",
  "mockall",
