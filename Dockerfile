@@ -13,7 +13,6 @@ FROM rust:1.75 AS copy_toml
 
 COPY crates/ /app/crates/
 COPY Cargo.toml /app/
-COPY Cargo.lock /app/
 
 WORKDIR /app/
 
@@ -29,6 +28,8 @@ RUN find /app \! -name "Cargo.toml" -type f -delete ; \
     && cargo init --lib --vcs none $dir \
     && mv -f $dir/_Cargo.toml $dir/Cargo.toml; \
     done && mv _Cargo.toml Cargo.toml
+
+COPY Cargo.lock /app/
 
 # Starting a new stage so that the first build layer will be cached if a non-Cargo.toml file was
 # changed.
