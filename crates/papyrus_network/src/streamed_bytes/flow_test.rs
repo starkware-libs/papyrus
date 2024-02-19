@@ -8,8 +8,9 @@ use futures::StreamExt;
 use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
-use super::behaviour::{Behaviour, Event};
+use super::behaviour::Behaviour;
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
+use crate::streamed_bytes::Event;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
 
 const NUM_PEERS: usize = 3;

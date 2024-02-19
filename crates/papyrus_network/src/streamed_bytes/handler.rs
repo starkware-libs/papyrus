@@ -14,16 +14,10 @@ use async_stream::stream;
 use futures::stream::BoxStream;
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::handler::{
-    ConnectionEvent,
-    DialUpgradeError,
-    FullyNegotiatedInbound,
-    FullyNegotiatedOutbound,
+    ConnectionEvent, DialUpgradeError, FullyNegotiatedInbound, FullyNegotiatedOutbound,
 };
 use libp2p::swarm::{
-    ConnectionHandler,
-    ConnectionHandlerEvent,
-    StreamProtocol,
-    StreamUpgradeError,
+    ConnectionHandler, ConnectionHandlerEvent, StreamProtocol, StreamUpgradeError,
     SubstreamProtocol,
 };
 use libp2p::PeerId;
@@ -32,7 +26,7 @@ use tracing::debug;
 use self::inbound_session::InboundSession;
 use super::messages::read_message;
 use super::protocol::{InboundProtocol, OutboundProtocol};
-use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
+use super::{Bytes, Config, Event, InboundSessionId, OutboundSessionId, SessionId};
 
 #[derive(Debug)]
 // TODO(shahak) remove allow(dead_code).
@@ -57,7 +51,7 @@ pub enum RequestFromBehaviourEvent {
 
 #[derive(Debug)]
 pub enum RequestToBehaviourEvent {
-    GenerateEvent(GenericEvent<SessionError>),
+    GenerateEvent(Event<SessionError>),
     NotifySessionDropped { session_id: SessionId },
 }
 
@@ -127,7 +121,7 @@ impl Handler {
                 // No need to wake those waiting for pending events because this function is called
                 // inside `poll`.
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
+                    RequestToBehaviourEvent::GenerateEvent(Event::SessionFailed {
                         session_id: inbound_session_id.into(),
                         error: SessionError::IOError(io_error),
                     }),
@@ -138,11 +132,9 @@ impl Handler {
                 // No need to wake those waiting for pending events because this function is called
                 // inside `poll`.
                 pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::GenerateEvent(
-                        GenericEvent::SessionFinishedSuccessfully {
-                            session_id: inbound_session_id.into(),
-                        },
-                    ),
+                    RequestToBehaviourEvent::GenerateEvent(Event::SessionFinishedSuccessfully {
+                        session_id: inbound_session_id.into(),
+                    }),
                 ));
                 true
             }
@@ -206,7 +198,7 @@ impl ConnectionHandler for Handler {
             match outbound_session.poll_next_unpin(cx) {
                 Poll::Ready(Some(Ok(data))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
+                        RequestToBehaviourEvent::GenerateEvent(Event::ReceivedData {
                             outbound_session_id: *outbound_session_id,
                             data,
                         }),
@@ -215,7 +207,7 @@ impl ConnectionHandler for Handler {
                 }
                 Poll::Ready(Some(Err(io_error))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
+                        RequestToBehaviourEvent::GenerateEvent(Event::SessionFailed {
                             session_id: SessionId::OutboundSessionId(*outbound_session_id),
                             error: SessionError::IOError(io_error),
                         }),
@@ -225,7 +217,7 @@ impl ConnectionHandler for Handler {
                 Poll::Ready(None) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
                         RequestToBehaviourEvent::GenerateEvent(
-                            GenericEvent::SessionFinishedSuccessfully {
+                            Event::SessionFinishedSuccessfully {
                                 session_id: SessionId::OutboundSessionId(*outbound_session_id),
                             },
                         ),
@@ -364,7 +356,7 @@ impl ConnectionHandler for Handler {
                 // No need to wake because the swarm guarantees that `poll` will be called after
                 // on_connection_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::NewInboundSession {
+                    RequestToBehaviourEvent::GenerateEvent(Event::NewInboundSession {
                         query,
                         inbound_session_id,
                         peer_id: self.peer_id,
@@ -393,7 +385,7 @@ impl ConnectionHandler for Handler {
                 // No need to wake because the swarm guarantees that `poll` will be called after
                 // on_connection_event. See https://github.com/libp2p/rust-libp2p/issues/5147
                 self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                    RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
+                    RequestToBehaviourEvent::GenerateEvent(Event::SessionFailed {
                         session_id: outbound_session_id.into(),
                         error: session_error,
                     }),

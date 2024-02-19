@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
+use std::vec;
 
 use deadqueue::unlimited::Queue;
 use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
@@ -9,18 +10,21 @@ use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use libp2p::PeerId;
-use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use prost::Message;
+use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
-use crate::block_headers::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::block_headers::Event as BehaviourEvent;
 use crate::db_executor::{poll_query_execution_set, DBExecutor, DBExecutorError, Data, QueryId};
-use crate::streamed_data::{InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query, SignedBlockHeader};
+use crate::protobuf_messages::protobuf;
+use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionError, SessionIdNotFoundError};
+use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
+
+type BehaviourEvent = crate::streamed_bytes::Event<SessionError>;
 
 #[derive(Default)]
 struct MockSwarm {
@@ -65,15 +69,19 @@ impl MockSwarm {
         for block_number in (start_block_number..block_max_number)
             .step_by(query.step.try_into().expect("step too large to convert to usize"))
         {
-            let signed_header = SignedBlockHeader {
-                block_header: BlockHeader {
+            let signed_header = Data::BlockHeaderAndSignature {
+                header: BlockHeader {
                     block_number: BlockNumber(block_number),
                     ..Default::default()
                 },
                 signatures: vec![],
             };
+            let mut data_bytes = vec![];
+            <Data as Into<protobuf::BlockHeadersResponse>>::into(signed_header)
+                .encode(&mut data_bytes)
+                .expect("failed to convert data to bytes");
             self.pending_events.push(Event::Behaviour(BehaviourEvent::ReceivedData {
-                signed_header,
+                data: data_bytes,
                 outbound_session_id,
             }));
         }
@@ -83,13 +91,14 @@ impl MockSwarm {
 impl SwarmTrait for MockSwarm {
     fn send_data(
         &mut self,
-        data: Data,
+        data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let data_sender = self
             .inbound_session_id_to_data_sender
             .get(&inbound_session_id)
             .expect("Called send_data without calling get_data_sent_to_inbound_session first");
+        let data = protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
         let is_fin = matches!(data, Data::Fin);
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
@@ -100,9 +109,14 @@ impl SwarmTrait for MockSwarm {
 
     fn send_query(
         &mut self,
-        query: InternalQuery,
+        query: Vec<u8>,
         peer_id: PeerId,
+        _protocol: crate::Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
+        let query = protobuf::BlockHeadersRequest::decode(&query[..])
+            .expect("failed to decode protobuf BlockHeadersRequest")
+            .try_into()
+            .expect("failed to convert BlockHeadersRequest");
         self.sent_queries.push((query, peer_id));
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_received_data_events_for_query(query, outbound_session_id);
@@ -139,7 +153,7 @@ impl DBExecutor for MockDBExecutor {
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
                         if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
                             header,
-                            signature: BlockSignature::default(),
+                            signatures: vec![],
                         }) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
@@ -179,7 +193,8 @@ async fn register_subscriber_and_use_channels() {
     };
 
     // register subscriber and send query
-    let (mut query_sender, response_receivers) = network_manager.register_subscriber();
+    let (mut query_sender, response_receivers) =
+        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
     query_sender.send(query).await.unwrap();
 
     let signed_header_receiver_collector = response_receivers
@@ -188,7 +203,7 @@ async fn register_subscriber_and_use_channels() {
         .take(query_limit)
         .map(|(i, signed_block_header)| {
             println!("in map. i: {i:?}");
-            assert_eq!(signed_block_header.block_header.block_number.0, i as u64);
+            assert_eq!(signed_block_header.clone().unwrap().block_header.block_number.0, i as u64);
             signed_block_header
         })
         .collect::<Vec<_>>();
@@ -207,8 +222,9 @@ async fn register_subscriber_and_use_channels() {
 #[tokio::test]
 async fn process_incoming_query() {
     // Create data for test.
+    const BLOCK_NUM: u64 = 0;
     let query = InternalQuery {
-        start_block: BlockHashOrNumber::Number(BlockNumber(0)),
+        start_block: BlockHashOrNumber::Number(BlockNumber(BLOCK_NUM)),
         direction: Direction::Forward,
         limit: 5,
         step: 1,
@@ -224,9 +240,23 @@ async fn process_incoming_query() {
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
     let inbound_session_id = InboundSessionId { value: 0 };
-    mock_swarm
-        .pending_events
-        .push(Event::Behaviour(BehaviourEvent::NewInboundQuery { query, inbound_session_id }));
+    let mut query_bytes = vec![];
+    protobuf::BlockHeadersRequest {
+        iteration: Some(protobuf::Iteration {
+            start: Some(protobuf::iteration::Start::BlockNumber(BLOCK_NUM)),
+            direction: protobuf::iteration::Direction::Forward as i32,
+            limit: query.limit,
+            step: query.step,
+        }),
+    }
+    .encode(&mut query_bytes)
+    .unwrap();
+    mock_swarm.pending_events.push(Event::Behaviour(BehaviourEvent::NewInboundSession {
+        query: query_bytes,
+        inbound_session_id,
+        peer_id: PeerId::random(),
+        protocol_name: crate::Protocol::SignedBlockHeader.into(),
+    }));
 
     // Create a future that will return when Fin is sent with the data sent on the swarm.
     let get_data_fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
@@ -239,7 +269,7 @@ async fn process_incoming_query() {
             let mut expected_data = headers
                 .into_iter()
                 .map(|header| Data::BlockHeaderAndSignature {
-                    header, signature: BlockSignature::default()
+                    header, signatures: vec![]
                 })
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin);

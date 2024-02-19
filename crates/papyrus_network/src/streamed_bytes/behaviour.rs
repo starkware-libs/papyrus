@@ -13,24 +13,16 @@ use defaultmap::DefaultHashMap;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{
-    ConnectionClosed,
-    ConnectionDenied,
-    ConnectionHandler,
-    ConnectionId,
-    FromSwarm,
-    NetworkBehaviour,
-    NotifyHandler,
-    ToSwarm,
+    ConnectionClosed, ConnectionDenied, ConnectionHandler, ConnectionId, FromSwarm,
+    NetworkBehaviour, NotifyHandler, ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 use super::handler::{
-    Handler,
-    RequestFromBehaviourEvent,
-    RequestToBehaviourEvent,
+    Handler, RequestFromBehaviourEvent, RequestToBehaviourEvent,
     SessionError as HandlerSessionError,
 };
-use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
+use super::{Bytes, Config, Event, InboundSessionId, OutboundSessionId, SessionId};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -50,46 +42,40 @@ pub enum SessionError {
     ConnectionClosed,
 }
 
-impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
-    fn from(event: GenericEvent<HandlerSessionError>) -> Self {
+impl From<Event<HandlerSessionError>> for Event<SessionError> {
+    fn from(event: Event<HandlerSessionError>) -> Self {
         match event {
-            GenericEvent::NewInboundSession {
-                query,
-                inbound_session_id,
-                peer_id,
-                protocol_name,
-            } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
-            GenericEvent::ReceivedData { outbound_session_id, data } => {
+            Event::NewInboundSession { query, inbound_session_id, peer_id, protocol_name } => {
+                Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name }
+            }
+            Event::ReceivedData { outbound_session_id, data } => {
                 Self::ReceivedData { outbound_session_id, data }
             }
-            GenericEvent::SessionFailed {
+            Event::SessionFailed {
                 session_id,
                 error: HandlerSessionError::Timeout { session_timeout },
             } => {
                 Self::SessionFailed { session_id, error: SessionError::Timeout { session_timeout } }
             }
-            GenericEvent::SessionFailed {
-                session_id,
-                error: HandlerSessionError::IOError(error),
-            } => Self::SessionFailed { session_id, error: SessionError::IOError(error) },
-            GenericEvent::SessionFailed {
+            Event::SessionFailed { session_id, error: HandlerSessionError::IOError(error) } => {
+                Self::SessionFailed { session_id, error: SessionError::IOError(error) }
+            }
+            Event::SessionFailed {
                 session_id,
                 error: HandlerSessionError::RemoteDoesntSupportProtocol,
             } => {
                 Self::SessionFailed { session_id, error: SessionError::RemoteDoesntSupportProtocol }
             }
-            GenericEvent::SessionFailed {
+            Event::SessionFailed {
                 session_id,
                 error: HandlerSessionError::OtherOutboundPeerSentData,
             } => Self::SessionFailed { session_id, error: SessionError::OtherOutboundPeerSentData },
-            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 Self::SessionFinishedSuccessfully { session_id }
             }
         }
     }
 }
-
-pub type Event = GenericEvent<SessionError>;
 
 #[derive(thiserror::Error, Debug)]
 #[error("The given session ID doesn't exist.")]
@@ -103,7 +89,7 @@ pub struct PeerNotConnected;
 #[allow(dead_code)]
 pub struct Behaviour {
     config: Config,
-    pending_events: VecDeque<ToSwarm<Event, RequestFromBehaviourEvent>>,
+    pending_events: VecDeque<ToSwarm<Event<SessionError>, RequestFromBehaviourEvent>>,
     pending_queries: DefaultHashMap<PeerId, Vec<(Bytes, OutboundSessionId)>>,
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
@@ -215,7 +201,10 @@ impl Behaviour {
             .ok_or(SessionIdNotFoundError)
     }
 
-    fn add_event_to_queue(&mut self, event: ToSwarm<Event, RequestFromBehaviourEvent>) {
+    fn add_event_to_queue(
+        &mut self,
+        event: ToSwarm<Event<SessionError>, RequestFromBehaviourEvent>,
+    ) {
         self.pending_events.push_back(event);
         for waker in self.wakers_waiting_for_event.drain(..) {
             waker.wake();
@@ -225,7 +214,7 @@ impl Behaviour {
 
 impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = Handler;
-    type ToSwarm = Event;
+    type ToSwarm = Event<SessionError>;
 
     fn handle_established_inbound_connection(
         &mut self,
