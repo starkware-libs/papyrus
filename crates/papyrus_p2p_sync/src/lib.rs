@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 const STEP: usize = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct P2PSyncConfig {
     pub num_headers_per_query: usize,
     // TODO(shahak): Remove timeout and check if query finished when the network reports it.

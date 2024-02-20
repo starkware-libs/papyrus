@@ -13,6 +13,7 @@ anyhow.workspace = true
 async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
+futures.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
@@ -23,6 +24,7 @@ papyrus_config = { path = "../papyrus_config", version = "0.3.0-rc.2" }
 papyrus_common = { path = "../papyrus_common", version = "0.3.0-rc.2" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway" }
 papyrus_network = { path = "../papyrus_network", version = "0.3.0-rc.0" }
+papyrus_p2p_sync = { path = "../papyrus_p2p_sync" }
 papyrus_rpc = { path = "../papyrus_rpc" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.3.0-rc.2" }
 papyrus_sync = { path = "../papyrus_sync" }
