@@ -32,13 +32,13 @@ pub struct NetworkConfig {
     pub header_buffer_size: usize,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub enum DataType {
     #[default]
-    SignedBlock,
+    SignedBlockHeader,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub struct Query {
     pub start_block: BlockNumber,
     pub direction: Direction,
@@ -80,7 +80,7 @@ pub enum BlockHashOrNumber {
 
 #[allow(unused)]
 pub struct ResponseReceivers {
-    signed_headers_receiver: Receiver<SignedBlockHeader>,
+    pub signed_headers_receiver: Receiver<SignedBlockHeader>,
 }
 
 #[allow(unused)]
