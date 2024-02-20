@@ -10,6 +10,7 @@ members = [
     "crates/papyrus_monitoring_gateway",
     "crates/papyrus_node",
     "crates/papyrus_network",
+    "crates/papyrus_p2p_sync",
     "crates/papyrus_proc_macros",
     "crates/papyrus_rpc",
     "crates/papyrus_storage",

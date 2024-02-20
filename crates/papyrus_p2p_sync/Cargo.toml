@@ -1,0 +1,20 @@
+[package]
+name = "papyrus_p2p_sync"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
+futures.workspace = true
+papyrus_config = { path = "../papyrus_config" }
+papyrus_network = { path = "../papyrus_network" }
+papyrus_storage = { path = "../papyrus_storage" }
+serde.workspace = true
+starknet_api.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+
+[dev-dependencies]
+lazy_static.workspace = true
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
