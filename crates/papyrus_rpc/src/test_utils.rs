@@ -464,7 +464,7 @@ impl<T: Serialize + Clone + Send> SerializeJsonValue for T {
 
 fn validate_schema_for_method_params(
     method: &str,
-    params: &Vec<Box<dyn SerializeJsonValue>>,
+    params: &[Box<dyn SerializeJsonValue>],
     version_id: &VersionId,
     spec_file: SpecFile,
 ) {
