@@ -144,6 +144,25 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "p2p_sync.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
+  "p2p_sync.header_query_size": {
+    "description": "The size of each header query.",
+    "value": {
+      "$serde_json::private::Number": "100"
+    },
+    "privacy": "Public"
+  },
+  "p2p_sync.query_timeout": {
+    "description": "Time in seconds to wait for query responses until we restart the query from the last received block.",
+    "value": {
+      "$serde_json::private::Number": "5"
+    },
+    "privacy": "Public"
+  },
   "rpc.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN",

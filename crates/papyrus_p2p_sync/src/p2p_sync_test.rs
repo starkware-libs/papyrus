@@ -12,15 +12,15 @@ use starknet_api::crypto::Signature;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use tokio::time::timeout;
 
-use super::{P2PSync, SyncConfig};
+use super::{P2PSync, P2PSyncConfig};
 
 const BUFFER_SIZE: usize = 1000;
 const QUERY_SIZE: usize = 5;
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::from_millis(10);
 
 lazy_static! {
-    static ref TEST_CONFIG: SyncConfig =
-        SyncConfig { header_query_size: QUERY_SIZE, query_timeout: Duration::from_millis(10) };
+    static ref TEST_CONFIG: P2PSyncConfig =
+        P2PSyncConfig { header_query_size: QUERY_SIZE, query_timeout: Duration::from_millis(10) };
 }
 
 fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<SignedBlockHeader>) {
@@ -29,7 +29,7 @@ fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<SignedBlockHeader
     let (signed_headers_sender, signed_headers_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
     let p2p_sync = P2PSync::new(
-        TEST_CONFIG.clone(),
+        *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
         query_sender,
@@ -44,10 +44,10 @@ fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSign
         .map(|i| {
             bytes[31] = i;
             (
-                BlockHash(StarkHash::new(bytes.clone()).unwrap()),
+                BlockHash(StarkHash::new(bytes).unwrap()),
                 BlockSignature(Signature {
-                    r: StarkFelt::new(bytes.clone()).unwrap(),
-                    s: StarkFelt::new(bytes.clone()).unwrap(),
+                    r: StarkFelt::new(bytes).unwrap(),
+                    s: StarkFelt::new(bytes).unwrap(),
                 }),
             )
         })
@@ -80,15 +80,20 @@ async fn signed_headers_basic_flow() {
                 }
             );
 
-            for i in start_block_number..end_block_number {
+            for (i, (block_hash, signature)) in block_hashes_and_signatures
+                .iter()
+                .enumerate()
+                .take(end_block_number)
+                .skip(start_block_number)
+            {
                 signed_headers_sender
                     .send(SignedBlockHeader {
                         block_header: BlockHeader {
                             block_number: BlockNumber(i.try_into().unwrap()),
-                            block_hash: block_hashes_and_signatures[i].0,
+                            block_hash: *block_hash,
                             ..Default::default()
                         },
-                        signatures: vec![block_hashes_and_signatures[i].1],
+                        signatures: vec![*signature],
                     })
                     .await
                     .unwrap();
@@ -102,13 +107,18 @@ async fn signed_headers_basic_flow() {
                 txn.get_header_marker().unwrap().0
             );
 
-            for i in start_block_number..end_block_number {
+            for (i, (block_hash, signature)) in block_hashes_and_signatures
+                .iter()
+                .enumerate()
+                .take(end_block_number)
+                .skip(start_block_number)
+            {
                 let block_number = BlockNumber(i.try_into().unwrap());
                 let block_header = txn.get_block_header(block_number).unwrap().unwrap();
                 assert_eq!(block_number, block_header.block_number);
-                assert_eq!(block_hashes_and_signatures[i].0, block_header.block_hash);
+                assert_eq!(*block_hash, block_header.block_hash);
                 let block_signature = txn.get_block_signature(block_number).unwrap().unwrap();
-                assert_eq!(block_hashes_and_signatures[i].1, block_signature);
+                assert_eq!(*signature, block_signature);
             }
         }
     };

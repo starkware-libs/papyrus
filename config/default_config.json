@@ -124,6 +124,21 @@
     "privacy": "Public",
     "value": 10000
   },
+  "p2p_sync.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
+  "p2p_sync.header_query_size": {
+    "description": "The size of each header query.",
+    "privacy": "Public",
+    "value": 100
+  },
+  "p2p_sync.query_timeout": {
+    "description": "Time in seconds to wait for query responses until we restart the query from the last received block.",
+    "privacy": "Public",
+    "value": 5
+  },
   "rpc.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "pointer_target": "chain_id",

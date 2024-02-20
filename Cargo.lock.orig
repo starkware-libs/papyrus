@@ -5727,7 +5727,10 @@ dependencies = [
  "papyrus_config",
  "papyrus_monitoring_gateway",
  "papyrus_network",
+<<<<<<< HEAD
+=======
  "papyrus_p2p_sync",
+>>>>>>> 57c38704 (WIP)
  "papyrus_rpc",
  "papyrus_storage",
  "papyrus_sync",

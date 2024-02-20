@@ -17,14 +17,14 @@ use starknet_api::block::BlockNumber;
 use tokio::time::timeout;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
-pub struct SyncConfig {
+pub struct P2PSyncConfig {
     pub header_query_size: usize,
     // TODO(shahak): Remove timeout and check if query finished when the network reports it.
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub query_timeout: Duration,
 }
 
-impl SerializeConfig for SyncConfig {
+impl SerializeConfig for P2PSyncConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         BTreeMap::from_iter([
             ser_param(
@@ -44,9 +44,9 @@ impl SerializeConfig for SyncConfig {
     }
 }
 
-impl Default for SyncConfig {
+impl Default for P2PSyncConfig {
     fn default() -> Self {
-        SyncConfig { header_query_size: 100, query_timeout: Duration::from_secs(5) }
+        P2PSyncConfig { header_query_size: 100, query_timeout: Duration::from_secs(5) }
     }
 }
 
@@ -70,7 +70,7 @@ pub enum P2PSyncError {
     SendError(#[from] SendError),
 }
 pub struct P2PSync {
-    config: SyncConfig,
+    config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
     query_sender: Sender<Query>,
@@ -79,7 +79,7 @@ pub struct P2PSync {
 
 impl P2PSync {
     pub fn new(
-        config: SyncConfig,
+        config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
         query_sender: Sender<Query>,
