@@ -270,7 +270,7 @@ impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, D
                 self.session_id_to_peer_id_and_connection_id.retain(
                     |session_id, (session_peer_id, session_connection_id)| {
                         if peer_id == *session_peer_id && connection_id == *session_connection_id {
-                            session_ids.push(session_id.clone());
+                            session_ids.push(*session_id);
                             false
                         } else {
                             true

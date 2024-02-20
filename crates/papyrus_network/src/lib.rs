@@ -19,8 +19,7 @@ use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber};
-use starknet_api::crypto::Signature;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetworkConfig {
@@ -59,7 +58,7 @@ pub enum Direction {
 #[derive(Debug)]
 pub struct SignedBlockHeader {
     pub block_header: BlockHeader,
-    pub signatures: Vec<Signature>,
+    pub signatures: Vec<BlockSignature>,
 }
 
 // TODO(shahak): Internalize this when we have a mixed behaviour.

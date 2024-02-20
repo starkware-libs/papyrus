@@ -13,7 +13,6 @@ use tokio::task::JoinHandle;
 
 use crate::{BlockHashOrNumber, InternalQuery};
 
-pub mod dummy_executor;
 #[cfg(test)]
 mod test;
 
@@ -24,7 +23,8 @@ pub struct QueryId(pub usize);
 
 #[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
-    BlockHeaderAndSignature { header: BlockHeader, signature: Option<BlockSignature> },
+    // TODO(shahak): Consider uniting with SignedBlockHeader.
+    BlockHeaderAndSignature { header: BlockHeader, signature: BlockSignature },
     Fin,
 }
 
@@ -42,8 +42,14 @@ pub enum DBExecutorError {
     BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
+    // This error should be non recoverable.
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
+    // This error should be non recoverable.
+    #[error(
+        "Block {block_number:?} is in the storage but its signature isn't. query_id: {query_id}"
+    )]
+    SignatureNotFound { block_number: BlockNumber, query_id: QueryId },
     #[error("Send error. Query id: {query_id}, error: {send_error:?}")]
     SendError {
         query_id: QueryId,
@@ -58,8 +64,18 @@ impl DBExecutorError {
             Self::DBInternalError { query_id, .. }
             | Self::BlockNumberOutOfRange { query_id, .. }
             | Self::BlockNotFound { query_id, .. }
+            | Self::SignatureNotFound { query_id, .. }
             | Self::SendError { query_id, .. } => Some(*query_id),
             Self::JoinError(_) => None,
+        }
+    }
+
+    pub fn should_log_in_error_level(&self) -> bool {
+        match self {
+            Self::JoinError(_) | Self::SignatureNotFound { .. } | Self::SendError { .. }
+            // TODO(shahak): Consider returning false for some of the StorageError variants.
+            | Self::DBInternalError { .. } => true,
+            Self::BlockNumberOutOfRange { .. } | Self::BlockNotFound { .. } => false,
         }
     }
 }
@@ -113,31 +129,35 @@ impl DBExecutor for BlockHeaderDBExecutor {
                     }
                 };
                 for block_counter in 0..query.limit {
-                    let block_number = utils::calculate_block_number(
+                    let block_number = BlockNumber(utils::calculate_block_number(
                         query,
                         start_block_number,
                         block_counter,
                         query_id,
-                    )?;
+                    )?);
                     let header = txn
-                        .get_block_header(BlockNumber(block_number))
+                        .get_block_header(block_number)
                         .map_err(|err| DBExecutorError::DBInternalError {
                             query_id,
                             storage_error: err,
                         })?
                         .ok_or(DBExecutorError::BlockNotFound {
-                            block_hash_or_number: BlockHashOrNumber::Number(BlockNumber(
-                                block_number,
-                            )),
+                            block_hash_or_number: BlockHashOrNumber::Number(block_number),
                             query_id,
                         })?;
+                    let signature = txn
+                        .get_block_signature(block_number)
+                        .map_err(|err| DBExecutorError::DBInternalError {
+                            query_id,
+                            storage_error: err,
+                        })?
+                        .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
-                            if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
-                                header,
-                                signature: None,
-                            }) {
+                            if let Err(e) = sender
+                                .start_send(Data::BlockHeaderAndSignature { header, signature })
+                            {
                                 // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };

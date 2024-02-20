@@ -60,7 +60,7 @@ pub mod compression_utils;
 pub mod db;
 pub mod header;
 pub mod mmap_file;
-mod serializers;
+mod serialization;
 pub mod state;
 mod version;
 
