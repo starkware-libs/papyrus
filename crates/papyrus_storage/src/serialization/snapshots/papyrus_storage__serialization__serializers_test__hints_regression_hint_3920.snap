@@ -1,0 +1,21 @@
+---
+source: crates/papyrus_storage/src/serialization/serializers_test.rs
+expression: encoded_hint
+---
+- 0
+- 0
+- 0
+- 0
+- 0
+- 0
+- 15
+- 80
+- 1
+- 6
+- 1
+- 0
+- 0
+- 1
+- 251
+- 255
+
