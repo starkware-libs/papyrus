@@ -37,7 +37,11 @@ COPY Cargo.lock /app/
 FROM clux/muslrust:1.75.0-stable AS builder
 WORKDIR /app/
 
-RUN apt update && apt install -y clang protobuf-compiler
+RUN apt update && apt install -y clang unzip
+ENV PROTOC_VERSION=25.1
+RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local &&  rm ./protoc.zip
+ENV PROTOC=/root/.local/bin/protoc
+
 
 # Copy all the files from the previous stage (which are Cargo.toml and empty lib.rs files).
 COPY --from=copy_toml /app .
