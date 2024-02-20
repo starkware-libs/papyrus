@@ -5725,6 +5725,7 @@ dependencies = [
  "papyrus_common",
  "papyrus_config",
  "papyrus_monitoring_gateway",
+ "papyrus_network",
  "papyrus_rpc",
  "papyrus_storage",
  "papyrus_sync",
@@ -5743,6 +5744,22 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "validator",
+]
+
+[[package]]
+name = "papyrus_p2p_sync"
+version = "0.3.0-rc.1"
+dependencies = [
+ "futures",
+ "lazy_static",
+ "papyrus_config",
+ "papyrus_network",
+ "papyrus_storage",
+ "serde",
+ "starknet_api",
+ "thiserror",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
