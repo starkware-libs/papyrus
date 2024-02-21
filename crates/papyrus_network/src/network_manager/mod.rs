@@ -17,7 +17,7 @@ use tracing::{debug, error, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::{build_swarm, dial};
-use crate::converters::Router;
+use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
@@ -178,8 +178,24 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 );
                 if let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() {
                     // TODO: once we have more protocols map session id to protocol.
-                    if let Err(e) = response_senders.try_send(Protocol::SignedBlockHeader, data) {
-                        error!("Failed to send data to sync subscriber. error: {e:?}");
+                    match response_senders.try_send(Protocol::SignedBlockHeader, data) {
+                        Err(RouterError::NoSenderForProtocol { protocol }) => {
+                            error!(
+                                "No sender for protocol {protocol:?}. Dropping data. \
+                                 outbound_session_id: {outbound_session_id:?}"
+                            );
+                        }
+                        Err(RouterError::TrySendError(e)) => {
+                            if e.is_disconnected() {
+                                panic!("Receiver was dropped. This should never happen.")
+                            } else if e.is_full() {
+                                error!(
+                                    "Receiver is full. Dropping data. outbound_session_id: \
+                                     {outbound_session_id:?}"
+                                );
+                            }
+                        }
+                        Ok(()) => {}
                     }
                 }
             }
