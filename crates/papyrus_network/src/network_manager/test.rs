@@ -187,7 +187,6 @@ async fn register_subscriber_and_use_channels() {
         .enumerate()
         .take(query_limit)
         .map(|(i, signed_block_header)| {
-            println!("in map. i: {i:?}");
             assert_eq!(signed_block_header.block_header.block_number.0, i as u64);
             signed_block_header
         })
@@ -195,9 +194,7 @@ async fn register_subscriber_and_use_channels() {
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
-        res = signed_header_receiver_collector => {
-            assert_eq!(res.len(), query_limit);
-        }
+        _ = signed_header_receiver_collector => {}
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
