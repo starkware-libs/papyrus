@@ -149,6 +149,7 @@ fn table_stats() {
     assert_eq!(empty_stat.leaf_pages, 0);
 }
 
+use super::serialization::{Migratable, StorageSerde, StorageSerdeError, VersionWrapper};
 use super::{MDBX_MAX_PAGESIZE, MDBX_MIN_PAGESIZE};
 #[test]
 fn get_page_size_test() {
@@ -243,4 +244,138 @@ fn with_version_zero_serialization() {
         NoVersionValueWrapper::<u8>::deserialize(&mut with_no_version_serialization.as_slice()),
         Some(A_RANDOM_U8)
     );
+}
+
+#[derive(Clone, Debug, Default, Ord, Eq, PartialEq, PartialOrd)]
+struct Key {
+    pub k: u8,
+}
+
+impl StorageSerde for Key {
+    fn serialize_into(&self, writer: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.k.serialize_into(writer)
+    }
+
+    fn deserialize_from(reader: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self { k: u8::deserialize_from(reader)? })
+    }
+}
+
+#[derive(Clone, Debug, Default, Ord, Eq, PartialEq, PartialOrd)]
+struct V0 {
+    pub x: u8,
+    pub y: u8,
+}
+
+impl StorageSerde for V0 {
+    fn serialize_into(&self, writer: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.x.serialize_into(writer)?;
+        self.y.serialize_into(writer)
+    }
+
+    fn deserialize_from(reader: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self { x: u8::deserialize_from(reader)?, y: u8::deserialize_from(reader)? })
+    }
+}
+
+#[derive(Clone, Debug, Default, Ord, Eq, PartialEq, PartialOrd)]
+struct V1 {
+    pub x: u8,
+    pub y: u8,
+    pub z: u8,
+}
+
+impl StorageSerde for V1 {
+    fn serialize_into(&self, writer: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.x.serialize_into(writer)?;
+        self.y.serialize_into(writer)?;
+        self.z.serialize_into(writer)
+    }
+
+    fn deserialize_from(reader: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self {
+            x: u8::deserialize_from(reader)?,
+            y: u8::deserialize_from(reader)?,
+            z: u8::deserialize_from(reader)?,
+        })
+    }
+}
+
+impl Migratable for V1 {
+    fn try_from_older_version(
+        bytes: &mut impl std::io::Read,
+        older_version: u8,
+    ) -> Result<Self, StorageSerdeError> {
+        if older_version != 0 {
+            println!("Unexpected older version: {}", older_version);
+            return Err(StorageSerdeError::Migration);
+        }
+        V0::deserialize_from(bytes)
+            .map(|v0| V1 { x: v0.x, y: v0.y, z: 0 })
+            .ok_or(StorageSerdeError::Migration)
+    }
+}
+
+#[test]
+fn version_migration() {
+    let ((reader, mut writer), _temp_dir) = get_test_env();
+    let table_name = "table";
+
+    let v0_table_id =
+        writer.create_simple_table::<Key, VersionZeroWrapper<V0>>(table_name).unwrap();
+    let key0 = Key { k: 0 };
+    let expected_v0 = V0::default();
+    // Insert a V0 entry into a table.
+    {
+        let txn = writer.begin_rw_txn().unwrap();
+        let v0_table = txn.open_table(&v0_table_id).unwrap();
+        v0_table.insert(&txn, &key0, &expected_v0).unwrap();
+        txn.commit().unwrap();
+    }
+    // Verify that the entry is present in the table.
+    {
+        let txn = reader.begin_ro_txn().unwrap();
+        let v0_table = txn.open_table(&v0_table_id).unwrap();
+        let v0 = v0_table.get(&txn, &key0).unwrap().unwrap();
+        assert_eq!(v0, expected_v0);
+    }
+    // Open the same table as a V1 table.
+    let v1_table_id = writer.create_simple_table::<Key, VersionWrapper<V1, 1>>(table_name).unwrap();
+
+    // Insert a V1 entry into the V1 table.
+    let key1 = Key { k: 1 };
+    let expected_v1 = V1::default();
+    {
+        let txn = writer.begin_rw_txn().unwrap();
+        let v1_table = txn.open_table(&v1_table_id).unwrap();
+        v1_table.insert(&txn, &key1, &expected_v1).unwrap();
+        txn.commit().unwrap();
+    }
+
+    // Verify that the V1 entry is present in the V1 table.
+    {
+        let txn = reader.begin_ro_txn().unwrap();
+        let v1_table = txn.open_table(&v1_table_id).unwrap();
+        let v1 = v1_table.get(&txn, &key1).unwrap().unwrap();
+        assert_eq!(v1, expected_v1);
+    }
+
+    // Try to get the V0 entry as a V1 entry.
+    {
+        let txn = reader.begin_ro_txn().unwrap();
+        let v1_table = txn.open_table(&v1_table_id).unwrap();
+        let v0_as_v1 = v1_table.get(&txn, &key0).unwrap();
+        assert!(v0_as_v1.is_some());
+        let v0_as_v1 = v0_as_v1.unwrap();
+        let expected_v1 = V1 { x: expected_v0.x, y: expected_v0.y, z: 0 };
+        assert_eq!(v0_as_v1, expected_v1);
+    }
+
+    // Try to get the V1 entry as a V0 entry.
+    {
+        let txn = reader.begin_ro_txn().unwrap();
+        let v0_table = txn.open_table(&v0_table_id).unwrap();
+        let v1_as_v0 = v0_table.get(&txn, &key1).unwrap_err();
+        assert_matches!(v1_as_v0, DbError::InnerDeserialization);
+    }
 }
