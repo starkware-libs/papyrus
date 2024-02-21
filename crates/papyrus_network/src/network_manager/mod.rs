@@ -21,7 +21,7 @@ use crate::converters::Router;
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId};
+use crate::streamed_bytes::{Config, Event, InboundSessionId};
 use crate::{NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
@@ -91,7 +91,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         (sender, response_receiver)
     }
 
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event<SessionError>>) {
         match event {
             SwarmEvent::ConnectionEstablished { .. } => {
                 debug!("Connected to a peer!");
@@ -131,7 +131,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                         error!("Received error on non existing query");
                         return;
                     };
-                    // TODO: consider moving conversion to db executor side so network manager would only know bytes.
+                    // TODO: consider moving conversion to db executor side so network manager would
+                    // only know bytes.
                     let mut fin_bytes = vec![];
                     <Data as Into<protobuf::BlockHeadersResponse>>::into(Data::Fin)
                         .encode(&mut fin_bytes)
@@ -147,9 +148,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_behaviour_event(&mut self, event: Event<SessionError>) {
         match event {
-            GenericEvent::NewInboundSession {
+            Event::NewInboundSession {
                 query,
                 inbound_session_id,
                 peer_id: _,
@@ -170,7 +171,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 self.query_results_router
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
-            GenericEvent::ReceivedData { outbound_session_id, data } => {
+            Event::ReceivedData { outbound_session_id, data } => {
                 debug!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -182,11 +183,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     }
                 }
             }
-            GenericEvent::SessionFailed { session_id, error } => {
+            Event::SessionFailed { session_id, error } => {
                 debug!("Session {session_id:?} failed on {error:?}");
                 // TODO: Handle reputation and retry.
             }
-            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }
@@ -217,8 +218,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
             Ok(outbound_session_id) => {
                 debug!(
-                    "Sent query to peer. peer_id: {peer_id:?}, \
-                     outbound_session_id: {outbound_session_id:?}"
+                    "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
+                     {outbound_session_id:?}"
                 );
             }
             Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),

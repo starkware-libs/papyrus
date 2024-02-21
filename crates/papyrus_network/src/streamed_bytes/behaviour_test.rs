@@ -17,14 +17,14 @@ use libp2p::swarm::{
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
-use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use super::{Behaviour, Event, SessionError};
+use super::super::{Bytes, Config, Event, InboundSessionId, OutboundSessionId, SessionId};
+use super::{Behaviour, SessionError};
 use crate::test_utils::dummy_data;
 
 impl Unpin for Behaviour {}
 
 impl Stream for Behaviour {
-    type Item = ToSwarm<Event, RequestFromBehaviourEvent>;
+    type Item = ToSwarm<Event<SessionError>, RequestFromBehaviourEvent>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx) {
@@ -82,7 +82,7 @@ fn simulate_new_inbound_session(
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        RequestToBehaviourEvent::GenerateEvent(GenericEvent::NewInboundSession {
+        RequestToBehaviourEvent::GenerateEvent(Event::NewInboundSession {
             query,
             inbound_session_id,
             peer_id,
@@ -100,10 +100,7 @@ fn simulate_received_data(
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
-            data,
-            outbound_session_id,
-        }),
+        RequestToBehaviourEvent::GenerateEvent(Event::ReceivedData { data, outbound_session_id }),
     );
 }
 
@@ -115,9 +112,7 @@ fn simulate_session_finished_successfully(
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFinishedSuccessfully {
-            session_id,
-        }),
+        RequestToBehaviourEvent::GenerateEvent(Event::SessionFinishedSuccessfully { session_id }),
     );
 }
 

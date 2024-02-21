@@ -24,7 +24,7 @@ use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionError, SessionId
 use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
 use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
-type BehaviourEvent = crate::streamed_bytes::GenericEvent<SessionError>;
+type BehaviourEvent = crate::streamed_bytes::Event<SessionError>;
 
 #[derive(Default)]
 struct MockSwarm {

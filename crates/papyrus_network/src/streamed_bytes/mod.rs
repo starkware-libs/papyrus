@@ -43,7 +43,7 @@ impl From<InboundSessionId> for SessionId {
 }
 
 #[derive(Debug)]
-pub enum GenericEvent<SessionError> {
+pub enum Event<SessionError> {
     NewInboundSession {
         query: Bytes,
         inbound_session_id: InboundSessionId,

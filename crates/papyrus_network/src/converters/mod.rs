@@ -1,28 +1,40 @@
 use std::collections::HashMap;
 
-use futures::{
-    channel::mpsc::{Receiver, Sender},
-    StreamExt,
-};
+use futures::channel::mpsc::{Receiver, Sender};
+use futures::StreamExt;
 use prost::Message;
-use starknet_api::{
-    block::{
-        BlockHash, BlockHeader, BlockNumber, BlockSignature, GasPrice, GasPricePerToken,
-        StarknetVersion,
-    },
-    core::{EventCommitment, GlobalRoot, SequencerContractAddress, TransactionCommitment},
-    crypto::Signature,
-    hash::StarkHash,
+use starknet_api::block::{
+    BlockHash,
+    BlockHeader,
+    BlockNumber,
+    BlockSignature,
+    GasPrice,
+    GasPricePerToken,
+    StarknetVersion,
 };
+use starknet_api::core::{
+    EventCommitment,
+    GlobalRoot,
+    SequencerContractAddress,
+    TransactionCommitment,
+};
+use starknet_api::crypto::Signature;
+use starknet_api::hash::StarkHash;
 
+use crate::db_executor::Data;
+use crate::protobuf_messages::protobuf::{self, ConsensusSignature};
+use crate::protobuf_messages::{
+    enum_int_to_l1_data_availability_mode,
+    l1_data_availability_mode_to_enum_int,
+    ProtobufConversionError,
+};
 use crate::{
-    db_executor::Data,
-    protobuf_messages::{
-        enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int,
-        protobuf::{self, ConsensusSignature},
-        ProtobufConversionError,
-    },
-    BlockHashOrNumber, Direction, InternalQuery, Protocol, Query, ResponseReceivers,
+    BlockHashOrNumber,
+    Direction,
+    InternalQuery,
+    Protocol,
+    Query,
+    ResponseReceivers,
     SignedBlockHeader,
 };
 
