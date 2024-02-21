@@ -24,7 +24,7 @@ use libp2p::swarm::{
 use libp2p::PeerId;
 
 use super::super::messages::{read_message, write_message};
-use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
+use super::super::{Bytes, Config, Event, InboundSessionId, OutboundSessionId, SessionId};
 use super::{
     Handler,
     HandlerEvent,
@@ -128,7 +128,7 @@ async fn validate_new_inbound_session_event(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(
             RequestToBehaviourEvent::GenerateEvent(
-                GenericEvent::NewInboundSession {
+                Event::NewInboundSession {
                     query: event_query,
                     inbound_session_id: event_inbound_session_id,
                     peer_id: event_peer_id,
@@ -152,7 +152,7 @@ async fn validate_received_data_event(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(
             RequestToBehaviourEvent::GenerateEvent(
-                GenericEvent::ReceivedData {
+                Event::ReceivedData {
                     data: event_data, outbound_session_id: event_outbound_session_id
 
                 }
@@ -168,7 +168,7 @@ async fn validate_session_finished_successfully_event(
     let event = handler.next().await.unwrap();
     assert_matches!(
         event,
-        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFinishedSuccessfully {
+        ConnectionHandlerEvent::NotifyBehaviour(RequestToBehaviourEvent::GenerateEvent(Event::SessionFinishedSuccessfully {
             session_id: event_session_id
         })) if event_session_id == session_id
     );
@@ -183,7 +183,7 @@ async fn validate_session_failed_event(
     assert_matches!(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(
-            RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFailed {
+            RequestToBehaviourEvent::GenerateEvent(Event::SessionFailed {
                 session_id: event_session_id,
                 error,
             })

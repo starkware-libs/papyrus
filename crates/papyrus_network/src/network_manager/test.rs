@@ -21,7 +21,7 @@ use super::GenericNetworkManager;
 use crate::db_executor::{poll_query_execution_set, DBExecutor, DBExecutorError, Data, QueryId};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::streamed_bytes::{Event as BehaviourEvent, InboundSessionId, OutboundSessionId};
 use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
 
 #[derive(Default)]
@@ -78,7 +78,7 @@ impl MockSwarm {
             <Data as Into<protobuf::BlockHeadersResponse>>::into(signed_header)
                 .encode(&mut data_bytes)
                 .expect("failed to convert data to bytes");
-            self.pending_events.push(Event::Behaviour(GenericEvent::ReceivedData {
+            self.pending_events.push(Event::Behaviour(BehaviourEvent::ReceivedData {
                 data: data_bytes,
                 outbound_session_id,
             }));
@@ -251,7 +251,7 @@ async fn process_incoming_query() {
     }
     .encode(&mut query_bytes)
     .unwrap();
-    mock_swarm.pending_events.push(Event::Behaviour(GenericEvent::NewInboundSession {
+    mock_swarm.pending_events.push(Event::Behaviour(BehaviourEvent::NewInboundSession {
         query: query_bytes,
         inbound_session_id,
         peer_id: PeerId::random(),

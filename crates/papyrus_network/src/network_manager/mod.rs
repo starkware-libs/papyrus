@@ -21,7 +21,7 @@ use crate::converters::Router;
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId};
+use crate::streamed_bytes::{Config, Event, InboundSessionId};
 use crate::{NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
@@ -91,7 +91,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         (sender, response_receiver)
     }
 
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event<SessionError>>) {
         match event {
             SwarmEvent::ConnectionEstablished { .. } => {
                 debug!("Connected to a peer!");
@@ -173,9 +173,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_behaviour_event(&mut self, event: Event<SessionError>) {
         match event {
-            GenericEvent::NewInboundSession {
+            Event::NewInboundSession {
                 query,
                 inbound_session_id,
                 peer_id: _,
@@ -196,7 +196,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 self.query_results_router
                     .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
-            GenericEvent::ReceivedData { outbound_session_id, data } => {
+            Event::ReceivedData { outbound_session_id, data } => {
                 debug!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -208,11 +208,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     }
                 }
             }
-            GenericEvent::SessionFailed { session_id, error } => {
+            Event::SessionFailed { session_id, error } => {
                 debug!("Session {session_id:?} failed on {error:?}");
                 // TODO: Handle reputation and retry.
             }
-            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+            Event::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
             }
         }
