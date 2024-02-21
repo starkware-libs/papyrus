@@ -1,0 +1,104 @@
+---
+source: crates/papyrus_rpc/src/v0_7/write_api_error_test.rs
+expression: get_conversion_snapshot(starknet_error_to_invoke_error)
+---
+{
+  "52": [
+    {
+      "code": {
+        "$serde_json::private::Number": "52"
+      },
+      "message": "Invalid transaction nonce"
+    },
+    {
+      "code": "StarknetErrorCode.INVALID_TRANSACTION_NONCE",
+      "message": "message"
+    }
+  ],
+  "53": [
+    {
+      "code": {
+        "$serde_json::private::Number": "53"
+      },
+      "message": "Max fee is smaller than the minimal transaction cost (validation plus fee transfer)"
+    },
+    {
+      "code": "StarknetErrorCode.INSUFFICIENT_MAX_FEE",
+      "message": "message"
+    }
+  ],
+  "54": [
+    {
+      "code": {
+        "$serde_json::private::Number": "54"
+      },
+      "message": "Account balance is smaller than the transaction's max_fee"
+    },
+    {
+      "code": "StarknetErrorCode.INSUFFICIENT_ACCOUNT_BALANCE",
+      "message": "message"
+    }
+  ],
+  "55": [
+    {
+      "code": {
+        "$serde_json::private::Number": "55"
+      },
+      "data": "message",
+      "message": "Account validation failed"
+    },
+    {
+      "code": "StarknetErrorCode.VALIDATE_FAILURE",
+      "message": "message"
+    }
+  ],
+  "58": [
+    {
+      "code": {
+        "$serde_json::private::Number": "58"
+      },
+      "message": "Sender address in not an account contract"
+    },
+    {
+      "code": "StarknetErrorCode.ENTRY_POINT_NOT_FOUND_IN_CONTRACT",
+      "message": "message"
+    }
+  ],
+  "59": [
+    {
+      "code": {
+        "$serde_json::private::Number": "59"
+      },
+      "message": "A transaction with the same hash already exists in the mempool"
+    },
+    {
+      "code": "StarknetErrorCode.DUPLICATED_TRANSACTION",
+      "message": "message"
+    }
+  ],
+  "61": [
+    {
+      "code": {
+        "$serde_json::private::Number": "61"
+      },
+      "message": "the transaction version is not supported"
+    },
+    {
+      "code": "StarknetErrorCode.INVALID_TRANSACTION_VERSION",
+      "message": "message"
+    }
+  ],
+  "63": [
+    {
+      "code": {
+        "$serde_json::private::Number": "63"
+      },
+      "data": "message",
+      "message": "An unexpected error occurred"
+    },
+    {
+      "code": "code",
+      "message": "message"
+    }
+  ]
+}
