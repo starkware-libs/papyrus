@@ -125,7 +125,7 @@ impl P2PSync {
             // responses returned we will retry the query from the last received block.
             // TODO(shahak): Once network reports finished queries, remove this timeout and add
             // a sleep when a query finished with partial responses.
-            let Ok(maybe_signed_header) = timeout(
+            let Ok(maybe_signed_header_stream_result) = timeout(
                 self.config.query_timeout,
                 self.response_receivers.signed_headers_receiver.next(),
             )
@@ -137,8 +137,11 @@ impl P2PSync {
                 );
                 return Ok(());
             };
-            let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header else {
+            let Some(maybe_signed_header) = maybe_signed_header_stream_result else {
                 return Err(P2PSyncError::ReceiverChannelTerminated);
+            };
+            let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header else {
+                unimplemented!("Handle empty signed headers -> mark that peer sent Fin")
             };
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
             // and handle reverts.

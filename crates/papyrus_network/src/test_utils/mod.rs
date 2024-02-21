@@ -30,7 +30,11 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
 
     let merged_swarm = swarm1.merge(swarm2);
     let mut filtered_swarm = TokioStreamExt::filter_map(merged_swarm, |event| {
-        if let SwarmEvent::Behaviour(stream) = event { Some(stream) } else { None }
+        if let SwarmEvent::Behaviour(stream) = event {
+            Some(stream)
+        } else {
+            None
+        }
     });
     (
         TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
@@ -75,6 +79,7 @@ impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamHashMap<K, V> {
         self.map.keys()
     }
 
+    #[allow(dead_code)]
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         self.map.get_mut(key)
     }
