@@ -26,7 +26,7 @@ use std::sync::Arc;
 use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
 use blockifier::context::{BlockContext, ChainInfo, FeeTokenAddresses, TransactionContext};
 use blockifier::execution::call_info::CallExecution;
-use blockifier::execution::contract_class::ContractClass as BlockifierContractClass;
+use blockifier::execution::contract_class::{ClassInfo, ContractClass as BlockifierContractClass};
 use blockifier::execution::entry_point::{
     CallEntryPoint,
     CallType as BlockifierCallType,
@@ -40,7 +40,7 @@ use blockifier::transaction::objects::{
     TransactionInfo,
 };
 use blockifier::transaction::transaction_execution::Transaction as BlockifierTransaction;
-use blockifier::transaction::transactions::{ClassInfo, ExecutableTransaction};
+use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
@@ -146,6 +146,12 @@ impl ExecutionConfigByBlock {
 /// The error type for the execution module.
 #[derive(thiserror::Error, Debug)]
 pub enum ExecutionError {
+    #[error("Bad declare tx: {tx:?}. error: {err:?}")]
+    BadDeclareTransaction {
+        tx: DeclareTransaction,
+        #[source]
+        err: blockifier::execution::errors::ContractClassError,
+    },
     #[error("Execution config file does not contain a configuration for all blocks")]
     ConfigContentError,
     #[error(transparent)]
@@ -724,14 +730,15 @@ fn to_blockifier_tx(
                     }
                 },
             )?);
+            let class_info = ClassInfo::new(&class_v0, DEPRECATED_CONTRACT_SIERRA_SIZE, abi_length)
+                .map_err(|err| ExecutionError::BadDeclareTransaction {
+                    tx: DeclareTransaction::V0(declare_tx.clone()),
+                    err,
+                })?;
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V0(declare_tx)),
                 tx_hash,
-                Some(ClassInfo {
-                    contract_class: class_v0,
-                    sierra_program_length: DEPRECATED_CONTRACT_SIERRA_SIZE,
-                    abi_length,
-                }),
+                Some(class_info),
                 None,
                 None,
                 only_query,
@@ -747,14 +754,15 @@ fn to_blockifier_tx(
             let class_v0 = BlockifierContractClass::V0(
                 deprecated_class.try_into().map_err(BlockifierError::new)?,
             );
+            let class_info = ClassInfo::new(&class_v0, DEPRECATED_CONTRACT_SIERRA_SIZE, abi_length)
+                .map_err(|err| ExecutionError::BadDeclareTransaction {
+                    tx: DeclareTransaction::V1(declare_tx.clone()),
+                    err,
+                })?;
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V1(declare_tx)),
                 tx_hash,
-                Some(ClassInfo {
-                    contract_class: class_v0,
-                    sierra_program_length: DEPRECATED_CONTRACT_SIERRA_SIZE,
-                    abi_length,
-                }),
+                Some(class_info),
                 None,
                 None,
                 only_query,
@@ -771,10 +779,17 @@ fn to_blockifier_tx(
             let class_v1 = BlockifierContractClass::V1(
                 compiled_class.try_into().map_err(BlockifierError::new)?,
             );
+            let class_info =
+                ClassInfo::new(&class_v1, sierra_program_length, abi_length).map_err(|err| {
+                    ExecutionError::BadDeclareTransaction {
+                        tx: DeclareTransaction::V2(declare_tx.clone()),
+                        err,
+                    }
+                })?;
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V2(declare_tx)),
                 tx_hash,
-                Some(ClassInfo { contract_class: class_v1, sierra_program_length, abi_length }),
+                Some(class_info),
                 None,
                 None,
                 only_query,
@@ -791,10 +806,17 @@ fn to_blockifier_tx(
             let class_v1 = BlockifierContractClass::V1(
                 compiled_class.try_into().map_err(BlockifierError::new)?,
             );
+            let class_info =
+                ClassInfo::new(&class_v1, sierra_program_length, abi_length).map_err(|err| {
+                    ExecutionError::BadDeclareTransaction {
+                        tx: DeclareTransaction::V3(declare_tx.clone()),
+                        err,
+                    }
+                })?;
             BlockifierTransaction::from_api(
                 Transaction::Declare(DeclareTransaction::V3(declare_tx)),
                 tx_hash,
-                Some(ClassInfo { contract_class: class_v1, sierra_program_length, abi_length }),
+                Some(class_info),
                 None,
                 None,
                 only_query,
