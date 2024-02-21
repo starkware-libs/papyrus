@@ -48,7 +48,7 @@ use test_utils::read_json_file;
 use crate::execution_utils::selector_from_name;
 use crate::objects::{PendingData, TransactionSimulationOutput};
 use crate::testing_instances::test_block_execution_config;
-use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery};
+use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery, SierraSize};
 
 lazy_static! {
     pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));
@@ -72,6 +72,9 @@ lazy_static! {
     pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
     pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
 }
+
+// Sierra size must be > 0.
+const DUMMY_SIERRA_SIZE: SierraSize = 1;
 
 fn get_test_instance<T: DeserializeOwned>(path_in_resource_dir: &str) -> T {
     serde_json::from_value(read_json_file(path_in_resource_dir)).unwrap()
@@ -288,7 +291,7 @@ impl TxsScenarioBuilder {
                 ..Default::default()
             },
             get_test_casm(),
-            0,
+            DUMMY_SIERRA_SIZE,
             0,
             false,
         );
