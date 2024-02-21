@@ -63,6 +63,14 @@ pub(crate) struct Router {
     pub protocol_to_receiver_map: Option<HashMap<Protocol, Receiver<Vec<u8>>>>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum RouterError {
+    #[error("No sender for protocol {protocol:?}")]
+    NoSenderForProtocol { protocol: Protocol },
+    #[error(transparent)]
+    TrySendError(#[from] futures::channel::mpsc::TrySendError<Vec<u8>>),
+}
+
 impl Router {
     pub fn new(protocols: Vec<Protocol>, buffer_size: usize) -> Self {
         let mut protocol_to_sender_map = HashMap::new();
@@ -79,11 +87,11 @@ impl Router {
         self.protocol_to_receiver_map.take().unwrap_or_default()
     }
 
-    pub fn try_send(&mut self, protocol: Protocol, data: Vec<u8>) -> Result<(), ()> {
+    pub fn try_send(&mut self, protocol: Protocol, data: Vec<u8>) -> Result<(), RouterError> {
         self.protocol_to_sender_map
             .get_mut(&protocol)
-            .ok_or(())
-            .and_then(|sender| sender.try_send(data).map_err(|_| ()))
+            .ok_or(RouterError::NoSenderForProtocol { protocol })
+            .and_then(|sender| sender.try_send(data).map_err(RouterError::from))
     }
 }
 
