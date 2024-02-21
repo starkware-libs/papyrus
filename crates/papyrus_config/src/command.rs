@@ -56,7 +56,7 @@ fn build_args_parser(config_map: &BTreeMap<ParamPath, SerializedParam>) -> Vec<A
 
         let arg = Arg::new(param_path)
             .long(param_path)
-            .env(param_path.to_uppercase())
+            .env(to_env_var_name(param_path))
             .help(&serialized_param.description)
             .value_parser(clap_parser);
         args_parser.push(arg);
@@ -76,4 +76,8 @@ fn get_arg_by_type(
         SerializationType::Boolean => Ok(json!(arg_match.try_get_one::<bool>(param_path)?)),
         SerializationType::String => Ok(json!(arg_match.try_get_one::<String>(param_path)?)),
     }
+}
+
+fn to_env_var_name(param_path: &str) -> String {
+    param_path.replace("#is_none", "__is_none__").to_uppercase().replace('.', "__")
 }

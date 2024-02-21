@@ -158,6 +158,36 @@ fn test_update_dumped_config() {
 }
 
 #[test]
+fn test_env_nested_params() {
+    let command = Command::new("Testing");
+    let dumped_config = OuterConfig {
+        opt_elem: Some(1),
+        opt_config: Some(InnerConfig { o: 2 }),
+        inner_config: InnerConfig { o: 3 },
+    }
+    .dump();
+    let args = vec!["Testing", "--opt_elem", "1234"];
+    env::set_var("OPT_CONFIG____IS_NONE__", "true");
+    env::set_var("INNER_CONFIG__O", "4");
+    let args: Vec<String> = args.into_iter().map(|s| s.to_owned()).collect();
+
+    let arg_matches = get_command_matches(&dumped_config, command, args).unwrap();
+    let (mut config_map, required_map) = split_values_and_types(dumped_config);
+    update_config_map_by_command_args(&mut config_map, &required_map, &arg_matches).unwrap();
+
+    assert_eq!(json!(1234), config_map["opt_elem"]);
+    assert_eq!(json!(true), config_map["opt_config.#is_none"]);
+    assert_eq!(json!(4), config_map["inner_config.o"]);
+
+    update_optional_values(&mut config_map);
+
+    let loaded_config: OuterConfig = load(&config_map).unwrap();
+    assert_eq!(Some(1234), loaded_config.opt_elem);
+    assert_eq!(None, loaded_config.opt_config);
+    assert_eq!(4, loaded_config.inner_config.o);
+}
+
+#[test]
 fn test_config_presentation() {
     let config = TypicalConfig { a: Duration::from_secs(1), b: "bbb".to_owned(), c: false };
     let presentation = get_config_presentation(&config, true).unwrap();
