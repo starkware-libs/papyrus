@@ -15,6 +15,7 @@ mod test_utils;
 mod v0_4;
 mod v0_5;
 mod v0_6;
+mod v0_7;
 mod version_config;
 
 use std::collections::BTreeMap;
