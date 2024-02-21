@@ -39,7 +39,9 @@ pub const VERSION_CONFIG: &[(VersionId, VersionState)] = &[
     (VERSION_0_4, VersionState::Supported),
     (VERSION_0_5, VersionState::Supported),
     (VERSION_0_6, VersionState::Supported),
+    (VERSION_0_7, VersionState::Supported),
 ];
 pub const VERSION_0_4: VersionId = VersionId { name: "V0_4", patch: 0 };
 pub const VERSION_0_5: VersionId = VersionId { name: "V0_5", patch: 1 };
 pub const VERSION_0_6: VersionId = VersionId { name: "V0_6", patch: 0 };
+pub const VERSION_0_7: VersionId = VersionId { name: "V0_7", patch: 0 };
