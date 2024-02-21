@@ -6,10 +6,17 @@ use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, StreamProtocol, Swarm};
 use papyrus_network::bin_utils::{build_swarm, dial};
-use papyrus_network::messages::protobuf::stress_test_message::Msg;
-use papyrus_network::messages::protobuf::{BasicMessage, InboundSessionStart, StressTestMessage};
-use papyrus_network::streamed_data::behaviour::{Behaviour, Event, SessionError};
-use papyrus_network::streamed_data::{Config, InboundSessionId, OutboundSessionId, SessionId};
+use papyrus_network::streamed_bytes::behaviour::{Behaviour, Event, SessionError};
+use papyrus_network::streamed_bytes::{
+    Bytes,
+    Config,
+    InboundSessionId,
+    OutboundSessionId,
+    SessionId,
+};
+
+const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/papyrus/bench/1");
+const CONST_BYTE: u8 = 1;
 
 fn pretty_size(mut size: f64) -> String {
     for term in ["B", "KB", "MB", "GB"] {
@@ -19,6 +26,26 @@ fn pretty_size(mut size: f64) -> String {
         size /= 1024.0;
     }
     format!("{:.2} TB", size)
+}
+
+fn encode_inbound_session_metadata(num_messages: usize, message_size: usize) -> Bytes {
+    let mut result = num_messages.to_be_bytes().to_vec();
+    result.extend_from_slice(&message_size.to_be_bytes());
+    result
+}
+
+fn decode_inbound_session_metadata(mut bytes: Bytes) -> (usize, usize) {
+    let second_bytes = bytes.split_off(8);
+    (
+        usize::from_be_bytes(
+            bytes.try_into().expect("Failed converting a vec of size 8 to [u8; 8]"),
+        ),
+        usize::from_be_bytes(
+            second_bytes
+                .try_into()
+                .expect("Called decode_inbound_session_metadata on Vec of size not 16"),
+        ),
+    )
 }
 
 /// A node that benchmarks the throughput of messages sent/received.
@@ -48,11 +75,11 @@ struct Args {
 
     /// Number of messages to send for each inbound session.
     #[arg(short = 'm', long, default_value_t)]
-    num_messages_per_session: u64,
+    num_messages_per_session: usize,
 
     /// Size (in bytes) of each message to send for inbound sessions.
     #[arg(short = 's', long, default_value_t)]
-    message_size: u64,
+    message_size: usize,
 
     /// Amount of time (in seconds) to wait until closing an unactive connection.
     #[arg(short = 't', long, default_value_t = 10)]
@@ -60,7 +87,7 @@ struct Args {
 }
 
 fn create_outbound_sessions_if_all_peers_connected(
-    swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
+    swarm: &mut Swarm<Behaviour>,
     peer_id: PeerId,
     outbound_session_measurements: &mut HashMap<OutboundSessionId, OutboundSessionMeasurement>,
     peers_pending_outbound_session: &mut Vec<PeerId>,
@@ -71,7 +98,7 @@ fn create_outbound_sessions_if_all_peers_connected(
         for peer_id in peers_pending_outbound_session {
             for number in 0..args.num_queries_per_connection {
                 let outbound_session_id =
-                    swarm.behaviour_mut().send_query(BasicMessage { number }, *peer_id).expect(
+                    swarm.behaviour_mut().send_query(vec![], *peer_id, PROTOCOL_NAME).expect(
                         "There's no connection to a peer immediately after we got a \
                          ConnectionEstablished event",
                     );
@@ -83,7 +110,7 @@ fn create_outbound_sessions_if_all_peers_connected(
 }
 
 fn send_data_to_inbound_sessions(
-    swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>,
+    swarm: &mut Swarm<Behaviour>,
     inbound_session_to_messages: &mut HashMap<InboundSessionId, Vec<Vec<u8>>>,
     args: &Args,
 ) {
@@ -91,12 +118,7 @@ fn send_data_to_inbound_sessions(
         swarm
             .behaviour_mut()
             .send_data(
-                StressTestMessage {
-                    msg: Some(Msg::Start(InboundSessionStart {
-                        num_messages: args.num_messages_per_session,
-                        message_size: args.message_size,
-                    })),
-                },
+                encode_inbound_session_metadata(args.num_messages_per_session, args.message_size),
                 *inbound_session_id,
             )
             .unwrap_or_else(|_| {
@@ -106,15 +128,9 @@ fn send_data_to_inbound_sessions(
     while !inbound_session_to_messages.is_empty() {
         inbound_session_to_messages.retain(|inbound_session_id, messages| match messages.pop() {
             Some(message) => {
-                swarm
-                    .behaviour_mut()
-                    .send_data(
-                        StressTestMessage { msg: Some(Msg::Content(message)) },
-                        *inbound_session_id,
-                    )
-                    .unwrap_or_else(|_| {
-                        panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
-                    });
+                swarm.behaviour_mut().send_data(message, *inbound_session_id).unwrap_or_else(
+                    |_| panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id),
+                );
 
                 true
             }
@@ -132,8 +148,8 @@ fn send_data_to_inbound_sessions(
 struct OutboundSessionMeasurement {
     start_time: Instant,
     first_message_time: Option<Instant>,
-    num_messages: Option<u64>,
-    message_size: Option<u64>,
+    num_messages: Option<usize>,
+    message_size: Option<usize>,
 }
 
 impl OutboundSessionMeasurement {
@@ -186,14 +202,15 @@ display"
             message_size: None,
         }
     }
-    pub fn report_first_message(&mut self, inbound_session_start: InboundSessionStart) {
+    pub fn report_first_message(&mut self, data: Bytes) {
         self.first_message_time = Some(Instant::now());
-        self.num_messages = Some(inbound_session_start.num_messages);
-        self.message_size = Some(inbound_session_start.message_size);
+        let (num_messages, message_size) = decode_inbound_session_metadata(data);
+        self.num_messages = Some(num_messages);
+        self.message_size = Some(message_size);
     }
 }
 
-fn dial_if_requested(swarm: &mut Swarm<Behaviour<BasicMessage, StressTestMessage>>, args: &Args) {
+fn dial_if_requested(swarm: &mut Swarm<Behaviour>, args: &Args) {
     if let Some(dial_address) = args.dial_address.as_ref() {
         dial(swarm, dial_address);
     }
@@ -205,7 +222,7 @@ async fn main() {
 
     let config = Config {
         session_timeout: Duration::from_secs(3600),
-        protocol_name: StreamProtocol::new("/papyrus/bench/1"),
+        supported_inbound_protocols: vec![PROTOCOL_NAME],
     };
     let mut swarm = build_swarm(
         vec![args.listen_address.clone()],
@@ -220,7 +237,7 @@ async fn main() {
     let mut preprepared_messages = (0..args.num_expected_inbound_sessions)
         .map(|_| {
             (0..args.num_messages_per_session)
-                .map(|_| vec![1u8; args.message_size as usize])
+                .map(|_| vec![CONST_BYTE; args.message_size as usize])
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
@@ -264,11 +281,11 @@ async fn main() {
                 outbound_session_measurements[&outbound_session_id].print();
             }
             SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
-                if let Some(Msg::Start(inbound_session_start)) = data.msg {
+                if data[0] != CONST_BYTE {
                     outbound_session_measurements
                         .get_mut(&outbound_session_id)
                         .expect("Received data on non-existing outbound session")
-                        .report_first_message(inbound_session_start);
+                        .report_first_message(data);
                 }
             }
             SwarmEvent::OutgoingConnectionError { .. } => {
