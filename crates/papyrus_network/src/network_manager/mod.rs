@@ -198,14 +198,15 @@ impl NetworkManager {
     pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
         let NetworkConfig {
             tcp_port,
-            quic_port,
+            quic_port: _,
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
         } = config;
 
         let listen_addresses = vec![
-            format!("/ip4/127.0.0.1/udp/{quic_port}/quic-v1"),
+            // TODO: uncomment once quic transpot works.
+            // format!("/ip4/127.0.0.1/udp/{quic_port}/quic-v1"),
             format!("/ip4/127.0.0.1/tcp/{tcp_port}"),
         ];
         let swarm = build_swarm(
