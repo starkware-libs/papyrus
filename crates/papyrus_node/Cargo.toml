@@ -40,6 +40,8 @@ url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
+assert-json-diff.workspace = true
+colored.workspace = true
 metrics-exporter-prometheus.workspace = true
 pretty_assertions.workspace = true
 insta = { workspace = true, features = ["json"] }
