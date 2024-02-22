@@ -91,6 +91,7 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serialization::serializers;
 use serializers::ValuePlaceHolder;
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
