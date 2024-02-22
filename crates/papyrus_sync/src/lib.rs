@@ -220,9 +220,6 @@ impl<
     pub async fn run(&mut self) -> StateSyncResult {
         info!("State sync started.");
         loop {
-            if self.config.verify_blocks {
-                self.track_sequencer_public_key_changes().await?;
-            }
             match self.sync_while_ok().await {
                 // A recoverable error occurred. Sleep and try syncing again.
                 Err(err) if is_recoverable(&err) => {
@@ -298,6 +295,9 @@ impl<
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
     async fn sync_while_ok(&mut self) -> StateSyncResult {
+        if self.config.verify_blocks {
+            self.track_sequencer_public_key_changes().await?;
+        }
         self.handle_block_reverts().await?;
         let block_stream = stream_new_blocks(
             self.reader.clone(),
