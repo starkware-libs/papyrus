@@ -5748,6 +5748,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_p2p_sync"
+version = "0.3.0-rc.1"
+dependencies = [
+ "futures",
+ "lazy_static",
+ "papyrus_config",
+ "papyrus_network",
+ "papyrus_storage",
+ "serde",
+ "starknet_api",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "papyrus_proc_macros"
 version = "0.3.0-rc.1"
 dependencies = [

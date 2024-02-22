@@ -175,7 +175,7 @@ async fn register_subscriber_and_use_channels() {
         direction: Direction::Forward,
         limit: query_limit,
         step: 1,
-        data_type: DataType::SignedBlock,
+        data_type: DataType::SignedBlockHeader,
     };
 
     // register subscriber and send query
