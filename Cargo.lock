@@ -5749,7 +5749,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_p2p_sync"
-version = "0.3.0-rc.1"
+version = "0.3.0-rc.2"
 dependencies = [
  "futures",
  "lazy_static",
