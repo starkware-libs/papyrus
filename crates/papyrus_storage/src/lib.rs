@@ -77,7 +77,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
+use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionOneWrapper, VersionZeroWrapper};
 use db::table_types::{CommonPrefix, CommonPrefixFixedSize, Table, TableType};
 use mmap_file::{
     open_file,
@@ -578,12 +578,12 @@ pub(crate) type MarkersTable<'env> =
 
 #[derive(Clone, Debug)]
 struct FileHandlers<Mode: TransactionKind> {
-    thin_state_diff: FileHandler<NoVersionValueWrapper<ThinStateDiff>, Mode>,
+    thin_state_diff: FileHandler<VersionOneWrapper<ThinStateDiff>, Mode>,
     contract_class: FileHandler<NoVersionValueWrapper<ContractClass>, Mode>,
     casm: FileHandler<NoVersionValueWrapper<CasmContractClass>, Mode>,
     deprecated_contract_class: FileHandler<NoVersionValueWrapper<DeprecatedContractClass>, Mode>,
-    transaction_output: FileHandler<NoVersionValueWrapper<TransactionOutput>, Mode>,
-    transaction: FileHandler<VersionZeroWrapper<Transaction>, Mode>,
+    transaction_output: FileHandler<VersionOneWrapper<TransactionOutput>, Mode>,
+    transaction: FileHandler<VersionOneWrapper<Transaction>, Mode>,
 }
 
 impl FileHandlers<RW> {
