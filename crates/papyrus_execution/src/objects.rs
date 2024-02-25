@@ -441,7 +441,9 @@ pub struct PendingData {
 }
 
 /// The unit of the fee.
-#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(
+    Debug, Default, Clone, Copy, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord,
+)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PriceUnit {
     /// Wei.
