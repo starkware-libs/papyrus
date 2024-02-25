@@ -109,6 +109,10 @@ impl SwarmTrait for MockSwarm {
         self.next_outbound_session_id += 1;
         Ok(outbound_session_id)
     }
+
+    fn dial(&mut self, _peer_id: PeerId) -> Result<(), libp2p::swarm::DialError> {
+        unimplemented!("MockSwarm::dial not implemented")
+    }
 }
 
 #[derive(Default)]
