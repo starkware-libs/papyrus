@@ -25,6 +25,12 @@ use crate::{NetworkConfig, Query, ResponseReceivers, ResponseSenders};
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SyncSubscriberChannels = (Receiver<Query>, ResponseSenders);
 
+#[derive(thiserror::Error, Debug)]
+pub enum NetworkError {
+    #[error(transparent)]
+    DialError(#[from] libp2p::swarm::DialError),
+}
+
 pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     swarm: SwarmT,
     db_executor: DBExecutorT,
@@ -36,7 +42,13 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
-    pub async fn run(mut self) {
+    pub async fn run(mut self) -> Result<(), NetworkError> {
+        if let Some(peer_id) = self.peer_id {
+            debug!("Starting network manager with peer id: {peer_id:?}");
+            self.swarm.dial(peer_id)?;
+        } else {
+            debug!("Starting network manager without peer id");
+        }
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
