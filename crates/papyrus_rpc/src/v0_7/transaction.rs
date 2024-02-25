@@ -2,7 +2,7 @@
 #[path = "transaction_test.rs"]
 mod transaction_test;
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::sync::Arc;
 
@@ -98,6 +98,7 @@ pub enum TransactionVersion3 {
 pub enum Transactions {
     Hashes(Vec<TransactionHash>),
     Full(Vec<TransactionWithHash>),
+    FullWithReceipts(Vec<TransactionWithReceipt>),
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
@@ -511,6 +512,12 @@ pub struct TransactionWithHash {
     pub transaction: Transaction,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionWithReceipt {
+    pub receipt: TransactionReceiptInBlock,
+    pub transaction: Transaction,
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum Transaction {
@@ -524,6 +531,26 @@ pub enum Transaction {
     Invoke(InvokeTransaction),
     #[serde(rename = "L1_HANDLER")]
     L1Handler(L1HandlerTransaction),
+}
+
+impl Transaction {
+    pub fn version(&self) -> TransactionVersion {
+        match self {
+            Self::Declare(DeclareTransaction::Version0(_))
+            | Self::Invoke(InvokeTransaction::Version0(_)) => TransactionVersion::ZERO,
+            Self::Declare(DeclareTransaction::Version1(_))
+            | Self::Invoke(InvokeTransaction::Version1(_))
+            | Self::DeployAccount(DeployAccountTransaction::Version1(_)) => TransactionVersion::ONE,
+            Self::Declare(DeclareTransaction::Version2(_)) => TransactionVersion::TWO,
+            Self::Declare(DeclareTransaction::Version3(_))
+            | Self::Invoke(InvokeTransaction::Version3(_))
+            | Self::DeployAccount(DeployAccountTransaction::Version3(_)) => {
+                TransactionVersion::THREE
+            }
+            Self::Deploy(tx) => tx.version,
+            Self::L1Handler(tx) => tx.version,
+        }
+    }
 }
 
 impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
@@ -620,7 +647,7 @@ impl From<BlockStatus> for TransactionFinalityStatus {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(untagged)]
 pub enum GeneralTransactionReceipt {
     TransactionReceipt(TransactionReceipt),
@@ -642,7 +669,41 @@ impl GeneralTransactionReceipt {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+impl From<GeneralTransactionReceipt> for TransactionReceiptInBlock {
+    fn from(value: GeneralTransactionReceipt) -> Self {
+        match value {
+            GeneralTransactionReceipt::TransactionReceipt(receipt) => Self {
+                finality_status: receipt.finality_status,
+                transaction_hash: receipt.transaction_hash,
+                output: receipt.output,
+            },
+            GeneralTransactionReceipt::PendingTransactionReceipt(receipt) => Self {
+                finality_status: match receipt.finality_status {
+                    PendingTransactionFinalityStatus::AcceptedOnL2 => {
+                        TransactionFinalityStatus::AcceptedOnL2
+                    }
+                },
+                transaction_hash: receipt.transaction_hash,
+                output: match receipt.output {
+                    PendingTransactionOutput::DeployAccount(deploy_account_output) => {
+                        TransactionOutput::DeployAccount(deploy_account_output)
+                    }
+                    PendingTransactionOutput::Declare(declare_output) => {
+                        TransactionOutput::Declare(declare_output)
+                    }
+                    PendingTransactionOutput::Invoke(invoke_output) => {
+                        TransactionOutput::Invoke(invoke_output)
+                    }
+                    PendingTransactionOutput::L1Handler(l1_handler_output) => {
+                        TransactionOutput::L1Handler(l1_handler_output)
+                    }
+                },
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct TransactionReceipt {
     pub finality_status: TransactionFinalityStatus,
     pub transaction_hash: TransactionHash,
@@ -652,7 +713,7 @@ pub struct TransactionReceipt {
     pub output: TransactionOutput,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct PendingTransactionReceipt {
     pub finality_status: PendingTransactionFinalityStatus,
     pub transaction_hash: TransactionHash,
@@ -660,7 +721,15 @@ pub struct PendingTransactionReceipt {
     pub output: PendingTransactionOutput,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct TransactionReceiptInBlock {
+    pub finality_status: TransactionFinalityStatus,
+    pub transaction_hash: TransactionHash,
+    #[serde(flatten)]
+    pub output: TransactionOutput,
+}
+
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 pub enum TransactionOutput {
     #[serde(rename = "DECLARE")]
@@ -675,7 +744,7 @@ pub enum TransactionOutput {
     L1Handler(L1HandlerTransactionOutput),
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct FeePayment {
     pub amount: Fee,
     pub unit: PriceUnit,
@@ -683,7 +752,7 @@ pub struct FeePayment {
 
 /// A declare transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeclareTransactionOutput {
     pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
@@ -695,7 +764,7 @@ pub struct DeclareTransactionOutput {
 
 /// A deploy-account transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployAccountTransactionOutput {
     pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
@@ -708,7 +777,7 @@ pub struct DeployAccountTransactionOutput {
 
 /// A deploy transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct DeployTransactionOutput {
     pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
@@ -721,7 +790,7 @@ pub struct DeployTransactionOutput {
 
 /// An invoke transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct InvokeTransactionOutput {
     pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
@@ -733,7 +802,7 @@ pub struct InvokeTransactionOutput {
 
 /// An L1 handler transaction output.
 // Note: execution_resources is not included in the output because it is not used in this version.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct L1HandlerTransactionOutput {
     pub actual_fee: FeePayment,
     pub messages_sent: Vec<MessageToL1>,
@@ -746,7 +815,7 @@ pub struct L1HandlerTransactionOutput {
 
 // Note: This is not the same as the Builtins in starknet_api, the serialization of SegmentArena is
 // different. TODO(yair): remove this once a newer version of the API is published.
-#[derive(Hash, Debug, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub enum Builtin {
     #[serde(rename = "range_check_builtin_applications")]
     RangeCheck,
@@ -782,11 +851,12 @@ impl From<starknet_api::transaction::Builtin> for Builtin {
 }
 
 // Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ExecutionResources {
     pub steps: u64,
     #[serde(flatten)]
-    pub builtin_instance_counter: HashMap<Builtin, u64>,
+    // BTreeMap implements Ord.
+    pub builtin_instance_counter: BTreeMap<Builtin, u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memory_holes: Option<u64>,
 }
@@ -811,7 +881,7 @@ impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources 
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 #[serde(tag = "type")]
 // Applying deny_unknown_fields on the inner type instead of on PendingTransactionReceipt because
 // of a bug that makes deny_unknown_fields not work well with flatten:
@@ -1064,7 +1134,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 
 /// The hash of a L1 -> L2 message.
 // The hash is Keccak256, so it doesn't necessarily fit in a StarkFelt.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub struct L1L2MsgHash(pub [u8; 32]);
 
 impl Display for L1L2MsgHash {
