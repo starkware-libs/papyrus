@@ -160,7 +160,7 @@ async fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReade
     let Some(network_config) = config else { return pending().await };
     let network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
-    network_manager.run().await
+    network_manager.run().await.expect("network manager failed");
 }
 
 // TODO(yair): add dynamic level filtering.
