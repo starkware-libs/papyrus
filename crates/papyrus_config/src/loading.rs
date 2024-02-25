@@ -170,8 +170,19 @@ pub(crate) fn update_optional_values(config_map: &mut BTreeMap<ParamPath, Value>
     config_map.retain(|param_path, _| {
         !any(&none_params, |none_param| param_path.starts_with(none_param))
     });
-    for none_param in none_params {
-        config_map.insert(none_param, Value::Null);
+
+    // Set null for the None params.
+    for none_param in &none_params {
+        let mut is_nested_in_outer_none_config = false;
+        for other_none_param in &none_params {
+            if none_param.starts_with(other_none_param) && none_param != other_none_param {
+                is_nested_in_outer_none_config = true;
+            }
+        }
+        if is_nested_in_outer_none_config {
+            continue;
+        }
+        config_map.insert(none_param.clone(), Value::Null);
     }
 }
 
