@@ -88,6 +88,13 @@ pub trait JsonRpc {
     #[method(name = "getBlockWithTxs")]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
 
+    /// Gets block information with full transactions given a block identifier.
+    #[method(name = "getBlockWithReceipts")]
+    async fn get_block_w_full_transactions_and_receipts(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Block>;
+
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
     async fn get_storage_at(
