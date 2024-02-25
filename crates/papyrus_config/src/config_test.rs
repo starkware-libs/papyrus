@@ -442,3 +442,131 @@ fn test_required_param_from_file() {
     let param_path = load_required_param_path(args);
     assert_eq!(param_path, "custom value");
 }
+
+#[test]
+fn deeply_nested_optionals() {
+    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
+    struct Level0 {
+        level0_value: u8,
+        level1: Option<Level1>,
+    }
+
+    impl SerializeConfig for Level0 {
+        fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+            let mut res = BTreeMap::from([ser_param(
+                "level0_value",
+                &self.level0_value,
+                "This is level0_value.",
+                ParamPrivacyInput::Public,
+            )]);
+            res.extend(ser_optional_sub_config(&self.level1, "level1"));
+            res
+        }
+    }
+
+    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
+    struct Level1 {
+        pub level1_value: u8,
+        pub level2: Option<Level2>,
+    }
+
+    impl SerializeConfig for Level1 {
+        fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+            let mut res = BTreeMap::from([ser_param(
+                "level1_value",
+                &self.level1_value,
+                "This is level1_value.",
+                ParamPrivacyInput::Public,
+            )]);
+            res.extend(ser_optional_sub_config(&self.level2, "level2"));
+            res
+        }
+    }
+
+    #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
+    struct Level2 {
+        pub level2_value: Option<u8>,
+    }
+
+    impl SerializeConfig for Level2 {
+        fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+            ser_optional_param(
+                &self.level2_value,
+                1,
+                "level2_value",
+                "This is level2_value.",
+                ParamPrivacyInput::Public,
+            )
+        }
+    }
+
+    let dir = TempDir::new().unwrap();
+    let file_path = dir.path().join("config2.json");
+    Level0 { level0_value: 1, level1: None }
+        .dump_to_file(&vec![], file_path.to_str().unwrap())
+        .unwrap();
+
+    let l0 = load_and_process_config::<Level0>(
+        File::open(file_path.clone()).unwrap(),
+        Command::new("Testing"),
+        Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(l0, Level0 { level0_value: 1, level1: None });
+
+    let l1 = load_and_process_config::<Level0>(
+        File::open(file_path.clone()).unwrap(),
+        Command::new("Testing"),
+        vec!["Testing".to_owned(), "--level1.#is_none".to_owned(), "false".to_owned()],
+    )
+    .unwrap();
+    assert_eq!(
+        l1,
+        Level0 { level0_value: 1, level1: Some(Level1 { level1_value: 0, level2: None }) }
+    );
+
+    let l2 = load_and_process_config::<Level0>(
+        File::open(file_path.clone()).unwrap(),
+        Command::new("Testing"),
+        vec![
+            "Testing".to_owned(),
+            "--level1.#is_none".to_owned(),
+            "false".to_owned(),
+            "--level1.level2.#is_none".to_owned(),
+            "false".to_owned(),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        l2,
+        Level0 {
+            level0_value: 1,
+            level1: Some(Level1 { level1_value: 0, level2: Some(Level2 { level2_value: None }) }),
+        }
+    );
+
+    let l2_value = load_and_process_config::<Level0>(
+        File::open(file_path).unwrap(),
+        Command::new("Testing"),
+        vec![
+            "Testing".to_owned(),
+            "--level1.#is_none".to_owned(),
+            "false".to_owned(),
+            "--level1.level2.#is_none".to_owned(),
+            "false".to_owned(),
+            "--level1.level2.level2_value.#is_none".to_owned(),
+            "false".to_owned(),
+        ],
+    )
+    .unwrap();
+    assert_eq!(
+        l2_value,
+        Level0 {
+            level0_value: 1,
+            level1: Some(Level1 {
+                level1_value: 0,
+                level2: Some(Level2 { level2_value: Some(1) }),
+            }),
+        }
+    );
+}
