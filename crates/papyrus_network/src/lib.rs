@@ -11,12 +11,14 @@ pub mod streamed_data;
 #[cfg(test)]
 mod test_utils;
 use std::collections::BTreeMap;
+use std::str::FromStr;
 use std::time::Duration;
 use std::usize;
 
 use futures::channel::mpsc::{Receiver, Sender};
+use libp2p::PeerId;
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
@@ -30,6 +32,7 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
+    pub peer_id: Option<PeerId>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
@@ -88,17 +91,17 @@ struct ResponseSenders {
 
 impl SerializeConfig for NetworkConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([
+        let mut config = BTreeMap::from_iter([
             ser_param(
                 "tcp_port",
                 &self.tcp_port,
-                "The port that the peer listens on for incoming tcp connections.",
+                "The port that the node listens on for incoming tcp connections.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
                 "quic_port",
                 &self.quic_port,
-                "The port that the peer listens on for incoming quic connections.",
+                "The port that the node listens on for incoming quic connections.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
@@ -120,7 +123,17 @@ impl SerializeConfig for NetworkConfig {
                 "Size of the buffer for headers read from the storage.",
                 ParamPrivacyInput::Public,
             ),
-        ])
+        ]);
+        let peer_id_example = PeerId::from_str("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
+            .expect("failed to parse peer id");
+        config.extend(ser_optional_param(
+                &self.peer_id,
+                peer_id_example,
+                "peer_id",
+                "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+                ParamPrivacyInput::Public,
+            ));
+        config
     }
 }
 
@@ -132,6 +145,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
+            peer_id: None,
         }
     }
 }

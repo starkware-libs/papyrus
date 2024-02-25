@@ -32,6 +32,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SyncSubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
+    peer_id: Option<PeerId>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
@@ -52,6 +53,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
+        peer_id: Option<PeerId>,
     ) -> Self {
         Self {
             swarm,
@@ -60,6 +62,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
+            peer_id,
         }
     }
 
@@ -174,8 +177,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
-        // TODO: get peer id somehow.
-        let peer_id = PeerId::random();
+        let peer_id = self.peer_id.expect("cannot send query without peer id");
         let internal_query = query.into();
         match self.swarm.send_query(internal_query, peer_id) {
             Ok(outbound_session_id) => {
@@ -202,6 +204,7 @@ impl NetworkManager {
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
+            peer_id,
         } = config;
 
         let listen_addresses = vec![
@@ -215,7 +218,7 @@ impl NetworkManager {
         );
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
-        Self::generic_new(swarm, db_executor, header_buffer_size)
+        Self::generic_new(swarm, db_executor, header_buffer_size, peer_id)
     }
 
     // TODO(shahak): Move this to the constructor and add the address to the config once we have
