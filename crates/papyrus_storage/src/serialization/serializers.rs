@@ -154,7 +154,6 @@ auto_storage_serde! {
         pub n_transactions: usize,
         pub n_events: usize,
     }
-    pub struct BlockNumber(pub u64);
     pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {
         Pending = 0,
@@ -416,7 +415,6 @@ auto_storage_serde! {
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
-    pub struct TransactionOffsetInBlock(pub usize);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version(pub u32);
@@ -876,6 +874,40 @@ impl StorageSerde for BigUint {
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let bytes_be = Vec::<u8>::deserialize_from(bytes)?;
         Some(BigUint::from_bytes_be(bytes_be.as_slice()))
+    }
+}
+
+////////////////////////////////////////////////////////////////////////
+//  Custom serialization for storage reduction.
+////////////////////////////////////////////////////////////////////////
+// TODO(dvir): remove this when BlockNumber will be u32.
+impl StorageSerde for BlockNumber {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        (self.0 as u32).serialize_into(res)
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(BlockNumber(u32::deserialize_from(bytes)? as u64))
+    }
+}
+
+// This serialization write the offset as 3 bytes, which means that the maximum offset is ~16
+// million (1<<24 bytes).
+impl StorageSerde for TransactionOffsetInBlock {
+    fn serialize_into(
+        &self,
+        res: &mut impl std::io::Write,
+    ) -> Result<(), StorageSerdeError> {
+        let bytes = &self.0.to_be_bytes();
+        res.write_all(&bytes[5..])?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let mut arr = [0u8; 8];
+        bytes.read_exact(&mut arr[5..]).ok()?;
+        let index = usize::from_be_bytes(arr);
+        Some(Self(index))
     }
 }
 
