@@ -45,5 +45,5 @@ async fn main() {
     if let Some(dial_address) = args.dial_address.as_ref() {
         network_manager.dial(dial_address);
     }
-    network_manager.run().await;
+    network_manager.run().await.expect("Network manager failed");
 }
