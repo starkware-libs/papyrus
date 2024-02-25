@@ -148,11 +148,13 @@ use super::super::transaction::{
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
+    Transaction,
     TransactionFinalityStatus,
     TransactionOutput,
     TransactionReceipt,
     TransactionStatus,
     TransactionWithHash,
+    TransactionWithReceipt,
     Transactions,
     TypedDeployAccountTransaction,
     TypedInvokeTransaction,
@@ -167,6 +169,7 @@ use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
 use crate::test_utils::{
+    call_and_validate_schema_for_result,
     call_api_then_assert_and_validate_schema_for_err,
     call_api_then_assert_and_validate_schema_for_result,
     get_method_names_from_spec,
@@ -476,7 +479,6 @@ async fn get_block_transaction_count() {
 
 #[tokio::test]
 async fn get_block_w_full_transactions() {
-    // TODO(omri): Add test for pending block.
     let method_name = "starknet_V0_7_getBlockWithTxs";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
@@ -650,6 +652,202 @@ async fn get_block_w_full_transactions() {
     match res_block.transactions {
         Transactions::Hashes(transactions) => assert_eq!(transactions.len(), 0),
         Transactions::Full(transactions) => assert_eq!(transactions.len(), 0),
+        Transactions::FullWithReceipts(transactions) => assert_eq!(transactions.len(), 0),
+    };
+}
+
+#[tokio::test]
+async fn get_block_w_full_transactions_and_receipts() {
+    let method_name = "starknet_V0_7_getBlockWithReceipts";
+    let pending_data = get_test_pending_data();
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerImpl,
+    >(None, None, Some(pending_data.clone()), None, None);
+
+    let mut block = get_test_block(1, None, None, None);
+    let block_hash = BlockHash(random::<u64>().into());
+    let sequencer_address = SequencerContractAddress(random::<u64>().into());
+    let timestamp = BlockTimestamp(random::<u64>());
+    let starknet_version = StarknetVersion("test".to_owned());
+    let block_number = block.header.block_number;
+    block.header.block_hash = block_hash;
+    block.header.sequencer = sequencer_address;
+    block.header.timestamp = timestamp;
+    block.header.starknet_version = starknet_version.clone();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block.header.block_number, &block.header)
+        .unwrap()
+        .append_body(block.header.block_number, block.body.clone())
+        .unwrap()
+        .append_state_diff(
+            block.header.block_number,
+            starknet_api::state::StateDiff::default(),
+            IndexMap::new(),
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let expected_transaction = block.body.transactions[0].clone().try_into().unwrap();
+    let expected_transaction_hash = block.body.transaction_hashes[0];
+    let expected_block_header = GeneralBlockHeader::BlockHeader(block.header.into());
+    let expected_status = Some(BlockStatus::AcceptedOnL2);
+
+    // Get block by hash.
+    let block = call_and_validate_schema_for_result::<_, Block>(
+        &module,
+        method_name,
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash)))],
+        &VERSION,
+        SpecFile::StarknetApiOpenrpc,
+    )
+    .await;
+    assert_eq!(block.header, expected_block_header);
+    assert_eq!(block.status, expected_status);
+    match block.transactions {
+        Transactions::FullWithReceipts(transactions_with_receipts) => {
+            assert_eq!(transactions_with_receipts.len(), 1);
+            assert_eq!(transactions_with_receipts[0].transaction, expected_transaction);
+            assert_eq!(
+                transactions_with_receipts[0].receipt.transaction_hash,
+                expected_transaction_hash,
+            );
+        }
+        _ => panic!("Unexpected transactions type {:?}", block.transactions),
+    }
+
+    // Get block by number.
+    let block = module
+        .call::<_, Block>(
+            method_name,
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(block_number))],
+        )
+        .await
+        .unwrap();
+    assert_eq!(block.header, expected_block_header);
+
+    // Ask for the latest block.
+    let block = module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Latest)]).await.unwrap();
+    assert_eq!(block.header, expected_block_header);
+
+    // Ask for a block that was accepted on L1.
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .update_base_layer_block_marker(&block_number.next())
+        .unwrap()
+        .commit()
+        .unwrap();
+    let block = module
+        .call::<_, Block>(method_name, [BlockId::HashOrNumber(BlockHashOrNumber::Hash(block_hash))])
+        .await
+        .unwrap();
+    assert_eq!(block.status, Some(BlockStatus::AcceptedOnL1));
+
+    // Ask for an invalid block hash.
+    let err = module
+        .call::<_, Block>(
+            method_name,
+            [BlockId::HashOrNumber(BlockHashOrNumber::Hash(BlockHash(stark_felt!(
+                "0x642b629ad8ce233b55798c83bb629a59bf0a0092f67da28d6d66776680d5484"
+            ))))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Ask for an invalid block number.
+    let err = module
+        .call::<_, Block>(
+            method_name,
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(1)))],
+        )
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
+
+    // Get pending block.
+    let mut rng = get_rng();
+    let (client_transactions, client_receipts, rpc_transactions, rpc_receipts): (
+        Vec<_>,
+        Vec<_>,
+        Vec<_>,
+        Vec<_>,
+    ) = itertools::multiunzip(
+        iter::repeat_with(|| {
+            generate_client_transaction_client_receipt_rpc_transaction_and_rpc_receipt(&mut rng)
+        })
+        .take(3),
+    );
+    let pending_sequencer_address = SequencerContractAddress(random::<u64>().into());
+    let pending_timestamp = BlockTimestamp(random::<u64>());
+    let pending_l1_gas_price = GasPricePerToken {
+        price_in_wei: GasPrice(random::<u128>()),
+        price_in_fri: GasPrice(random::<u128>()),
+    };
+    let expected_pending_block = Block {
+        header: GeneralBlockHeader::PendingBlockHeader(PendingBlockHeader {
+            parent_hash: block_hash,
+            sequencer_address: pending_sequencer_address,
+            timestamp: pending_timestamp,
+            l1_gas_price: ResourcePrice {
+                price_in_wei: pending_l1_gas_price.price_in_wei,
+                price_in_fri: pending_l1_gas_price.price_in_fri,
+            },
+            starknet_version: starknet_version.0.clone(),
+        }),
+        status: None,
+        transactions: Transactions::FullWithReceipts(
+            rpc_transactions
+                .into_iter()
+                .zip(rpc_receipts.into_iter())
+                .map(|(transaction, receipt)| TransactionWithReceipt {
+                    receipt: GeneralTransactionReceipt::PendingTransactionReceipt(receipt).into(),
+                    transaction,
+                })
+                .collect(),
+        ),
+    };
+    {
+        let pending_block = &mut pending_data.write().await.block;
+
+        pending_block.transactions_mutable().extend(client_transactions);
+        pending_block.transaction_receipts_mutable().extend(client_receipts);
+        *pending_block.parent_block_hash_mutable() = block_hash;
+        *pending_block.timestamp_mutable() = pending_timestamp;
+        *pending_block.sequencer_address_mutable() = pending_sequencer_address;
+        pending_block.set_l1_gas_price(&pending_l1_gas_price);
+        *pending_block.starknet_version_mutable() = starknet_version.0;
+    }
+    // Using call_api_then_assert_and_validate_schema_for_result again in order to validate the
+    // schema for pending block too.
+    call_api_then_assert_and_validate_schema_for_result::<_, Block>(
+        &module,
+        method_name,
+        vec![Box::new(BlockId::Tag(Tag::Pending))],
+        &VERSION,
+        SpecFile::StarknetApiOpenrpc,
+        &expected_pending_block,
+    )
+    .await;
+
+    // Get pending block when it's not up to date.
+    *pending_data.write().await.block.parent_block_hash_mutable() =
+        BlockHash(random::<u64>().into());
+    let res_block =
+        module.call::<_, Block>(method_name, [BlockId::Tag(Tag::Pending)]).await.unwrap();
+    let GeneralBlockHeader::PendingBlockHeader(pending_block_header) = res_block.header else {
+        panic!("Unexpected block_header type. Expected PendingBlockHeader.")
+    };
+    assert_eq!(pending_block_header.parent_hash, block_hash);
+    assert_eq!(pending_block_header.sequencer_address, sequencer_address);
+    assert_eq!(pending_block_header.timestamp, timestamp);
+    match res_block.transactions {
+        Transactions::Hashes(transactions) => assert_eq!(transactions.len(), 0),
+        Transactions::Full(transactions) => assert_eq!(transactions.len(), 0),
+        Transactions::FullWithReceipts(transactions) => assert_eq!(transactions.len(), 0),
     };
 }
 
@@ -829,6 +1027,7 @@ async fn get_block_w_transaction_hashes() {
     match res_block.transactions {
         Transactions::Hashes(transactions) => assert_eq!(transactions.len(), 0),
         Transactions::Full(transactions) => assert_eq!(transactions.len(), 0),
+        Transactions::FullWithReceipts(transactions) => assert_eq!(transactions.len(), 0),
     };
 }
 
@@ -1052,8 +1251,8 @@ async fn get_transaction_status() {
 
     // Add a pending transaction and ask for its status.
     let mut rng = get_rng();
-    let (client_transaction, client_transaction_receipt, expected_receipt) =
-        generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
+    let (client_transaction, client_transaction_receipt, _, expected_receipt) =
+        generate_client_transaction_client_receipt_rpc_transaction_and_rpc_receipt(&mut rng);
     let expected_status = TransactionStatus {
         finality_status: TransactionFinalityStatus::AcceptedOnL2,
         execution_status: expected_receipt.output.execution_status().clone(),
@@ -1183,8 +1382,8 @@ async fn get_transaction_receipt() {
 
     // Add a pending transaction and ask for its receipt.
     let mut rng = get_rng();
-    let (client_transaction, client_transaction_receipt, expected_receipt) =
-        generate_client_transaction_client_receipt_and_rpc_receipt(&mut rng);
+    let (client_transaction, client_transaction_receipt, _, expected_receipt) =
+        generate_client_transaction_client_receipt_rpc_transaction_and_rpc_receipt(&mut rng);
 
     {
         let pending_block = &mut pending_data.write().await.block;
@@ -1907,9 +2106,9 @@ async fn get_storage_at() {
     assert_matches!(err, Error::Call(err) if err == BLOCK_NOT_FOUND.into());
 }
 
-fn generate_client_transaction_client_receipt_and_rpc_receipt(
+fn generate_client_transaction_client_receipt_rpc_transaction_and_rpc_receipt(
     rng: &mut ChaCha8Rng,
-) -> (ClientTransaction, ClientTransactionReceipt, PendingTransactionReceipt) {
+) -> (ClientTransaction, ClientTransactionReceipt, Transaction, PendingTransactionReceipt) {
     let pending_transaction_hash = TransactionHash(StarkHash::from(rng.next_u64()));
     let mut client_transaction_receipt = ClientTransactionReceipt::get_test_instance(rng);
     client_transaction_receipt.transaction_hash = pending_transaction_hash;
@@ -1918,8 +2117,9 @@ fn generate_client_transaction_client_receipt_and_rpc_receipt(
     client_transaction_receipt.execution_resources.builtin_instance_counter.retain(|_, v| *v > 0);
     // Generating a transaction until we receive a transaction that can have pending output (i.e a
     // non-deploy transaction).
-    let (mut client_transaction, output) = loop {
-        let (client_transaction, _) = generate_client_transaction_and_rpc_transaction(rng);
+    let (mut client_transaction, rpc_transaction, output) = loop {
+        let (client_transaction, rpc_transaction_with_hash) =
+            generate_client_transaction_and_rpc_transaction(rng);
         let starknet_api_output = client_transaction_receipt
             .clone()
             .into_starknet_api_transaction_output(&client_transaction);
@@ -1937,12 +2137,14 @@ fn generate_client_transaction_client_receipt_and_rpc_receipt(
         let Ok(output) = maybe_output else {
             continue;
         };
-        break (client_transaction, output);
+        break (client_transaction, rpc_transaction_with_hash.transaction, output);
     };
+    // rpc_transaction contains no hash so no need to change it.
     *client_transaction.transaction_hash_mut() = pending_transaction_hash;
     (
         client_transaction,
         client_transaction_receipt,
+        rpc_transaction,
         PendingTransactionReceipt {
             finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
             transaction_hash: pending_transaction_hash,

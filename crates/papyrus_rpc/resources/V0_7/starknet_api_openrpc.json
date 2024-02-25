@@ -96,6 +96,43 @@
             ]
         },
         {
+            "name": "starknet_getBlockWithReceipts",
+            "summary": "Get block information with full transactions and receipts given the block id",
+            "params": [
+                {
+                    "name": "block_id",
+                    "description": "The hash of the requested block, or number (height) of the requested block, or a block tag",
+                    "required": true,
+                    "schema": {
+                        "title": "Block id",
+                        "$ref": "#/components/schemas/BLOCK_ID"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "description": "The resulting block information with full transactions",
+                "schema": {
+                    "title": "Starknet get block with txs and receipts result",
+                    "oneOf": [
+                        {
+                            "title": "Block with transactions",
+                            "$ref": "#/components/schemas/BLOCK_WITH_RECEIPTS"
+                        },
+                        {
+                            "title": "Pending block with transactions",
+                            "$ref": "#/components/schemas/PENDING_BLOCK_WITH_RECEIPTS"
+                        }
+                    ]
+                }
+            },
+            "errors": [
+                {
+                    "$ref": "#/components/errors/BLOCK_NOT_FOUND"
+                }
+            ]
+        },
+        {
             "name": "starknet_getStateUpdate",
             "summary": "Get the information about the result of executing the requested block",
             "params": [
@@ -1372,6 +1409,38 @@
                     "transactions"
                 ]
             },
+            "BLOCK_BODY_WITH_RECEIPTS": {
+                "title": "Block body with transactions and receipts",
+                "type": "object",
+                "properties": {
+                    "transactions": {
+                        "title": "Transactions",
+                        "description": "The transactions in this block",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "title": "transaction and receipt",
+                            "properties": {
+                                "transaction": {
+                                    "title": "transaction",
+                                    "$ref": "#/components/schemas/TXN"
+                                },
+                                "receipt": {
+                                    "title": "receipt",
+                                    "$ref": "#/components/schemas/TXN_RECEIPT_IN_BLOCK"
+                                }
+                            },
+                            "required": [
+                                "transaction",
+                                "receipt"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "transactions"
+                ]
+            },
             "BLOCK_HEADER": {
                 "title": "Block header",
                 "type": "object",
@@ -1528,6 +1597,33 @@
                     }
                 ]
             },
+            "BLOCK_WITH_RECEIPTS": {
+                "title": "Block with transactions and receipts",
+                "description": "The block object",
+                "allOf": [
+                    {
+                        "title": "block with txs",
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "title": "Status",
+                                "$ref": "#/components/schemas/BLOCK_STATUS"
+                            }
+                        },
+                        "required": [
+                            "status"
+                        ]
+                    },
+                    {
+                        "title": "Block header",
+                        "$ref": "#/components/schemas/BLOCK_HEADER"
+                    },
+                    {
+                        "title": "Block body with transactions and receipts",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_RECEIPTS"
+                    }
+                ]
+            },
             "PENDING_BLOCK_WITH_TX_HASHES": {
                 "title": "Pending block with transaction hashes",
                 "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
@@ -1549,6 +1645,20 @@
                     {
                         "title": "Block body with transactions",
                         "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
+                    },
+                    {
+                        "title": "Pending block header",
+                        "$ref": "#/components/schemas/PENDING_BLOCK_HEADER"
+                    }
+                ]
+            },
+            "PENDING_BLOCK_WITH_RECEIPTS": {
+                "title": "Pending block with transactions and receipts",
+                "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
+                "allOf": [
+                    {
+                        "title": "Block body with transactions and receipts",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_RECEIPTS"
                     },
                     {
                         "title": "Pending block header",
@@ -2728,6 +2838,7 @@
                     },
                     "finality_status": {
                         "title": "Finality status",
+                        "description": "finality status of the tx, which is ACCEPTED_ON_L2 when included in a pending receipt, and can be ACCEPTED_ON_L1 when part of a getBlockWithReceipts response",
                         "$ref": "#/components/schemas/TXN_FINALITY_STATUS"
                     },
                     "block_hash": {
@@ -3083,6 +3194,10 @@
                     "$ref": "#/components/schemas/TXN_RECEIPT"
                 }
             },
+            "TXN_RECEIPT_IN_BLOCK": {
+                "title": "receipt in block",
+                "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
+            },
             "PENDING_COMMON_RECEIPT_PROPERTIES": {
                 "title": "Pending common receipt properties",
                 "description": "Common properties for a pending transaction receipt",
@@ -3121,11 +3236,7 @@
                     },
                     "finality_status": {
                         "title": "Finality status",
-                        "type": "string",
-                        "enum": [
-                            "ACCEPTED_ON_L2"
-                        ],
-                        "description": "The finality status of the transaction"
+                        "$ref": "#/components/schemas/TXN_FINALITY_STATUS"
                     },
                     "execution_status": {
                         "title": "Execution status",
