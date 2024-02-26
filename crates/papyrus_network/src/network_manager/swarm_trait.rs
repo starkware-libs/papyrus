@@ -1,6 +1,5 @@
-use std::str::FromStr;
-
 use futures::stream::Stream;
+use libp2p::multiaddr::Protocol;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
@@ -12,7 +11,7 @@ use crate::block_headers::behaviour::{
 };
 use crate::db_executor::Data;
 use crate::streamed_data::{InboundSessionId, OutboundSessionId};
-use crate::InternalQuery;
+use crate::{InternalQuery, PeerAddressConfig};
 pub type Event = SwarmEvent<<BlockHeadersBehaviour as NetworkBehaviour>::ToSwarm>;
 
 pub trait SwarmTrait: Stream<Item = Event> + Unpin {
@@ -28,7 +27,7 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
         peer_id: PeerId,
     ) -> Result<OutboundSessionId, PeerNotConnected>;
 
-    fn dial(&mut self, peer_id: PeerId) -> Result<(), DialError>;
+    fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError>;
 }
 
 impl SwarmTrait for Swarm<BlockHeadersBehaviour> {
@@ -48,10 +47,17 @@ impl SwarmTrait for Swarm<BlockHeadersBehaviour> {
         self.behaviour_mut().send_query(query, peer_id)
     }
 
-    fn dial(&mut self, peer_id: PeerId) -> Result<(), DialError> {
-        let addresses = vec![
-            Multiaddr::from_str("/ip4/127.0.0.1/tcp/10000").expect("string to multiaddr failed"),
-        ];
-        self.dial(DialOpts::peer_id(peer_id).addresses(addresses).build())
+    fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError> {
+        let address = peer
+            .ip
+            .parse::<Multiaddr>()
+            .expect("string to multiaddr failed")
+            .with(Protocol::Tcp(peer.tcp_port));
+
+        if let Some(peer_id) = peer.peer_id {
+            self.dial(DialOpts::peer_id(peer_id).addresses(vec![address]).build())
+        } else {
+            self.dial(DialOpts::unknown_peer_id().address(address).build())
+        }
     }
 }

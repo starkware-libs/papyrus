@@ -42,6 +42,8 @@ async fn main() {
         },
         storage_reader,
     );
+    // TODO: use peer config from the network config and remove the dial function from the network
+    // manager (use the dial within the run function instead of here).
     if let Some(dial_address) = args.dial_address.as_ref() {
         network_manager.dial(dial_address);
     }
