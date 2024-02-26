@@ -1,9 +1,18 @@
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
-use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
-use crate::version::{StorageVersionError, Version, VersionStorageReader, VersionStorageWriter};
+use crate::db::table_types::Table;
+use crate::test_utils::{get_test_config, get_test_storage, get_test_storage_by_scope};
+use crate::version::{
+    StorageVersionError,
+    Version,
+    VersionStorageReader,
+    VersionStorageWriter,
+    VERSION_BLOCKS_KEY,
+    VERSION_STATE_KEY,
+};
 use crate::{
+    open_storage,
     set_version_if_needed,
     verify_storage_version,
     StorageError,
@@ -43,6 +52,30 @@ async fn version() {
         })
         if crate_version == higher_version && storage_version == higher_version
     );
+}
+
+#[tokio::test]
+async fn version_migration() {
+    let ((reader, mut writer), temp_dir) = get_test_storage();
+
+    // Set the storage version on a lower version.
+    let wtxn = writer.begin_rw_txn().unwrap();
+    let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
+    version_table.upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &Version(0)).unwrap();
+    version_table.upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &Version(0)).unwrap();
+    wtxn.commit().unwrap();
+    drop(reader);
+    drop(writer);
+
+    // Reopen the storage and verify the version.
+    let (mut config, _) = get_test_config(None);
+    config.db_config.path_prefix = temp_dir.path().to_path_buf();
+    let (reader, _) = open_storage(config).unwrap();
+
+    let version_state = reader.begin_ro_txn().unwrap().get_state_version().unwrap();
+    assert_eq!(version_state.unwrap(), STORAGE_VERSION_STATE);
+    let version_blocks = reader.begin_ro_txn().unwrap().get_blocks_version().unwrap();
+    assert_eq!(version_blocks.unwrap(), STORAGE_VERSION_BLOCKS);
 }
 
 #[test]
