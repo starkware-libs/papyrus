@@ -186,6 +186,23 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         );
         sync.run().await
     }
+
+    async fn run_p2p_sync(
+        p2p_sync_config: P2PSyncConfig,
+        storage_reader: StorageReader,
+        storage_writer: StorageWriter,
+        query_sender: Sender<Query>,
+        response_receivers: ResponseReceivers,
+    ) -> Result<(), P2PSyncError> {
+        let sync = P2PSync::new(
+            p2p_sync_config,
+            storage_reader,
+            storage_writer,
+            query_sender,
+            response_receivers,
+        );
+        sync.run().await
+    }
 }
 
 // type NetworkRunReturn =
