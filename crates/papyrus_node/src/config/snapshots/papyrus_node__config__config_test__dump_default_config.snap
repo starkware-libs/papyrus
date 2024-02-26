@@ -171,6 +171,25 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "p2p_sync.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
+  "p2p_sync.num_headers_per_query": {
+    "description": "The maximum amount of headers to ask from peers in each iteration.",
+    "value": {
+      "$serde_json::private::Number": "100"
+    },
+    "privacy": "Public"
+  },
+  "p2p_sync.query_timeout": {
+    "description": "Time in seconds to wait for query responses until we mark it as failed",
+    "value": {
+      "$serde_json::private::Number": "5"
+    },
+    "privacy": "Public"
+  },
   "rpc.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN",

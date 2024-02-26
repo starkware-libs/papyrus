@@ -8,8 +8,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use futures::channel::mpsc::Sender;
-use futures_util::future::BoxFuture;
-use futures_util::FutureExt;
+use futures::future::BoxFuture;
+use futures::FutureExt;
+use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
@@ -20,12 +21,13 @@ use papyrus_network::network_manager::NetworkError;
 use papyrus_network::{network_manager, NetworkConfig, Query, ResponseReceivers};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
+use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
 use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
-use papyrus_sync::sources::central::{CentralError, CentralSource};
+use papyrus_sync::sources::central::{CentralError, CentralSource, CentralSourceConfig};
 use papyrus_sync::sources::pending::PendingSource;
-use papyrus_sync::{StateSync, StateSyncError};
+use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::BlockHash;
 use starknet_api::hash::{StarkFelt, GENESIS_HASH};
 use starknet_api::stark_felt;
@@ -95,15 +97,36 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let network_handle = tokio::spawn(network_future);
 
     // Sync task.
-    let sync_future = run_sync(
-        config,
-        shared_highest_block,
-        pending_data,
-        pending_classes,
-        storage_reader.clone(),
-        storage_writer,
-    );
+    let (sync_future, p2p_sync_future) = match (config.sync, config.p2p_sync) {
+        (Some(_), Some(_)) => {
+            panic!("One of --sync.#is_none or --p2p_sync.#is_none must be turned on");
+        }
+        (Some(sync_config), None) => {
+            let configs = (sync_config, config.central, config.base_layer);
+            let storage = (storage_reader.clone(), storage_writer);
+            let sync_fut =
+                run_sync(configs, shared_highest_block, pending_data, pending_classes, storage);
+            (sync_fut.boxed(), pending().boxed())
+        }
+        (None, Some(p2p_sync_config)) => {
+            let (query_sender, response_receivers) = maybe_query_sender_and_response_receivers
+                .expect("If p2p sync is enabled, network needs to be enabled too");
+            (
+                pending().boxed(),
+                run_p2p_sync(
+                    p2p_sync_config,
+                    storage_reader.clone(),
+                    storage_writer,
+                    query_sender,
+                    response_receivers,
+                )
+                .boxed(),
+            )
+        }
+        (None, None) => (pending().boxed(), pending().boxed()),
+    };
     let sync_handle = tokio::spawn(sync_future);
+    let p2p_sync_handle = tokio::spawn(p2p_sync_future);
 
     tokio::select! {
         res = storage_metrics_handle => {
@@ -122,6 +145,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             error!("Sync stopped.");
             res??
         }
+        res = p2p_sync_handle => {
+            error!("P2P Sync stopped.");
+            res??
+        }
         res = network_handle => {
             error!("Network stopped.");
             res??
@@ -131,20 +158,20 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     return Ok(());
 
     async fn run_sync(
-        config: NodeConfig,
+        configs: (SyncConfig, CentralSourceConfig, EthereumBaseLayerConfig),
         shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
         pending_data: Arc<RwLock<PendingData>>,
         pending_classes: Arc<RwLock<PendingClasses>>,
-        storage_reader: StorageReader,
-        storage_writer: StorageWriter,
+        storage: (StorageReader, StorageWriter),
     ) -> Result<(), StateSyncError> {
-        let Some(sync_config) = config.sync else { return pending().await };
+        let (sync_config, central_config, base_layer_config) = configs;
+        let (storage_reader, storage_writer) = storage;
         let central_source =
-            CentralSource::new(config.central.clone(), VERSION_FULL, storage_reader.clone())
+            CentralSource::new(central_config.clone(), VERSION_FULL, storage_reader.clone())
                 .map_err(CentralError::ClientCreation)?;
-        let pending_source = PendingSource::new(config.central, VERSION_FULL)
+        let pending_source = PendingSource::new(central_config, VERSION_FULL)
             .map_err(CentralError::ClientCreation)?;
-        let base_layer_source = EthereumBaseLayerSource::new(config.base_layer)
+        let base_layer_source = EthereumBaseLayerSource::new(base_layer_config)
             .map_err(|e| BaseLayerSourceError::BaseLayerSourceCreationError(e.to_string()))?;
         let mut sync = StateSync::new(
             sync_config,

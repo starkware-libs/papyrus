@@ -10,13 +10,7 @@ use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
 use super::super::{
-    Config,
-    DataBound,
-    GenericEvent,
-    InboundSessionId,
-    OutboundSessionId,
-    QueryBound,
-    SessionId,
+    Config, DataBound, GenericEvent, InboundSessionId, OutboundSessionId, QueryBound, SessionId,
 };
 use super::{Behaviour, Event, SessionError};
 use crate::messages::protobuf;
