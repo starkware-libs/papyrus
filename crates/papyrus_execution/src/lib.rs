@@ -45,13 +45,12 @@ use blockifier::versioned_constants::VersionedConstants;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
 use execution_utils::{get_trace_constructor, induced_state_diff};
-use objects::{PriceUnit, TransactionSimulationOutput};
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockNumber, GasPrice};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
@@ -78,7 +77,13 @@ use starknet_api::{contract_address, patricia_key, StarknetApiError};
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
-use crate::objects::PendingData;
+use crate::objects::{
+    tx_execution_output_to_fee_estimation,
+    FeeEstimation,
+    PendingData,
+    PriceUnit,
+    TransactionSimulationOutput,
+};
 
 // TODO(yair): understand what it is and whether the use of this constant should change.
 const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
@@ -175,6 +180,8 @@ pub enum ExecutionError {
     StateError(#[from] blockifier::state::errors::StateError),
     #[error(transparent)]
     StorageError(#[from] StorageError),
+    #[error(transparent)]
+    TransactionFeeError(#[from] blockifier::transaction::errors::TransactionFeeError),
     #[error(
         "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
     )]
@@ -507,7 +514,7 @@ pub struct RevertedTransaction {
 
 /// Valid output for fee estimation for a series of transactions can be either a list of fees or the
 /// index and revert reason of the first reverted transaction.
-pub type FeeEstimationResult = Result<Vec<(GasPrice, Fee, PriceUnit)>, RevertedTransaction>;
+pub type FeeEstimationResult = Result<Vec<FeeEstimation>, RevertedTransaction>;
 
 /// Returns the fee estimation for a series of transactions.
 #[allow(clippy::too_many_arguments)]
@@ -533,30 +540,17 @@ pub fn estimate_fee(
         false,
         validate,
     )?;
-    Ok(txs_execution_info
-        .into_iter()
-        .enumerate()
-        .map(|(index, tx_execution_output)| {
-            // If the transaction reverted, fail the entire estimation.
-            if let Some(revert_reason) = tx_execution_output.execution_info.revert_error {
-                Err(RevertedTransaction { index, revert_reason })
-            } else {
-                let gas_price = match tx_execution_output.price_unit {
-                    PriceUnit::Wei => {
-                        GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
-                    }
-                    PriceUnit::Fri => {
-                        GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
-                    }
-                };
-                Ok((
-                    gas_price,
-                    tx_execution_output.execution_info.actual_fee,
-                    tx_execution_output.price_unit,
-                ))
-            }
-        })
-        .collect())
+    let mut result = Vec::new();
+    for (index, tx_execution_output) in txs_execution_info.into_iter().enumerate() {
+        // If the transaction reverted, fail the entire estimation.
+        if let Some(revert_reason) = tx_execution_output.execution_info.revert_error {
+            return Ok(Err(RevertedTransaction { index, revert_reason }));
+        } else {
+            result
+                .push(tx_execution_output_to_fee_estimation(&tx_execution_output, &block_context)?);
+        }
+    }
+    Ok(Ok(result))
 }
 
 struct TransactionExecutionOutput {
@@ -871,22 +865,13 @@ pub fn simulate_transactions(
         .into_iter()
         .zip(trace_constructors)
         .map(|(tx_execution_output, trace_constructor)| {
-            let fee = tx_execution_output.execution_info.actual_fee;
-            let gas_price = match tx_execution_output.price_unit {
-                PriceUnit::Wei => {
-                    GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
-                }
-                PriceUnit::Fri => {
-                    GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
-                }
-            };
+            let fee_estimation =
+                tx_execution_output_to_fee_estimation(&tx_execution_output, &block_context)?;
             match trace_constructor(tx_execution_output.execution_info) {
                 Ok(transaction_trace) => Ok(TransactionSimulationOutput {
                     transaction_trace,
                     induced_state_diff: tx_execution_output.induced_state_diff,
-                    gas_price,
-                    fee,
-                    price_unit: tx_execution_output.price_unit,
+                    fee_estimation,
                 }),
                 Err(e) => Err(e),
             }

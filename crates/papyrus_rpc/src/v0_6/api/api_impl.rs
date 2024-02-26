@@ -6,7 +6,10 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::PendingData as ExecutionPendingData;
+use papyrus_execution::objects::{
+    FeeEstimation as ExecutionFeeEstimate,
+    PendingData as ExecutionPendingData,
+};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -1037,7 +1040,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
+                .map(|ExecutionFeeEstimate { gas_price, overall_fee, unit, .. }| {
+                    FeeEstimate::from(gas_price, overall_fee, unit)
+                })
                 .collect()),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
@@ -1116,9 +1121,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .map(|simulation_output| SimulatedTransaction {
                 transaction_trace: simulation_output.transaction_trace.into(),
                 fee_estimation: FeeEstimate::from(
-                    simulation_output.gas_price,
-                    simulation_output.fee,
-                    simulation_output.price_unit,
+                    simulation_output.fee_estimation.gas_price,
+                    simulation_output.fee_estimation.overall_fee,
+                    simulation_output.fee_estimation.unit,
                 ),
             })
             .collect())
@@ -1455,12 +1460,14 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         fee_as_vec.len()
                     )));
                 }
-                let Some((gas_price, fee, unit)) = fee_as_vec.first() else {
+                let Some(ExecutionFeeEstimate { gas_price, overall_fee, unit, .. }) =
+                    fee_as_vec.first()
+                else {
                     return Err(internal_server_error(
                         "Expected a single fee, got an empty vector",
                     ));
                 };
-                Ok(FeeEstimate::from(*gas_price, *fee, *unit))
+                Ok(FeeEstimate::from(*gas_price, *overall_fee, *unit))
             }
             // Error in the execution of the contract.
             Ok(Err(reverted_tx)) => Err(JsonRpcError::<ContractError>::from(ContractError {

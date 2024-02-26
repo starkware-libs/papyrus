@@ -4,11 +4,11 @@ use std::path::PathBuf;
 
 /// Returns the storage key of a storage variable.
 pub use blockifier::abi::abi_utils::get_storage_var_address;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, GasPrice};
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, MessageToL1};
+use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, Fee, MessageToL1};
 use starknet_api::{contract_address, patricia_key};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
@@ -16,6 +16,7 @@ use crate::objects::{
     CallType,
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
+    FeeEstimation,
     FunctionCall,
     FunctionInvocation,
     FunctionInvocationResult,
@@ -69,7 +70,14 @@ auto_impl_get_test_instance! {
     pub struct L1HandlerTransactionTrace {
         pub function_invocation: FunctionInvocation,
     }
-
+    pub struct FeeEstimation {
+        pub gas_consumed: StarkFelt,
+        pub gas_price: GasPrice,
+        pub data_gas_consumed: StarkFelt,
+        pub data_gas_price: GasPrice,
+        pub overall_fee: Fee,
+        pub unit: PriceUnit,
+    }
     pub enum FunctionInvocationResult {
         Ok(FunctionInvocation) = 0,
         Err(RevertReason) = 1,
