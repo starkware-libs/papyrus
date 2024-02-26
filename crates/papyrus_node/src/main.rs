@@ -90,7 +90,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // P2P network.
-    let (network_future, _maybe_query_sender_and_response_receivers) =
+    let (network_future, maybe_query_sender_and_response_receivers) =
         run_network(config.network.clone(), storage_reader.clone());
     let network_handle = tokio::spawn(network_future);
 
