@@ -20,7 +20,9 @@ use crate::block_headers::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::block_headers::Event as BehaviourEvent;
 use crate::db_executor::{poll_query_execution_set, DBExecutor, DBExecutorError, Data, QueryId};
 use crate::streamed_data::{InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query, SignedBlockHeader};
+use crate::{
+    BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddress, Query, SignedBlockHeader,
+};
 
 #[derive(Default)]
 struct MockSwarm {
@@ -110,7 +112,7 @@ impl SwarmTrait for MockSwarm {
         Ok(outbound_session_id)
     }
 
-    fn dial(&mut self, _peer_id: PeerId) -> Result<(), libp2p::swarm::DialError> {
+    fn dial(&mut self, _peer_id: PeerAddress) -> Result<(), libp2p::swarm::DialError> {
         Ok(())
     }
 }
@@ -170,7 +172,7 @@ async fn register_subscriber_and_use_channels() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerId::random()),
+        Some(PeerAddress { peer_id: Some(PeerId::random()), ..Default::default() }),
     );
     // define query
     let query_limit = 5;
