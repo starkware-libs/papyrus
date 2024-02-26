@@ -1,6 +1,7 @@
 //! Execution objects.
 use std::collections::HashMap;
 
+use blockifier::context::BlockContext;
 use blockifier::execution::call_info::{
     CallInfo,
     OrderedEvent as BlockifierOrderedEvent,
@@ -8,6 +9,7 @@ use blockifier::execution::call_info::{
     Retdata as BlockifierRetdata,
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
+use blockifier::fee::fee_utils::calculate_tx_gas_vector;
 use blockifier::transaction::objects::{GasVector, TransactionExecutionInfo};
 use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME,
@@ -51,7 +53,7 @@ use starknet_api::transaction::{
     MessageToL1,
 };
 
-use crate::{ExecutionError, ExecutionResult};
+use crate::{ExecutionError, ExecutionResult, TransactionExecutionOutput};
 
 // TODO(yair): Move types to starknet_api.
 
@@ -62,12 +64,8 @@ pub struct TransactionSimulationOutput {
     pub transaction_trace: TransactionTrace,
     /// The state diff induced by the transaction.
     pub induced_state_diff: ThinStateDiff,
-    /// The gas price in the block context of the transaction execution.
-    pub gas_price: GasPrice,
-    /// The fee in the block context of the transaction execution.
-    pub fee: Fee,
-    /// The unit of the fee.
-    pub price_unit: PriceUnit,
+    /// The details of the fees charged by the transaction.
+    pub fee_estimation: FeeEstimation,
 }
 
 /// The execution trace of a transaction.
@@ -96,6 +94,26 @@ pub struct InvokeTransactionTrace {
     #[serde(skip_serializing_if = "Option::is_none")]
     /// The trace of the __fee_transfer__ call.
     pub fee_transfer_invocation: Option<FunctionInvocation>,
+}
+
+/// Output for successful fee estimation.
+// TODO(shahak): We assume that this struct has the same deserialization as the RPC specs v0.7.
+// Consider duplicating this struct inside the RPC crate.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct FeeEstimation {
+    /// Gas consumed by this transaction. This includes gas for DA in calldata mode.
+    pub gas_consumed: StarkFelt,
+    /// The gas price for execution and calldata DA.
+    pub gas_price: GasPrice,
+    /// Gas consumed by DA in blob mode.
+    pub data_gas_consumed: StarkFelt,
+    /// The gas price for DA blob.
+    pub data_gas_price: GasPrice,
+    /// The total amount of fee. This is equal to:
+    /// gas_consumed * gas_price + data_gas_consumed * data_gas_price.
+    pub overall_fee: Fee,
+    /// The unit in which the fee was paid (Wei/Fri).
+    pub unit: PriceUnit,
 }
 
 /// The reason for a reverted transaction.
@@ -136,6 +154,37 @@ impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
             },
         })
     }
+}
+
+pub(crate) fn tx_execution_output_to_fee_estimation(
+    tx_execution_output: &TransactionExecutionOutput,
+    block_context: &BlockContext,
+) -> ExecutionResult<FeeEstimation> {
+    let gas_prices = &block_context.block_info().gas_prices;
+    let (gas_price, data_gas_price) = match tx_execution_output.price_unit {
+        PriceUnit::Wei => (
+            GasPrice(gas_prices.eth_l1_gas_price.get()),
+            GasPrice(gas_prices.eth_l1_data_gas_price.get()),
+        ),
+        PriceUnit::Fri => (
+            GasPrice(gas_prices.strk_l1_gas_price.get()),
+            GasPrice(gas_prices.strk_l1_data_gas_price.get()),
+        ),
+    };
+
+    let gas_vector = calculate_tx_gas_vector(
+        &tx_execution_output.execution_info.actual_resources,
+        block_context.versioned_constants(),
+    )?;
+
+    Ok(FeeEstimation {
+        gas_consumed: gas_vector.l1_gas.into(),
+        gas_price,
+        data_gas_consumed: gas_vector.l1_data_gas.into(),
+        data_gas_price,
+        overall_fee: tx_execution_output.execution_info.actual_fee,
+        unit: tx_execution_output.price_unit,
+    })
 }
 
 /// The execution trace of a Declare transaction.

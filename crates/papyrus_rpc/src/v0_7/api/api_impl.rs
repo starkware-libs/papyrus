@@ -6,7 +6,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::PendingData as ExecutionPendingData;
+use papyrus_execution::objects::{FeeEstimation, PendingData as ExecutionPendingData};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -118,7 +118,6 @@ use super::{
     ContinuationToken,
     EventFilter,
     EventsChunk,
-    FeeEstimate,
     GatewayContractClass,
     JsonRpcV0_7Server as JsonRpcServer,
     SimulatedTransaction,
@@ -968,7 +967,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
         block_id: BlockId,
-    ) -> RpcResult<Vec<FeeEstimate>> {
+    ) -> RpcResult<Vec<FeeEstimation>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
 
@@ -1019,10 +1018,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match estimate_fee_result {
-            Ok(Ok(fees)) => Ok(fees
-                .into_iter()
-                .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
-                .collect()),
+            Ok(Ok(fees)) => Ok(fees),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
                     TransactionExecutionError {
@@ -1103,11 +1099,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                     simulation_output.induced_state_diff,
                 )
                     .into(),
-                fee_estimation: FeeEstimate::from(
-                    simulation_output.gas_price,
-                    simulation_output.fee,
-                    simulation_output.price_unit,
-                ),
+                fee_estimation: simulation_output.fee_estimation,
             })
             .collect())
     }
@@ -1387,7 +1379,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         message: MessageFromL1,
         block_id: BlockId,
-    ) -> RpcResult<FeeEstimate> {
+    ) -> RpcResult<FeeEstimation> {
         trace!("Estimating fee of message: {:#?}", message);
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
@@ -1438,19 +1430,19 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match estimate_fee_result {
-            Ok(Ok(fee_as_vec)) => {
+            Ok(Ok(mut fee_as_vec)) => {
                 if fee_as_vec.len() != 1 {
                     return Err(internal_server_error(format!(
                         "Expected a single fee, got {}",
                         fee_as_vec.len()
                     )));
                 }
-                let Some((gas_price, fee, unit)) = fee_as_vec.first() else {
+                let Some(fee_estimation) = fee_as_vec.pop() else {
                     return Err(internal_server_error(
                         "Expected a single fee, got an empty vector",
                     ));
                 };
-                Ok(FeeEstimate::from(*gas_price, *fee, *unit))
+                Ok(fee_estimation)
             }
             // Error in the execution of the contract.
             Ok(Err(reverted_tx)) => Err(JsonRpcError::<ContractError>::from(ContractError {
