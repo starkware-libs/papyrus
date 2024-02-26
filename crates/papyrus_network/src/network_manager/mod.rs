@@ -20,7 +20,7 @@ use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::streamed_data::InboundSessionId;
-use crate::{NetworkConfig, PeerAddress, Query, ResponseReceivers, ResponseSenders};
+use crate::{NetworkConfig, PeerAddressConfig, Query, ResponseReceivers, ResponseSenders};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SyncSubscriberChannels = (Receiver<Query>, ResponseSenders);
@@ -38,7 +38,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SyncSubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
-    peer: Option<PeerAddress>,
+    peer: Option<PeerAddressConfig>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
@@ -65,7 +65,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
-        peer: Option<PeerAddress>,
+        peer: Option<PeerAddressConfig>,
     ) -> Self {
         Self {
             swarm,
@@ -192,10 +192,10 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         let peer_id = self
             .peer
             .clone()
-            .expect("cannot send query without peer")
+            .expect("Cannot send query without peer")
             // TODO: get peer id from swarm after dial id not received in config.
             .peer_id
-            .expect("cannot send query without peer_id");
+            .expect("Cannot send query without peer_id");
         let internal_query = query.into();
         match self.swarm.send_query(internal_query, peer_id) {
             Ok(outbound_session_id) => {

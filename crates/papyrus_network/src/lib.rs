@@ -19,7 +19,10 @@ use futures::channel::mpsc::{Receiver, Sender};
 use libp2p::PeerId;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{
-    ser_optional_param, ser_optional_sub_config, ser_param, SerializeConfig,
+    ser_optional_param,
+    ser_optional_sub_config,
+    ser_param,
+    SerializeConfig,
 };
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
@@ -34,15 +37,16 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
-    pub peer: Option<PeerAddress>,
+    pub peer: Option<PeerAddressConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct PeerAddress {
+pub struct PeerAddressConfig {
     pub peer_id: Option<PeerId>,
     pub ip: String,
     pub tcp_port: u16,
-    // TODO: Add quic_port
+    // TODO: Add quic_port as optional, and make tcp_port optional as well while enforcing at least
+    // one of them to have value
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
@@ -152,7 +156,7 @@ impl Default for NetworkConfig {
     }
 }
 
-impl SerializeConfig for PeerAddress {
+impl SerializeConfig for PeerAddressConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut config = BTreeMap::from_iter([
             ser_param(
@@ -181,9 +185,9 @@ impl SerializeConfig for PeerAddress {
     }
 }
 
-impl Default for PeerAddress {
+impl Default for PeerAddressConfig {
     fn default() -> Self {
-        Self { peer_id: None, ip: format!("127.0.0.1"), tcp_port: 10002 }
+        Self { peer_id: None, ip: "127.0.0.1".to_string(), tcp_port: 10002 }
     }
 }
 
