@@ -15,10 +15,6 @@
     "sequencer": "0x1176a1bd84444c89232ec27754698e5d2e7e1a7f1539f12027f28b23ec9f3d8",
     "timestamp": 1693484880,
     "l1_da_mode": "CALLDATA",
-    "transaction_commitment": "0x0",
-    "event_commitment": "0x0",
-    "n_transactions": 0,
-    "n_events": 0,
     "starknet_version": "test"
   },
   "body": {

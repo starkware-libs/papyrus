@@ -41,6 +41,9 @@ tracing.workspace = true
 url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
+tempfile.workspace = true
+derive_more.workspace = true
+
 [dev-dependencies]
 assert-json-diff.workspace = true
 colored.workspace = true

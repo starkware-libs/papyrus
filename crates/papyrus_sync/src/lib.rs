@@ -7,6 +7,9 @@ mod sync_test;
 
 mod pending_sync;
 pub mod sources;
+pub mod verification;
+#[cfg(test)]
+mod verification_test;
 
 use std::cmp::min;
 use std::collections::BTreeMap;

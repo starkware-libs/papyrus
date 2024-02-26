@@ -5694,6 +5694,7 @@ dependencies = [
  "starknet-crypto 0.5.2",
  "starknet_api",
  "test_utils",
+ "thiserror",
 ]
 
 [[package]]
@@ -5826,6 +5827,7 @@ dependencies = [
  "clap",
  "colored",
  "const_format",
+ "derive_more",
  "futures",
  "futures-util",
  "insta",
