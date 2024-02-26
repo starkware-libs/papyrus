@@ -18,6 +18,7 @@ use papyrus_common::state::{
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_execution::objects::{
     CallType,
+    FeeEstimation,
     FunctionCall,
     OrderedEvent,
     OrderedL2ToL1Message,
@@ -68,7 +69,7 @@ use starknet_api::transaction::{
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{
-    DeprecatedPendingBlock,
+    PendingBlock,
     PendingBlockOrDeprecated,
     PendingStateUpdate,
 };
@@ -91,7 +92,6 @@ use tokio::sync::RwLock;
 use super::api::api_impl::JsonRpcServerImpl;
 use super::api::{
     decompress_program,
-    FeeEstimate,
     SimulatedTransaction,
     SimulationFlag,
     TransactionTraceWithHash,
@@ -150,6 +150,10 @@ lazy_static! {
         price_in_wei: GasPrice(100 * u128::pow(10, 9)),
         price_in_fri: GasPrice(0),
     };
+    pub static ref DATA_GAS_PRICE: GasPricePerToken = GasPricePerToken{
+        price_in_wei: GasPrice(1),
+        price_in_fri: GasPrice(0),
+    };
     pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.price_in_wei.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
     pub static ref SEQUENCER_ADDRESS: SequencerContractAddress =
@@ -163,16 +167,20 @@ lazy_static! {
     pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
-    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
+    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimation = FeeEstimation {
         gas_consumed: stark_felt!("0x680"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(166400000000000,),
         unit: PriceUnit::Wei,
     };
 
-    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
+    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimation = FeeEstimation {
         gas_consumed: stark_felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
     };
@@ -396,7 +404,7 @@ async fn call_estimate_fee() {
     // Test that calling the same transaction with a different block context with a different gas
     // price produces a different fee.
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![invoke.clone()],
@@ -411,7 +419,7 @@ async fn call_estimate_fee() {
     // Test that calling the same transaction with skip_validate produces a lower gas consumed.
     // TODO(yair): test with an account contract which has a lengthy validate function.
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![invoke],
@@ -438,7 +446,7 @@ async fn call_estimate_fee() {
             ..Default::default()
         }));
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![non_existent_entry_point],
@@ -491,7 +499,7 @@ async fn pending_call_estimate_fee() {
     }));
 
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (vec![invoke.clone()], Vec::<SimulationFlag>::new(), BlockId::Tag(Tag::Pending)),
         )
@@ -829,8 +837,9 @@ async fn trace_block_transactions_regular_and_pending() {
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             parent_block_hash: BlockHash(stark_felt!("0x1")),
@@ -1071,8 +1080,9 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             parent_block_hash: BlockHash(stark_felt!("0x1")),
@@ -1159,9 +1169,11 @@ async fn call_estimate_message_fee() {
 
     // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
     // is correct.
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x0"),
+    let expected_fee_estimate = FeeEstimation {
+        gas_consumed: stark_felt!("0x3937"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(0),
         unit: PriceUnit::default(),
     };
@@ -1196,7 +1208,7 @@ fn broadcasted_to_executable_declare_v1() {
 #[test]
 fn validate_fee_estimation_schema() {
     let mut rng = get_rng();
-    let fee_estimate = FeeEstimate::get_test_instance(&mut rng);
+    let fee_estimate = FeeEstimation::get_test_instance(&mut rng);
     let schema = get_starknet_spec_api_schema_for_components(
         &[(SpecFile::StarknetApiOpenrpc, &["FEE_ESTIMATE"])],
         &VERSION,
@@ -1375,13 +1387,6 @@ auto_impl_get_test_instance! {
         pub class_hash: ClassHash,
     }
 
-    pub struct FeeEstimate {
-        pub gas_consumed: StarkFelt,
-        pub gas_price: GasPrice,
-        pub overall_fee: Fee,
-        pub unit: PriceUnit,
-    }
-
     pub struct TransactionTraceWithHash {
         pub transaction_hash: TransactionHash,
         pub trace_root: TransactionTrace,
@@ -1534,8 +1539,9 @@ async fn write_block_0_as_pending(
     );
 
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             ..Default::default()
@@ -1625,6 +1631,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
             BlockNumber(0),
             &BlockHeader {
                 l1_gas_price: *GAS_PRICE,
+                l1_data_gas_price: *DATA_GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -1702,6 +1709,7 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
             BlockNumber(0),
             &BlockHeader {
                 l1_gas_price: *GAS_PRICE,
+                l1_data_gas_price: *DATA_GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()

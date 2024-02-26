@@ -7,6 +7,7 @@ use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::objects::{
+    FeeEstimation as ExecutionFeeEstimate,
     PendingData as ExecutionPendingData,
     TransactionSimulationOutput,
 };
@@ -975,7 +976,9 @@ impl JsonRpcV0_4Server for JsonRpcServerImpl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
+                .map(|ExecutionFeeEstimate { gas_price, overall_fee, .. }| {
+                    FeeEstimate::from(gas_price, overall_fee)
+                })
                 .collect()),
             Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
             Err(err) => Err(internal_server_error(err)),
@@ -1044,12 +1047,18 @@ impl JsonRpcV0_4Server for JsonRpcServerImpl {
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
-                    SimulatedTransaction {
-                        transaction_trace: transaction_trace.into(),
-                        fee_estimation: FeeEstimate::from(gas_price, fee),
-                    }
-                })
+                .map(
+                    |TransactionSimulationOutput {
+                         transaction_trace,
+                         fee_estimation: ExecutionFeeEstimate { gas_price, overall_fee, .. },
+                         ..
+                     }| {
+                        SimulatedTransaction {
+                            transaction_trace: transaction_trace.into(),
+                            fee_estimation: FeeEstimate::from(gas_price, overall_fee),
+                        }
+                    },
+                )
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
@@ -1395,8 +1404,9 @@ impl JsonRpcV0_4Server for JsonRpcServerImpl {
                         fee_as_vec.len()
                     )));
                 }
-                let (gas_price, fee, _unit) = fee_as_vec.first().expect("No fee was returned");
-                Ok(FeeEstimate::from(*gas_price, *fee))
+                let ExecutionFeeEstimate { gas_price, overall_fee, .. } =
+                    fee_as_vec.first().expect("No fee was returned");
+                Ok(FeeEstimate::from(*gas_price, *overall_fee))
             }
             // Error in the execution of the contract.
             Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
