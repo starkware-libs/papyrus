@@ -31,7 +31,7 @@ fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<Option<SignedBloc
     let (signed_headers_sender, signed_headers_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
     let p2p_sync = P2PSync::new(
-        TEST_CONFIG.clone(),
+        *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
         query_sender,
