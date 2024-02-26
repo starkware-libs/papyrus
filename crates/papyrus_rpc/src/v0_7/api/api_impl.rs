@@ -215,65 +215,6 @@ impl JsonRpcServer for JsonRpcServerV0_7Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
-        verify_storage_scope(&self.storage_reader)?;
-
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = read_pending_data(&self.pending_data, &txn).await?.block;
-            let pending_block_header = PendingBlockHeader {
-                parent_hash: block.parent_block_hash(),
-                sequencer_address: block.sequencer_address(),
-                timestamp: block.timestamp(),
-                l1_gas_price: ResourcePrice {
-                    price_in_wei: block.l1_gas_price().price_in_wei,
-                    price_in_fri: block.l1_gas_price().price_in_fri,
-                },
-                starknet_version: block.starknet_version(),
-            };
-            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions();
-            let transactions = client_transactions
-                .iter()
-                .map(|client_transaction| {
-                    let starknet_api_transaction: StarknetApiTransaction =
-                        client_transaction.clone().try_into().map_err(internal_server_error)?;
-                    Ok(TransactionWithHash {
-                        transaction: starknet_api_transaction
-                            .try_into()
-                            .map_err(internal_server_error)?,
-                        transaction_hash: client_transaction.transaction_hash(),
-                    })
-                })
-                .collect::<Result<Vec<_>, ErrorObjectOwned>>()?;
-            return Ok(Block {
-                status: None,
-                header,
-                transactions: Transactions::Full(transactions),
-            });
-        }
-
-        let block_number = get_accepted_block_number(&txn, block_id)?;
-        let status = get_block_status(&txn, block_number)?;
-        let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
-        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
-        // the transaction hashes by the index.
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
-        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
-        let transactions_with_hash = transactions
-            .into_iter()
-            .zip(transaction_hashes)
-            .map(|(transaction, transaction_hash)| TransactionWithHash {
-                transaction,
-                transaction_hash,
-            })
-            .collect();
-
-        Ok(Block {
-            status: Some(status),
-            header,
-            transactions: Transactions::Full(transactions_with_hash),
-        })
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -1505,6 +1446,66 @@ async fn read_pending_data<Mode: TransactionKind>(
         })
     }
 }
+
+        verify_storage_scope(&self.storage_reader)?;
+
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        if let BlockId::Tag(Tag::Pending) = block_id {
+            let block = read_pending_data(&self.pending_data, &txn).await?.block;
+            let pending_block_header = PendingBlockHeader {
+                parent_hash: block.parent_block_hash(),
+                sequencer_address: block.sequencer_address(),
+                timestamp: block.timestamp(),
+                l1_gas_price: ResourcePrice {
+                    price_in_wei: block.l1_gas_price().price_in_wei,
+                    price_in_fri: block.l1_gas_price().price_in_fri,
+                },
+                starknet_version: block.starknet_version(),
+            };
+            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
+            let client_transactions = block.transactions();
+            let transactions = client_transactions
+                .iter()
+                .map(|client_transaction| {
+                    let starknet_api_transaction: StarknetApiTransaction =
+                        client_transaction.clone().try_into().map_err(internal_server_error)?;
+                    Ok(TransactionWithHash {
+                        transaction: starknet_api_transaction
+                            .try_into()
+                            .map_err(internal_server_error)?,
+                        transaction_hash: client_transaction.transaction_hash(),
+                    })
+                })
+                .collect::<Result<Vec<_>, ErrorObjectOwned>>()?;
+            return Ok(Block {
+                status: None,
+                header,
+                transactions: Transactions::Full(transactions),
+            });
+        }
+
+        let block_number = get_accepted_block_number(&txn, block_id)?;
+        let status = get_block_status(&txn, block_number)?;
+        let header =
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
+        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
+        // the transaction hashes by the index.
+        let transactions = get_block_txs_by_number(&txn, block_number)?;
+        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
+        let transactions_with_hash = transactions
+            .into_iter()
+            .zip(transaction_hashes)
+            .map(|(transaction, transaction_hash)| TransactionWithHash {
+                transaction,
+                transaction_hash,
+            })
+            .collect();
+
+        Ok(Block {
+            status: Some(status),
+            header,
+            transactions: Transactions::Full(transactions_with_hash),
+        })
 
 fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter) -> bool {
     filter.keys.iter().enumerate().all(|(i, keys)| {
