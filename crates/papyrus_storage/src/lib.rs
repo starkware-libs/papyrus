@@ -189,36 +189,34 @@ fn set_version_if_needed(
     reader: StorageReader,
     mut writer: StorageWriter,
 ) -> StorageResult<StorageWriter> {
-    let existing_storage_version = get_storage_version(reader)?;
-    debug!("Existing storage state: {:?}", existing_storage_version);
-    match existing_storage_version {
-        None => {
-            // Initialize the storage version.
-            writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
-            // If in full-archive mode, also set the block version.
-            if writer.scope == StorageScope::FullArchive {
-                writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
-            }
-            debug!(
-                "Storage was initialized with state_version: {:?}, scope: {:?}, blocks_version: \
-                 {:?}",
-                STORAGE_VERSION_STATE, writer.scope, STORAGE_VERSION_BLOCKS
-            );
+    let Some(existing_storage_version) = get_storage_version(reader)? else {
+        // Initialize the storage version.
+        writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
+        // If in full-archive mode, also set the block version.
+        if writer.scope == StorageScope::FullArchive {
+            writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
         }
-        Some(StorageVersion::FullArchive(FullArchiveVersion {
-            state_version: _,
-            blocks_version: _,
-        })) => {
+        debug!(
+            "Storage was initialized with state_version: {:?}, scope: {:?}, blocks_version: {:?}",
+            STORAGE_VERSION_STATE, writer.scope, STORAGE_VERSION_BLOCKS
+        );
+        return Ok(writer);
+    };
+    debug!("Existing storage state: {:?}", existing_storage_version);
+    // Handle the case where the storage scope has changed.
+    match existing_storage_version {
+        StorageVersion::FullArchive(FullArchiveVersion { state_version: _, blocks_version: _ }) => {
             // TODO(yael): consider optimizing by deleting the block's data if the scope has changed
             // to StateOnly
             if writer.scope == StorageScope::StateOnly {
                 // Deletion of the block's version is required here. It ensures that the node knows
                 // that the storage operates in StateOnly mode and prevents the operator from
                 // running it in FullArchive mode again.
+                debug!("Changing the storage scope from FullArchive to StateOnly.");
                 writer.begin_rw_txn()?.delete_blocks_version()?.commit()?;
             }
         }
-        Some(StorageVersion::StateOnly(StateOnlyVersion { state_version: _ })) => {
+        StorageVersion::StateOnly(StateOnlyVersion { state_version: _ }) => {
             // The storage cannot change from state-only to full-archive mode.
             if writer.scope == StorageScope::FullArchive {
                 return Err(StorageError::StorageVersionInconsistency(
@@ -227,6 +225,36 @@ fn set_version_if_needed(
             }
         }
     }
+    // Update the version if it's lower than the crate version.
+    let mut wtxn = writer.begin_rw_txn()?;
+    match existing_storage_version {
+        StorageVersion::FullArchive(FullArchiveVersion { state_version, blocks_version }) => {
+            if STORAGE_VERSION_STATE > state_version {
+                debug!(
+                    "Updating the storage state version from {:?} to {:?}",
+                    state_version, STORAGE_VERSION_STATE
+                );
+                wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
+            }
+            if STORAGE_VERSION_BLOCKS > blocks_version {
+                debug!(
+                    "Updating the storage blocks version from {:?} to {:?}",
+                    blocks_version, STORAGE_VERSION_BLOCKS
+                );
+                wtxn = wtxn.set_blocks_version(&STORAGE_VERSION_BLOCKS)?;
+            }
+        }
+        StorageVersion::StateOnly(StateOnlyVersion { state_version }) => {
+            if STORAGE_VERSION_STATE > state_version {
+                debug!(
+                    "Updating the storage state version from {:?} to {:?}",
+                    state_version, STORAGE_VERSION_STATE
+                );
+                wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
+            }
+        }
+    }
+    wtxn.commit()?;
     Ok(writer)
 }
 
