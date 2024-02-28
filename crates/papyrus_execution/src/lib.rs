@@ -165,6 +165,8 @@ pub enum ExecutionError {
          {state_number:?}."
     )]
     ContractNotFound { contract_address: ContractAddress, state_number: StateNumber },
+    #[error("Gas consumed should fit into u64")]
+    GasConsumedOutOfRange,
     #[error("Missing class hash in call info")]
     MissingClassHash,
     #[error("Missing compiled class with hash {class_hash} (The CASM table isn't synced)")]
