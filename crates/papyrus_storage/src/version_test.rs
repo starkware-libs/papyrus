@@ -1,3 +1,5 @@
+use core::panic;
+
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 
@@ -21,8 +23,9 @@ use crate::{
     STORAGE_VERSION_STATE,
 };
 
-#[tokio::test]
-async fn version() {
+// TODO: Add this test for set_blocks_version or combine the logic.
+#[test]
+fn set_state_version_test() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
 
     // No version initially - use crate version.
@@ -34,13 +37,22 @@ async fn version() {
     assert_eq!(version_blocks.unwrap(), STORAGE_VERSION_BLOCKS);
 
     // Write and read version.
-    let higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
-    writer.begin_rw_txn().unwrap().set_state_version(&higher_version).unwrap().commit().unwrap();
+    let higher_minor_version =
+        Version { major: STORAGE_VERSION_STATE.major, minor: STORAGE_VERSION_STATE.minor + 1 };
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .set_state_version(&higher_minor_version)
+        .unwrap()
+        .commit()
+        .unwrap();
     let version_state = reader.begin_ro_txn().unwrap().get_state_version().unwrap();
-    assert_eq!(version_state.unwrap(), higher_version);
+    assert_eq!(version_state.unwrap(), higher_minor_version);
 
-    // Fail to set a version which is not higher than the existing one.
-    let Err(err) = writer.begin_rw_txn().unwrap().set_state_version(&higher_version) else {
+    // Fail to set a version which its minor not higher than the existing one.
+    let crate_storage_version =
+        Version { major: STORAGE_VERSION_STATE.major, minor: STORAGE_VERSION_STATE.minor };
+    let Err(err) = writer.begin_rw_txn().unwrap().set_state_version(&crate_storage_version) else {
         panic!("Unexpected Ok.");
     };
 
@@ -50,19 +62,40 @@ async fn version() {
             crate_version,
             storage_version
         })
-        if crate_version == higher_version && storage_version == higher_version
+        if crate_version == crate_storage_version && storage_version == higher_minor_version
+    );
+
+    // Fail to set a version which its major is different.
+    let different_major_version =
+        Version { major: higher_minor_version.major + 1, minor: higher_minor_version.minor };
+    let Err(err) = writer.begin_rw_txn().unwrap().set_state_version(&different_major_version)
+    else {
+        panic!("Unexpected Ok.");
+    };
+
+    assert_matches!(
+        err,
+        StorageError::StorageVersionInconsistency(StorageVersionError::SetMajorVersion {
+            crate_version,
+            storage_version
+        })
+        if crate_version == different_major_version && storage_version == higher_minor_version
     );
 }
 
-#[tokio::test]
-async fn version_migration() {
+#[test]
+fn version_migration() {
     let ((reader, mut writer), temp_dir) = get_test_storage();
 
-    // Set the storage version on a lower version.
+    // Set the storage version on a lower minor version.
     let wtxn = writer.begin_rw_txn().unwrap();
     let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
-    version_table.upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &Version(0)).unwrap();
-    version_table.upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &Version(0)).unwrap();
+    version_table
+        .upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &Version { major: 0, minor: 0 })
+        .unwrap();
+    version_table
+        .upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &Version { major: 0, minor: 0 })
+        .unwrap();
     wtxn.commit().unwrap();
     drop(reader);
     drop(writer);
@@ -79,6 +112,38 @@ async fn version_migration() {
 }
 
 #[test]
+fn open_storage_failed_different_major_versions() {
+    let ((reader, mut writer), temp_dir) = get_test_storage();
+
+    // Set the storage version on a different major version.
+    // We can be sure that the major version in the code is less than u32::MAX.
+    let high_major_version = Version { major: u32::MAX, minor: 0 };
+    let wtxn = writer.begin_rw_txn().unwrap();
+    let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
+    version_table.upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &high_major_version).unwrap();
+    version_table.upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &high_major_version).unwrap();
+    wtxn.commit().unwrap();
+    drop(reader);
+    drop(writer);
+
+    // Reopen the storage and verify the version.
+    let (mut config, _) = get_test_config(None);
+    config.db_config.path_prefix = temp_dir.path().to_path_buf();
+
+    let Err(err) = open_storage(config) else {
+        panic!("Unexpected Ok.");
+    };
+    assert_matches!(
+        err,
+        StorageError::StorageVersionInconsistency(StorageVersionError::InconsistentStorageVersion {
+            crate_version,
+            storage_version
+        })
+        if crate_version == STORAGE_VERSION_STATE && storage_version == high_major_version
+    );
+}
+
+#[test]
 fn test_verify_storage_version_good_flow() {
     let ((reader_full_archive, _), _temp_dir) =
         get_test_storage_by_scope(StorageScope::FullArchive);
@@ -88,9 +153,10 @@ fn test_verify_storage_version_good_flow() {
 }
 
 #[test]
-fn test_verify_storage_version_different_blocks_version() {
+fn test_verify_storage_version_different_minor_blocks_version() {
     let ((reader, mut writer), _temp_dir) = get_test_storage_by_scope(StorageScope::FullArchive);
-    let blocks_higher_version = Version(STORAGE_VERSION_BLOCKS.0 + 1);
+    let blocks_higher_version =
+        Version { major: STORAGE_VERSION_BLOCKS.major, minor: STORAGE_VERSION_BLOCKS.minor + 1 };
     writer
         .begin_rw_txn()
         .unwrap()
@@ -110,9 +176,10 @@ fn test_verify_storage_version_different_blocks_version() {
 }
 
 #[test]
-fn test_verify_storage_version_different_state_version() {
+fn test_verify_storage_version_different_minor_state_version() {
     let ((reader, mut writer), _temp_dir) = get_test_storage_by_scope(StorageScope::FullArchive);
-    let state_higher_version = Version(STORAGE_VERSION_STATE.0 + 1);
+    let state_higher_version =
+        Version { major: STORAGE_VERSION_STATE.major, minor: STORAGE_VERSION_STATE.minor + 1 };
     writer
         .begin_rw_txn()
         .unwrap()

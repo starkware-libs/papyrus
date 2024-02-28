@@ -423,7 +423,10 @@ auto_storage_serde! {
     pub struct TransactionOffsetInBlock(pub usize);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
-    pub struct Version(pub u32);
+    pub struct Version{
+        pub major: u32,
+        pub minor: u32,
+    }
 
     pub struct CasmContractEntryPoints {
         pub external: Vec<CasmContractEntryPoint>,
