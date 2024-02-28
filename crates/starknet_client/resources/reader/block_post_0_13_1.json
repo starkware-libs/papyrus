@@ -219,8 +219,8 @@
                 },
                 "n_memory_holes": 0,
                 "data_availability": {
-                    "l1_gas": 0,
-                    "l1_data_gas": 288
+                    "l1_gas": "0x0",
+                    "l1_data_gas": "0x288"
                 }
             },
             "actual_fee": "0x582630bd420"
@@ -266,8 +266,8 @@
                 },
                 "n_memory_holes": 0,
                 "data_availability": {
-                    "l1_gas": 0,
-                    "l1_data_gas": 128
+                    "l1_gas": "0x0",
+                    "l1_data_gas": "0x128"
                 }
             },
             "actual_fee": "0x12d57417dc0"
@@ -296,8 +296,8 @@
                 },
                 "n_memory_holes": 0,
                 "data_availability": {
-                    "l1_gas": 0,
-                    "l1_data_gas": 384
+                    "l1_gas": "0x0",
+                    "l1_data_gas": "0x384"
                 }
             },
             "actual_fee": "0x20efe791d8d0"
@@ -343,8 +343,8 @@
                 },
                 "n_memory_holes": 0,
                 "data_availability": {
-                    "l1_gas": 0,
-                    "l1_data_gas": 128
+                    "l1_gas": "0x0",
+                    "l1_data_gas": "0x128"
                 }
             },
             "actual_fee": "0x12d222c85e4"
@@ -410,8 +410,8 @@
                 },
                 "n_memory_holes": 0,
                 "data_availability": {
-                    "l1_gas": 0,
-                    "l1_data_gas": 384
+                    "l1_gas": "0x0",
+                    "l1_data_gas": "0x384"
                 }
             },
             "actual_fee": "0x383ab0c2434"
