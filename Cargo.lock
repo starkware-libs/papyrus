@@ -934,8 +934,6 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.5.0-rc.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7619ae814dc5224dff007fe33693982e6684c11d9cabba23cfe5a5b21c340dac"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -7952,8 +7950,9 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.8.0"
-source = "git+https://github.com/starkware-libs/starknet-api.git?rev=18127ba310625c76ea80245c246e317e1fdcf388#18127ba310625c76ea80245c246e317e1fdcf388"
+version = "0.10.0-dev.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e71647396a3d69ed53b6fff2e1bca987bf9bcb0f48f05e000eca11e84cde1d1"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",

@@ -445,6 +445,8 @@ auto_storage_serde! {
         pub steps: u64,
         pub builtin_instance_counter: HashMap<Builtin, u64>,
         pub memory_holes: u64,
+        pub da_l1_gas_consumed: u64,
+        pub da_l1_data_gas_consumed: u64,
     }
     pub enum Builtin {
         RangeCheck = 0,
