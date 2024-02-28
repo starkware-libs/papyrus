@@ -36,6 +36,16 @@ pub fn test_get_default_execution_config() -> ExecutionConfigByBlock {
     let execution_config_file = PathBuf::from("../../config/execution/mainnet.json");
     execution_config_file.try_into().unwrap()
 }
+/// Return a vector of execution configs, using the relative path from the testing directory.
+pub fn test_get_execution_configs() -> Vec<ExecutionConfigByBlock> {
+    let mut execution_configs = Vec::new();
+    for path in "../../config/execution".parse::<PathBuf>().unwrap().read_dir().unwrap() {
+        let path = path.unwrap().path();
+        let execution_config_file = path.try_into().unwrap();
+        execution_configs.push(execution_config_file);
+    }
+    execution_configs
+}
 
 /// Creates BlockExecutionConfig for tests.
 pub fn test_block_execution_config() -> BlockExecutionConfig {
