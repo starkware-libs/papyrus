@@ -50,7 +50,11 @@ use crate::test_utils::{
     SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
-use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
+use crate::testing_instances::{
+    test_block_execution_config,
+    test_get_default_execution_config,
+    test_get_execution_configs,
+};
 use crate::{
     estimate_fee,
     execute_call,
@@ -650,6 +654,31 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 /// Test that the execution config is loaded correctly. Compare the loaded config to the expected.
 #[test]
 fn test_default_execution_config() {
+    let mut execution_config_segments = BTreeMap::new();
+    execution_config_segments.insert(BlockNumber(0), get_default_block_execution_config());
+    let expected_config = ExecutionConfigByBlock { execution_config_segments };
+    let config_from_file = test_get_default_execution_config();
+    assert_eq!(expected_config, config_from_file);
+}
+
+/// Test that the execution configs are loaded correctly. Compare the loaded configs to the
+/// expected.
+#[test]
+fn test_execution_configs() {
+    let configs_from_file: Vec<ExecutionConfigByBlock> = test_get_execution_configs();
+    assert_eq!(configs_from_file.len(), 5);
+    for config in configs_from_file {
+        for (block_number, segment) in config.execution_config_segments {
+            if block_number == BlockNumber(0) {
+                assert_eq!(segment.vm_resource_fee_cost, get_vm_resource_fee_cost_first_segment());
+            } else {
+                assert_eq!(segment.vm_resource_fee_cost, get_vm_resource_fee_cost_second_segment());
+            }
+        }
+    }
+}
+
+fn get_vm_resource_fee_cost_first_segment() -> Arc<HashMap<String, f64>> {
     let mut vm_resource_fee_cost = HashMap::new();
     vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
     vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
@@ -662,8 +691,31 @@ fn test_default_execution_config() {
     vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
 
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
-    let block_execution_config = BlockExecutionConfig {
-        fee_contract_address: contract_address!(
+    vm_resource_fee_cost
+}
+
+fn get_vm_resource_fee_cost_second_segment() -> Arc<HashMap<String, f64>> {
+    let mut vm_resource_fee_cost = HashMap::new();
+    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.005);
+    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.08);
+    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 10.24);
+    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("output_builtin".to_owned(), 0.5);
+    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 5.12);
+    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 10.24);
+
+    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
+    vm_resource_fee_cost
+}
+
+fn get_default_block_execution_config() -> BlockExecutionConfig {
+    BlockExecutionConfig {
+        strk_fee_contract_address: contract_address!(
+            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+        ),
+        eth_fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
         invoke_tx_max_n_steps: 3_000_000,
@@ -672,20 +724,15 @@ fn test_default_execution_config() {
         step_gas_cost: VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
         initial_gas_cost: 10_u64.pow(8)
             * VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
-        vm_resource_fee_cost,
-    };
-    let mut execution_config_segments = BTreeMap::new();
-    execution_config_segments.insert(BlockNumber(0), block_execution_config);
-    let expected_config = ExecutionConfigByBlock { execution_config_segments };
-    let config_from_file = test_get_default_execution_config();
-    assert_eq!(expected_config, config_from_file);
+        vm_resource_fee_cost: get_vm_resource_fee_cost_first_segment(),
+    }
 }
-
 fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecutionConfig {
     let vm_resource_fee_cost = HashMap::new();
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     BlockExecutionConfig {
-        fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
+        strk_fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
+        eth_fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
         invoke_tx_max_n_steps: value as u32,
         validate_tx_max_n_steps: value as u32,
         max_recursion_depth: value,
