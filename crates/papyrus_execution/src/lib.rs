@@ -59,7 +59,6 @@ use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::hash::StarkHash;
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
@@ -75,7 +74,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::{contract_address, patricia_key, StarknetApiError};
+use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
@@ -90,10 +89,6 @@ use crate::objects::{
 // TODO(yair): understand what it is and whether the use of this constant should change.
 const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
-// TODO(Eitan): get from config.
-const STRK_FEE_TOKEN_ADDRESS: &str =
-    "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
-
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
@@ -101,8 +96,10 @@ pub type ExecutionResult<T> = Result<T, ExecutionError>;
 /// Parameters that are needed for execution.
 // TODO(yair): Find a way to get them from the Starknet general config.
 pub struct BlockExecutionConfig {
-    /// The adress to receive fees
-    pub fee_contract_address: ContractAddress,
+    /// The strk address to receive fees
+    pub strk_fee_contract_address: ContractAddress,
+    /// The address to receive fees
+    pub eth_fee_contract_address: ContractAddress,
     /// The maximum number of steps for an invoke transaction
     pub invoke_tx_max_n_steps: u32,
     /// The maximum number of steps for a validate transaction
@@ -366,10 +363,9 @@ fn create_block_context(
     };
     let chain_info = ChainInfo {
         chain_id,
-        // TODO(Eitan): add the correct fee token addresses to the execution config.
         fee_token_addresses: FeeTokenAddresses {
-            strk_fee_token_address: contract_address!(STRK_FEE_TOKEN_ADDRESS),
-            eth_fee_token_address: execution_config.fee_contract_address,
+            strk_fee_token_address: execution_config.strk_fee_contract_address,
+            eth_fee_token_address: execution_config.eth_fee_contract_address,
         },
     };
 
