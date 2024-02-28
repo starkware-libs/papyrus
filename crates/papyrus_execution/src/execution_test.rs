@@ -663,6 +663,9 @@ fn test_default_execution_config() {
 
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     let block_execution_config = BlockExecutionConfig {
+        strk_fee_contract_address: contract_address!(
+            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+        ),
         fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
@@ -685,6 +688,7 @@ fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecu
     let vm_resource_fee_cost = HashMap::new();
     let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
     BlockExecutionConfig {
+        strk_fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
         fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
         invoke_tx_max_n_steps: value as u32,
         validate_tx_max_n_steps: value as u32,

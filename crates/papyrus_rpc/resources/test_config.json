@@ -1,6 +1,7 @@
 {
     "execution_config_segments": {
         "0": {
+            "strk_fee_contract_address": "0x1001",
             "fee_contract_address": "0x1001",
             "invoke_tx_max_n_steps": 1000000,
             "validate_tx_max_n_steps": 1000000,
