@@ -368,8 +368,8 @@ fn create_block_context(
         chain_id,
         // TODO(Eitan): add the correct fee token addresses to the execution config.
         fee_token_addresses: FeeTokenAddresses {
-            strk_fee_token_address: contract_address!(STRK_FEE_TOKEN_ADDRESS),
-            eth_fee_token_address: execution_config.fee_contract_address,
+            strk_fee_token_address: execution_config.strk_fee_contract_address,
+            eth_fee_token_address: execution_config.eth_fee_contract_address,
         },
     };
 
