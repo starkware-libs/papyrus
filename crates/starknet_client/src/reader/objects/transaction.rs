@@ -679,6 +679,16 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
                 })
                 .collect(),
             memory_holes: execution_resources.n_memory_holes,
+            da_l1_gas_consumed: execution_resources
+                .data_availability
+                .as_ref()
+                .map(|data_availability| data_availability.l1_gas)
+                .unwrap_or_default(),
+            da_l1_data_gas_consumed: execution_resources
+                .data_availability
+                .as_ref()
+                .map(|data_availability| data_availability.l1_data_gas)
+                .unwrap_or_default(),
         }
     }
 }

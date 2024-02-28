@@ -8,7 +8,7 @@ use blockifier::execution::call_info::{
     Retdata as BlockifierRetdata,
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
-use blockifier::transaction::objects::TransactionExecutionInfo;
+use blockifier::transaction::objects::{GasVector, TransactionExecutionInfo};
 use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME,
     EC_OP_BUILTIN_NAME,
@@ -114,9 +114,12 @@ impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
                 FunctionInvocationResult::Err(RevertReason::RevertReason(revert_error))
             }
             None => FunctionInvocationResult::Ok(
-                transaction_execution_info
-                    .execute_call_info
-                    .expect("Invoke transaction execution should contain execute_call_info.")
+                (
+                    transaction_execution_info
+                        .execute_call_info
+                        .expect("Invoke transaction execution should contain execute_call_info."),
+                    transaction_execution_info.da_gas,
+                )
                     .try_into()?,
             ),
         };
@@ -124,12 +127,12 @@ impl TryFrom<TransactionExecutionInfo> for InvokeTransactionTrace {
         Ok(Self {
             validate_invocation: match transaction_execution_info.validate_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
             execute_invocation,
             fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
         })
     }
@@ -152,11 +155,11 @@ impl TryFrom<TransactionExecutionInfo> for DeclareTransactionTrace {
         Ok(Self {
             validate_invocation: match transaction_execution_info.validate_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
             fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
         })
     }
@@ -181,18 +184,19 @@ impl TryFrom<TransactionExecutionInfo> for DeployAccountTransactionTrace {
         Ok(Self {
             validate_invocation: match transaction_execution_info.validate_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
-            constructor_invocation: transaction_execution_info
-                .execute_call_info
-                .expect(
+            constructor_invocation: (
+                transaction_execution_info.execute_call_info.expect(
                     "Deploy account execution should contain execute_call_info (the constructor \
                      call info).",
-                )
+                ),
+                transaction_execution_info.da_gas,
+            )
                 .try_into()?,
             fee_transfer_invocation: match transaction_execution_info.fee_transfer_call_info {
                 None => None,
-                Some(call_info) => Some(call_info.try_into()?),
+                Some(call_info) => Some((call_info, transaction_execution_info.da_gas).try_into()?),
             },
         })
     }
@@ -209,9 +213,12 @@ impl TryFrom<TransactionExecutionInfo> for L1HandlerTransactionTrace {
     type Error = ExecutionError;
     fn try_from(transaction_execution_info: TransactionExecutionInfo) -> ExecutionResult<Self> {
         Ok(Self {
-            function_invocation: transaction_execution_info
-                .execute_call_info
-                .expect("L1Handler execution should contain execute_call_info.")
+            function_invocation: (
+                transaction_execution_info
+                    .execute_call_info
+                    .expect("L1Handler execution should contain execute_call_info."),
+                transaction_execution_info.da_gas,
+            )
                 .try_into()?,
         })
     }
@@ -253,9 +260,9 @@ pub struct FunctionInvocation {
     pub execution_resources: ExecutionResources,
 }
 
-impl TryFrom<CallInfo> for FunctionInvocation {
+impl TryFrom<(CallInfo, GasVector)> for FunctionInvocation {
     type Error = ExecutionError;
-    fn try_from(call_info: CallInfo) -> ExecutionResult<Self> {
+    fn try_from((call_info, gas_vector): (CallInfo, GasVector)) -> ExecutionResult<Self> {
         Ok(Self {
             function_call: FunctionCall {
                 contract_address: call_info.call.storage_address,
@@ -270,6 +277,7 @@ impl TryFrom<CallInfo> for FunctionInvocation {
             calls: call_info
                 .inner_calls
                 .into_iter()
+                .map(|call_info| (call_info, gas_vector))
                 .map(Self::try_from)
                 .collect::<Result<_, _>>()?,
             events: call_info
@@ -289,7 +297,10 @@ impl TryFrom<CallInfo> for FunctionInvocation {
                     OrderedL2ToL1Message::from(ordered_message, call_info.call.storage_address)
                 })
                 .collect(),
-            execution_resources: vm_resources_to_execution_resources(call_info.resources)?,
+            execution_resources: vm_resources_to_execution_resources(
+                call_info.resources,
+                gas_vector,
+            )?,
         })
     }
 }
@@ -297,6 +308,7 @@ impl TryFrom<CallInfo> for FunctionInvocation {
 // Can't implement `TryFrom` because both types are from external crates.
 fn vm_resources_to_execution_resources(
     vm_resources: VmExecutionResources,
+    GasVector { l1_gas, l1_data_gas }: GasVector,
 ) -> ExecutionResult<ExecutionResources> {
     let mut builtin_instance_counter = HashMap::new();
     for (builtin_name, count) in vm_resources.builtin_instance_counter {
@@ -327,6 +339,8 @@ fn vm_resources_to_execution_resources(
         steps: vm_resources.n_steps as u64,
         builtin_instance_counter,
         memory_holes: vm_resources.n_memory_holes as u64,
+        da_l1_gas_consumed: l1_gas.into(),
+        da_l1_data_gas_consumed: l1_data_gas.into(),
     })
 }
 

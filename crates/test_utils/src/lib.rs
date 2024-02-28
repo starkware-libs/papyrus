@@ -955,6 +955,8 @@ impl GetTestInstance for ExecutionResources {
             steps: rand_not_zero(),
             builtin_instance_counter: [(builtin, rand_not_zero())].into(),
             memory_holes: rand_not_zero(),
+            da_l1_gas_consumed: StarkFelt::get_test_instance(rng),
+            da_l1_data_gas_consumed: StarkFelt::get_test_instance(rng),
         }
     }
 }
