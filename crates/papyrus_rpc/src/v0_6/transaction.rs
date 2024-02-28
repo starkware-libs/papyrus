@@ -775,7 +775,8 @@ impl From<starknet_api::transaction::Builtin> for Builtin {
     }
 }
 
-// Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
+// Note: This is not the same as the ExecutionResources in starknet_api, it's missing DA gas
+// consumption.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ExecutionResources {
     pub steps: u64,

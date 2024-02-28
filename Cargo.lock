@@ -7953,7 +7953,8 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.8.0"
-source = "git+https://github.com/starkware-libs/starknet-api.git?rev=18127ba310625c76ea80245c246e317e1fdcf388#18127ba310625c76ea80245c246e317e1fdcf388"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8bfc63e01213a3a39af29aa061435b80a24919ac02d1dce758d9e1ac8be2a44"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",
@@ -9542,3 +9543,8 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
+
+[[patch.unused]]
+name = "starknet_api"
+version = "0.9.0"
+source = "git+https://github.com/starkware-libs/starknet-api.git?rev=ee5c9f1e68406dabc160aabb49831679542cf4e5#ee5c9f1e68406dabc160aabb49831679542cf4e5"
