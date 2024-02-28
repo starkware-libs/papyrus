@@ -3,39 +3,9 @@ use std::collections::HashMap;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
 use prost::Message;
-use starknet_api::block::{
-    BlockHash,
-    BlockHeader,
-    BlockNumber,
-    BlockSignature,
-    GasPrice,
-    GasPricePerToken,
-    StarknetVersion,
-};
-use starknet_api::core::{
-    EventCommitment,
-    GlobalRoot,
-    SequencerContractAddress,
-    TransactionCommitment,
-};
-use starknet_api::crypto::Signature;
 
-use crate::db_executor::Data;
-use crate::protobuf_messages::protobuf::{self, ConsensusSignature};
-use crate::protobuf_messages::{
-    enum_int_to_l1_data_availability_mode,
-    l1_data_availability_mode_to_enum_int,
-    ProtobufConversionError,
-};
-use crate::{
-    BlockHashOrNumber,
-    Direction,
-    InternalQuery,
-    Protocol,
-    Query,
-    ResponseReceivers,
-    SignedBlockHeader,
-};
+use crate::protobuf_messages::protobuf;
+use crate::{Protocol, ResponseReceivers};
 
 impl ResponseReceivers {
     pub(crate) fn new(mut protocol_to_receiver_map: HashMap<Protocol, Receiver<Vec<u8>>>) -> Self {

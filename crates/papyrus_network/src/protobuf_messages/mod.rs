@@ -2,7 +2,12 @@ pub mod protobuf {
     include!(concat!(env!("OUT_DIR"), "/_.rs"));
 }
 
+mod headers;
+
+use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::data_availability::L1DataAvailabilityMode;
+
+use crate::{BlockHashOrNumber, Direction, InternalQuery, Query};
 
 pub const PATRICIA_HEIGHT: u32 = 251;
 
@@ -117,6 +122,50 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
                 type_description: "Address",
                 value_as_str: format!("{felt:?}"),
             })
+        }
+    }
+}
+
+impl TryFrom<protobuf::Iteration> for InternalQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Iteration) -> Result<Self, Self::Error> {
+        let start = value.start.ok_or(ProtobufConversionError::MissingField {
+            field_description: "Iteration::start",
+        })?;
+        let start_block = match start {
+            protobuf::iteration::Start::BlockNumber(block_number) => {
+                BlockHashOrNumber::Number(BlockNumber(block_number))
+            }
+            protobuf::iteration::Start::Header(protobuf_hash) => {
+                BlockHashOrNumber::Hash(BlockHash(protobuf_hash.try_into()?))
+            }
+        };
+        let direction = match value.direction {
+            0 => Direction::Forward,
+            1 => Direction::Backward,
+            direction => {
+                return Err(ProtobufConversionError::OutOfRangeValue {
+                    type_description: "Direction",
+                    value_as_str: format!("{direction}"),
+                });
+            }
+        };
+        let limit = value.limit;
+        let step = value.step;
+        Ok(Self { start_block, direction, limit, step })
+    }
+}
+
+impl From<Query> for protobuf::Iteration {
+    fn from(value: Query) -> Self {
+        protobuf::Iteration {
+            direction: match value.direction {
+                Direction::Forward => 0,
+                Direction::Backward => 1,
+            },
+            limit: value.limit as u64,
+            step: value.step as u64,
+            start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
         }
     }
 }
