@@ -35,13 +35,36 @@ pub fn test_get_default_execution_config() -> ExecutionConfigByBlock {
     let execution_config_file = PathBuf::from("../../config/execution/mainnet.json");
     execution_config_file.try_into().unwrap()
 }
+/// Return the goerli integration execution config, using the relative path from the testing
+/// directory.
+pub fn test_get_goerli_integration_execution_config() -> ExecutionConfigByBlock {
+    let execution_config_file = PathBuf::from("../../config/execution/goerli_integration.json");
+    execution_config_file.try_into().unwrap()
+}
+/// Return the goerli testnet execution config, using the relative path from the testing directory.
+pub fn test_get_goerli_testnet_execution_config() -> ExecutionConfigByBlock {
+    let execution_config_file = PathBuf::from("../../config/execution/goerli_testnet.json");
+    execution_config_file.try_into().unwrap()
+}
+/// Return the sepolia integration execution config, using the relative path from the testing
+/// directory.
+pub fn test_get_sepolia_integration_execution_config() -> ExecutionConfigByBlock {
+    let execution_config_file = PathBuf::from("../../config/execution/sepolia_integration.json");
+    execution_config_file.try_into().unwrap()
+}
+/// Return the sepolia testnet execution config, using the relative path from the testing directory.
+pub fn test_get_sepolia_testnet_execution_config() -> ExecutionConfigByBlock {
+    let execution_config_file = PathBuf::from("../../config/execution/sepolia_testnet.json");
+    execution_config_file.try_into().unwrap()
+}
 
 /// Creates BlockExecutionConfig for tests.
 pub fn test_block_execution_config() -> BlockExecutionConfig {
     let execution_config = test_get_default_execution_config();
     let mut block_execution_config =
         execution_config.execution_config_segments.get(&BlockNumber(0)).unwrap().clone();
-    block_execution_config.fee_contract_address = contract_address!("0x1001");
+    block_execution_config.eth_fee_contract_address = contract_address!("0x1001");
+    block_execution_config.strk_fee_contract_address = contract_address!("0x1001");
     block_execution_config
 }
 
