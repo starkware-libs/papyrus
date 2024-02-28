@@ -89,10 +89,18 @@ fn version_migration() {
     let wtxn = writer.begin_rw_txn().unwrap();
     let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
     version_table
-        .upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &Version { major: 0, minor: 0 })
+        .upsert(
+            &wtxn.txn,
+            &VERSION_STATE_KEY.to_string(),
+            &Version { major: STORAGE_VERSION_STATE.major, minor: 0 },
+        )
         .unwrap();
     version_table
-        .upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &Version { major: 0, minor: 0 })
+        .upsert(
+            &wtxn.txn,
+            &VERSION_BLOCKS_KEY.to_string(),
+            &Version { major: STORAGE_VERSION_BLOCKS.major, minor: 0 },
+        )
         .unwrap();
     wtxn.commit().unwrap();
     drop(reader);

@@ -416,6 +416,7 @@ impl TryFrom<starknet_api::transaction::Transaction> for Transaction {
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default)]
 pub struct TransactionStatus {
     pub finality_status: TransactionFinalityStatus,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 
@@ -519,6 +520,7 @@ pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
 }
@@ -531,6 +533,7 @@ pub struct DeployAccountTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
 }
@@ -543,6 +546,7 @@ pub struct DeployTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
 }
@@ -554,6 +558,7 @@ pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
 }
@@ -565,6 +570,7 @@ pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
     pub execution_resources: ExecutionResources,
     pub message_hash: L1L2MsgHash,
@@ -607,7 +613,8 @@ impl From<starknet_api::transaction::Builtin> for Builtin {
     }
 }
 
-// Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
+// Note: This is not the same as the ExecutionResources in starknet_api, it's missing DA gas
+// consumption and the memory_holes type is different.
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ExecutionResources {
     pub steps: StarkFelt,
