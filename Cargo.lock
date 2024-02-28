@@ -2514,6 +2514,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
+dependencies = [
+ "log",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5971,6 +5980,7 @@ dependencies = [
  "starknet_api",
  "tempfile",
  "test-case",
+ "test-log",
  "test_utils",
  "thiserror",
  "tokio",
@@ -7943,8 +7953,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8bfc63e01213a3a39af29aa061435b80a24919ac02d1dce758d9e1ac8be2a44"
+source = "git+https://github.com/starkware-libs/starknet-api.git?rev=18127ba310625c76ea80245c246e317e1fdcf388#18127ba310625c76ea80245c246e317e1fdcf388"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",
@@ -8232,6 +8241,27 @@ dependencies = [
  "quote",
  "syn 2.0.39",
  "test-case-core",
+]
+
+[[package]]
+name = "test-log"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6159ab4116165c99fc88cce31f99fa2c9dbe08d3691cb38da02fc3b45f357d2b"
+dependencies = [
+ "env_logger",
+ "test-log-macros",
+]
+
+[[package]]
+name = "test-log-macros"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ba277e77219e9eea169e8508942db1bf5d8a41ff2db9b20aab5a5aadc9fa25d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.39",
 ]
 
 [[package]]

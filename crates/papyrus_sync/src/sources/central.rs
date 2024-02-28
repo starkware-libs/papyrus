@@ -404,7 +404,9 @@ fn client_to_central_block(
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash());
             trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
             let block = block
-                .to_starknet_api_block_and_version()
+                .to_starknet_api_block_and_version(
+                    signature_data.signature_input.state_diff_commitment,
+                )
                 .map_err(|err| CentralError::ClientError(Arc::new(err)))?;
             Ok((
                 block,
