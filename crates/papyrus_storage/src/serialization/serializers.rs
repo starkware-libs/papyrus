@@ -99,6 +99,7 @@ use starknet_api::transaction::{
     Resource,
     ResourceBounds,
     ResourceBoundsMapping,
+    RevertedTransactionExecutionStatus,
     Tip,
     Transaction,
     TransactionExecutionStatus,
@@ -416,7 +417,10 @@ auto_storage_serde! {
     }
     pub enum TransactionExecutionStatus {
         Succeeded = 0,
-        Reverted = 1,
+        Reverted(RevertedTransactionExecutionStatus) = 1,
+    }
+    pub struct RevertedTransactionExecutionStatus {
+        pub revert_reason: String,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
