@@ -11,13 +11,17 @@ use crate::{StorageError, StorageResult, StorageTxn};
 const VERSION_STATE_KEY: &str = "storage_version_state";
 const VERSION_BLOCKS_KEY: &str = "storage_version_blocks";
 
-#[derive(Clone, Debug, Default, Eq, PartialEq, PartialOrd)]
-pub struct Version(pub u32);
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct Version {
+    pub major: u32,
+    pub minor: u32,
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum StorageVersionError {
     #[error(
-        "Storage crate version {crate_version} is inconsistent with DB version {storage_version}."
+        "Storage crate version {crate_version} is inconsistent with DB version {storage_version}. \
+         If the major version is different, re-sync is needed."
     )]
     InconsistentStorageVersion { crate_version: Version, storage_version: Version },
     #[error(
@@ -27,10 +31,16 @@ pub enum StorageVersionError {
     InconsistentStorageScope,
 
     #[error(
-        "Trying to set a DB version {crate_version:} which is not higher that the existing one \
-         {storage_version}."
+        "Trying to set a DB minor version {crate_version:} which is not higher that the existing \
+         one {storage_version}."
     )]
     SetLowerVersion { crate_version: Version, storage_version: Version },
+
+    #[error(
+        "Trying to set a DB major version {crate_version:} which is with different major than the \
+         existing one {storage_version}."
+    )]
+    SetMajorVersion { crate_version: Version, storage_version: Version },
 }
 
 pub trait VersionStorageReader {
@@ -64,7 +74,15 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
     fn set_state_version(self, version: &Version) -> StorageResult<Self> {
         let version_table = self.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_state_version()? {
-            if current_storage_version >= *version {
+            if current_storage_version.major != version.major {
+                return Err(StorageError::StorageVersionInconsistency(
+                    StorageVersionError::SetMajorVersion {
+                        crate_version: version.clone(),
+                        storage_version: current_storage_version,
+                    },
+                ));
+            }
+            if current_storage_version.minor >= version.minor {
                 return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::SetLowerVersion {
                         crate_version: version.clone(),
@@ -80,7 +98,16 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
     fn set_blocks_version(self, version: &Version) -> StorageResult<Self> {
         let version_table = self.open_table(&self.tables.storage_version)?;
         if let Some(current_storage_version) = self.get_blocks_version()? {
-            if current_storage_version >= *version {
+            if current_storage_version.major != version.major {
+                return Err(StorageError::StorageVersionInconsistency(
+                    StorageVersionError::SetMajorVersion {
+                        crate_version: version.clone(),
+                        storage_version: current_storage_version,
+                    },
+                ));
+            }
+
+            if current_storage_version.minor >= version.minor {
                 return Err(StorageError::StorageVersionInconsistency(
                     StorageVersionError::SetLowerVersion {
                         crate_version: version.clone(),
@@ -101,7 +128,8 @@ impl<'env> VersionStorageWriter for StorageTxn<'env, RW> {
 
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let version = self.0.to_string();
-        write!(f, "{version}")
+        let major = self.major.to_string();
+        let minor = self.minor.to_string();
+        write!(f, "{major}.{minor}")
     }
 }

@@ -130,15 +130,18 @@ use crate::state::data::IndexedDeprecatedContractClass;
 pub use crate::utils::update_storage_metrics;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
+// TODO(dvir): add detailed explanation with examples about the storage versions, especially the
+// major and minor differences.
+
 /// The current version of the storage state code.
-/// Whenever a breaking change is introduced, the version is incremented and a storage
-/// migration is required for existing storages.
-pub const STORAGE_VERSION_STATE: Version = Version(13);
+/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
+/// required.
+pub const STORAGE_VERSION_STATE: Version = Version { major: 0, minor: 13 };
 /// The current version of the storage blocks code.
-/// Whenever a breaking change is introduced, the version is incremented and a storage
-/// migration is required for existing storages.
+/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
+/// required.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(14);
+pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 0, minor: 14 };
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -237,14 +240,18 @@ fn set_version_if_needed(
     let mut wtxn = writer.begin_rw_txn()?;
     match existing_storage_version {
         StorageVersion::FullArchive(FullArchiveVersion { state_version, blocks_version }) => {
-            if STORAGE_VERSION_STATE > state_version {
+            if STORAGE_VERSION_STATE.major == state_version.major
+                && STORAGE_VERSION_STATE.minor > state_version.minor
+            {
                 debug!(
                     "Updating the storage state version from {:?} to {:?}",
                     state_version, STORAGE_VERSION_STATE
                 );
                 wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
             }
-            if STORAGE_VERSION_BLOCKS > blocks_version {
+            if STORAGE_VERSION_BLOCKS.major == blocks_version.major
+                && STORAGE_VERSION_BLOCKS.minor > blocks_version.minor
+            {
                 debug!(
                     "Updating the storage blocks version from {:?} to {:?}",
                     blocks_version, STORAGE_VERSION_BLOCKS
@@ -253,7 +260,9 @@ fn set_version_if_needed(
             }
         }
         StorageVersion::StateOnly(StateOnlyVersion { state_version }) => {
-            if STORAGE_VERSION_STATE > state_version {
+            if STORAGE_VERSION_STATE.major == state_version.major
+                && STORAGE_VERSION_STATE.minor > state_version.minor
+            {
                 debug!(
                     "Updating the storage state version from {:?} to {:?}",
                     state_version, STORAGE_VERSION_STATE
@@ -284,7 +293,16 @@ enum StorageVersion {
 }
 
 fn get_storage_version(reader: StorageReader) -> StorageResult<Option<StorageVersion>> {
-    let current_storage_version_state = reader.begin_ro_txn()?.get_state_version()?;
+    let current_storage_version_state =
+        reader.begin_ro_txn()?.get_state_version().map_err(|err| {
+            if matches!(err, StorageError::InnerError(DbError::InnerDeserialization)) {
+                tracing::error!(
+                    "Cannot deserialize storage version. Storage major version has been changed, \
+                     re-sync is needed."
+                );
+            }
+            err
+        })?;
     let current_storage_version_blocks = reader.begin_ro_txn()?.get_blocks_version()?;
     let Some(current_storage_version_state) = current_storage_version_state else {
         return Ok(None);

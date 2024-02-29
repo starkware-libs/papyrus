@@ -118,5 +118,8 @@ auto_impl_get_test_instance! {
         L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
-    pub struct Version(pub u32);
+    pub struct Version{
+        pub major: u32,
+        pub minor: u32,
+    }
 }
