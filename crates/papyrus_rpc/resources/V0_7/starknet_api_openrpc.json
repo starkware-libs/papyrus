@@ -1509,8 +1509,22 @@
                     },
                     "l1_gas_price": {
                         "title": "L1 gas price",
-                        "descritpion": "The price of l1 gas in the block",
+                        "description": "The price of l1 gas in the block",
                         "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_data_gas_price": {
+                        "title": "L1 data gas price",
+                        "description": "The price of l1 data gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_da_mode": {
+                        "title": "L1 da mode",
+                        "type": "string",
+                        "description": "specifies whether the data of this block is published via blob data or calldata",
+                        "enum": [
+                            "BLOB",
+                            "CALLDATA"
+                        ]
                     },
                     "starknet_version": {
                         "title": "Starknet version",
@@ -1526,6 +1540,8 @@
                     "timestamp",
                     "sequencer_address",
                     "l1_gas_price",
+                    "l1_data_gas_price",
+                    "l1_da_mode",
                     "starknet_version"
                 ]
             },
@@ -1554,6 +1570,20 @@
                         "description": "The price of l1 gas in the block",
                         "$ref": "#/components/schemas/RESOURCE_PRICE"
                     },
+                    "l1_data_gas_price": {
+                        "title": "L1 data gas price",
+                        "description": "The price of l1 data gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_da_mode": {
+                        "title": "L1 da mode",
+                        "type": "string",
+                        "description": "specifies whether the data of this block is published via blob data or calldata",
+                        "enum": [
+                            "BLOB",
+                            "CALLDATA"
+                        ]
+                    },
                     "starknet_version": {
                         "title": "Starknet version",
                         "description": "Semver of the current Starknet protocol",
@@ -1565,6 +1595,8 @@
                     "timestamp",
                     "sequencer_address",
                     "l1_gas_price",
+                    "l1_data_gas_price",
+                    "l1_da_mode",
                     "starknet_version"
                 ],
                 "not": {
