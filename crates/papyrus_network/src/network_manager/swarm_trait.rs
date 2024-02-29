@@ -54,10 +54,6 @@ impl SwarmTrait for Swarm<BlockHeadersBehaviour> {
             .expect("string to multiaddr failed")
             .with(Protocol::Tcp(peer.tcp_port));
 
-        if let Some(peer_id) = peer.peer_id {
-            self.dial(DialOpts::peer_id(peer_id).addresses(vec![address]).build())
-        } else {
-            self.dial(DialOpts::unknown_peer_id().address(address).build())
-        }
+        self.dial(DialOpts::peer_id(peer.peer_id).addresses(vec![address]).build())
     }
 }

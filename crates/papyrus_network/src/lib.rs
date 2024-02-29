@@ -18,12 +18,7 @@ use std::usize;
 use futures::channel::mpsc::{Receiver, Sender};
 use libp2p::PeerId;
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{
-    ser_optional_param,
-    ser_optional_sub_config,
-    ser_param,
-    SerializeConfig,
-};
+use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
@@ -42,7 +37,7 @@ pub struct NetworkConfig {
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PeerAddressConfig {
-    pub peer_id: Option<PeerId>,
+    pub peer_id: PeerId,
     pub ip: String,
     pub tcp_port: u16,
     // TODO: Add quic_port as optional, and make tcp_port optional as well while enforcing at least
@@ -158,7 +153,7 @@ impl Default for NetworkConfig {
 
 impl SerializeConfig for PeerAddressConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        let mut config = BTreeMap::from_iter([
+        BTreeMap::from_iter([
             ser_param(
                 "ip",
                 &self.ip,
@@ -171,24 +166,23 @@ impl SerializeConfig for PeerAddressConfig {
                 "The port on the other peer that the node will dial to to use for TCP transport.",
                 ParamPrivacyInput::Public,
             ),
-        ]);
-        let peer_id_example = PeerId::from_str("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
-            .expect("failed to parse peer id");
-        config.extend(ser_optional_param(
+            ser_param(
+                "peer_id", 
                 &self.peer_id,
-                peer_id_example,
-                "peer_id",
-                "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
-                ParamPrivacyInput::Public,
-            ));
-        config
+                "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/", ParamPrivacyInput::Public),
+        ])
     }
 }
 
 // TODO: remove default implementation once config stops requiring it.
 impl Default for PeerAddressConfig {
     fn default() -> Self {
-        Self { peer_id: None, ip: "127.0.0.1".to_string(), tcp_port: 10002 }
+        Self {
+            peer_id: PeerId::from_str("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
+                .expect("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N should be a valid peer ID"),
+            ip: "127.0.0.1".to_string(),
+            tcp_port: 10002,
+        }
     }
 }
 

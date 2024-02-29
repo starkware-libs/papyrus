@@ -124,11 +124,6 @@
     "privacy": "Public",
     "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N"
   },
-  "network.peer.peer_id.#is_none": {
-    "description": "Flag for an optional field",
-    "privacy": "TemporaryValue",
-    "value": true
-  },
   "network.peer.tcp_port": {
     "description": "The port on the other peer that the node will dial to to use for TCP transport.",
     "privacy": "Public",
