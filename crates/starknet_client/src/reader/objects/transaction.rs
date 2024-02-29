@@ -605,12 +605,25 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
 
 /// The execution resources used by a transaction.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct ExecutionResources {
     // Note: in starknet_api this field is named `steps`
     pub n_steps: u64,
     pub builtin_instance_counter: HashMap<Builtin, u64>,
     // Note: in starknet_api this field is named `memory_holes`
     pub n_memory_holes: u64,
+    // This field was added in Starknet v0.13.1
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data_availability: Option<DataAvailabilityResources>,
+}
+
+/// The resources used for data availability by a transaction.
+#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct DataAvailabilityResources {
+    pub l1_gas: u64,
+    pub l1_data_gas: u64,
 }
 
 // Note: the serialization is different from the one in starknet_api.
@@ -671,6 +684,7 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub struct TransactionReceipt {
     pub transaction_index: TransactionOffsetInBlock,
     pub transaction_hash: TransactionHash,

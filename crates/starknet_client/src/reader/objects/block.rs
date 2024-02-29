@@ -18,10 +18,11 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::hash::StarkFelt;
+use starknet_api::hash::{PoseidonHash, StarkFelt};
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -60,9 +61,12 @@ pub struct DeprecatedBlock {
 }
 
 impl DeprecatedBlock {
-    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
+    pub fn to_starknet_api_block_and_version(
+        self,
+        state_diff_hash: GlobalRoot,
+    ) -> ReaderClientResult<starknet_api_block> {
         let block_or_deprecated = BlockOrDeprecated::Deprecated(self);
-        block_or_deprecated.to_starknet_api_block_and_version()
+        block_or_deprecated.to_starknet_api_block_and_version(state_diff_hash)
     }
 }
 
@@ -94,9 +98,12 @@ pub struct Block {
 }
 
 impl Block {
-    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
+    pub fn to_starknet_api_block_and_version(
+        self,
+        state_diff_hash: GlobalRoot,
+    ) -> ReaderClientResult<starknet_api_block> {
         let block_or_deprecated = BlockOrDeprecated::Current(self);
-        block_or_deprecated.to_starknet_api_block_and_version()
+        block_or_deprecated.to_starknet_api_block_and_version(state_diff_hash)
     }
 }
 
@@ -281,7 +288,11 @@ impl BlockOrDeprecated {
     }
 
     // TODO(shahak): Rename to to_starknet_api_block.
-    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
+    pub fn to_starknet_api_block_and_version(
+        self,
+        // TODO(yair): Change to StateDiffCommitment.
+        state_diff_commitment: GlobalRoot,
+    ) -> ReaderClientResult<starknet_api_block> {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions().len();
         let num_of_receipts = self.transaction_receipts().len();
@@ -295,6 +306,32 @@ impl BlockOrDeprecated {
             ));
         }
 
+        let (transaction_commitment, event_commitment, n_transactions, n_events) = match &self {
+            BlockOrDeprecated::Deprecated(..) => (None, None, None, None),
+            BlockOrDeprecated::Current(block) => {
+                // In some older starknet versions, the transaction and event commitments are not
+                // available from the feeder gateway. In such cases, we return None for these
+                // fields.
+                if block.transaction_commitment == TransactionCommitment::default()
+                    && block.event_commitment == EventCommitment::default()
+                {
+                    (None, None, None, None)
+                } else {
+                    (
+                        Some(block.transaction_commitment),
+                        Some(block.event_commitment),
+                        Some(block.transactions.len()),
+                        Some(
+                            block
+                                .transaction_receipts
+                                .iter()
+                                .fold(0, |acc, receipt| acc + receipt.events.len()),
+                        ),
+                    )
+                }
+            }
+        };
+
         // Get the header.
         let header = starknet_api::block::BlockHeader {
             block_hash: self.block_hash(),
@@ -306,13 +343,11 @@ impl BlockOrDeprecated {
             timestamp: self.timestamp(),
             l1_data_gas_price: self.l1_data_gas_price(),
             l1_da_mode: self.l1_da_mode(),
-            transaction_commitment: self.transaction_commitment(),
-            event_commitment: self.event_commitment(),
-            n_transactions: self.transactions().len(),
-            n_events: self
-                .transaction_receipts()
-                .iter()
-                .fold(0, |acc, receipt| acc + receipt.events.len()),
+            state_diff_commitment: Some(StateDiffCommitment(PoseidonHash(state_diff_commitment.0))),
+            transaction_commitment,
+            event_commitment,
+            n_transactions,
+            n_events,
             starknet_version: StarknetVersion(self.starknet_version()),
         };
 
@@ -442,6 +477,6 @@ pub struct BlockSignatureData {
 )]
 pub struct BlockSignatureMessage {
     pub block_hash: BlockHash,
-    // TODO(yair): Consider renaming GlobalRoot to PatriciaRoot.
+    // TODO(yair): Change to StateDiffHash.
     pub state_diff_commitment: GlobalRoot,
 }

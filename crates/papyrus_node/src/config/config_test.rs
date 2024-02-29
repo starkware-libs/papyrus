@@ -1,11 +1,14 @@
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, args};
+use std::fs;
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Read, Write};
 use std::ops::IndexMut;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
+use assert_json_diff::assert_json_eq;
+use colored::Colorize;
 use itertools::Itertools;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_config::dumping::SerializeConfig;
@@ -19,7 +22,7 @@ use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
 use validator::Validate;
 
-use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
+use crate::config::{node_command, NodeConfig, CONFIG_POINTERS, DEFAULT_CONFIG_PATH};
 
 // Returns the required and generated params in default_config.json with the default value from the
 // config presentation.
@@ -102,4 +105,30 @@ fn test_update_dumped_config_by_command() {
 
     assert_eq!(config.rpc.max_events_keys, 1234);
     assert_eq!(config.storage.db_config.path_prefix.to_str(), Some("/abc"));
+}
+
+#[test]
+fn default_config_file_is_up_to_date() {
+    env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
+    let from_default_config_file: serde_json::Value =
+        serde_json::from_reader(File::open(DEFAULT_CONFIG_PATH).unwrap()).unwrap();
+
+    // Create a temporary file and dump the default config to it.
+    let mut tmp_file_path = env::temp_dir();
+    tmp_file_path.push("cfg.json");
+    NodeConfig::default().dump_to_file(&CONFIG_POINTERS, tmp_file_path.to_str().unwrap()).unwrap();
+
+    // Read the dumped config from the file.
+    let from_code: serde_json::Value =
+        serde_json::from_reader(File::open(tmp_file_path).unwrap()).unwrap();
+
+    println!(
+        "{}",
+        "Default config file doesn't match the default NodeConfig implementation. Please update \
+         it using the dump_config binary."
+            .purple()
+            .bold()
+    );
+    println!("Diffs shown below.");
+    assert_json_eq!(from_default_config_file, from_code)
 }
