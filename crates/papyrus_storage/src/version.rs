@@ -21,7 +21,7 @@ pub struct Version {
 pub enum StorageVersionError {
     #[error(
         "Storage crate version {crate_version} is inconsistent with DB version {storage_version}. \
-         If the major version is different, resync is needed."
+         If the major version is different, re-sync is needed."
     )]
     InconsistentStorageVersion { crate_version: Version, storage_version: Version },
     #[error(
