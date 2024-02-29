@@ -152,6 +152,13 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => block.l1_data_gas_price,
         }
     }
+    pub fn l1_da_mode(&self) -> L1DataAvailabilityMode {
+        match self {
+            // In older versions, all blocks were using calldata.
+            PendingBlockOrDeprecated::Deprecated(_) => L1DataAvailabilityMode::Calldata,
+            PendingBlockOrDeprecated::Current(block) => block.l1_da_mode,
+        }
+    }
 }
 
 #[derive(Debug, Default, Deserialize, Clone, Eq, PartialEq)]
