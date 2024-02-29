@@ -5,6 +5,7 @@ use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{noise, yamux, Multiaddr, Swarm, SwarmBuilder};
+use tracing::debug;
 
 pub fn build_swarm<Behaviour: NetworkBehaviour>(
     listen_addresses: Vec<String>,
@@ -17,6 +18,7 @@ where
         Multiaddr::from_str(listen_address)
             .unwrap_or_else(|_| panic!("Unable to parse address {}", listen_address))
     });
+    debug!("Creating swarm with listen addresses: {:?}", listen_addresses);
 
     let key_pair = Keypair::generate_ed25519();
     let mut swarm = SwarmBuilder::with_existing_identity(key_pair)

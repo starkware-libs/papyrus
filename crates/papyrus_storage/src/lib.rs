@@ -64,6 +64,8 @@ mod serialization;
 pub mod state;
 mod version;
 
+mod deprecated;
+
 #[cfg(test)]
 mod test_instances;
 
@@ -77,7 +79,13 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
+use db::serialization::{
+    Key,
+    NoVersionValueWrapper,
+    ValueSerde,
+    VersionWrapper,
+    VersionZeroWrapper,
+};
 use db::table_types::Table;
 use mmap_file::{
     open_file,
@@ -130,7 +138,7 @@ pub const STORAGE_VERSION_STATE: Version = Version(13);
 /// Whenever a breaking change is introduced, the version is incremented and a storage
 /// migration is required for existing storages.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version(13);
+pub const STORAGE_VERSION_BLOCKS: Version = Version(14);
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -189,36 +197,34 @@ fn set_version_if_needed(
     reader: StorageReader,
     mut writer: StorageWriter,
 ) -> StorageResult<StorageWriter> {
-    let existing_storage_version = get_storage_version(reader)?;
-    debug!("Existing storage state: {:?}", existing_storage_version);
-    match existing_storage_version {
-        None => {
-            // Initialize the storage version.
-            writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
-            // If in full-archive mode, also set the block version.
-            if writer.scope == StorageScope::FullArchive {
-                writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
-            }
-            debug!(
-                "Storage was initialized with state_version: {:?}, scope: {:?}, blocks_version: \
-                 {:?}",
-                STORAGE_VERSION_STATE, writer.scope, STORAGE_VERSION_BLOCKS
-            );
+    let Some(existing_storage_version) = get_storage_version(reader)? else {
+        // Initialize the storage version.
+        writer.begin_rw_txn()?.set_state_version(&STORAGE_VERSION_STATE)?.commit()?;
+        // If in full-archive mode, also set the block version.
+        if writer.scope == StorageScope::FullArchive {
+            writer.begin_rw_txn()?.set_blocks_version(&STORAGE_VERSION_BLOCKS)?.commit()?;
         }
-        Some(StorageVersion::FullArchive(FullArchiveVersion {
-            state_version: _,
-            blocks_version: _,
-        })) => {
+        debug!(
+            "Storage was initialized with state_version: {:?}, scope: {:?}, blocks_version: {:?}",
+            STORAGE_VERSION_STATE, writer.scope, STORAGE_VERSION_BLOCKS
+        );
+        return Ok(writer);
+    };
+    debug!("Existing storage state: {:?}", existing_storage_version);
+    // Handle the case where the storage scope has changed.
+    match existing_storage_version {
+        StorageVersion::FullArchive(FullArchiveVersion { state_version: _, blocks_version: _ }) => {
             // TODO(yael): consider optimizing by deleting the block's data if the scope has changed
             // to StateOnly
             if writer.scope == StorageScope::StateOnly {
                 // Deletion of the block's version is required here. It ensures that the node knows
                 // that the storage operates in StateOnly mode and prevents the operator from
                 // running it in FullArchive mode again.
+                debug!("Changing the storage scope from FullArchive to StateOnly.");
                 writer.begin_rw_txn()?.delete_blocks_version()?.commit()?;
             }
         }
-        Some(StorageVersion::StateOnly(StateOnlyVersion { state_version: _ })) => {
+        StorageVersion::StateOnly(StateOnlyVersion { state_version: _ }) => {
             // The storage cannot change from state-only to full-archive mode.
             if writer.scope == StorageScope::FullArchive {
                 return Err(StorageError::StorageVersionInconsistency(
@@ -227,6 +233,36 @@ fn set_version_if_needed(
             }
         }
     }
+    // Update the version if it's lower than the crate version.
+    let mut wtxn = writer.begin_rw_txn()?;
+    match existing_storage_version {
+        StorageVersion::FullArchive(FullArchiveVersion { state_version, blocks_version }) => {
+            if STORAGE_VERSION_STATE > state_version {
+                debug!(
+                    "Updating the storage state version from {:?} to {:?}",
+                    state_version, STORAGE_VERSION_STATE
+                );
+                wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
+            }
+            if STORAGE_VERSION_BLOCKS > blocks_version {
+                debug!(
+                    "Updating the storage blocks version from {:?} to {:?}",
+                    blocks_version, STORAGE_VERSION_BLOCKS
+                );
+                wtxn = wtxn.set_blocks_version(&STORAGE_VERSION_BLOCKS)?;
+            }
+        }
+        StorageVersion::StateOnly(StateOnlyVersion { state_version }) => {
+            if STORAGE_VERSION_STATE > state_version {
+                debug!(
+                    "Updating the storage state version from {:?} to {:?}",
+                    state_version, STORAGE_VERSION_STATE
+                );
+                wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
+            }
+        }
+    }
+    wtxn.commit()?;
     Ok(writer)
 }
 
@@ -441,7 +477,7 @@ struct_field_names! {
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
-        headers: TableIdentifier<BlockNumber, VersionZeroWrapper<StorageBlockHeader>, SimpleTable>,
+        headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 1>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,

@@ -13,6 +13,7 @@ anyhow.workspace = true
 async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
+futures.workspace = true
 futures-util.workspace = true
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
@@ -40,6 +41,8 @@ url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
+assert-json-diff.workspace = true
+colored.workspace = true
 metrics-exporter-prometheus.workspace = true
 pretty_assertions.workspace = true
 insta = { workspace = true, features = ["json"] }

@@ -1806,11 +1806,10 @@ checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
 name = "colored"
-version = "2.0.4"
+version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2674ec482fbc38012cf31e6c42ba0177b431a0cb6f15fe40efa5aab1bda516f6"
+checksum = "cbf2150cce219b664a8a70df7a1f933836724b503f8a413af9365b4dcc4d90b8"
 dependencies = [
- "is-terminal",
  "lazy_static",
  "windows-sys 0.48.0",
 ]
@@ -2512,6 +2511,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.39",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.10.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4cd405aab171cb85d6735e5c8d9db038c17d3ca007a4d2c25f337935c3d90580"
+dependencies = [
+ "log",
 ]
 
 [[package]]
@@ -5812,9 +5820,12 @@ name = "papyrus_node"
 version = "0.3.0-rc.2"
 dependencies = [
  "anyhow",
+ "assert-json-diff",
  "async-stream",
  "clap",
+ "colored",
  "const_format",
+ "futures",
  "futures-util",
  "insta",
  "itertools 0.10.5",
@@ -5969,6 +5980,7 @@ dependencies = [
  "starknet_api",
  "tempfile",
  "test-case",
+ "test-log",
  "test_utils",
  "thiserror",
  "tokio",
@@ -7941,8 +7953,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e8bfc63e01213a3a39af29aa061435b80a24919ac02d1dce758d9e1ac8be2a44"
+source = "git+https://github.com/starkware-libs/starknet-api.git?rev=18127ba310625c76ea80245c246e317e1fdcf388#18127ba310625c76ea80245c246e317e1fdcf388"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",
@@ -8230,6 +8241,27 @@ dependencies = [
  "quote",
  "syn 2.0.39",
  "test-case-core",
+]
+
+[[package]]
+name = "test-log"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6159ab4116165c99fc88cce31f99fa2c9dbe08d3691cb38da02fc3b45f357d2b"
+dependencies = [
+ "env_logger",
+ "test-log-macros",
+]
+
+[[package]]
+name = "test-log-macros"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ba277e77219e9eea169e8508942db1bf5d8a41ff2db9b20aab5a5aadc9fa25d"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.39",
 ]
 
 [[package]]

@@ -38,12 +38,14 @@ async fn main() {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),
             header_buffer_size: 100000,
-            peer_id: None,
+            peer: None,
         },
         storage_reader,
     );
+    // TODO: use peer config from the network config and remove the dial function from the network
+    // manager (use the dial within the run function instead of here).
     if let Some(dial_address) = args.dial_address.as_ref() {
         network_manager.dial(dial_address);
     }
-    network_manager.run().await;
+    network_manager.run().await.expect("Network manager failed");
 }
