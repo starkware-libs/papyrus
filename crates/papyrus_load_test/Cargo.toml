@@ -12,7 +12,6 @@ goose = "0.17.0"
 once_cell.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"]}
-test_utils = { path = "../test_utils" }
 tokio.workspace = true
 rand.workspace = true
 reqwest.workspace = true
