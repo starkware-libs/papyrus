@@ -1,5 +1,3 @@
-use core::panic;
-
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 

@@ -134,10 +134,12 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 // major and minor differences.
 
 /// The current version of the storage state code.
-/// Major change required a resync, minor change does not and means versioned value change.
+/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
+/// required.
 pub const STORAGE_VERSION_STATE: Version = Version { major: 0, minor: 13 };
 /// The current version of the storage blocks code.
-/// Major change required a resync, minor change does not and means versioned value change.
+/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
+/// required.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
 pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 0, minor: 14 };
 
@@ -295,8 +297,8 @@ fn get_storage_version(reader: StorageReader) -> StorageResult<Option<StorageVer
         reader.begin_ro_txn()?.get_state_version().map_err(|err| {
             if matches!(err, StorageError::InnerError(DbError::InnerDeserialization)) {
                 tracing::error!(
-                    "Storage major version has been changed, resync is needed. Ignore the \
-                     following deserialization error."
+                    "Cannot deserialize storage version. Storage major version has been changed, \
+                     re-sync is needed."
                 );
             }
             err
