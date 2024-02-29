@@ -109,15 +109,30 @@
     "privacy": "Public",
     "value": 10
   },
-  "network.peer_id": {
+  "network.peer.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
+  "network.peer.ip": {
+    "description": "The ipv4 address of another peer that the node will dial to.",
+    "privacy": "Public",
+    "value": "127.0.0.1"
+  },
+  "network.peer.peer_id": {
     "description": "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
     "privacy": "Public",
     "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N"
   },
-  "network.peer_id.#is_none": {
+  "network.peer.peer_id.#is_none": {
     "description": "Flag for an optional field",
     "privacy": "TemporaryValue",
     "value": true
+  },
+  "network.peer.tcp_port": {
+    "description": "The port on the other peer that the node will dial to to use for TCP transport.",
+    "privacy": "Public",
+    "value": 10002
   },
   "network.quic_port": {
     "description": "The port that the node listens on for incoming quic connections.",
