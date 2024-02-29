@@ -138,11 +138,6 @@ expression: dumped_default_config
     "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N",
     "privacy": "Public"
   },
-  "network.peer.peer_id.#is_none": {
-    "description": "Flag for an optional field",
-    "value": true,
-    "privacy": "TemporaryValue"
-  },
   "network.peer.tcp_port": {
     "description": "The port on the other peer that the node will dial to to use for TCP transport.",
     "value": {

@@ -178,7 +178,7 @@ async fn register_subscriber_and_use_channels() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: Some(PeerId::random()), ..Default::default() }),
+        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
     );
     // define query
     let query_limit = 5;
