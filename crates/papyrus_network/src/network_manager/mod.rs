@@ -10,7 +10,7 @@ use futures::future::pending;
 use futures::stream::{BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
-use libp2p::{PeerId, Swarm};
+use libp2p::Swarm;
 use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
 
@@ -20,7 +20,7 @@ use crate::block_headers::behaviour::Behaviour as BlockHeadersBehaviour;
 use crate::block_headers::Event;
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::streamed_data::InboundSessionId;
-use crate::{NetworkConfig, Query, ResponseReceivers, ResponseSenders};
+use crate::{NetworkConfig, PeerAddressConfig, Query, ResponseReceivers, ResponseSenders};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SyncSubscriberChannels = (Receiver<Query>, ResponseSenders);
@@ -38,14 +38,14 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SyncSubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
-    peer_id: Option<PeerId>,
+    peer: Option<PeerAddressConfig>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
     pub async fn run(mut self) -> Result<(), NetworkError> {
-        if let Some(peer_id) = self.peer_id {
-            debug!("Starting network manager connected to peer id: {peer_id:?}");
-            self.swarm.dial(peer_id)?;
+        if let Some(peer) = self.peer.clone() {
+            debug!("Starting network manager connected to peer: {peer:?}");
+            self.swarm.dial(peer)?;
         } else {
             debug!("Starting network manager not connected to any peer.");
         }
@@ -65,7 +65,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
-        peer_id: Option<PeerId>,
+        peer: Option<PeerAddressConfig>,
     ) -> Self {
         Self {
             swarm,
@@ -74,7 +74,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
-            peer_id,
+            peer,
         }
     }
 
@@ -189,7 +189,13 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
-        let peer_id = self.peer_id.expect("cannot send query without peer id");
+        let peer_id = self
+            .peer
+            .clone()
+            .expect("Cannot send query without peer")
+            // TODO: get peer id from swarm after dial id not received in config.
+            .peer_id
+            .expect("Cannot send query without peer_id");
         let internal_query = query.into();
         match self.swarm.send_query(internal_query, peer_id) {
             Ok(outbound_session_id) => {
@@ -216,7 +222,7 @@ impl NetworkManager {
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
-            peer_id,
+            peer,
         } = config;
 
         let listen_addresses = vec![
@@ -231,7 +237,7 @@ impl NetworkManager {
         );
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
-        Self::generic_new(swarm, db_executor, header_buffer_size, peer_id)
+        Self::generic_new(swarm, db_executor, header_buffer_size, peer)
     }
 
     // TODO(shahak): Move this to the constructor and add the address to the config once we have
