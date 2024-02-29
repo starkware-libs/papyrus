@@ -249,6 +249,7 @@ fn set_version_if_needed(
                 );
                 wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
             }
+            #[allow(clippy::absurd_extreme_comparisons)]
             if STORAGE_VERSION_BLOCKS.major == blocks_version.major
                 && STORAGE_VERSION_BLOCKS.minor > blocks_version.minor
             {
