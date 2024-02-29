@@ -15,7 +15,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use tokio::time::timeout;
-use tracing::{debug, instrument};
+use tracing::{debug, info, instrument};
 
 const STEP: usize = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
@@ -151,6 +151,7 @@ impl P2PSync {
             if signatures.len() != ALLOWED_SIGNATURES_LENGTH {
                 return Err(P2PSyncError::WrongSignaturesLength { signatures });
             }
+            info!("Added block {}.", current_block_number);
             self.storage_writer
                 .begin_rw_txn()?
                 .append_header(*current_block_number, &block_header)?
