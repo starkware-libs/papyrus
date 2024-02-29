@@ -15,7 +15,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use tokio::time::timeout;
-use tracing::{debug, instrument};
+use tracing::{debug, info, instrument};
 
 const STEP: usize = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
@@ -158,10 +158,11 @@ impl P2PSync {
                     *current_block_number,
                     signatures.first().expect(
                         "Calling first on a vector of size {ALLOWED_SIGNATURES_LENGTH} returned \
-                         None",
+                        None",
                     ),
                 )?
                 .commit()?;
+            info!("Added block {}.", current_block_number);
             *current_block_number = current_block_number.next();
         }
         Ok(())
