@@ -493,6 +493,7 @@ pub struct DeclareTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 
@@ -504,6 +505,7 @@ pub struct DeployAccountTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 
@@ -515,6 +517,7 @@ pub struct DeployTransactionOutput {
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
     pub contract_address: ContractAddress,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 
@@ -525,6 +528,7 @@ pub struct InvokeTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 
@@ -535,6 +539,7 @@ pub struct L1HandlerTransactionOutput {
     pub actual_fee: Fee,
     pub messages_sent: Vec<MessageToL1>,
     pub events: Vec<starknet_api::transaction::Event>,
+    #[serde(flatten)]
     pub execution_status: TransactionExecutionStatus,
 }
 

@@ -14973,6 +14973,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -15413,6 +15414,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -16306,6 +16308,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -18654,6 +18657,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -18937,6 +18941,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -20052,6 +20057,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -20569,6 +20575,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
@@ -22878,6 +22885,7 @@
             }
           ],
           "execution_status": "REVERTED",
+          "revert_reason": "",
           "execution_resources": {
             "steps": 0,
             "builtin_instance_counter": {},
