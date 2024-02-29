@@ -194,8 +194,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             .clone()
             .expect("Cannot send query without peer")
             // TODO: get peer id from swarm after dial id not received in config.
-            .peer_id
-            .expect("Cannot send query without peer_id");
+            .peer_id;
         let internal_query = query.into();
         match self.swarm.send_query(internal_query, peer_id) {
             Ok(outbound_session_id) => {
