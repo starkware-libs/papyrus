@@ -312,27 +312,33 @@ fn get_rand_test_body_with_events(
 fn get_test_transaction_output(transaction: &Transaction) -> TransactionOutput {
     let mut rng = get_rng();
     let execution_resources = ExecutionResources::get_test_instance(&mut rng);
+    let execution_status = TransactionExecutionStatus::get_test_instance(&mut rng);
     match transaction {
         Transaction::Declare(_) => TransactionOutput::Declare(DeclareTransactionOutput {
             execution_resources,
+            execution_status,
             ..Default::default()
         }),
         Transaction::Deploy(_) => TransactionOutput::Deploy(DeployTransactionOutput {
             execution_resources,
+            execution_status,
             ..Default::default()
         }),
         Transaction::DeployAccount(_) => {
             TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
                 execution_resources,
+                execution_status,
                 ..Default::default()
             })
         }
         Transaction::Invoke(_) => TransactionOutput::Invoke(InvokeTransactionOutput {
             execution_resources,
+            execution_status,
             ..Default::default()
         }),
         Transaction::L1Handler(_) => TransactionOutput::L1Handler(L1HandlerTransactionOutput {
             execution_resources,
+            execution_status,
             ..Default::default()
         }),
     }
