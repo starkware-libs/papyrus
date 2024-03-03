@@ -73,6 +73,11 @@ pub enum P2PSyncError {
     SendError(#[from] SendError),
 }
 
+enum P2PSyncControl {
+    ContinueDownloading,
+    PeerFinished,
+}
+
 pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
@@ -95,6 +100,10 @@ impl P2PSync {
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
         let mut current_block_number = self.storage_reader.begin_ro_txn()?.get_header_marker()?;
+        // TODO: make control more substantial once we have more peers and peer management.
+        #[allow(unused_variables)]
+        let mut control = P2PSyncControl::ContinueDownloading;
+        #[allow(unused_assignments)]
         loop {
             let end_block_number = current_block_number.0
                 + u64::try_from(self.config.num_headers_per_query)
@@ -109,7 +118,7 @@ impl P2PSync {
                     data_type: DataType::SignedBlockHeader,
                 })
                 .await?;
-            self.parse_headers(&mut current_block_number, end_block_number).await?;
+            control = self.parse_headers(&mut current_block_number, end_block_number).await?;
         }
     }
 
@@ -118,7 +127,7 @@ impl P2PSync {
         &mut self,
         current_block_number: &mut BlockNumber,
         end_block_number: u64,
-    ) -> Result<(), P2PSyncError> {
+    ) -> Result<P2PSyncControl, P2PSyncError> {
         while current_block_number.0 < end_block_number {
             // Adding timeout because the network currently doesn't report when a query
             // finished because the peers don't know about these blocks. If not all expected
@@ -135,10 +144,11 @@ impl P2PSync {
                     "Other peer returned headers until {:?} when we requested until {:?}",
                     current_block_number, end_block_number
                 );
-                return Ok(());
+                return Ok(P2PSyncControl::ContinueDownloading);
             };
             let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header else {
-                return Err(P2PSyncError::ReceiverChannelTerminated);
+                debug!("Handle empty signed headers -> mark that peer sent Fin");
+                return Ok(P2PSyncControl::PeerFinished);
             };
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
             // and handle reverts.
@@ -165,6 +175,6 @@ impl P2PSync {
             info!("Added block {}.", current_block_number);
             *current_block_number = current_block_number.next();
         }
-        Ok(())
+        Ok(P2PSyncControl::ContinueDownloading)
     }
 }
