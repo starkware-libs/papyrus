@@ -9,7 +9,7 @@ use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
 use futures::stream::{BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
-use libp2p::swarm::SwarmEvent;
+use libp2p::swarm::{DialError, SwarmEvent};
 use libp2p::Swarm;
 use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
@@ -97,6 +97,29 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             | SwarmEvent::ConnectionClosed { .. } => {}
             SwarmEvent::Behaviour(event) => {
                 self.handle_behaviour_event(event);
+            }
+            SwarmEvent::OutgoingConnectionError {
+                connection_id,
+                peer_id,
+                error: DialError::WrongPeerId { obtained, endpoint },
+            } => {
+                // TODO: change panic to error log level once we have a way to handle this.
+                panic!(
+                    "Outgoing connection error - Wrong Peer ID. connection id: {connection_id:?}, \
+                     requested peer id: {peer_id:?}, obtained peer id: {obtained:?}, endpoint: \
+                     {endpoint:?}"
+                );
+            }
+            SwarmEvent::IncomingConnectionError {
+                connection_id,
+                local_addr,
+                send_back_addr,
+                error,
+            } => {
+                error!(
+                    "Incoming connection error. connection id: {connection_id:?}, local addr: \
+                     {local_addr:?}, send back addr: {send_back_addr:?}, error: {error:?}"
+                );
             }
             _ => {
                 panic!("Unexpected event {event:?}");
