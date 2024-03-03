@@ -464,7 +464,9 @@
               "range_check_builtin_applications": 7,
               "pedersen_builtin_applications": 2
             },
-            "memory_holes": 22
+            "memory_holes": 22,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -483,7 +485,9 @@
               "bitwise_builtin_applications": 0,
               "ecdsa_builtin_applications": 1
             },
-            "memory_holes": 22
+            "memory_holes": 22,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -503,7 +507,9 @@
               "ecdsa_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -522,7 +528,9 @@
               "range_check_builtin_applications": 14,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 22
+            "memory_holes": 22,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -541,7 +549,9 @@
               "range_check_builtin_applications": 7,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 22
+            "memory_holes": 22,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -561,7 +571,9 @@
               "bitwise_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -589,7 +601,9 @@
               "pedersen_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 1
+            "memory_holes": 1,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -609,7 +623,9 @@
               "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -628,7 +644,9 @@
               "ec_op_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -648,7 +666,9 @@
               "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -676,7 +696,9 @@
               "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -695,7 +717,9 @@
               "ec_op_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -714,7 +738,9 @@
               "ecdsa_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -734,7 +760,9 @@
               "pedersen_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -754,7 +782,9 @@
               "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -782,7 +812,9 @@
               "bitwise_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 1
+            "memory_holes": 1,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -802,7 +834,9 @@
               "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -822,7 +856,9 @@
               "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -842,7 +878,9 @@
               "bitwise_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -861,7 +899,9 @@
               "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -880,7 +920,9 @@
               "ecdsa_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -900,7 +942,9 @@
               "range_check_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -919,7 +963,9 @@
               "pedersen_builtin_applications": 2,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 20
+            "memory_holes": 20,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -939,7 +985,9 @@
               "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -959,7 +1007,9 @@
               "range_check_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -979,7 +1029,9 @@
               "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -1007,7 +1059,9 @@
               "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -1026,7 +1080,9 @@
               "bitwise_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 22
+            "memory_holes": 22,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -1054,7 +1110,9 @@
               "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -1074,7 +1132,9 @@
               "bitwise_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       },
@@ -1093,7 +1153,9 @@
               "bitwise_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
-            "memory_holes": 0
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
           }
         }
       }

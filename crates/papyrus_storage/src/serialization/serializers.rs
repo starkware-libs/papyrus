@@ -99,6 +99,7 @@ use starknet_api::transaction::{
     Resource,
     ResourceBounds,
     ResourceBoundsMapping,
+    RevertedTransactionExecutionStatus,
     Tip,
     Transaction,
     TransactionExecutionStatus,
@@ -416,14 +417,20 @@ auto_storage_serde! {
     }
     pub enum TransactionExecutionStatus {
         Succeeded = 0,
-        Reverted = 1,
+        Reverted(RevertedTransactionExecutionStatus) = 1,
+    }
+    pub struct RevertedTransactionExecutionStatus {
+        pub revert_reason: String,
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct TransactionOffsetInBlock(pub usize);
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
-    pub struct Version(pub u32);
+    pub struct Version{
+        pub major: u32,
+        pub minor: u32,
+    }
 
     pub struct CasmContractEntryPoints {
         pub external: Vec<CasmContractEntryPoint>,
@@ -445,6 +452,8 @@ auto_storage_serde! {
         pub steps: u64,
         pub builtin_instance_counter: HashMap<Builtin, u64>,
         pub memory_holes: u64,
+        pub da_l1_gas_consumed: u64,
+        pub da_l1_data_gas_consumed: u64,
     }
     pub enum Builtin {
         RangeCheck = 0,
