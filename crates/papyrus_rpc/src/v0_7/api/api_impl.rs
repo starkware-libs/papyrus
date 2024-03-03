@@ -116,7 +116,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, JsonRpcServerTrait, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::version_config::VERSION_0_7 as VERSION;
@@ -134,7 +134,7 @@ lazy_static! {
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_7Impl {
+pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -148,7 +148,7 @@ pub struct JsonRpcServerV0_7Impl {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerV0_7Impl {
+impl JsonRpcServer for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn spec_version(&self) -> RpcResult<String> {
         Ok(format!("{VERSION}"))
@@ -1512,7 +1512,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_7Impl {
+impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,
