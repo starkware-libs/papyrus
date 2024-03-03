@@ -21,7 +21,6 @@ use starknet_api::transaction::{
     PaymasterData,
     ResourceBoundsMapping,
     Tip,
-    TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
     TransactionSignature,
@@ -29,9 +28,9 @@ use starknet_api::transaction::{
 };
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
-use super::transaction::Builtin;
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
+    Builtin,
     DataAvailabilityResources,
     DeployTransaction,
     ExecutionResources,
@@ -44,6 +43,7 @@ use crate::reader::objects::transaction::{
     L2ToL1Message,
     ReservedDataAvailabilityMode,
     Transaction,
+    TransactionExecutionStatus,
     TransactionReceipt,
 };
 
@@ -128,6 +128,10 @@ auto_impl_get_test_instance! {
         pub contract_class_version: String,
         pub abi: String,
     }
+    pub enum TransactionExecutionStatus {
+        Succeeded = 0,
+        Reverted = 1,
+    }
     pub struct TransactionReceipt {
         pub transaction_index: TransactionOffsetInBlock,
         pub transaction_hash: TransactionHash,
@@ -137,6 +141,7 @@ auto_impl_get_test_instance! {
         pub execution_resources: ExecutionResources,
         pub actual_fee: Fee,
         pub execution_status: TransactionExecutionStatus,
+        pub revert_error: Option<String>,
     }
     pub struct L1ToL2Message {
         pub from_address: EthAddress,

@@ -20,7 +20,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0-rc.2"
+version = "0.3.0-rc.3"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -35,7 +35,7 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 bitvec = "1.0.1"
-blockifier = "0.5.0-rc.3"
+blockifier = "0.5.0-rc.4"
 bytes = "1"
 byteorder = "1.4.3"
 cairo-lang-casm = "2.6.0-rc.1"
@@ -105,7 +105,7 @@ serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
-starknet_api = "0.8.0"
+starknet_api = "0.10.0-dev.3"
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
 strum = "0.25.0"
@@ -123,6 +123,3 @@ tower = "0.4"
 unsigned-varint = "0.8.0"
 url = "2.2.2"
 validator = "0.12"
-
-[patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api.git", rev = "18127ba310625c76ea80245c246e317e1fdcf388" }
