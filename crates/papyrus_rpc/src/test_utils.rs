@@ -21,7 +21,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 use tokio::sync::RwLock;
 
-use crate::api::JsonRpcServerImpl;
+use crate::api::JsonRpcServerTrait;
 use crate::version_config::{VersionId, VERSION_PATTERN};
 use crate::RpcConfig;
 
@@ -52,12 +52,12 @@ pub(crate) fn get_test_pending_classes() -> Arc<RwLock<PendingClasses>> {
     Arc::new(RwLock::new(PendingClasses::default()))
 }
 
-pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerImpl>()
+pub(crate) fn get_test_rpc_server_and_storage_writer<T: JsonRpcServerTrait>()
 -> (RpcModule<T>, StorageWriter) {
     get_test_rpc_server_and_storage_writer_from_params(None, None, None, None, None)
 }
 
-pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServerImpl>(
+pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServerTrait>(
     mock_client: Option<MockStarknetWriter>,
     shared_highest_block: Option<Arc<RwLock<Option<BlockHashAndNumber>>>>,
     pending_data: Option<Arc<RwLock<PendingData>>>,
@@ -98,7 +98,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
 //
 // For example (the parameteres of getTransactionByBlockIdAndIndex"):
 // ["latest", 5] or {"block_id": "latest", "index": 5}.
-pub(crate) async fn raw_call<R: JsonRpcServerImpl, S: Serialize, T: for<'a> Deserialize<'a>>(
+pub(crate) async fn raw_call<R: JsonRpcServerTrait, S: Serialize, T: for<'a> Deserialize<'a>>(
     module: &RpcModule<R>,
     method: &str,
     params_obj: &S,
@@ -347,7 +347,7 @@ pub fn method_name_to_spec_method_name(method_name: &str) -> String {
 }
 
 pub async fn call_api_then_assert_and_validate_schema_for_err<
-    R: JsonRpcServerImpl,
+    R: JsonRpcServerTrait,
     T: for<'a> Deserialize<'a> + std::fmt::Debug,
 >(
     module: &RpcModule<R>,
@@ -382,7 +382,7 @@ pub async fn call_api_then_assert_and_validate_schema_for_err<
 }
 
 pub async fn call_api_then_assert_and_validate_schema_for_result<
-    R: JsonRpcServerImpl,
+    R: JsonRpcServerTrait,
     T: for<'a> Deserialize<'a> + std::fmt::Debug + std::cmp::PartialEq,
 >(
     module: &RpcModule<R>,
@@ -400,7 +400,7 @@ pub async fn call_api_then_assert_and_validate_schema_for_result<
 }
 
 pub async fn call_and_validate_schema_for_result<
-    R: JsonRpcServerImpl,
+    R: JsonRpcServerTrait,
     T: for<'a> Deserialize<'a> + std::fmt::Debug,
 >(
     module: &RpcModule<R>,

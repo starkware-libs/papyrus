@@ -78,7 +78,7 @@ use test_utils::{
 };
 use tokio::sync::RwLock;
 
-use super::api::api_impl::JsonRpcServerV0_4Impl;
+use super::api::api_impl::JsonRpcServerImpl;
 use super::api::{
     decompress_program,
     FeeEstimate,
@@ -171,8 +171,7 @@ lazy_static! {
 
 #[tokio::test]
 async fn execution_call() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -282,7 +281,7 @@ async fn pending_execution_call() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -337,8 +336,7 @@ async fn pending_execution_call() {
 
 #[tokio::test]
 async fn call_estimate_fee() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -392,7 +390,7 @@ async fn pending_call_estimate_fee() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -429,8 +427,7 @@ async fn pending_call_estimate_fee() {
 
 #[tokio::test]
 async fn call_simulate() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -448,7 +445,7 @@ async fn pending_call_simulate() {
     let pending_classes = get_test_pending_classes();
     write_block_0_as_pending(pending_data.clone(), pending_classes.clone()).await;
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(
         None, None, Some(pending_data), Some(pending_classes), None
     );
@@ -460,7 +457,7 @@ async fn pending_call_simulate() {
 // Test call_simulate. Assumes that the given block is equal to block number 0 that is returned
 // from the function `prepare_storage_for_execution`.
 async fn test_call_simulate(
-    module: &RpcModule<JsonRpcServerV0_4Impl>,
+    module: &RpcModule<JsonRpcServerImpl>,
     block_id: BlockId,
     block_context_number: BlockNumber,
 ) {
@@ -542,8 +539,7 @@ async fn test_call_simulate(
 
 #[tokio::test]
 async fn call_simulate_skip_validate() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -592,8 +588,7 @@ async fn call_simulate_skip_validate() {
 
 #[tokio::test]
 async fn call_simulate_skip_fee_charge() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     prepare_storage_for_execution(storage_writer);
 
@@ -643,8 +638,7 @@ async fn call_simulate_skip_fee_charge() {
 // TODO(shahak): Add test for trace_transaction that doesn't depend on trace_block_transactions
 #[tokio::test]
 async fn trace_block_transactions_regular_and_pending() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
@@ -786,7 +780,7 @@ async fn trace_block_transactions_regular_and_pending() {
     };
 
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data), None, None);
 
     prepare_storage_for_execution(storage_writer);
@@ -872,8 +866,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         starknet_api::transaction::InvokeTransaction::V1(invoke_tx2),
     );
 
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
@@ -1029,7 +1022,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
     };
 
     let (module, storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data), None, None);
 
     prepare_storage_for_execution(storage_writer);
@@ -1082,8 +1075,7 @@ fn message_from_l1_to_l1_handler_tx() {
 
 #[tokio::test]
 async fn call_estimate_message_fee() {
-    let (module, storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, storage_writer) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     prepare_storage_for_execution(storage_writer);
 
     // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
