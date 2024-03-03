@@ -48,12 +48,10 @@ impl SwarmTrait for Swarm<BlockHeadersBehaviour> {
     }
 
     fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError> {
-        let address = peer
-            .ip
+        let address = format!("/ip4/{}", peer.ip)
             .parse::<Multiaddr>()
             .expect("string to multiaddr failed")
             .with(Protocol::Tcp(peer.tcp_port));
-
         if let Some(peer_id) = peer.peer_id {
             self.dial(DialOpts::peer_id(peer_id).addresses(vec![address]).build())
         } else {
