@@ -76,7 +76,7 @@ use starknet_client::reader::PendingData;
 use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
 use tokio::sync::RwLock;
 
-use super::api::api_impl::JsonRpcServerV0_6Impl as JsonRpcServerImpl;
+use super::api::api_impl::JsonRpcServerImpl;
 use super::api::{
     decompress_program,
     FeeEstimate,

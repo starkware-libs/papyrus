@@ -83,7 +83,6 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => &block.transactions,
         }
     }
-    #[cfg(any(feature = "testing", test))]
     pub fn transactions_mutable(&mut self) -> &mut Vec<Transaction> {
         match self {
             PendingBlockOrDeprecated::Deprecated(block) => &mut block.transactions,
@@ -96,11 +95,22 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => &block.transaction_receipts,
         }
     }
-    #[cfg(any(feature = "testing", test))]
     pub fn transaction_receipts_mutable(&mut self) -> &mut Vec<TransactionReceipt> {
         match self {
             PendingBlockOrDeprecated::Deprecated(block) => &mut block.transaction_receipts,
             PendingBlockOrDeprecated::Current(block) => &mut block.transaction_receipts,
+        }
+    }
+    pub fn transactions_and_receipts_mutable(
+        &mut self,
+    ) -> (&mut Vec<Transaction>, &mut Vec<TransactionReceipt>) {
+        match self {
+            PendingBlockOrDeprecated::Deprecated(block) => {
+                (&mut block.transactions, &mut block.transaction_receipts)
+            }
+            PendingBlockOrDeprecated::Current(block) => {
+                (&mut block.transactions, &mut block.transaction_receipts)
+            }
         }
     }
     pub fn starknet_version(&self) -> String {

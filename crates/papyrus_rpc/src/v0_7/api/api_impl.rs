@@ -17,7 +17,7 @@ use papyrus_execution::{
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
-use papyrus_storage::db::TransactionKind;
+use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
@@ -31,11 +31,16 @@ use starknet_api::transaction::{
     Transaction as StarknetApiTransaction,
     TransactionHash,
     TransactionOffsetInBlock,
+    TransactionVersion,
 };
 use starknet_client::reader::objects::pending_data::{
     DeprecatedPendingBlock,
     PendingBlockOrDeprecated,
     PendingStateUpdate as ClientPendingStateUpdate,
+};
+use starknet_client::reader::objects::transaction::{
+    Transaction as ClientTransaction,
+    TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
@@ -78,14 +83,17 @@ use super::super::transaction::{
     Event,
     GeneralTransactionReceipt,
     L1HandlerMsgHash,
+    L1L2MsgHash,
     MessageFromL1,
     PendingTransactionFinalityStatus,
     PendingTransactionOutput,
     PendingTransactionReceipt,
+    Transaction,
     TransactionOutput,
     TransactionReceipt,
     TransactionStatus,
     TransactionWithHash,
+    TransactionWithReceipt,
     Transactions,
     TypedDeployAccountTransaction,
     TypedInvokeTransaction,
@@ -116,7 +124,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, JsonRpcServerTrait, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::version_config::VERSION_0_7 as VERSION;
@@ -134,7 +142,7 @@ lazy_static! {
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_7Impl {
+pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -148,7 +156,7 @@ pub struct JsonRpcServerV0_7Impl {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerV0_7Impl {
+impl JsonRpcServer for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn spec_version(&self) -> RpcResult<String> {
         Ok(format!("{VERSION}"))
@@ -172,108 +180,139 @@ impl JsonRpcServer for JsonRpcServerV0_7Impl {
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_transaction_hashes(&self, block_id: BlockId) -> RpcResult<Block> {
-        verify_storage_scope(&self.storage_reader)?;
-
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = read_pending_data(&self.pending_data, &txn).await?.block;
-            let pending_block_header = PendingBlockHeader {
-                parent_hash: block.parent_block_hash(),
-                sequencer_address: block.sequencer_address(),
-                timestamp: block.timestamp(),
-                l1_gas_price: ResourcePrice {
-                    price_in_wei: block.l1_gas_price().price_in_wei,
-                    price_in_fri: block.l1_gas_price().price_in_fri,
-                },
-                starknet_version: block.starknet_version(),
-            };
-            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions();
-            let transaction_hashes = client_transactions
-                .iter()
-                .map(|transaction| transaction.transaction_hash())
-                .collect();
-            return Ok(Block {
-                status: None,
-                header,
-                transactions: Transactions::Hashes(transaction_hashes),
-            });
-        }
-
-        let block_number = get_accepted_block_number(&txn, block_id)?;
-        let status = get_block_status(&txn, block_number)?;
-        let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
-        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
-
-        Ok(Block {
-            status: Some(status),
-            header,
-            transactions: Transactions::Hashes(transaction_hashes),
-        })
+        self.get_block(
+            block_id,
+            |pending_data| {
+                Ok(Transactions::Hashes(
+                    pending_data
+                        .block
+                        .transactions()
+                        .iter()
+                        .map(|transaction| transaction.transaction_hash())
+                        .collect(),
+                ))
+            },
+            |txn, block_number| {
+                Ok(Transactions::Hashes(get_block_tx_hashes_by_number(txn, block_number)?))
+            },
+        )
+        .await
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block> {
-        verify_storage_scope(&self.storage_reader)?;
+        self.get_block(
+            block_id,
+            |mut pending_data| {
+                let client_transactions = pending_data.block.transactions_mutable().drain(..);
+                Ok(Transactions::Full(
+                    client_transactions
+                        .map(|client_transaction| {
+                            let transaction_hash = client_transaction.transaction_hash();
+                            let starknet_api_transaction: StarknetApiTransaction =
+                                client_transaction.try_into().map_err(internal_server_error)?;
+                            Ok(TransactionWithHash {
+                                transaction: starknet_api_transaction
+                                    .try_into()
+                                    .map_err(internal_server_error)?,
+                                transaction_hash,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, ErrorObjectOwned>>()?,
+                ))
+            },
+            |txn, block_number| {
+                // TODO(dvir): consider create a vector of (transaction, transaction_index) first
+                // and get the transaction hashes by the index.
+                let transactions = get_block_txs_by_number(txn, block_number)?;
+                let transaction_hashes = get_block_tx_hashes_by_number(txn, block_number)?;
+                Ok(Transactions::Full(
+                    transactions
+                        .into_iter()
+                        .zip(transaction_hashes)
+                        .map(|(transaction, transaction_hash)| TransactionWithHash {
+                            transaction,
+                            transaction_hash,
+                        })
+                        .collect(),
+                ))
+            },
+        )
+        .await
+    }
 
-        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
-        if let BlockId::Tag(Tag::Pending) = block_id {
-            let block = read_pending_data(&self.pending_data, &txn).await?.block;
-            let pending_block_header = PendingBlockHeader {
-                parent_hash: block.parent_block_hash(),
-                sequencer_address: block.sequencer_address(),
-                timestamp: block.timestamp(),
-                l1_gas_price: ResourcePrice {
-                    price_in_wei: block.l1_gas_price().price_in_wei,
-                    price_in_fri: block.l1_gas_price().price_in_fri,
-                },
-                starknet_version: block.starknet_version(),
-            };
-            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
-            let client_transactions = block.transactions();
-            let transactions = client_transactions
-                .iter()
-                .map(|client_transaction| {
-                    let starknet_api_transaction: StarknetApiTransaction =
-                        client_transaction.clone().try_into().map_err(internal_server_error)?;
-                    Ok(TransactionWithHash {
-                        transaction: starknet_api_transaction
-                            .try_into()
-                            .map_err(internal_server_error)?,
-                        transaction_hash: client_transaction.transaction_hash(),
-                    })
-                })
-                .collect::<Result<Vec<_>, ErrorObjectOwned>>()?;
-            return Ok(Block {
-                status: None,
-                header,
-                transactions: Transactions::Full(transactions),
-            });
-        }
+    #[instrument(skip(self), level = "debug", err, ret)]
+    async fn get_block_w_full_transactions_and_receipts(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Block> {
+        self.get_block(
+            block_id,
+            |mut pending_data| {
+                let (client_transactions, client_receipts) =
+                    pending_data.block.transactions_and_receipts_mutable();
+                let client_transactions_and_receipts =
+                    client_transactions.drain(..).zip(client_receipts.drain(..));
+                Ok(Transactions::FullWithReceipts(
+                    client_transactions_and_receipts
+                        .map(|(client_transaction, client_transaction_receipt)| {
+                            let receipt = client_receipt_to_rpc_pending_receipt(
+                                &client_transaction,
+                                client_transaction_receipt,
+                            )?
+                            .into();
 
-        let block_number = get_accepted_block_number(&txn, block_id)?;
-        let status = get_block_status(&txn, block_number)?;
-        let header =
-            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
-        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
-        // the transaction hashes by the index.
-        let transactions = get_block_txs_by_number(&txn, block_number)?;
-        let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
-        let transactions_with_hash = transactions
-            .into_iter()
-            .zip(transaction_hashes)
-            .map(|(transaction, transaction_hash)| TransactionWithHash {
-                transaction,
-                transaction_hash,
-            })
-            .collect();
-
-        Ok(Block {
-            status: Some(status),
-            header,
-            transactions: Transactions::Full(transactions_with_hash),
-        })
+                            let starknet_api_transaction: StarknetApiTransaction =
+                                client_transaction.try_into().map_err(internal_server_error)?;
+                            Ok(TransactionWithReceipt {
+                                transaction: starknet_api_transaction
+                                    .try_into()
+                                    .map_err(internal_server_error)?,
+                                receipt,
+                            })
+                        })
+                        .collect::<Result<Vec<_>, ErrorObjectOwned>>()?,
+                ))
+            },
+            |txn, block_number| {
+                // TODO(dvir): consider create a vector of (transaction, transaction_index) first
+                // and get the transaction hashes by the index.
+                let transactions = get_block_txs_by_number(txn, block_number)?;
+                let transaction_hashes = get_block_tx_hashes_by_number(txn, block_number)?;
+                Ok(Transactions::FullWithReceipts(
+                    transactions
+                        .into_iter()
+                        .zip(transaction_hashes)
+                        .enumerate()
+                        .map(|(transaction_offset, (transaction, transaction_hash))| {
+                            let transaction_index = TransactionIndex(
+                                block_number,
+                                TransactionOffsetInBlock(transaction_offset),
+                            );
+                            let msg_hash = match &transaction {
+                                Transaction::L1Handler(l1_handler_tx) => {
+                                    Some(l1_handler_tx.calc_msg_hash())
+                                }
+                                _ => None,
+                            };
+                            let transaction_version = transaction.version();
+                            Ok(TransactionWithReceipt {
+                                transaction,
+                                receipt: get_non_pending_receipt(
+                                    txn,
+                                    transaction_index,
+                                    transaction_hash,
+                                    transaction_version,
+                                    msg_hash,
+                                )?
+                                .into(),
+                            })
+                        })
+                        .collect::<Result<Vec<_>, ErrorObjectOwned>>()?,
+                ))
+            },
+        )
+        .await
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
@@ -483,20 +522,6 @@ impl JsonRpcServer for JsonRpcServerV0_7Impl {
         if let Some(transaction_index) =
             txn.get_transaction_idx_by_hash(&transaction_hash).map_err(internal_server_error)?
         {
-            let block_number = transaction_index.0;
-            let status = get_block_status(&txn, block_number)?;
-
-            // rejected blocks should not be a part of the API so we early return here.
-            // this assumption also holds for the conversion from block status to transaction
-            // finality status where we set rejected blocks to unreachable.
-            if status == BlockStatus::Rejected {
-                return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND))?;
-            }
-
-            let block_hash = get_block_header_by_number(&txn, block_number)
-                .map_err(internal_server_error)?
-                .block_hash;
-
             let tx = txn
                 .get_transaction(transaction_index)
                 .map_err(internal_server_error)?
@@ -511,78 +536,37 @@ impl JsonRpcServer for JsonRpcServerV0_7Impl {
                 StarknetApiTransaction::L1Handler(tx) => tx.version,
             };
 
-            let thin_tx_output = txn
-                .get_transaction_output(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let events = txn
-                .get_transaction_events(transaction_index)
-                .map_err(internal_server_error)?
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-            let msg_hash = match thin_tx_output {
-                papyrus_storage::body::events::ThinTransactionOutput::L1Handler(_) => {
-                    let starknet_api::transaction::Transaction::L1Handler(tx) = tx else {
-                        panic!("tx {} should be L1 handler", transaction_hash);
-                    };
-                    Some(tx.calc_msg_hash())
+            let msg_hash = match tx {
+                StarknetApiTransaction::L1Handler(l1_handler_tx) => {
+                    Some(l1_handler_tx.calc_msg_hash())
                 }
                 _ => None,
             };
 
-            let output = TransactionOutput::from_thin_transaction_output(
-                thin_tx_output,
-                tx_version,
-                events,
-                msg_hash,
-            );
-
-            Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
-                finality_status: status.into(),
-                transaction_hash,
-                block_hash,
-                block_number,
-                output,
-            }))
+            get_non_pending_receipt(&txn, transaction_index, transaction_hash, tx_version, msg_hash)
         } else {
             // The transaction is not in any non-pending block. Search for it in the pending block
             // and if it's not found, return error.
 
             // TODO(shahak): Consider cloning the transactions and the receipts in order to free
             // the lock sooner (Check which is better).
-            let pending_block = read_pending_data(&self.pending_data, &txn).await?.block;
+            let pending_data = read_pending_data(&self.pending_data, &txn).await?;
 
-            let client_transaction_receipt = pending_block
+            let client_transaction_receipt = pending_data
+                .block
                 .transaction_receipts()
                 .iter()
                 .find(|receipt| receipt.transaction_hash == transaction_hash)
                 .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
                 .clone();
-            let client_transaction = &pending_block
+            let client_transaction = &pending_data
+                .block
                 .transactions()
                 .iter()
-                .find(|transaction| transaction.transaction_hash() == transaction_hash)
-                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-            let starknet_api_output =
-                client_transaction_receipt.into_starknet_api_transaction_output(client_transaction);
-            let msg_hash = match client_transaction {
-                starknet_client::reader::objects::transaction::Transaction::L1Handler(tx) => {
-                    Some(tx.calc_msg_hash())
-                }
-                _ => None,
-            };
-            let output = PendingTransactionOutput::try_from(TransactionOutput::from((
-                starknet_api_output,
-                client_transaction.transaction_version(),
-                msg_hash,
-            )))?;
-            Ok(GeneralTransactionReceipt::PendingTransactionReceipt(PendingTransactionReceipt {
-                // ACCEPTED_ON_L2 is the only finality status of a pending transaction.
-                finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
-                transaction_hash,
-                output,
-            }))
+                .find(|tx| tx.transaction_hash() == transaction_hash)
+                .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?
+                .clone();
+            client_receipt_to_rpc_pending_receipt(client_transaction, client_transaction_receipt)
         }
     }
 
@@ -1506,13 +1490,127 @@ async fn read_pending_data<Mode: TransactionKind>(
     }
 }
 
+impl JsonRpcServerImpl {
+    // Get the block with the given ID and the given custom logic for getting the transactions.
+    async fn get_block(
+        &self,
+        block_id: BlockId,
+        get_pending_transactions: impl FnOnce(PendingData) -> RpcResult<Transactions>,
+        get_transactions: impl FnOnce(&StorageTxn<'_, RO>, BlockNumber) -> RpcResult<Transactions>,
+    ) -> RpcResult<Block> {
+        verify_storage_scope(&self.storage_reader)?;
+        let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        if let BlockId::Tag(Tag::Pending) = block_id {
+            let pending_data = read_pending_data(&self.pending_data, &txn).await?;
+            let block = &pending_data.block;
+            let pending_block_header = PendingBlockHeader {
+                parent_hash: block.parent_block_hash(),
+                sequencer_address: block.sequencer_address(),
+                timestamp: block.timestamp(),
+                l1_gas_price: ResourcePrice {
+                    price_in_wei: block.l1_gas_price().price_in_wei,
+                    price_in_fri: block.l1_gas_price().price_in_fri,
+                },
+                starknet_version: block.starknet_version(),
+            };
+            let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
+
+            return Ok(Block {
+                status: None,
+                header,
+                transactions: get_pending_transactions(pending_data)?,
+            });
+        }
+
+        let block_number = get_accepted_block_number(&txn, block_id)?;
+        let status = get_block_status(&txn, block_number)?;
+        let header =
+            GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
+        Ok(Block {
+            status: Some(status),
+            header,
+            transactions: get_transactions(&txn, block_number)?,
+        })
+    }
+}
+
+fn get_non_pending_receipt<Mode: TransactionKind>(
+    txn: &StorageTxn<'_, Mode>,
+    transaction_index: TransactionIndex,
+    transaction_hash: TransactionHash,
+    tx_version: TransactionVersion,
+    msg_hash: Option<L1L2MsgHash>,
+) -> RpcResult<GeneralTransactionReceipt> {
+    let block_number = transaction_index.0;
+    let status = get_block_status(txn, block_number)?;
+
+    // rejected blocks should not be a part of the API so we early return here.
+    // this assumption also holds for the conversion from block status to transaction
+    // finality status where we set rejected blocks to unreachable.
+    if status == BlockStatus::Rejected {
+        return Err(ErrorObjectOwned::from(BLOCK_NOT_FOUND));
+    }
+
+    let block_hash =
+        get_block_header_by_number(txn, block_number).map_err(internal_server_error)?.block_hash;
+
+    let thin_tx_output = txn
+        .get_transaction_output(transaction_index)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+
+    let events = txn
+        .get_transaction_events(transaction_index)
+        .map_err(internal_server_error)?
+        .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
+
+    let output = TransactionOutput::from_thin_transaction_output(
+        thin_tx_output,
+        tx_version,
+        events,
+        msg_hash,
+    );
+
+    Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
+        finality_status: status.into(),
+        transaction_hash,
+        block_hash,
+        block_number,
+        output,
+    }))
+}
+
+fn client_receipt_to_rpc_pending_receipt(
+    client_transaction: &ClientTransaction,
+    client_transaction_receipt: ClientTransactionReceipt,
+) -> RpcResult<GeneralTransactionReceipt> {
+    let transaction_hash = client_transaction.transaction_hash();
+    let starknet_api_output =
+        client_transaction_receipt.into_starknet_api_transaction_output(client_transaction);
+    let msg_hash = match client_transaction {
+        ClientTransaction::L1Handler(tx) => Some(tx.calc_msg_hash()),
+        _ => None,
+    };
+    let output = PendingTransactionOutput::try_from(TransactionOutput::from((
+        starknet_api_output,
+        client_transaction.transaction_version(),
+        msg_hash,
+    )))?;
+    Ok(GeneralTransactionReceipt::PendingTransactionReceipt(PendingTransactionReceipt {
+        // ACCEPTED_ON_L2 is the only finality status of a pending transaction.
+        finality_status: PendingTransactionFinalityStatus::AcceptedOnL2,
+        transaction_hash,
+        output,
+    }))
+}
+
 fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter) -> bool {
     filter.keys.iter().enumerate().all(|(i, keys)| {
         event_content.keys.len() > i && (keys.is_empty() || keys.contains(&event_content.keys[i]))
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_7Impl {
+impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,

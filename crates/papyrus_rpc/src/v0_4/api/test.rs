@@ -155,7 +155,7 @@ use super::super::write_api_result::{
     AddDeployAccountOkResult,
     AddInvokeOkResult,
 };
-use super::api_impl::{JsonRpcServerV0_4Impl, BLOCK_HASH_TABLE_ADDRESS};
+use super::api_impl::{JsonRpcServerImpl, BLOCK_HASH_TABLE_ADDRESS};
 use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
@@ -187,7 +187,7 @@ const NODE_VERSION: &str = "NODE VERSION";
 
 #[tokio::test]
 async fn chain_id() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // The result should be equal to the result of the following python code
     // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
@@ -208,7 +208,7 @@ async fn chain_id() {
 async fn block_hash_and_number() {
     let method_name = "starknet_V0_4_blockHashAndNumber";
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // No blocks yet.
     call_api_then_assert_and_validate_schema_for_err::<_, BlockHashAndNumber>(
@@ -270,7 +270,7 @@ async fn block_hash_and_number() {
 async fn block_number() {
     let method_name = "starknet_V0_4_blockNumber";
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // No blocks yet.
     let expected_err = NO_BLOCKS.into();
@@ -330,7 +330,7 @@ async fn syncing() {
     const API_METHOD_NAME: &str = "starknet_V0_4_syncing";
 
     let shared_highest_block = get_test_highest_block();
-    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         Some(shared_highest_block.clone()),
         None,
@@ -366,7 +366,7 @@ async fn get_block_transaction_count() {
     let method_name = "starknet_V0_4_getBlockTransactionCount";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let transaction_count = 5;
     let block = get_test_block(transaction_count, None, None, None);
@@ -457,7 +457,7 @@ async fn get_block_w_full_transactions() {
     let method_name = "starknet_V0_4_getBlockWithTxs";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
 
     let mut block = get_test_block(1, None, None, None);
@@ -622,7 +622,7 @@ async fn get_block_w_transaction_hashes() {
     let method_name = "starknet_V0_4_getBlockWithTxHashes";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
 
     let mut block = get_test_block(1, None, None, None);
@@ -789,7 +789,7 @@ async fn get_class() {
     let method_name = "starknet_V0_4_getClass";
     let pending_classes = get_test_pending_classes();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, None, Some(pending_classes.clone()), None);
     let parent_header = BlockHeader::default();
     let header = BlockHeader {
@@ -945,7 +945,7 @@ async fn get_transaction_receipt() {
     let method_name = "starknet_V0_4_getTransactionReceipt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -1062,7 +1062,7 @@ async fn get_class_at() {
     let pending_data = get_test_pending_data();
     let pending_classes = get_test_pending_classes();
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             None,
             None,
             Some(pending_data.clone()),
@@ -1250,7 +1250,7 @@ async fn get_class_hash_at() {
     let method_name = "starknet_V0_4_getClassHashAt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1405,7 +1405,7 @@ async fn get_nonce() {
     let method_name = "starknet_V0_4_getNonce";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1542,7 +1542,7 @@ async fn get_storage_at() {
     let method_name = "starknet_V0_4_getStorageAt";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
     let diff = get_test_state_diff();
@@ -1784,7 +1784,7 @@ async fn get_transaction_by_hash() {
     let method_name = "starknet_V0_4_getTransactionByHash";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let mut block = get_test_block(1, None, None, None);
     // Change the transaction hash from 0 to a random value, so that later on we can add a
@@ -1855,7 +1855,7 @@ async fn get_transaction_by_hash() {
 async fn get_transaction_by_hash_state_only() {
     let method_name = "starknet_V0_4_getTransactionByHash";
     let params = [TransactionHash(StarkHash::from(1_u8))];
-    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+    let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
         None,
         None,
         None,
@@ -1875,7 +1875,7 @@ async fn get_transaction_by_block_id_and_index() {
     let method_name = "starknet_V0_4_getTransactionByBlockIdAndIndex";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let block = get_test_block(1, None, None, None);
     storage_writer
@@ -2004,7 +2004,7 @@ async fn get_state_update() {
     let method_name = "starknet_V0_4_getStateUpdate";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let parent_header = BlockHeader::default();
     let expected_pending_old_root = GlobalRoot(stark_felt!("0x1234"));
@@ -2164,7 +2164,7 @@ async fn get_state_update_with_empty_storage_diff() {
     let method_name = "starknet_V0_4_getStateUpdate";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let state_diff = starknet_api::state::StateDiff {
         storage_diffs: indexmap!(ContractAddress::default() => indexmap![]),
@@ -2304,7 +2304,7 @@ async fn test_get_events(
     let method_name = "starknet_V0_4_getEvents";
     let pending_data = get_test_pending_data();
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
-        JsonRpcServerV0_4Impl,
+        JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let mut rng = get_rng();
 
@@ -2811,7 +2811,7 @@ async fn get_events_pending_not_up_to_date() {
 
 #[tokio::test]
 async fn get_events_page_size_too_big() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // Create the filter.
     let filter = EventFilter {
@@ -2836,7 +2836,7 @@ async fn get_events_page_size_too_big() {
 
 #[tokio::test]
 async fn get_events_too_many_keys() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let keys = (0..get_test_rpc_config().max_events_keys + 1)
         .map(|i| HashSet::from([EventKey(StarkFelt::from(i as u128))]))
         .collect();
@@ -2865,7 +2865,7 @@ async fn get_events_too_many_keys() {
 #[tokio::test]
 async fn get_events_invalid_ct() {
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let block = starknet_api::block::Block::default();
     storage_writer
         .begin_rw_txn()
@@ -3113,7 +3113,7 @@ async fn get_deprecated_class_state_mutability() {
     };
 
     let (module, mut storage_writer) =
-        get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+        get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let header = BlockHeader::default();
 
     storage_writer
@@ -3198,7 +3198,7 @@ where
             Ok(client_resp),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3232,7 +3232,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3266,7 +3266,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3297,7 +3297,7 @@ where
             Err(client_error),
         );
 
-        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerV0_4Impl>(
+        let (module, _) = get_test_rpc_server_and_storage_writer_from_params::<JsonRpcServerImpl>(
             Some(client_mock),
             None,
             None,
@@ -3465,7 +3465,7 @@ async fn add_declare_unexpected_error() {
 
 #[test]
 fn spec_api_methods_coverage() {
-    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerV0_4Impl>();
+    let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
     let implemented_methods: Methods = module.into();
     let implemented_method_names = implemented_methods
         .method_names()
