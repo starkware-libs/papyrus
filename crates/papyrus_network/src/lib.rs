@@ -4,6 +4,7 @@
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
 pub mod block_headers;
+mod converters;
 mod db_executor;
 pub mod messages;
 pub mod network_manager;
