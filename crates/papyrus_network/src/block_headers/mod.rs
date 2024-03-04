@@ -1,7 +1,6 @@
 pub mod behaviour;
 
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::crypto::Signature;
 use starknet_api::hash::StarkHash;
 
 #[cfg(test)]
@@ -164,16 +163,6 @@ impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
             // TODO(shahak): fill this.
             signatures: vec![signature.into()],
         }
-    }
-}
-
-impl TryFrom<protobuf::ConsensusSignature> for starknet_api::block::BlockSignature {
-    type Error = ProtobufConversionError;
-    fn try_from(value: protobuf::ConsensusSignature) -> Result<Self, Self::Error> {
-        Ok(Self(Signature {
-            r: value.r.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
-            s: value.s.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
-        }))
     }
 }
 

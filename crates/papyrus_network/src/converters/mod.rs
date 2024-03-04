@@ -14,6 +14,7 @@ use starknet_api::core::{
     SequencerContractAddress,
     TransactionCommitment,
 };
+use starknet_api::crypto::Signature;
 
 use crate::messages::{enum_int_to_l1_data_availability_mode, protobuf, ProtobufConversionError};
 use crate::SignedBlockHeader;
@@ -125,5 +126,15 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 .map(starknet_api::block::BlockSignature::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         })
+    }
+}
+
+impl TryFrom<protobuf::ConsensusSignature> for starknet_api::block::BlockSignature {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::ConsensusSignature) -> Result<Self, Self::Error> {
+        Ok(Self(Signature {
+            r: value.r.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
+            s: value.s.ok_or(ProtobufConversionError::MissingField)?.try_into()?,
+        }))
     }
 }
