@@ -177,12 +177,6 @@ impl TryFrom<protobuf::ConsensusSignature> for starknet_api::block::BlockSignatu
     }
 }
 
-impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
-    fn from(value: starknet_api::block::BlockSignature) -> Self {
-        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
-    }
-}
-
 #[cfg(test)]
 impl TestInstance for protobuf::SignedBlockHeader {
     fn test_instance() -> Self {
