@@ -17,6 +17,7 @@ use starknet_api::core::{
 };
 use starknet_api::crypto::Signature;
 
+use crate::messages::protobuf::ConsensusSignature;
 use crate::messages::{
     enum_int_to_l1_data_availability_mode,
     l1_data_availability_mode_to_enum_int,
@@ -135,8 +136,8 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
     }
 }
 
-impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
-    fn from((header, signature): (BlockHeader, BlockSignature)) -> Self {
+impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
+    fn from((header, signature): (BlockHeader, Vec<BlockSignature>)) -> Self {
         Self {
             block_hash: Some(header.block_hash.into()),
             parent_hash: Some(header.parent_hash.into()),
@@ -183,7 +184,10 @@ impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
             // TODO(shahak): fill this.
             num_deployed_contracts: 0,
             // TODO(shahak): fill this.
-            signatures: vec![signature.into()],
+            signatures: signature
+                .iter()
+                .map(|signature| <BlockSignature as Into<ConsensusSignature>>::into(*signature))
+                .collect(),
         }
     }
 }

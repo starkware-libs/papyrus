@@ -61,7 +61,7 @@ async fn one_sends_to_the_other() {
                 .send_data(
                     Data::BlockHeaderAndSignature {
                         header: BlockHeader { block_number: BlockNumber(i), ..Default::default() },
-                        signature: BlockSignature::default(),
+                        signatures: vec![BlockSignature::default()],
                     },
                     inbound_session_id,
                 )
