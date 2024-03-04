@@ -1,25 +1,15 @@
 use std::convert::{TryFrom, TryInto};
 
 use starknet_api::block::{
-    BlockHash,
-    BlockHeader,
-    BlockNumber,
-    BlockSignature,
-    GasPrice,
-    GasPricePerToken,
+    BlockHash, BlockHeader, BlockNumber, BlockSignature, GasPrice, GasPricePerToken,
     StarknetVersion,
 };
 use starknet_api::core::{
-    EventCommitment,
-    GlobalRoot,
-    SequencerContractAddress,
-    TransactionCommitment,
+    EventCommitment, GlobalRoot, SequencerContractAddress, TransactionCommitment,
 };
 
 use crate::messages::{
-    enum_int_to_l1_data_availability_mode,
-    l1_data_availability_mode_to_enum_int,
-    protobuf,
+    enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int, protobuf,
     ProtobufConversionError,
 };
 use crate::SignedBlockHeader;
@@ -184,5 +174,11 @@ impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
             // TODO(shahak): fill this.
             signatures: vec![signature.into()],
         }
+    }
+}
+
+impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature {
+    fn from(value: starknet_api::block::BlockSignature) -> Self {
+        Self { r: Some(value.0.r.into()), s: Some(value.0.s.into()) }
     }
 }
