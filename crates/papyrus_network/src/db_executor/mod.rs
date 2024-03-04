@@ -25,6 +25,7 @@ pub struct QueryId(pub usize);
 pub enum Data {
     // TODO(shahak): Consider uniting with SignedBlockHeader.
     BlockHeaderAndSignature { header: BlockHeader, signature: BlockSignature },
+    Fin,
 }
 
 #[derive(thiserror::Error, Debug)]
