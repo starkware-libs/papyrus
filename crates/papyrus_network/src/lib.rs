@@ -6,19 +6,19 @@ pub mod bin_utils;
 // pub mod block_headers;
 mod converters;
 mod db_executor;
-// pub mod network_manager;
+pub mod network_manager;
 pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
-
 use std::collections::BTreeMap;
+use std::pin::Pin;
 use std::str::FromStr;
 use std::time::Duration;
 use std::usize;
 
-use futures::channel::mpsc::{Receiver, Sender};
-use libp2p::PeerId;
+use futures::Stream;
+use libp2p::{PeerId, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -70,6 +70,7 @@ pub enum Direction {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(Clone))]
 pub struct SignedBlockHeader {
     pub block_header: BlockHeader,
     pub signatures: Vec<BlockSignature>,
@@ -93,12 +94,26 @@ pub enum BlockHashOrNumber {
 }
 
 pub struct ResponseReceivers {
-    pub signed_headers_receiver: Receiver<SignedBlockHeader>,
+    pub signed_headers_receiver: Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>>>>,
 }
 
-#[allow(dead_code)]
-struct ResponseSenders {
-    pub signed_headers_sender: Sender<SignedBlockHeader>,
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum Protocol {
+    SignedBlockHeader,
+}
+
+impl Protocol {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Protocol::SignedBlockHeader => "/starknet/headers/1",
+        }
+    }
+}
+
+impl From<Protocol> for StreamProtocol {
+    fn from(protocol: Protocol) -> StreamProtocol {
+        StreamProtocol::new(protocol.as_str())
+    }
 }
 
 impl SerializeConfig for NetworkConfig {
@@ -186,13 +201,6 @@ impl Default for PeerAddressConfig {
             ip: "127.0.0.1".to_string(),
             tcp_port: 10002,
         }
-    }
-}
-
-impl ResponseReceivers {
-    #[allow(dead_code)]
-    fn new(signed_headers_receiver: Receiver<SignedBlockHeader>) -> Self {
-        Self { signed_headers_receiver }
     }
 }
 

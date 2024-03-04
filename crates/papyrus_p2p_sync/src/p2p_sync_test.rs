@@ -25,7 +25,7 @@ lazy_static! {
         P2PSyncConfig { num_headers_per_query: QUERY_LENGTH, query_timeout: QUERY_TIMEOUT };
 }
 
-fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<SignedBlockHeader>) {
+fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<Option<SignedBlockHeader>>) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (signed_headers_sender, signed_headers_receiver) =
@@ -35,7 +35,7 @@ fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<SignedBlockHeader
         storage_reader.clone(),
         storage_writer,
         query_sender,
-        ResponseReceivers { signed_headers_receiver },
+        ResponseReceivers { signed_headers_receiver: signed_headers_receiver.boxed() },
     );
     (p2p_sync, storage_reader, query_receiver, signed_headers_sender)
 }
@@ -91,14 +91,14 @@ async fn signed_headers_basic_flow() {
                 .skip(start_block_number)
             {
                 signed_headers_sender
-                    .send(SignedBlockHeader {
+                    .send(Some(SignedBlockHeader {
                         block_header: BlockHeader {
                             block_number: BlockNumber(i.try_into().unwrap()),
                             block_hash: *block_hash,
                             ..Default::default()
                         },
                         signatures: vec![*block_signature],
-                    })
+                    }))
                     .await
                     .unwrap();
             }
@@ -152,14 +152,14 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
             signed_headers_sender
-                .send(SignedBlockHeader {
+                .send(Some(SignedBlockHeader {
                     block_header: BlockHeader {
                         block_number: BlockNumber(i.try_into().unwrap()),
                         block_hash,
                         ..Default::default()
                     },
                     signatures: vec![signature],
-                })
+                }))
                 .await
                 .unwrap();
         }
