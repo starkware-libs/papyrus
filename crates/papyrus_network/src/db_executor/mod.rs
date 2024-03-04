@@ -105,7 +105,6 @@ impl BlockHeaderDBExecutor {
 
 impl DBExecutor for BlockHeaderDBExecutor {
     fn register_query(&mut self, query: InternalQuery, mut sender: Sender<Data>) -> QueryId {
-        // TODO: consider create a sized vector and increase its size when needed.
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
         let storage_reader_clone = self.storage_reader.clone();
