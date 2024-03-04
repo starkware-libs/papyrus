@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
+use std::vec;
 
 use deadqueue::unlimited::Queue;
 use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
@@ -9,7 +10,7 @@ use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
 use libp2p::PeerId;
-use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
@@ -151,7 +152,7 @@ impl DBExecutor for MockDBExecutor {
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
                         if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
                             header,
-                            signature: BlockSignature::default(),
+                            signatures: vec![],
                         }) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
@@ -248,9 +249,10 @@ async fn process_incoming_query() {
         inbound_session_data = get_data_fut => {
             let mut expected_data = headers
                 .into_iter()
-                .map(|header| Data::BlockHeaderAndSignature {
-                    header, signature: BlockSignature::default()
-                })
+                .map(|header| {
+                    Data::BlockHeaderAndSignature {
+                    header, signatures: vec![]
+                }})
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin);
             assert_eq!(inbound_session_data, expected_data);

@@ -24,7 +24,7 @@ pub struct QueryId(pub usize);
 #[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
     // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature { header: BlockHeader, signature: BlockSignature },
+    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
     Fin,
 }
 
@@ -155,9 +155,10 @@ impl DBExecutor for BlockHeaderDBExecutor {
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
-                            if let Err(e) = sender
-                                .start_send(Data::BlockHeaderAndSignature { header, signature })
-                            {
+                            if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
+                                header,
+                                signatures: vec![signature],
+                            }) {
                                 // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };

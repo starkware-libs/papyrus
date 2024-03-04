@@ -74,8 +74,8 @@ impl Behaviour {
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let protobuf_data = match data {
-            Data::BlockHeaderAndSignature { header, signature } => {
-                protobuf::block_headers_response::HeaderMessage::Header((header, signature).into())
+            Data::BlockHeaderAndSignature { header, signatures } => {
+                protobuf::block_headers_response::HeaderMessage::Header((header, signatures).into())
             }
             Data::Fin {} => protobuf::block_headers_response::HeaderMessage::Fin(protobuf::Fin {}),
         };
