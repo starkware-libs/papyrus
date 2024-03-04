@@ -4,6 +4,7 @@ use starknet_api::block::{
     BlockHash,
     BlockHeader,
     BlockNumber,
+    BlockSignature,
     GasPrice,
     GasPricePerToken,
     StarknetVersion,
@@ -15,7 +16,12 @@ use starknet_api::core::{
     TransactionCommitment,
 };
 
-use crate::messages::{enum_int_to_l1_data_availability_mode, protobuf, ProtobufConversionError};
+use crate::messages::{
+    enum_int_to_l1_data_availability_mode,
+    l1_data_availability_mode_to_enum_int,
+    protobuf,
+    ProtobufConversionError,
+};
 use crate::SignedBlockHeader;
 
 impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
@@ -125,5 +131,58 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 .map(starknet_api::block::BlockSignature::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         })
+    }
+}
+
+impl From<(BlockHeader, BlockSignature)> for protobuf::SignedBlockHeader {
+    fn from((header, signature): (BlockHeader, BlockSignature)) -> Self {
+        Self {
+            block_hash: Some(header.block_hash.into()),
+            parent_hash: Some(header.parent_hash.into()),
+            number: header.block_number.0,
+            time: header.timestamp.0,
+            sequencer_address: Some(header.sequencer.0.into()),
+            // TODO(shahak): fill this.
+            state_diff_commitment: None,
+            state: Some(protobuf::Patricia {
+                // TODO(shahak): fill this.
+                height: 0,
+                root: Some(header.state_root.0.into()),
+            }),
+            transactions: Some(protobuf::Merkle {
+                n_leaves: header
+                    .n_transactions
+                    .unwrap_or_default()
+                    .try_into()
+                    .expect("Converting usize to u64 failed"),
+                root: Some(header.transaction_commitment.unwrap_or_default().0.into()),
+            }),
+            events: Some(protobuf::Merkle {
+                n_leaves: header
+                    .n_events
+                    .unwrap_or_default()
+                    .try_into()
+                    .expect("Converting usize to u64 failed"),
+                root: Some(header.event_commitment.unwrap_or_default().0.into()),
+            }),
+            // TODO(shahak): fill this.
+            receipts: None,
+            protocol_version: header.starknet_version.0,
+            gas_price_wei: Some(header.l1_gas_price.price_in_wei.0.into()),
+            gas_price_fri: Some(header.l1_gas_price.price_in_fri.0.into()),
+            data_gas_price_wei: Some(header.l1_data_gas_price.price_in_wei.0.into()),
+            data_gas_price_fri: Some(header.l1_data_gas_price.price_in_fri.0.into()),
+            l1_data_availability_mode: l1_data_availability_mode_to_enum_int(header.l1_da_mode),
+            // TODO(shahak): fill this.
+            num_storage_diffs: 0,
+            // TODO(shahak): fill this.
+            num_nonce_updates: 0,
+            // TODO(shahak): fill this.
+            num_declared_classes: 0,
+            // TODO(shahak): fill this.
+            num_deployed_contracts: 0,
+            // TODO(shahak): fill this.
+            signatures: vec![signature.into()],
+        }
     }
 }
