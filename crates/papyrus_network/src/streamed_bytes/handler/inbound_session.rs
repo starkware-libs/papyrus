@@ -10,11 +10,11 @@ use futures::{AsyncWriteExt, FutureExt};
 use libp2p::swarm::Stream;
 use replace_with::replace_with_or_abort;
 
-use super::super::DataBound;
-use crate::messages::write_message;
+use super::super::messages::write_message;
+use super::super::Bytes;
 
-pub(super) struct InboundSession<Data: DataBound> {
-    pending_messages: VecDeque<Data>,
+pub(super) struct InboundSession {
+    pending_messages: VecDeque<Bytes>,
     current_task: WriteMessageTask,
     wakers_waiting_for_new_message: Vec<Waker>,
 }
@@ -30,7 +30,7 @@ enum WriteMessageTask {
     Closing(BoxFuture<'static, Result<(), io::Error>>),
 }
 
-impl<Data: DataBound> InboundSession<Data> {
+impl InboundSession {
     pub fn new(write_stream: WriteHalf<Stream>) -> Self {
         Self {
             pending_messages: Default::default(),
@@ -39,7 +39,7 @@ impl<Data: DataBound> InboundSession<Data> {
         }
     }
 
-    pub fn add_message_to_queue(&mut self, data: Data) {
+    pub fn add_message_to_queue(&mut self, data: Bytes) {
         self.pending_messages.push_back(data);
         for waker in self.wakers_waiting_for_new_message.drain(..) {
             waker.wake();
@@ -68,7 +68,7 @@ impl<Data: DataBound> InboundSession<Data> {
                 };
                 WriteMessageTask::Running(
                     async move {
-                        write_message(data, &mut write_stream).await?;
+                        write_message(&data, &mut write_stream).await?;
                         Ok(write_stream)
                     }
                     .boxed(),
@@ -105,7 +105,7 @@ impl<Data: DataBound> InboundSession<Data> {
     }
 }
 
-impl<Data: DataBound> Future for InboundSession<Data> {
+impl Future for InboundSession {
     type Output = Result<(), io::Error>;
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
