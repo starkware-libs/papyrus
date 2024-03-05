@@ -911,7 +911,7 @@ impl StorageSerde for BigUint {
 }
 
 ////////////////////////////////////////////////////////////////////////
-//  Custom serialization with pre trained dictionaries compression.
+//  Custom serialization with pre-trained dictionaries compression.
 ////////////////////////////////////////////////////////////////////////
 
 // TODO(dvir): fine tune the compression hyperparameters, especially compression level, magic_bytes
@@ -920,12 +920,12 @@ impl StorageSerde for BigUint {
 // ThinStateDiff compression.
 const THIN_STATE_DIFF_COMPRESSION_DICT_V1: &[u8] = &[0];
 lazy_static! {
-    static ref THIN_STATE_DIFF_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::new(
+    static ref THIN_STATE_DIFF_ENCODER_DICT: EncoderDictionary<'static> = EncoderDictionary::copy(
         THIN_STATE_DIFF_COMPRESSION_DICT_V1,
         zstd::DEFAULT_COMPRESSION_LEVEL
     );
     static ref THIN_STATE_DIFF_DECODER_DICT_V1: DecoderDictionary<'static> =
-        DecoderDictionary::new(THIN_STATE_DIFF_COMPRESSION_DICT_V1);
+        DecoderDictionary::copy(THIN_STATE_DIFF_COMPRESSION_DICT_V1);
     static ref THIN_STATE_DIFF_DECODERS_ARRAY: [&'static DecoderDictionary<'static>; 1] =
         [&THIN_STATE_DIFF_DECODER_DICT_V1];
 }

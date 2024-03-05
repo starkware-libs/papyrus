@@ -36,7 +36,7 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
-zstd = { workspace = true, features = ["experimental"] }
+zstd.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
