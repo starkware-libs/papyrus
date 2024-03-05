@@ -880,13 +880,28 @@ pub fn simulate_transactions(
                     GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
                 }
             };
+            let price_unit = tx_execution_output.price_unit;
+
+            // TODO: Investigate why blockifier sometimes returns unsorted state diff
+            // sort_unstable is faster than sort, and we don't have duplicates anyway.
+            let mut induced_state_diff = tx_execution_output.induced_state_diff;
+            induced_state_diff.deployed_contracts.sort_unstable_keys();
+            induced_state_diff.storage_diffs.sort_unstable_keys();
+            induced_state_diff.declared_classes.sort_unstable_keys();
+            induced_state_diff.deprecated_declared_classes.sort_unstable();
+            induced_state_diff.nonces.sort_unstable_keys();
+            induced_state_diff.replaced_classes.sort_unstable_keys();
+            for contract_storage_diffs in induced_state_diff.storage_diffs.values_mut() {
+                contract_storage_diffs.sort_unstable_keys();
+            }
+
             match trace_constructor(tx_execution_output.execution_info) {
                 Ok(transaction_trace) => Ok(TransactionSimulationOutput {
                     transaction_trace,
-                    induced_state_diff: tx_execution_output.induced_state_diff,
+                    induced_state_diff,
                     gas_price,
                     fee,
-                    price_unit: tx_execution_output.price_unit,
+                    price_unit,
                 }),
                 Err(e) => Err(e),
             }
