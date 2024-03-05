@@ -30,28 +30,32 @@ trait DupSortTableType {}
 impl<T: DupSortTableType> TableType for T {}
 
 // A table with keys with common prefix. The same common prefix will be saved only once.
-// NOTICE: the size of the serialized sub key and value must be half of page size.
+// NOTICE: the size of the serialized sub key and value must be no more than half of page size.
 pub(crate) struct CommonPrefix;
 
 impl DupSortTableType for CommonPrefix {}
 
+// TODO(dvir): consider move this to the end of the file.
+// This trait is the functionality that table types using libmdbx DUP_SORT feature should implement
+// to be auto implement the Table trait for them (and cursor trait).
 trait DupSortUtils<K: KeyTrait, V: ValueSerde> {
-    // Returns the main key.
+    // Returns the main key bytes.
     fn get_main_key(key: &K) -> DbResult<Vec<u8>>;
 
-    // Returns the sub key.
+    // Returns the sub key bytes.
     fn get_sub_key(key: &K) -> DbResult<Vec<u8>>;
 
     // Returns the sub key and value bytes.
-    fn get_sub_key_value(key: &K, value: &V::Value) -> DbResult<Vec<u8>>;
+    fn get_sub_key_and_value(key: &K, value: &V::Value) -> DbResult<Vec<u8>>;
 
-    // Returns the first key that is greater than or equal to the given key.
-    fn get_first_key_after(key: &K) -> DbResult<Vec<u8>>;
+    // Returns the first sub key (bytes) that is greater than or equal to sub key of the given key.
+    fn get_sub_key_lower_bound(key: &K) -> DbResult<Vec<u8>>;
 
     // Changes main_key_bytes to the next greater one.
     fn next_main_key(main_key_bytes: &mut Vec<u8>);
 
-    // Returns a key value pair from main_key bytes and sub_key_value bytes.
+    // Returns a key value pair from main_key bytes and sub_key_value bytes. None will return in
+    // case of a failure.
     fn get_key_value_pair(main_key: &[u8], sub_key_value: &[u8]) -> Option<(K, V::Value)>;
 }
 
@@ -69,14 +73,14 @@ where
         key.1.serialize()
     }
 
-    fn get_sub_key_value<'a>(key: &(MainKey, SubKey), value: &V::Value) -> DbResult<Vec<u8>> {
+    fn get_sub_key_and_value<'a>(key: &(MainKey, SubKey), value: &V::Value) -> DbResult<Vec<u8>> {
         let mut res = Vec::new();
         key.1.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
         value.serialize_into(&mut res).map_err(|_| DbError::Serialization)?;
         Ok(res)
     }
 
-    fn get_first_key_after(key: &(MainKey, SubKey)) -> DbResult<Vec<u8>> {
+    fn get_sub_key_lower_bound(key: &(MainKey, SubKey)) -> DbResult<Vec<u8>> {
         key.1.serialize()
     }
 
@@ -88,6 +92,9 @@ where
         mut main_key: &[u8],
         mut sub_key_value: &[u8],
     ) -> Option<((MainKey, SubKey), V::Value)> {
+        // The SubKey::deserialize_from and not SubKey::deserialize is because the deserialize
+        // function also checks all the bytes were used, which is not the case before
+        // deserialize also the value from sub_key_value.
         Some((
             (MainKey::deserialize(&mut main_key)?, SubKey::deserialize_from(&mut sub_key_value)?),
             V::Value::deserialize(&mut sub_key_value)?,
@@ -161,10 +168,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         key: &Self::Key,
     ) -> DbResult<Option<<Self::Value as ValueSerde>::Value>> {
         let main_key = T::get_main_key(key)?;
-        let first_key = T::get_first_key_after(key)?;
+        let first_sub_key = T::get_sub_key_lower_bound(key)?;
 
         let mut cursor = txn.txn.cursor(&self.database)?;
-        let Some(bytes) = cursor.get_both_range::<Cow<'_, [u8]>>(&main_key, &first_key)? else {
+        let Some(bytes) = cursor.get_both_range::<Cow<'_, [u8]>>(&main_key, &first_sub_key)? else {
             return Ok(None);
         };
 
@@ -183,12 +190,12 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()> {
         let main_key = T::get_main_key(key)?;
-        let sub_key = T::get_sub_key(key)?;
-        let sub_key_value = T::get_sub_key_value(key, value)?;
+        let sub_key_value = T::get_sub_key_and_value(key, value)?;
 
         let mut cursor = txn.txn.cursor(&self.database)?;
         cursor.put(&main_key, &sub_key_value, WriteFlags::UPSERT)?;
 
+        let sub_key = T::get_sub_key(key)?;
         // TODO(dvir): consider return the cursor to the original position using prev instead of
         // cloning.
         let mut cloned_cursor = cursor.clone();
@@ -212,6 +219,8 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         Ok(())
     }
 
+    // TODO(dvir): consider first checking if the key exists and only then insert it (instead of
+    // insert and  fix if there is a problem).
     fn insert(
         &'env self,
         txn: &DbTransaction<'env, RW>,
@@ -219,8 +228,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()> {
         let main_key = T::get_main_key(key)?;
-        let sub_key = T::get_sub_key(key)?;
-        let sub_key_value = T::get_sub_key_value(key, value)?;
+        let sub_key_value = T::get_sub_key_and_value(key, value)?;
 
         let mut cursor = txn.txn.cursor(&self.database)?;
         cursor.put(&main_key, &sub_key_value, WriteFlags::NO_DUP_DATA).map_err(
@@ -231,6 +239,13 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
                 _ => err.into(),
             },
         )?;
+
+        // In the case of existing main key and sub key but different values, because the bytes
+        // array of the key suffix and value is not present in the table, the put will
+        // succeed, although the key exists. The next two checks come to find those cases
+        // and delete the new value from the DB.
+
+        let sub_key = T::get_sub_key(key)?;
 
         if let Some((_key_prefix, sub_key_value)) =
             cursor.clone().next_dup::<DbKeyType<'_>, DbValueType<'_>>()?
@@ -258,10 +273,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
 
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
         let main_key = T::get_main_key(key)?;
-        let first_key = T::get_first_key_after(key)?;
+        let first_sub_key = T::get_sub_key_lower_bound(key)?;
 
         let mut cursor = txn.txn.cursor(&self.database)?;
-        let Some(bytes) = cursor.get_both_range::<Cow<'_, [u8]>>(&main_key, &first_key)? else {
+        let Some(bytes) = cursor.get_both_range::<Cow<'_, [u8]>>(&main_key, &first_sub_key)? else {
             return Ok(());
         };
 
@@ -305,18 +320,18 @@ impl<
     }
 
     // TODO(dvir): make this function walk only once on the table and not twice. This will
-    // require to add functionality of libmdbx to the binding or use assumption on the current
-    // implementation of the binding.
+    // require to add functionality of libmdbx to the binding.
+    // Functionality adding PR: https://github.com/vorot93/libmdbx-rs/commit/0f3823b7e510147903bc19255f61345f7bf7bf69
     fn lower_bound(
         &mut self,
         key: &Self::Key,
     ) -> DbResult<Option<(Self::Key, <Self::Value as ValueSerde>::Value)>> {
         let mut main_key = T::get_main_key(key)?;
-        let first_key = T::get_first_key_after(key)?;
+        let first_sub_key = T::get_sub_key_lower_bound(key)?;
 
         // First try to find a match for the main key.
         if let Some(value_bytes) =
-            self.cursor.get_both_range::<DbValueType<'_>>(&main_key, &first_key)?
+            self.cursor.get_both_range::<DbValueType<'_>>(&main_key, &first_sub_key)?
         {
             return Ok(T::get_key_value_pair(&main_key, &value_bytes));
         }
