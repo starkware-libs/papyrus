@@ -63,11 +63,11 @@ pub enum GenericEvent<SessionError> {
     },
 }
 
-// TODO(shahak): Consider removing protocol_name from here.
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Config {
     pub session_timeout: Duration,
     // If we put multiple versions of the same protocol, they should be inserted sorted where the
     // latest is the first (They don't have to appear continuously among the other protocols).
+    // TODO(shahak): Sort protocols upon construction by version
     pub supported_inbound_protocols: Vec<StreamProtocol>,
 }
