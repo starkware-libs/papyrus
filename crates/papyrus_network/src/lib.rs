@@ -92,7 +92,7 @@ pub enum BlockHashOrNumber {
 }
 
 pub struct ResponseReceivers {
-    pub signed_headers_receiver: Receiver<SignedBlockHeader>,
+    pub signed_headers_receiver: Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>,
 }
 
 struct ResponseSenders {
