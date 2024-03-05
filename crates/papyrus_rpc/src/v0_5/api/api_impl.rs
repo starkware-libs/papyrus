@@ -9,7 +9,6 @@ use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::objects::{
     PendingData as ExecutionPendingData,
     TransactionSimulationOutput,
-    TransactionTrace,
 };
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
@@ -76,6 +75,7 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
+use super::super::execution::TransactionTrace;
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
@@ -1100,7 +1100,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 .into_iter()
                 .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
                     SimulatedTransaction {
-                        transaction_trace,
+                        transaction_trace: transaction_trace.into(),
                         fee_estimation: FeeEstimate::from(gas_price, fee),
                     }
                 })
@@ -1251,7 +1251,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
             Ok(mut simulation_results) => Ok(simulation_results
                 .pop()
                 .expect("Should have transaction exeuction result")
-                .transaction_trace),
+                .transaction_trace
+                .into()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
         }
@@ -1374,7 +1375,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 .into_iter()
                 .zip(transaction_hashes)
                 .map(|(TransactionSimulationOutput { transaction_trace, .. }, transaction_hash)| {
-                    TransactionTraceWithHash { transaction_hash, trace_root: transaction_trace }
+                    TransactionTraceWithHash {
+                        transaction_hash,
+                        trace_root: transaction_trace.into(),
+                    }
                 })
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
