@@ -96,7 +96,7 @@ fn create_outbound_sessions_if_all_peers_connected(
     peers_pending_outbound_session.push(peer_id);
     if peers_pending_outbound_session.len() >= args.num_expected_connections {
         for peer_id in peers_pending_outbound_session {
-            for number in 0..args.num_queries_per_connection {
+            for _ in 0..args.num_queries_per_connection {
                 let outbound_session_id =
                     swarm.behaviour_mut().send_query(vec![], *peer_id, PROTOCOL_NAME).expect(
                         "There's no connection to a peer immediately after we got a \
@@ -237,7 +237,7 @@ async fn main() {
     let mut preprepared_messages = (0..args.num_expected_inbound_sessions)
         .map(|_| {
             (0..args.num_messages_per_session)
-                .map(|_| vec![CONST_BYTE; args.message_size as usize])
+                .map(|_| vec![CONST_BYTE; args.message_size])
                 .collect::<Vec<_>>()
         })
         .collect::<Vec<_>>();
