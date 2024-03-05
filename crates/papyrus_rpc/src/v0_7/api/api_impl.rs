@@ -6,7 +6,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
+use papyrus_execution::objects::PendingData as ExecutionPendingData;
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -76,6 +76,7 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
+use super::super::execution::TransactionTrace;
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
@@ -1097,7 +1098,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(simulation_results
             .into_iter()
             .map(|simulation_output| SimulatedTransaction {
-                transaction_trace: simulation_output.transaction_trace,
+                transaction_trace: (
+                    simulation_output.transaction_trace,
+                    simulation_output.induced_state_diff,
+                )
+                    .into(),
                 fee_estimation: FeeEstimate::from(
                     simulation_output.gas_price,
                     simulation_output.fee,
@@ -1245,10 +1250,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
-        Ok(simulation_results
-            .pop()
-            .expect("Should have transaction exeuction result")
-            .transaction_trace)
+        let simulation_result =
+            simulation_results.pop().expect("Should have transaction exeuction result");
+        Ok((simulation_result.transaction_trace, simulation_result.induced_state_diff).into())
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -1369,7 +1373,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .zip(transaction_hashes)
             .map(|(simulation_output, transaction_hash)| TransactionTraceWithHash {
                 transaction_hash,
-                trace_root: simulation_output.transaction_trace,
+                trace_root: (
+                    simulation_output.transaction_trace,
+                    simulation_output.induced_state_diff,
+                )
+                    .into(),
             })
             .collect())
     }
