@@ -152,7 +152,7 @@
   "p2p_sync.num_headers_per_query": {
     "description": "The maximum amount of headers to ask from peers in each iteration.",
     "privacy": "Public",
-    "value": 100
+    "value": 10000
   },
   "p2p_sync.query_timeout": {
     "description": "Time in seconds to wait for query responses until we mark it as failed",

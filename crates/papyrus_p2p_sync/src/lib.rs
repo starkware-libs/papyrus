@@ -49,7 +49,7 @@ impl SerializeConfig for P2PSyncConfig {
 
 impl Default for P2PSyncConfig {
     fn default() -> Self {
-        P2PSyncConfig { num_headers_per_query: 100, query_timeout: Duration::from_secs(5) }
+        P2PSyncConfig { num_headers_per_query: 10000, query_timeout: Duration::from_secs(5) }
     }
 }
 

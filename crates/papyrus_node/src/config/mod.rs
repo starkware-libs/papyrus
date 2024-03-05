@@ -88,6 +88,7 @@ pub struct NodeConfig {
     /// If P2P sync is active, then network must be active too.
     // TODO(yair): Change NodeConfig to have an option of enum of SyncConfig or P2PSyncConfig.
     pub p2p_sync: Option<P2PSyncConfig>,
+    // TODO(shahak): Make network non-optional once it's developed enough.
     pub network: Option<NetworkConfig>,
 }
 

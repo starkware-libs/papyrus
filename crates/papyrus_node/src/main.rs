@@ -17,8 +17,8 @@ use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
-// use papyrus_network::network_manager::NetworkError;
-// use papyrus_network::{network_manager, NetworkConfig, Query, ResponseReceivers};
+use papyrus_network::network_manager::NetworkError;
+use papyrus_network::{network_manager, NetworkConfig, Protocol, Query, ResponseReceivers};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
@@ -205,16 +205,17 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     }
 }
 
-// type NetworkRunReturn =
-//     (BoxFuture<'static, Result<(), NetworkError>>, Option<(Sender<Query>, ResponseReceivers)>);
+type NetworkRunReturn =
+    (BoxFuture<'static, Result<(), NetworkError>>, Option<(Sender<Query>, ResponseReceivers)>);
 
-// fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn
-// {     let Some(network_config) = config else { return (pending().boxed(), None) };
-//     let mut network_manager =
-//         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
-//     let (query_sender, response_receivers) = network_manager.register_subscriber();
-//     (network_manager.run().boxed(), Some((query_sender, response_receivers)))
-// }
+fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn {
+    let Some(network_config) = config else { return (pending().boxed(), None) };
+    let mut network_manager =
+        network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
+    let (query_sender, response_receivers) =
+        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader]);
+    (network_manager.run().boxed(), Some((query_sender, response_receivers)))
+}
 
 // TODO(yair): add dynamic level filtering.
 // TODO(dan): filter out logs from dependencies (happens when RUST_LOG=DEBUG)
