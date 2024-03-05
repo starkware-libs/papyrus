@@ -4,6 +4,7 @@ mod transaction_test;
 
 use std::collections::BTreeMap;
 use std::fmt::Display;
+use std::num::NonZeroU64;
 use std::sync::Arc;
 
 use ethers::core::abi::{encode_packed, Token};
@@ -849,33 +850,51 @@ impl From<starknet_api::transaction::Builtin> for Builtin {
     }
 }
 
-// Note: This is not the same as the ExecutionResources in starknet_api, will be the same in V0.6.
-#[derive(Debug, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ExecutionResources {
+    #[serde(flatten)]
+    pub computation_resources: ComputationResources,
+    pub data_availability: DataAvailabilityResources,
+}
+
+#[derive(Debug, Default, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct ComputationResources {
+    // TODO(shahak): Change steps here and in SN API to NonZeroU64
     pub steps: u64,
     #[serde(flatten)]
     // BTreeMap implements Ord.
-    pub builtin_instance_counter: BTreeMap<Builtin, u64>,
+    pub builtin_instance_counter: BTreeMap<Builtin, NonZeroU64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub memory_holes: Option<u64>,
+    pub memory_holes: Option<NonZeroU64>,
+}
+
+#[derive(Debug, Default, Clone, Eq, Hash, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
+pub struct DataAvailabilityResources {
+    pub l1_gas: u64,
+    pub l1_data_gas: u64,
 }
 
 impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources {
+    fn from(value: starknet_api::transaction::ExecutionResources) -> Self {
+        let l1_gas = value.da_l1_gas_consumed;
+        let l1_data_gas = value.da_l1_data_gas_consumed;
+        Self {
+            computation_resources: value.into(),
+            data_availability: DataAvailabilityResources { l1_gas, l1_data_gas },
+        }
+    }
+}
+
+impl From<starknet_api::transaction::ExecutionResources> for ComputationResources {
     fn from(value: starknet_api::transaction::ExecutionResources) -> Self {
         Self {
             steps: value.steps,
             builtin_instance_counter: value
                 .builtin_instance_counter
                 .into_iter()
-                .filter_map(|(k, v)| match v {
-                    0 => None,
-                    _ => Some((k.into(), v)),
-                })
+                .filter_map(|(k, v)| v.try_into().ok().map(|v| (k.into(), v)))
                 .collect(),
-            memory_holes: match value.memory_holes {
-                0 => None,
-                _ => Some(value.memory_holes),
-            },
+            memory_holes: value.memory_holes.try_into().ok(),
         }
     }
 }
