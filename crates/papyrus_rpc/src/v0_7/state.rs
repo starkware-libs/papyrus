@@ -131,6 +131,24 @@ impl From<ClientStateDiff> for ThinStateDiff {
     }
 }
 
+impl ThinStateDiff {
+    pub fn sort(&mut self) {
+        // sort_unstable is faster than sort, and we don't have duplicates anyway.
+        self.deployed_contracts.sort_unstable_by_key(|deployed_contract| deployed_contract.address);
+        self.storage_diffs.sort_unstable_by_key(|storage_diff| storage_diff.address);
+        self.declared_classes.sort_unstable_by_key(|class_hashes| class_hashes.class_hash);
+        self.deprecated_declared_classes.sort_unstable();
+        self.nonces.sort_unstable_by_key(|contract_nonce| contract_nonce.contract_address);
+        self.replaced_classes
+            .sort_unstable_by_key(|replaced_class| replaced_class.contract_address);
+        for contract_storage_diffs in &mut self.storage_diffs {
+            contract_storage_diffs
+                .storage_entries
+                .sort_unstable_by_key(|storage_entry| storage_entry.key);
+        }
+    }
+}
+
 /// The nonce of a StarkNet contract.
 #[derive(Debug, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct ContractNonce {
