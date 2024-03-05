@@ -5,6 +5,7 @@ mod transaction_test;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::num::NonZeroU64;
+use std::ops::Add;
 use std::sync::Arc;
 
 use ethers::core::abi::{encode_packed, Token};
@@ -872,6 +873,53 @@ pub struct ComputationResources {
 pub struct DataAvailabilityResources {
     pub l1_gas: u64,
     pub l1_data_gas: u64,
+}
+
+impl Add for ExecutionResources {
+    type Output = Self;
+    fn add(mut self, other: Self) -> Self {
+        let memory_holes = match (
+            self.computation_resources.memory_holes,
+            other.computation_resources.memory_holes,
+        ) {
+            // TODO(shahak): Consider using checked_add and implementing addition as a function and
+            // not as the trait Add.
+            (Some(x), Some(y)) => Some(x.saturating_add(y.into())),
+            _ => self
+                .computation_resources
+                .memory_holes
+                .xor(other.computation_resources.memory_holes),
+        };
+
+        for (k, v) in other.computation_resources.builtin_instance_counter.iter() {
+            match self.computation_resources.builtin_instance_counter.get_mut(k) {
+                // TODO(shahak): Consider using checked_add and implementing addition as a function
+                // and not as the trait Add.
+                Some(v_ref) => *v_ref = (*v_ref).saturating_add((*v).into()),
+                None => {
+                    self.computation_resources.builtin_instance_counter.insert(k.clone(), *v);
+                }
+            }
+        }
+
+        Self {
+            computation_resources: ComputationResources {
+                // TODO(shahak): Consider using checked_add and implementing addition as a function
+                // and not as the trait Add.
+                steps: self
+                    .computation_resources
+                    .steps
+                    .saturating_add(other.computation_resources.steps),
+                builtin_instance_counter: self.computation_resources.builtin_instance_counter,
+                memory_holes,
+            },
+            data_availability: DataAvailabilityResources {
+                l1_gas: self.data_availability.l1_gas + other.data_availability.l1_gas,
+                l1_data_gas: self.data_availability.l1_data_gas
+                    + other.data_availability.l1_data_gas,
+            },
+        }
+    }
 }
 
 impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources {
