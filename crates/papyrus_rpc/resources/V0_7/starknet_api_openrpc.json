@@ -3689,8 +3689,8 @@
                     "price_in_fri"
                 ]
             },
-            "EXECUTION_RESOURCES": {
-                "title": "Execution resources",
+            "COMPUTATION_RESOURCES": {
+                "title": "Computation resources",
                 "description": "The resources consumed by the VM",
                 "type": "object",
                 "properties": {
@@ -3777,6 +3777,46 @@
                 },
                 "required": [
                     "steps"
+                ]
+            },
+            "EXECUTION_RESOURCES": {
+                "type": "object",
+                "title": "Execution resources",
+                "description": "the resources consumed by the transaction, includes both computation and data",
+                "allOf": [
+                    {
+                        "title": "ComputationResources",
+                        "$ref": "#/components/schemas/COMPUTATION_RESOURCES"
+                    },
+                    {
+                        "type": "object",
+                        "title": "DataResources",
+                        "description": "the data-availability resources of this transaction",
+                        "properties": {
+                            "data_availability": {
+                                "type": "object",
+                                "properties": {
+                                    "l1_gas": {
+                                        "title": "L1Gas",
+                                        "description": "the gas consumed by this transaction's data, 0 if it uses data gas for DA",
+                                        "type": "integer"
+                                    },
+                                    "l1_data_gas": {
+                                        "title": "L1DataGas",
+                                        "description": "the data gas consumed by this transaction's data, 0 if it uses gas for DA",
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "l1_gas",
+                                    "l1_data_gas"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "data_availability"
+                        ]
+                    }
                 ]
             }
         },

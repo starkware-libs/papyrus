@@ -10,17 +10,20 @@ use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
-use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
+use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract as CommonDeployedContract,
+    StorageEntry as CommonStorageEntry,
+};
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_execution::objects::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
+    CallType,
+    FunctionCall,
+    OrderedEvent,
+    OrderedL2ToL1Message,
     PriceUnit,
+    Retdata,
     RevertReason,
-    TransactionTrace,
 };
 use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
@@ -49,9 +52,12 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerContractAddress,
 };
-use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as SN_API_DeprecatedContractClass,
+    EntryPointType,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
     Calldata,
     Fee,
@@ -73,7 +79,13 @@ use starknet_client::reader::objects::transaction::{
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
-use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
+};
 use tokio::sync::RwLock;
 
 use super::api::api_impl::JsonRpcServerImpl;
@@ -90,8 +102,28 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::error::{TransactionExecutionError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
+use super::execution::{
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    TransactionTrace,
+};
+use super::state::{
+    ClassHashes,
+    ContractNonce,
+    DeployedContract,
+    ReplacedClasses,
+    StorageDiff,
+    StorageEntry,
+    ThinStateDiff,
+};
 use super::transaction::{
+    Builtin,
     DeployAccountTransaction,
+    ExecutionResources,
     InvokeTransaction,
     InvokeTransactionV1,
     MessageFromL1,
@@ -759,6 +791,7 @@ async fn trace_block_transactions_regular_and_pending() {
         .commit()
         .unwrap();
 
+    println!("got here 1");
     let tx_1_trace = call_and_validate_schema_for_result::<_, TransactionTrace>(
         &module,
         "starknet_V0_7_traceTransaction",
@@ -1196,6 +1229,7 @@ fn validate_transaction_trace_schema() {
     let invoke_trace =
         TransactionTrace::Invoke(InvokeTransactionTrace::get_test_instance(&mut rng));
     let serialized = serde_json::to_value(invoke_trace).unwrap();
+    println!("AAAAAA {}", serde_json::to_string_pretty(&serialized).unwrap());
     assert!(validate_schema(&schema, &serialized));
 
     let declare_trace =
@@ -1252,6 +1286,97 @@ fn get_test_compressed_program() -> String {
 }
 
 auto_impl_get_test_instance! {
+    pub enum TransactionTrace {
+        L1Handler(L1HandlerTransactionTrace) = 0,
+        Invoke(InvokeTransactionTrace) = 1,
+        Declare(DeclareTransactionTrace) = 2,
+        DeployAccount(DeployAccountTransactionTrace) = 3,
+    }
+
+    pub struct L1HandlerTransactionTrace {
+        pub function_invocation: FunctionInvocation,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct InvokeTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub execute_invocation: FunctionInvocationResult,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeclareTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeployAccountTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub constructor_invocation: FunctionInvocation,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub enum FunctionInvocationResult {
+        Ok(FunctionInvocation) = 0,
+        Err(RevertReason) = 1,
+    }
+
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        SegmentArena = 7,
+    }
+
+    pub struct ThinStateDiff {
+        pub deployed_contracts: Vec<DeployedContract>,
+        pub storage_diffs: Vec<StorageDiff>,
+        pub declared_classes: Vec<ClassHashes>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
+        pub nonces: Vec<ContractNonce>,
+        pub replaced_classes: Vec<ReplacedClasses>,
+    }
+
+    pub struct DeployedContract {
+        pub address: ContractAddress,
+        pub class_hash: ClassHash,
+    }
+
+    pub struct ClassHashes {
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+    }
+
+    pub struct ContractNonce {
+        pub contract_address: ContractAddress,
+        pub nonce: Nonce,
+    }
+
+    pub struct StorageDiff {
+        pub address: ContractAddress,
+        pub storage_entries: Vec<StorageEntry>,
+    }
+
+    pub struct StorageEntry {
+        pub key: StorageKey,
+        pub value: StarkFelt,
+    }
+
+    pub struct ReplacedClasses {
+        pub contract_address: ContractAddress,
+        pub class_hash: ClassHash,
+    }
+
     pub struct FeeEstimate {
         pub gas_consumed: StarkFelt,
         pub gas_price: GasPrice,
@@ -1262,6 +1387,33 @@ auto_impl_get_test_instance! {
     pub struct TransactionTraceWithHash {
         pub transaction_hash: TransactionHash,
         pub trace_root: TransactionTrace,
+    }
+}
+
+impl GetTestInstance for FunctionInvocation {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        Self {
+            function_call: FunctionCall::get_test_instance(rng),
+            caller_address: ContractAddress::get_test_instance(rng),
+            class_hash: ClassHash::get_test_instance(rng),
+            entry_point_type: EntryPointType::get_test_instance(rng),
+            call_type: CallType::get_test_instance(rng),
+            result: Retdata::get_test_instance(rng),
+            // TODO(shahak): fill with non empty value.
+            calls: Vec::new(),
+            events: Vec::<OrderedEvent>::get_test_instance(rng),
+            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            execution_resources: starknet_api::transaction::ExecutionResources::get_test_instance(
+                rng,
+            )
+            .into(),
+        }
+    }
+}
+
+impl GetTestInstance for ExecutionResources {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        starknet_api::transaction::ExecutionResources::get_test_instance(rng).into()
     }
 }
 
@@ -1394,13 +1546,16 @@ async fn write_block_0_as_pending(
             old_root: Default::default(),
             state_diff: ClientStateDiff {
                 deployed_contracts: vec![
-                    DeployedContract {
+                    CommonDeployedContract {
                         address: *DEPRECATED_CONTRACT_ADDRESS,
                         class_hash: class_hash1,
                     },
-                    DeployedContract { address: *CONTRACT_ADDRESS, class_hash: class_hash2 },
-                    DeployedContract { address: *ACCOUNT_ADDRESS, class_hash: *ACCOUNT_CLASS_HASH },
-                    DeployedContract {
+                    CommonDeployedContract { address: *CONTRACT_ADDRESS, class_hash: class_hash2 },
+                    CommonDeployedContract {
+                        address: *ACCOUNT_ADDRESS,
+                        class_hash: *ACCOUNT_CLASS_HASH,
+                    },
+                    CommonDeployedContract {
                         address: *TEST_ERC20_CONTRACT_ADDRESS,
                         class_hash: *TEST_ERC20_CONTRACT_CLASS_HASH,
                     },
@@ -1408,11 +1563,11 @@ async fn write_block_0_as_pending(
                 storage_diffs: indexmap!(
                     *TEST_ERC20_CONTRACT_ADDRESS => vec![
                         // Give the accounts some balance.
-                        StorageEntry {
+                        CommonStorageEntry {
                             key: account_balance_key, value: *ACCOUNT_INITIAL_BALANCE
                         },
                         // Give the first account mint permission (what is this?).
-                        StorageEntry {
+                        CommonStorageEntry {
                             key: minter_var_address, value: *ACCOUNT_ADDRESS.0.key()
                         },
                     ],

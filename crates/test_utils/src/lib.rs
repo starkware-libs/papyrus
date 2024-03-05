@@ -8,6 +8,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::SocketAddr;
+use std::num::NonZeroU64;
 use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -972,5 +973,11 @@ impl GetTestInstance for ExecutionResources {
             da_l1_gas_consumed: rng.next_u64(),
             da_l1_data_gas_consumed: rng.next_u64(),
         }
+    }
+}
+
+impl GetTestInstance for NonZeroU64 {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        max(1, rng.next_u64()).try_into().expect("Failed to convert a non-zero u64 to NonZeroU64")
     }
 }
