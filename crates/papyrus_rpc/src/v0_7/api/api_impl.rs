@@ -1511,6 +1511,11 @@ impl JsonRpcServerImpl {
                     price_in_wei: block.l1_gas_price().price_in_wei,
                     price_in_fri: block.l1_gas_price().price_in_fri,
                 },
+                l1_data_gas_price: ResourcePrice {
+                    price_in_wei: block.l1_data_gas_price().price_in_wei,
+                    price_in_fri: block.l1_data_gas_price().price_in_fri,
+                },
+                l1_da_mode: block.l1_da_mode(),
                 starknet_version: block.starknet_version(),
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
