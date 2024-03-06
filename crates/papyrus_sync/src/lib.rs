@@ -240,27 +240,20 @@ impl<
 
         // Whitelisting of errors from which we might be able to recover.
         fn is_recoverable(err: &StateSyncError) -> bool {
+            // We don't use here catch-all pattern to enforce conscious decision for each error
+            // kind.
             match err {
-                StateSyncError::NoProgress => true,
-                StateSyncError::CentralSourceError(_) => true,
-                StateSyncError::BaseLayerSourceError(_) => true,
-                StateSyncError::StorageError(StorageError::InnerError(_)) => true,
-                StateSyncError::ParentBlockHashMismatch {
-                    block_number,
-                    expected_parent_block_hash,
-                    stored_parent_block_hash,
-                } => {
-                    // A revert detected, log and restart sync loop.
-                    info!(
-                        "Detected revert while processing block {}. Parent hash of the incoming \
-                         block is {}, current block hash is {}.",
-                        block_number, expected_parent_block_hash, stored_parent_block_hash
-                    );
-                    true
+                StateSyncError::StorageError(error) => {
+                    matches!(error, StorageError::InnerError(_))
                 }
-                StateSyncError::BaseLayerHashMismatch { .. } => true,
-                StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. } => true,
-                _ => false,
+                StateSyncError::NoProgress
+                | StateSyncError::CentralSourceError(_)
+                | StateSyncError::PendingSourceError(_)
+                | StateSyncError::BaseLayerSourceError(_)
+                | StateSyncError::ParentBlockHashMismatch { .. }
+                | StateSyncError::BaseLayerHashMismatch { .. }
+                | StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. } => true,
+                StateSyncError::SequencerPubKeyChanged { .. } => false,
             }
         }
     }
@@ -538,6 +531,12 @@ impl<
             .block_hash;
 
         if prev_hash != block.header.parent_hash {
+            // A revert detected, log and restart sync loop.
+            info!(
+                "Detected revert while processing block {}. Parent hash of the incoming block is \
+                 {}, current block hash is {}.",
+                block_number, block.header.parent_hash, prev_hash
+            );
             return Err(StateSyncError::ParentBlockHashMismatch {
                 block_number,
                 expected_parent_block_hash: block.header.parent_hash,
