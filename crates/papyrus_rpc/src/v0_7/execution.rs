@@ -132,7 +132,9 @@ pub struct FunctionInvocation {
 
 impl From<(ExecutionTransactionTrace, StarknetApiThinStateDiff)> for TransactionTrace {
     fn from((trace, state_diff): (ExecutionTransactionTrace, StarknetApiThinStateDiff)) -> Self {
-        let state_diff = ThinStateDiff::from(state_diff);
+        let mut state_diff = ThinStateDiff::from(state_diff);
+        // TODO: Investigate why blockifier sometimes returns unsorted state diff
+        state_diff.sort();
         match trace {
             ExecutionTransactionTrace::L1Handler(trace) => {
                 let execution_resources =
