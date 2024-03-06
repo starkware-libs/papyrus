@@ -133,6 +133,8 @@ use crate::{
     ContinuationTokenAsStruct,
 };
 
+const IGNORE_L1_DA_MODE: bool = true;
+
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
     pub static ref BLOCK_HASH_TABLE_ADDRESS: ContractAddress = ContractAddress::from(1_u8);
@@ -897,6 +899,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1014,6 +1017,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 false,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1091,6 +1095,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1179,6 +1184,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 nonces: Default::default(),
                 replaced_classes: Default::default(),
                 classes: Default::default(),
+                l1_da_mode: Default::default(),
             });
             (
                 maybe_pending_data,
@@ -1249,6 +1255,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1303,6 +1310,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         nonces: Default::default(),
                         replaced_classes: Default::default(),
                         classes: Default::default(),
+                        l1_da_mode: Default::default(),
                     }),
                     client_pending_data
                         .block
@@ -1372,6 +1380,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1443,6 +1452,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 false,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await

@@ -203,6 +203,7 @@ pub fn execute_simulate_transactions(
         &test_block_execution_config(),
         charge_fee,
         validate,
+        true,
     )
     .unwrap()
 }
