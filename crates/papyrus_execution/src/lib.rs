@@ -19,6 +19,7 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
+
 use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroU128;
 use std::sync::Arc;
@@ -52,6 +53,7 @@ use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
+use starknet_api::data_availability::L1DataAvailabilityMode;
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
@@ -210,6 +212,7 @@ pub fn execute_call(
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
     execution_config: &BlockExecutionConfig,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<CallExecution> {
     verify_contract_exists(
         *contract_address,
@@ -248,6 +251,7 @@ pub fn execute_call(
         &storage_reader,
         maybe_pending_data.as_ref(),
         execution_config,
+        override_kzg_da_to_false,
     )?;
 
     let mut context = EntryPointExecutionContext::new_invoke(
@@ -298,37 +302,55 @@ fn create_block_context(
     storage_reader: &StorageReader,
     maybe_pending_data: Option<&PendingData>,
     execution_config: &BlockExecutionConfig,
+    // TODO(shahak): Remove this once we stop supporting rpc v0.6.
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<BlockContext> {
-    let (block_number, block_timestamp, l1_gas_price, l1_data_gas_price, sequencer_address) =
-        match maybe_pending_data {
-            Some(pending_data) => (
-                block_context_number.next(),
-                pending_data.timestamp,
-                pending_data.l1_gas_price,
-                pending_data.l1_data_gas_price,
-                pending_data.sequencer,
-            ),
-            None => {
-                let header = storage_reader
-                    .begin_ro_txn()?
-                    .get_block_header(block_context_number)?
-                    .expect("Should have block header.");
-                (
-                    header.block_number,
-                    header.timestamp,
-                    header.l1_gas_price,
-                    header.l1_data_gas_price,
-                    header.sequencer,
-                )
-            }
-        };
+    let (
+        block_number,
+        block_timestamp,
+        l1_gas_price,
+        l1_data_gas_price,
+        sequencer_address,
+        l1_da_mode,
+    ) = match maybe_pending_data {
+        Some(pending_data) => (
+            block_context_number.next(),
+            pending_data.timestamp,
+            pending_data.l1_gas_price,
+            pending_data.l1_data_gas_price,
+            pending_data.sequencer,
+            pending_data.l1_da_mode,
+        ),
+        None => {
+            let header = storage_reader
+                .begin_ro_txn()?
+                .get_block_header(block_context_number)?
+                .expect("Should have block header.");
+            (
+                header.block_number,
+                header.timestamp,
+                header.l1_gas_price,
+                header.l1_data_gas_price,
+                header.sequencer,
+                header.l1_da_mode,
+            )
+        }
+    };
     let ten_blocks_ago = get_10_blocks_ago(&block_context_number, cached_state)?;
+
+    let use_kzg_da = if override_kzg_da_to_false {
+        false
+    } else {
+        match l1_da_mode {
+            L1DataAvailabilityMode::Calldata => false,
+            L1DataAvailabilityMode::Blob => true,
+        }
+    };
 
     let block_info = BlockInfo {
         block_timestamp,
         sequencer_address: sequencer_address.0,
-        // TODO(yair): set to true when da mode is Blob (not supported yet).
-        use_kzg_da: false,
+        use_kzg_da,
         block_number,
         // TODO(yair): What to do about blocks pre 0.13.1 where the data gas price were 0?
         gas_prices: GasPrices {
@@ -527,6 +549,7 @@ pub fn estimate_fee(
     block_context_block_number: BlockNumber,
     execution_config: &BlockExecutionConfig,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<FeeEstimationResult> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -539,6 +562,7 @@ pub fn estimate_fee(
         execution_config,
         false,
         validate,
+        override_kzg_da_to_false,
     )?;
     let mut result = Vec::new();
     for (index, tx_execution_output) in txs_execution_info.into_iter().enumerate() {
@@ -573,6 +597,7 @@ fn execute_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
     // The starknet state will be from right before the block in which the transactions should run.
     let mut cached_state = CachedState::new(
@@ -592,6 +617,7 @@ fn execute_transactions(
         &storage_reader,
         maybe_pending_data.as_ref(),
         execution_config,
+        override_kzg_da_to_false,
     )?;
 
     let (txs, tx_hashes) = match tx_hashes {
@@ -847,6 +873,7 @@ pub fn simulate_transactions(
     execution_config: &BlockExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<Vec<TransactionSimulationOutput>> {
     let trace_constructors = txs.iter().map(get_trace_constructor).collect::<Vec<_>>();
     let (execution_results, block_context) = execute_transactions(
@@ -860,6 +887,7 @@ pub fn simulate_transactions(
         execution_config,
         charge_fee,
         validate,
+        override_kzg_da_to_false,
     )?;
     execution_results
         .into_iter()

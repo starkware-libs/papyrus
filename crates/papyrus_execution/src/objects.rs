@@ -41,6 +41,7 @@ use starknet_api::core::{
     Nonce,
     SequencerContractAddress,
 };
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::EntryPointType;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;
@@ -499,6 +500,8 @@ pub struct PendingData {
     pub l1_gas_price: GasPricePerToken,
     /// The data price of the pending block.
     pub l1_data_gas_price: GasPricePerToken,
+    /// The data availability mode of the pending block.
+    pub l1_da_mode: L1DataAvailabilityMode,
     /// The sequencer address of the pending block.
     pub sequencer: SequencerContractAddress,
     /// The classes and casms that were declared in the pending block.
