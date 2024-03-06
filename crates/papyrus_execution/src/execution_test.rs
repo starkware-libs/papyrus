@@ -10,9 +10,10 @@ use blockifier::execution::call_info::Retdata;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::versioned_constants::VersionedConstants;
 use indexmap::indexmap;
+use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, StarknetVersion};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -26,7 +27,7 @@ use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{Calldata, Fee};
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 
-use crate::execution_utils::selector_from_name;
+use crate::execution_utils::{get_versioned_constants, selector_from_name};
 use crate::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
@@ -919,6 +920,32 @@ fn blockifier_error_mapping() {
     };
     assert_eq!(execution_error, expected);
     assert_eq!(transaction_index, 0);
+}
+
+// Test that we retrieve the correct versioned constants.
+#[test]
+fn test_get_versioned_constants() {
+    fn block_header(hash: u8, starknet_version: StarknetVersion) -> BlockHeader {
+        BlockHeader {
+            block_hash: BlockHash(stark_felt!(hash)),
+            starknet_version,
+            ..BlockHeader::default()
+        }
+    }
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(BlockNumber(0), &block_header(0, StarknetVersion("0.13.0".to_string())))
+        .unwrap()
+        .append_header(BlockNumber(1), &block_header(1, StarknetVersion("0.13.1".to_string())))
+        .unwrap()
+        .commit()
+        .unwrap();
+    let versioned_constants = get_versioned_constants(&storage_reader, BlockNumber(0)).unwrap();
+    assert_eq!(versioned_constants.invoke_tx_max_n_steps, 3_000_000);
+    let versioned_constants = get_versioned_constants(&storage_reader, BlockNumber(1)).unwrap();
+    assert_eq!(versioned_constants.invoke_tx_max_n_steps, 4_000_000);
 }
 
 fn get_vm_resource_fee_cost_first_segment() -> Arc<HashMap<String, f64>> {
