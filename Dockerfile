@@ -91,7 +91,7 @@ RUN set -ex; \
     adduser --ingroup $(getent group ${ID} | cut -d: -f1) --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
     chown -R papyrus:papyrus /app
 
-EXPOSE 8080 8081
+EXPOSE 8080 8081 8082
 
 USER ${ID}
 

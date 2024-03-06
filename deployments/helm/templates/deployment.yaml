@@ -64,8 +64,9 @@ spec:
         - {{ .Values.base_layer_node_url }}
         {{- if .Values.services }}
         ports:
-        - containerPort: {{ .Values.services.rpc.port }}
-        - containerPort: {{ .Values.services.monitoring.port }}
+        {{- range $_, $v := .Values.services }}
+        - containerPort: {{ $v.port }}
+        {{- end }}
         {{- end }}
         volumeMounts:
         - name: data
