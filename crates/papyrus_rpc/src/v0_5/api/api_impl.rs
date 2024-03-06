@@ -896,6 +896,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                false,
             )
         })
         .await
@@ -1013,6 +1014,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 false,
+                false,
             )
         })
         .await
@@ -1088,6 +1090,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                false,
             )
         })
         .await
@@ -1170,6 +1173,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 nonces: Default::default(),
                 replaced_classes: Default::default(),
                 classes: Default::default(),
+                l1_da_mode: Default::default(),
             });
             (
                 maybe_pending_data,
@@ -1240,6 +1244,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                false,
             )
         })
         .await
@@ -1294,6 +1299,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         nonces: Default::default(),
                         replaced_classes: Default::default(),
                         classes: Default::default(),
+                        l1_da_mode: Default::default(),
                     }),
                     client_pending_data
                         .block
@@ -1363,6 +1369,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                false,
             )
         })
         .await
@@ -1433,6 +1440,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 state_number,
                 block_number,
                 &block_execution_config,
+                false,
                 false,
             )
         })

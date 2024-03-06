@@ -1474,6 +1474,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
+                // TODO(yair): Add test with l1_da_mode = Blob.
                 ..Default::default()
             },
         )
