@@ -215,15 +215,15 @@ See the API specification at the https://github.com/starkware-libs/starknet-spec
 [source,bash]
 ----
 curl --location '<node_path>/rpc/<starknet-rpc-version-id>' --header 'Content-Type: application/json'\
- --data '\{"jsonrpc":"2.0","id":0,"method":"<method>"}'
+ --data '\{"jsonrpc":"2.0","id":0,"method":"<method>", "params": "<params>"}'
 ----
 
-For example, to send a request calling the `starknet_blockHashAndNumber` method, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
+For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
 
 [source,bash]
 ----
 curl --location 'localhost:8080/rpc/v0_4_0' --header 'Content-Type: application/json'\
- --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_blockHashAndNumber"}'
+ --data '\{"jsonrpc":"2.0","id":0,"method":"starknet_getBlockTransactionCount", "params": [{"block_number": 100000}] }'
 ----
 
 == JSON RPC API endpoints
