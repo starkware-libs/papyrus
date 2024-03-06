@@ -82,6 +82,7 @@ fn execute_call_cairo0() {
         selector_from_name("without_arg"),
         Calldata::default(),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -98,6 +99,7 @@ fn execute_call_cairo0() {
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -114,6 +116,7 @@ fn execute_call_cairo0() {
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -130,6 +133,7 @@ fn execute_call_cairo0() {
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -157,6 +161,7 @@ fn execute_call_cairo1() {
         selector_from_name("test_storage_read_write"),
         calldata,
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -252,6 +257,8 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
         BlockNumber(1),
         &test_block_execution_config(),
         false,
+        // TODO(yair): Add test for blob fee estimation.
+        true,
     )
     .unwrap()
 }

@@ -898,6 +898,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                false,
             )
         })
         .await
@@ -1011,6 +1012,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 validate,
+                false,
             )
         })
         .await
@@ -1087,6 +1089,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                false,
             )
         })
         .await
@@ -1161,6 +1164,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 timestamp: pending_block.timestamp(),
                 l1_gas_price: pending_block.l1_gas_price(),
                 l1_data_gas_price: pending_block.l1_data_gas_price(),
+                l1_da_mode: pending_block.l1_da_mode(),
                 sequencer: pending_block.sequencer_address(),
                 // The pending state diff should be empty since we look at the state in the
                 // start of the pending block.
@@ -1242,6 +1246,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                false,
             )
         })
         .await
@@ -1280,6 +1285,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         timestamp: client_pending_data.block.timestamp(),
                         l1_gas_price: client_pending_data.block.l1_gas_price(),
                         l1_data_gas_price: client_pending_data.block.l1_data_gas_price(),
+                        l1_da_mode: client_pending_data.block.l1_da_mode(),
                         sequencer: client_pending_data.block.sequencer_address(),
                         // The pending state diff should be empty since we look at the state in the
                         // start of the pending block.
@@ -1360,6 +1366,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                false,
             )
         })
         .await
@@ -1429,6 +1436,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 state_number,
                 block_number,
                 &block_execution_config,
+                false,
                 false,
             )
         })
