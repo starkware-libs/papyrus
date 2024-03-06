@@ -22,6 +22,7 @@ pub mod objects;
 
 use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroU128;
+use std::path::Path;
 use std::sync::Arc;
 
 use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
@@ -46,6 +47,8 @@ use blockifier::versioned_constants::VersionedConstants;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
 use execution_utils::{get_trace_constructor, induced_state_diff};
+use objects::{PriceUnit, TransactionSimulationOutput};
+use once_cell::sync::Lazy;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_storage::header::HeaderStorageReader;
@@ -96,6 +99,13 @@ const STRK_FEE_TOKEN_ADDRESS: &str =
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
+
+static VERSIONED_CONSTANTS_13_0: Lazy<VersionedConstants> = Lazy::new(|| {
+    VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_0.json")).unwrap()
+});
+static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
+    VersionedConstants::try_from(Path::new("./resources/versioned_constants.json")).unwrap()
+});
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 /// Parameters that are needed for execution.
@@ -370,18 +380,20 @@ fn create_block_context(
         fee_token_addresses: FeeTokenAddresses {
             strk_fee_token_address: execution_config.strk_fee_contract_address,
             eth_fee_token_address: execution_config.eth_fee_contract_address,
+            strk_fee_token_address: execution_config.strk_fee_contract_address,
+            eth_fee_token_address: execution_config.fee_contract_address,
         },
     };
 
-    // TODO(yair): set the correct versioned constants for re-execution.
-    let versioned_constants = VersionedConstants::latest_constants().clone();
+    let versioned_constants: &VersionedConstants =
+        get_versioned_constants(storage_reader, block_number)?;
 
     Ok(pre_process_block(
         cached_state,
         ten_blocks_ago,
         block_info,
         chain_info,
-        versioned_constants,
+        versioned_constants.clone(),
     )?)
 }
 
@@ -857,6 +869,24 @@ fn to_blockifier_tx(
             .map_err(|err| ExecutionError::from((transaction_index, err)))
         }
     }
+}
+
+pub(crate) fn get_versioned_constants(
+    storage_reader: &StorageReader,
+    block_number: BlockNumber,
+) -> ExecutionResult<&'static VersionedConstants> {
+    let starknet_version = storage_reader.begin_ro_txn()?.get_starknet_version(block_number)?;
+    let versioned_constants = match starknet_version {
+        Some(starknet_version) => match starknet_version {
+            StarknetVersion(version) if version == "0.13.0" => &VERSIONED_CONSTANTS_13_0,
+            StarknetVersion(version) if version == "0.13.1" => &VERSIONED_CONSTANTS_13_1,
+            _ => VersionedConstants::latest_constants(),
+        },
+        // If the block number is greater than the last block number that exists, we use the latest
+        // constants.
+        None => VersionedConstants::latest_constants(),
+    };
+    Ok(versioned_constants)
 }
 
 /// Simulates a series of transactions and returns the transaction traces and the fee estimations.
