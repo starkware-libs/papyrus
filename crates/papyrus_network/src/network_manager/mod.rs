@@ -22,7 +22,7 @@ use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId}
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
 use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId};
-use crate::{NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
+use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -170,7 +170,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     .expect("failed to decode protobuf BlockHeadersRequest")
                     .try_into()
                     .expect("failed to convert BlockHeadersRequest");
-                let query_id = self.db_executor.register_query(internal_query, sender);
+                let query_id = self.db_executor.register_query(
+                    internal_query,
+                    DataType::SignedBlockHeader,
+                    sender,
+                );
                 self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
                 self.query_results_router.push(
                     receiver

@@ -6,12 +6,14 @@ use futures::channel::mpsc::Sender;
 use futures::future::poll_fn;
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
+#[cfg(test)]
+use mockall::automock;
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::StorageReader;
+use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use tokio::task::JoinHandle;
 
-use crate::{BlockHashOrNumber, InternalQuery};
+use crate::{BlockHashOrNumber, DataType, InternalQuery};
 
 #[cfg(test)]
 mod test;
@@ -21,10 +23,14 @@ mod utils;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
 pub struct QueryId(pub usize);
 
-#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq, Default))]
 pub enum Data {
     // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
+    BlockHeaderAndSignature {
+        header: BlockHeader,
+        signatures: Vec<BlockSignature>,
+    },
+    #[cfg_attr(test, default)]
     Fin,
 }
 
@@ -86,7 +92,12 @@ impl DBExecutorError {
 /// The stream is never exhausted, and it is the responsibility of the user to poll it.
 pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
     // TODO: add writer functionality
-    fn register_query(&mut self, query: InternalQuery, sender: Sender<Data>) -> QueryId;
+    fn register_query(
+        &mut self,
+        query: InternalQuery,
+        data_type: impl FetchBlockDataFromDb + Send + 'static,
+        sender: Sender<Data>,
+    ) -> QueryId;
 }
 
 // TODO: currently this executor returns only block headers and signatures.
@@ -104,7 +115,12 @@ impl BlockHeaderDBExecutor {
 }
 
 impl DBExecutor for BlockHeaderDBExecutor {
-    fn register_query(&mut self, query: InternalQuery, mut sender: Sender<Data>) -> QueryId {
+    fn register_query(
+        &mut self,
+        query: InternalQuery,
+        data_type: impl FetchBlockDataFromDb + Send + 'static,
+        mut sender: Sender<Data>,
+    ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
         let storage_reader_clone = self.storage_reader.clone();
@@ -135,30 +151,12 @@ impl DBExecutor for BlockHeaderDBExecutor {
                         block_counter,
                         query_id,
                     )?);
-                    let header = txn
-                        .get_block_header(block_number)
-                        .map_err(|err| DBExecutorError::DBInternalError {
-                            query_id,
-                            storage_error: err,
-                        })?
-                        .ok_or(DBExecutorError::BlockNotFound {
-                            block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                            query_id,
-                        })?;
-                    let signature = txn
-                        .get_block_signature(block_number)
-                        .map_err(|err| DBExecutorError::DBInternalError {
-                            query_id,
-                            storage_error: err,
-                        })?
-                        .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
+                    let data = data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
-                            if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
-                                header,
-                                signatures: vec![signature],
-                            }) {
+                            if let Err(e) = sender.start_send(data) {
+                                // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };
                         }
@@ -199,5 +197,50 @@ pub(crate) fn poll_query_execution_set(
             Poll::Pending
         }
         Poll::Pending => Poll::Pending,
+    }
+}
+
+#[cfg_attr(test, automock)]
+// we need to tell clippy to ignore the "needless" lifetime warning because it's not true.
+// we do need the lifetime for the automock, following clippy's suggestion will break the code.
+#[allow(clippy::needless_lifetimes)]
+pub trait FetchBlockDataFromDb {
+    fn fetch_block_data_from_db<'a>(
+        &self,
+        block_number: BlockNumber,
+        query_id: QueryId,
+        txn: &StorageTxn<'a, db::RO>,
+    ) -> Result<Data, DBExecutorError>;
+}
+
+impl FetchBlockDataFromDb for DataType {
+    fn fetch_block_data_from_db(
+        &self,
+        block_number: BlockNumber,
+        query_id: QueryId,
+        txn: &StorageTxn<'_, db::RO>,
+    ) -> Result<Data, DBExecutorError> {
+        match self {
+            DataType::SignedBlockHeader => {
+                let header = txn
+                    .get_block_header(block_number)
+                    .map_err(|err| DBExecutorError::DBInternalError {
+                        query_id,
+                        storage_error: err,
+                    })?
+                    .ok_or(DBExecutorError::BlockNotFound {
+                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                        query_id,
+                    })?;
+                let signature = txn
+                    .get_block_signature(block_number)
+                    .map_err(|err| DBExecutorError::DBInternalError {
+                        query_id,
+                        storage_error: err,
+                    })?
+                    .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
+                Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+            }
+        }
     }
 }

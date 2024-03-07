@@ -18,7 +18,14 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
-use crate::db_executor::{poll_query_execution_set, DBExecutor, DBExecutorError, Data, QueryId};
+use crate::db_executor::{
+    poll_query_execution_set,
+    DBExecutor,
+    DBExecutorError,
+    Data,
+    FetchBlockDataFromDb,
+    QueryId,
+};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
@@ -144,7 +151,12 @@ impl Stream for MockDBExecutor {
 
 impl DBExecutor for MockDBExecutor {
     // TODO(shahak): Consider fixing code duplication with BlockHeaderDBExecutor.
-    fn register_query(&mut self, query: InternalQuery, mut sender: Sender<Data>) -> QueryId {
+    fn register_query(
+        &mut self,
+        query: InternalQuery,
+        _data_type: impl FetchBlockDataFromDb + Send,
+        mut sender: Sender<Data>,
+    ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
         let headers = self.query_to_headers.get(&query).unwrap().clone();

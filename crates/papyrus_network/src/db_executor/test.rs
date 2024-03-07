@@ -10,8 +10,8 @@ use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 
 use super::Data::BlockHeaderAndSignature;
-use crate::db_executor::{DBExecutor, DBExecutorError};
-use crate::{BlockHashOrNumber, Direction, InternalQuery};
+use crate::db_executor::{DBExecutor, DBExecutorError, Data, MockFetchBlockDataFromDb};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery};
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -31,7 +31,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let query_id = db_executor.register_query(query, sender);
+    let query_id = db_executor.register_query(query, DataType::SignedBlockHeader, sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -75,7 +75,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let query_id = db_executor.register_query(query, sender);
+    let query_id = db_executor.register_query(query, DataType::SignedBlockHeader, sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -109,7 +109,20 @@ async fn header_db_executor_query_of_missing_block() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let _query_id = db_executor.register_query(query, sender);
+    let mut mock_data_type = MockFetchBlockDataFromDb::new();
+    mock_data_type.expect_fetch_block_data_from_db().times((BLOCKS_DELTA + 1) as usize).returning(
+        |block_number, query_id, _| {
+            if block_number.0 == NUM_OF_BLOCKS {
+                Err(DBExecutorError::BlockNotFound {
+                    block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                    query_id,
+                })
+            } else {
+                Ok(Data::default())
+            }
+        },
+    );
+    let _query_id = db_executor.register_query(query, mock_data_type, sender);
 
     tokio::select! {
         res = db_executor.next() => {
@@ -148,7 +161,12 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
             limit: NUM_OF_BLOCKS,
             step: 1,
         };
-        let query_id = db_executor.register_query(query, sender);
+        let mut mock_data_type = MockFetchBlockDataFromDb::new();
+        mock_data_type
+            .expect_fetch_block_data_from_db()
+            .times(NUM_OF_BLOCKS as usize)
+            .returning(|_, _, _| Ok(Data::default()));
+        let query_id = db_executor.register_query(query, mock_data_type, sender);
 
         // run the executor and collect query results.
         receiver.collect::<Vec<_>>().await;
@@ -183,7 +201,7 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
     drop(receiver);
 
     // register a query.
-    let _query_id = db_executor.register_query(query, sender);
+    let _query_id = db_executor.register_query(query, MockFetchBlockDataFromDb::new(), sender);
 
     // executor should return an error.
     let res = db_executor.next().await;
