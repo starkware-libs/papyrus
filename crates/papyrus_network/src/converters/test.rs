@@ -12,7 +12,10 @@ fn block_header_to_protobuf_to_bytes_and_back() {
     };
     dbg!(&data);
     let mut data_bytes: Vec<u8> = vec![];
-    <Data as Into<protobuf::BlockHeadersResponse>>::into(data.clone())
+    <Data as TryInto<protobuf::BlockHeadersResponse>>::try_into(data.clone())
+        .expect(
+            "Data::BlockHeaderAndSignature should be convertable to protobuf::BlockHeadersResponse",
+        )
         .encode(&mut data_bytes)
         .unwrap();
     let res_data: Data =

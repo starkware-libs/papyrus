@@ -82,7 +82,11 @@ impl MockSwarm {
                 signatures: vec![],
             };
             let mut data_bytes = vec![];
-            <Data as Into<protobuf::BlockHeadersResponse>>::into(signed_header)
+            protobuf::BlockHeadersResponse::try_from(signed_header)
+                .expect(
+                    "Data::BlockHeaderAndSignature should be convertable to \
+                     protobuf::BlockHeadersResponse",
+                )
                 .encode(&mut data_bytes)
                 .expect("failed to convert data to bytes");
             self.pending_events.push(Event::Behaviour(GenericEvent::ReceivedData {
