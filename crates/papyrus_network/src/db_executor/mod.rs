@@ -159,7 +159,6 @@ impl DBExecutor for BlockHeaderDBExecutor {
                                 header,
                                 signatures: vec![signature],
                             }) {
-                                // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };
                         }
