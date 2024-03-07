@@ -15,13 +15,10 @@ use starknet_api::core::{
 };
 use starknet_api::crypto::Signature;
 
+use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
+use super::ProtobufConversionError;
 use crate::db_executor::Data;
-use crate::protobuf_messages::protobuf::{self};
-use crate::protobuf_messages::{
-    enum_int_to_l1_data_availability_mode,
-    l1_data_availability_mode_to_enum_int,
-    ProtobufConversionError,
-};
+use crate::protobuf_messages::protobuf;
 use crate::{BlockHashOrNumber, Direction, InternalQuery, Query, SignedBlockHeader};
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {

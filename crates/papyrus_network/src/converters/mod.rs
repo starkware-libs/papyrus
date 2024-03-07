@@ -1,4 +1,5 @@
-mod protobuf_conversion;
+pub mod protobuf_conversion;
+
 #[cfg(test)]
 mod test;
 

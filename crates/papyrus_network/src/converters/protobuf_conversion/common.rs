@@ -1,5 +1,9 @@
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
+use super::ProtobufConversionError;
+use crate::protobuf_messages::protobuf;
+
+#[cfg(test)]
 pub const PATRICIA_HEIGHT: u32 = 251;
 
 impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {

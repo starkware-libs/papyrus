@@ -1,3 +1,6 @@
+mod common;
+mod header;
+
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
     #[error("Type `{type_description}` got out of range value {value_as_str}")]
