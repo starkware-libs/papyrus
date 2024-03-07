@@ -16,6 +16,8 @@ use std::str::FromStr;
 use std::time::Duration;
 use std::usize;
 
+#[cfg(test)]
+use enum_iterator::Sequence;
 use futures::Stream;
 use libp2p::{PeerId, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
@@ -46,9 +48,11 @@ pub struct PeerAddressConfig {
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(Sequence, Clone, Copy))]
 pub enum DataType {
     #[default]
     SignedBlockHeader,
+    StateDiff,
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
