@@ -229,7 +229,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
         let (data, inbound_session_id) = res;
         let mut data_bytes = vec![];
-        <Data as Into<protobuf::BlockHeadersResponse>>::into(data)
+        <Data as TryInto<protobuf::BlockHeadersResponse>>::try_into(data)
+            .expect("DB returned data for query that is not expected by this protocol")
             .encode(&mut data_bytes)
             .expect("failed to convert data to bytes");
         self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
