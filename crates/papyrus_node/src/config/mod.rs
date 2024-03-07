@@ -24,6 +24,7 @@ use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_network::NetworkConfig;
+use papyrus_p2p_sync::{P2PSync, P2PSyncConfig};
 use papyrus_rpc::RpcConfig;
 use papyrus_storage::db::DbConfig;
 use papyrus_storage::StorageConfig;
@@ -83,6 +84,11 @@ pub struct NodeConfig {
     pub storage: StorageConfig,
     /// None if the syncing should be disabled.
     pub sync: Option<SyncConfig>,
+    /// One of p2p_sync or sync must be None.
+    /// If P2P sync is active, then network must be active too.
+    // TODO(yair): Change NodeConfig to have an option of enum of SyncConfig or P2PSyncConfig.
+    pub p2p_sync: Option<P2PSyncConfig>,
+    // TODO(shahak): Make network non-optional once it's developed enough.
     pub network: Option<NetworkConfig>,
 }
 
@@ -96,6 +102,7 @@ impl Default for NodeConfig {
             monitoring_gateway: MonitoringGatewayConfig::default(),
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
+            p2p_sync: None,
             network: None,
         }
     }
@@ -110,6 +117,7 @@ impl SerializeConfig for NodeConfig {
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
             ser_optional_sub_config(&self.sync, "sync"),
+            ser_optional_sub_config(&self.p2p_sync, "p2p_sync"),
             ser_optional_sub_config(&self.network, "network"),
         )
         .collect()
