@@ -161,11 +161,6 @@ impl DBExecutor for MockDBExecutor {
                         };
                     }
                 }
-                if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                    if let Err(e) = sender.start_send(Data::Fin) {
-                        return Err(DBExecutorError::SendError { query_id, send_error: e });
-                    };
-                }
                 Ok(query_id)
             }
         }));

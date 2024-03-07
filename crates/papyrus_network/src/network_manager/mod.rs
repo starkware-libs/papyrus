@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
-use futures::stream::{BoxStream, SelectAll};
+use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::{DialError, SwarmEvent};
 use libp2p::Swarm;
@@ -148,27 +148,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 } else {
                     debug!("Query failed. error: {err:?}");
                 }
-                if let Some(query_id) = err.query_id() {
-                    // TODO: Consider retrying based on error.
-                    let Some(inbound_session_id) =
-                        self.query_id_to_inbound_session_id.remove(&query_id)
-                    else {
-                        error!("Received error on non existing query");
-                        return;
-                    };
-                    // TODO: consider moving conversion out of here so network manager would
-                    // only know bytes.
-                    let mut fin_bytes = vec![];
-                    <Data as Into<protobuf::BlockHeadersResponse>>::into(Data::Fin)
-                        .encode(&mut fin_bytes)
-                        .expect("failed to convert fin to bytes");
-                    if self.swarm.send_data(fin_bytes, inbound_session_id).is_err() {
-                        error!(
-                            "Tried to close inbound session {inbound_session_id:?} due to {err:?} \
-                             but the session was already closed"
-                        );
-                    }
-                }
             }
         };
     }
@@ -193,8 +172,12 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     .expect("failed to convert BlockHeadersRequest");
                 let query_id = self.db_executor.register_query(internal_query, sender);
                 self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
-                self.query_results_router
-                    .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
+                self.query_results_router.push(
+                    receiver
+                        .chain(stream::once(async { Data::Fin }))
+                        .map(move |data| (data, inbound_session_id))
+                        .boxed(),
+                );
             }
             GenericEvent::ReceivedData { outbound_session_id, data } => {
                 debug!(
