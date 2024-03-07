@@ -53,7 +53,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
         res = db_executor.next() => {
             let poll_res = res.unwrap();
             let res_query_id = poll_res.unwrap();
-            assert!(query_ids.iter().map(|query_id| query_id).any(|query_id| query_id == &res_query_id));
+            assert!(query_ids.iter().any(|query_id| query_id == &res_query_id));
         }
         Some(res) = receivers_stream.next() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
