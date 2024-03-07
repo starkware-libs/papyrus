@@ -9,8 +9,10 @@ use futures::{Stream, StreamExt};
 #[cfg(test)]
 use mockall::automock;
 use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
 use crate::{BlockHashOrNumber, DataType, InternalQuery};
@@ -29,6 +31,9 @@ pub enum Data {
     BlockHeaderAndSignature {
         header: BlockHeader,
         signatures: Vec<BlockSignature>,
+    },
+    StateDiff {
+        state_diff: ThinStateDiff,
     },
     #[cfg_attr(test, default)]
     Fin,
@@ -240,6 +245,19 @@ impl FetchBlockDataFromDb for DataType {
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
                 Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+            }
+            DataType::StateDiff => {
+                let state_diff = txn
+                    .get_state_diff(block_number)
+                    .map_err(|err| DBExecutorError::DBInternalError {
+                        query_id,
+                        storage_error: err,
+                    })?
+                    .ok_or(DBExecutorError::BlockNotFound {
+                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                        query_id,
+                    })?;
+                Ok(Data::StateDiff { state_diff })
             }
         }
     }
