@@ -55,6 +55,14 @@ pub enum DataType {
     StateDiff,
 }
 
+impl From<Protocol> for DataType {
+    fn from(protocol: Protocol) -> DataType {
+        match protocol {
+            Protocol::SignedBlockHeader => DataType::SignedBlockHeader,
+        }
+    }
+}
+
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Query {
     pub start_block: BlockNumber,
@@ -116,6 +124,21 @@ impl Protocol {
 impl From<Protocol> for StreamProtocol {
     fn from(protocol: Protocol) -> StreamProtocol {
         StreamProtocol::new(protocol.as_str())
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("Unknown protocol: {0}")]
+pub struct UnknownProtocolConversionError(String);
+
+impl TryFrom<StreamProtocol> for Protocol {
+    type Error = UnknownProtocolConversionError;
+
+    fn try_from(protocol: StreamProtocol) -> Result<Self, Self::Error> {
+        match protocol.as_ref() {
+            "/starknet/headers/1" => Ok(Protocol::SignedBlockHeader),
+            _ => Err(UnknownProtocolConversionError(protocol.as_ref().to_string())),
+        }
     }
 }
 
