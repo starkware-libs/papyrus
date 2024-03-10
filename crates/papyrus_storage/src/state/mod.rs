@@ -67,6 +67,8 @@ use tracing::debug;
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+#[cfg(feature = "document_calls")]
+use crate::document_calls::{add_query, StorageQuery};
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::{
@@ -248,6 +250,10 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> StorageResult<Option<ClassHash>> {
+        // TODO(dvir): create an attribute instead of this.
+        #[cfg(feature = "document_calls")]
+        add_query(StorageQuery::GetClassHashAt(state_number, *address));
+
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         let db_key = (*address, first_irrelevant_block);
         let mut cursor = self.deployed_contracts_table.cursor(self.txn)?;
@@ -275,6 +281,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
     ) -> StorageResult<Option<Nonce>> {
+        #[cfg(feature = "document_calls")]
+        add_query(StorageQuery::GetNonceAt(state_number, *address));
+
         // State diff updates are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
@@ -313,6 +322,9 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         address: &ContractAddress,
         key: &StorageKey,
     ) -> StorageResult<StarkFelt> {
+        #[cfg(feature = "document_calls")]
+        add_query(StorageQuery::GetStorageAt(state_number, *address, *key));
+
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
