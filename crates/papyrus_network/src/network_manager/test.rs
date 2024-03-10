@@ -19,17 +19,25 @@ use tokio::time::sleep;
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
 use crate::db_executor::{
+    self,
     poll_query_execution_set,
     DBExecutor,
     DBExecutorError,
     Data,
     FetchBlockDataFromDb,
-    QueryId,
 };
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
+use crate::{
+    BlockHashOrNumber,
+    DataType,
+    Direction,
+    InternalQuery,
+    PeerAddressConfig,
+    Query,
+    QueryId,
+};
 
 #[derive(Default)]
 struct MockSwarm {
@@ -142,11 +150,12 @@ impl SwarmTrait for MockSwarm {
 struct MockDBExecutor {
     next_query_id: usize,
     pub query_to_headers: HashMap<InternalQuery, Vec<BlockHeader>>,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+    query_execution_set:
+        FuturesUnordered<JoinHandle<Result<db_executor::QueryId, DBExecutorError>>>,
 }
 
 impl Stream for MockDBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
+    type Item = Result<db_executor::QueryId, DBExecutorError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
@@ -160,8 +169,8 @@ impl DBExecutor for MockDBExecutor {
         query: InternalQuery,
         _data_type: impl FetchBlockDataFromDb + Send,
         mut sender: Sender<Data>,
-    ) -> QueryId {
-        let query_id = QueryId(self.next_query_id);
+    ) -> db_executor::QueryId {
+        let query_id = db_executor::QueryId(self.next_query_id);
         self.next_query_id += 1;
         let headers = self.query_to_headers.get(&query).unwrap().clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
@@ -186,6 +195,8 @@ impl DBExecutor for MockDBExecutor {
 
 const HEADER_BUFFER_SIZE: usize = 100;
 
+// TODO(shahak): Add test with 2 queries and check that each response comes with the correct query
+// id.
 #[tokio::test]
 async fn register_subscriber_and_use_channels() {
     // create mocked network manager
@@ -205,18 +216,23 @@ async fn register_subscriber_and_use_channels() {
         step: 1,
         data_type: DataType::SignedBlockHeader,
     };
+    let query_id = QueryId(0);
 
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
         network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
-    query_sender.send(query).await.unwrap();
+    query_sender.send((query, query_id)).await.unwrap();
 
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
         .enumerate()
         .take(query_limit)
         .map(|(i, signed_block_header)| {
-            assert_eq!(signed_block_header.clone().unwrap().block_header.block_number.0, i as u64);
+            assert_eq!(signed_block_header.clone().1.0, query_id.0);
+            assert_eq!(
+                signed_block_header.clone().0.unwrap().block_header.block_number.0,
+                i as u64
+            );
             signed_block_header
         })
         .collect::<Vec<_>>();

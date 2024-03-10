@@ -18,14 +18,22 @@ use tracing::{debug, error, trace};
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::{build_swarm, dial};
 use crate::converters::{Router, RouterError};
-use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
+use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId};
-use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
+use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::{
+    DataType,
+    NetworkConfig,
+    PeerAddressConfig,
+    Protocol,
+    Query,
+    QueryId,
+    ResponseReceivers,
+};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
-type SubscriberChannels = (Receiver<Query>, Router);
+type SubscriberChannels = (Receiver<(Query, QueryId)>, Router);
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -39,7 +47,8 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     header_buffer_size: usize,
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SubscriberChannels>,
-    query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
+    query_id_to_inbound_session_id: HashMap<db_executor::QueryId, InboundSessionId>,
+    outbound_session_id_to_query_id: HashMap<OutboundSessionId, QueryId>,
     peer: Option<PeerAddressConfig>,
 }
 
@@ -76,6 +85,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
+            outbound_session_id_to_query_id: HashMap::new(),
             peer,
         }
     }
@@ -83,7 +93,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     pub fn register_subscriber(
         &mut self,
         protocols: Vec<Protocol>,
-    ) -> (Sender<Query>, ResponseReceivers) {
+    ) -> (Sender<(Query, QueryId)>, ResponseReceivers) {
         let (sender, query_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
         let mut router = Router::new(protocols, self.header_buffer_size);
         let response_receiver = ResponseReceivers::new(router.get_recievers());
@@ -188,27 +198,36 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
                 );
-                if let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() {
-                    // TODO: once we have more protocols map session id to protocol.
-                    match response_senders.try_send(Protocol::SignedBlockHeader, data) {
-                        Err(RouterError::NoSenderForProtocol { protocol }) => {
+                let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() else {
+                    error!("Received data without any subscribers that can send queries");
+                    return;
+                };
+                let Some(query_id) = self.outbound_session_id_to_query_id.get(&outbound_session_id)
+                else {
+                    error!(
+                        "Received data from non existing outbound session {outbound_session_id:?}"
+                    );
+                    return;
+                };
+                // TODO: once we have more protocols map session id to protocol.
+                match response_senders.try_send(Protocol::SignedBlockHeader, data, *query_id) {
+                    Err(RouterError::NoSenderForProtocol { protocol }) => {
+                        error!(
+                            "The response sender does't support protocol: {protocol:?}. Dropping \
+                             data. outbound_session_id: {outbound_session_id:?}"
+                        );
+                    }
+                    Err(RouterError::TrySendError(e)) => {
+                        if e.is_disconnected() {
+                            panic!("Receiver was dropped. This should never happen.")
+                        } else if e.is_full() {
                             error!(
-                                "The response sender does't support protocol: {protocol:?}. \
-                                 Dropping data. outbound_session_id: {outbound_session_id:?}"
+                                "Receiver buffer is full. Dropping data. outbound_session_id: \
+                                 {outbound_session_id:?}"
                             );
                         }
-                        Err(RouterError::TrySendError(e)) => {
-                            if e.is_disconnected() {
-                                panic!("Receiver was dropped. This should never happen.")
-                            } else if e.is_full() {
-                                error!(
-                                    "Receiver buffer is full. Dropping data. outbound_session_id: \
-                                     {outbound_session_id:?}"
-                                );
-                            }
-                        }
-                        Ok(()) => {}
                     }
+                    Ok(()) => {}
                 }
             }
             GenericEvent::SessionFailed { session_id, error } => {
@@ -238,7 +257,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         })
     }
 
-    fn handle_sync_subscriber_query(&mut self, query: Query) {
+    fn handle_sync_subscriber_query(&mut self, (query, query_id): (Query, QueryId)) {
         let peer_id = self
             .peer
             .clone()
@@ -255,6 +274,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
                      {outbound_session_id:?}"
                 );
+                let insert_result =
+                    self.outbound_session_id_to_query_id.insert(outbound_session_id, query_id);
+                if insert_result.is_some() {
+                    error!("There are multiple outbound sessions with id {outbound_session_id:?}");
+                }
             }
             Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),
         }
