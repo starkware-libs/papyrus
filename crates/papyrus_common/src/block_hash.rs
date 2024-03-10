@@ -53,22 +53,42 @@ fn calculate_block_hash_by_version(
     let (n_events, events_patricia_root) =
         get_events_hash_data(&block.body.transaction_outputs, &version);
 
+    // Can't implement as a clousure because ascii_as_felt returns a Result.
+    let chain_id_as_felt = if version == BlockHashVersion::V0 {
+        Some(ascii_as_felt(chain_id.0.as_str())?)
+    } else {
+        None
+    };
+
     Ok(HashChain::new()
         .chain(&block.header.block_number.0.into())
         .chain(&block.header.state_root.0)
-        .chain_if_else(
-            &get_chain_sequencer_address(chain_id),
-            block.header.sequencer.0.key(),
-            version == BlockHashVersion::V2,
+        .chain_fn(
+            || {
+                if version == BlockHashVersion::V2 {
+                    Some(get_chain_sequencer_address(chain_id))
+                } else {
+                    Some(*block.header.sequencer.0.key())
+                }
+            }
         )
-        .chain_if_else(&block.header.timestamp.0.into(), &ZERO, version >= BlockHashVersion::V1)
+        .chain_fn(|| {
+            if version >= BlockHashVersion::V1 {
+                Some(block.header.timestamp.0.into())
+            } else {
+                Some(*ZERO)
+            }
+        })
         .chain(&n_transactions)
         .chain(&transactions_patricia_root)
         .chain(&n_events)
         .chain(&events_patricia_root)
         .chain(&ZERO) // Not implemented Element.
         .chain(&ZERO) // Not implemented Element.
-        .chain_if(&ascii_as_felt(chain_id.0.as_str())?, version == BlockHashVersion::V0)
+        .chain_fn(|| {
+            chain_id_as_felt
+        })
+
         .chain(&block.header.parent_hash.0).get_pedersen_hash())
 }
 

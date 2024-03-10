@@ -194,19 +194,12 @@ impl HashChain {
         self
     }
 
-    // Chains a felt to the hash chain if a condition is true.
-    pub fn chain_if(self, felt: &StarkFelt, condition: bool) -> Self {
-        if condition { self.chain(felt) } else { self }
-    }
-
-    // Chains felt_if to the hash chain if a condition is true, otherwise chains felt_else.
-    pub fn chain_if_else(
-        self,
-        felt_if: &StarkFelt,
-        felt_else: &StarkFelt,
-        condition: bool,
-    ) -> Self {
-        if condition { self.chain(felt_if) } else { self.chain(felt_else) }
+    // Chains the result of a function to the hash chain.
+    pub fn chain_fn<F: Fn() -> Option<StarkFelt>>(self, f: F) -> Self {
+        match f() {
+            Some(felt) => self.chain(&felt),
+            None => self,
+        }
     }
 
     // Chains many felts to the hash chain.
@@ -320,7 +313,13 @@ fn get_common_deploy_transaction_hash(
     Ok(TransactionHash(
         HashChain::new()
         .chain(&DEPLOY)
-        .chain_if(&transaction_version.0, !is_deprecated)
+        .chain_fn(|| {
+            if !is_deprecated {
+                Some(transaction_version.0)
+            } else {
+                None
+            }
+        })
         .chain(contract_address.0.key())
         .chain(&CONSTRUCTOR_ENTRY_POINT_SELECTOR)
         .chain(
@@ -328,7 +327,16 @@ fn get_common_deploy_transaction_hash(
                 .chain_iter(transaction.constructor_calldata.0.iter())
                 .get_pedersen_hash(),
         )
-        .chain_if(&ZERO, !is_deprecated) // No fee in deploy transaction.
+         // No fee in deploy transaction.
+        .chain_fn(|| {
+            if !is_deprecated {
+                Some(*ZERO)
+            }
+            else {
+                None
+            }
+        }
+        )
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
         .get_pedersen_hash(),
     ))
@@ -358,14 +366,14 @@ fn get_common_invoke_transaction_v0_hash(
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
-        .chain(&INVOKE)
-        .chain_if(&transaction_version.0, !is_deprecated) // Version
-        .chain(transaction.contract_address.0.key())
-        .chain(&transaction.entry_point_selector.0)
-        .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
-        .chain_if(&transaction.max_fee.0.into(), !is_deprecated)
-        .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .get_pedersen_hash(),
+            .chain(&INVOKE)
+            .chain_fn(|| if !is_deprecated { Some(transaction_version.0) } else { None })
+            .chain(transaction.contract_address.0.key())
+            .chain(&transaction.entry_point_selector.0)
+            .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
+            .chain_fn(|| if !is_deprecated { Some(transaction.max_fee.0.into()) } else { None })
+            .chain(&ascii_as_felt(chain_id.0.as_str())?)
+            .get_pedersen_hash(),
     ))
 }
 
@@ -472,14 +480,39 @@ fn get_common_l1_handler_transaction_hash(
 ) -> Result<TransactionHash, StarknetApiError> {
     Ok(TransactionHash(
         HashChain::new()
-        .chain_if_else(&INVOKE, &L1_HANDLER, version == L1HandlerVersions::AsInvoke)
-        .chain_if(&transaction_version.0, version > L1HandlerVersions::V0Deprecated)
+        .chain_fn(|| {
+            if version == L1HandlerVersions::AsInvoke {
+                Some(*INVOKE)
+            } else {
+                Some(*L1_HANDLER)
+            }
+        })
+        .chain_fn(|| {
+            if version > L1HandlerVersions::V0Deprecated {
+                Some(transaction_version.0)
+            } else {
+                None
+            }
+        })
         .chain(transaction.contract_address.0.key())
         .chain(&transaction.entry_point_selector.0)
         .chain(&HashChain::new().chain_iter(transaction.calldata.0.iter()).get_pedersen_hash())
-        .chain_if(&ZERO, version > L1HandlerVersions::V0Deprecated) // No fee in l1 handler transaction.
+        // No fee in l1 handler transaction.
+        .chain_fn(|| {
+            if version > L1HandlerVersions::V0Deprecated {
+                Some(*ZERO)
+            } else {
+                None
+            }
+        })
         .chain(&ascii_as_felt(chain_id.0.as_str())?)
-        .chain_if(&transaction.nonce.0, version > L1HandlerVersions::AsInvoke)
+        .chain_fn(|| {
+            if version > L1HandlerVersions::AsInvoke {
+                Some(transaction.nonce.0)
+            } else {
+                None
+            }
+        })
         .get_pedersen_hash(),
     ))
 }
