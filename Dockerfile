@@ -50,10 +50,7 @@ COPY --from=copy_toml /app .
 COPY crates/papyrus_proc_macros /app/crates/papyrus_proc_macros
 
 RUN rustup target add x86_64-unknown-linux-musl && \
-    CARGO_INCREMENTAL=0 cargo build  --target x86_64-unknown-linux-musl --release --package papyrus_node && \
-    # TODO: Consider separating the load test for CI to a different image.
-    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_load_test && \
-    CARGO_INCREMENTAL=0 cargo build   --target x86_64-unknown-linux-musl --release --package papyrus_storage
+    CARGO_INCREMENTAL=0 cargo build  --target x86_64-unknown-linux-musl --release --package papyrus_node
 
 # Copy the rest of the files.
 COPY crates/ /app/crates
@@ -61,25 +58,16 @@ COPY crates/ /app/crates
 # Touching the lib.rs files to mark them for re-compilation. Then re-compile now that all the source
 # code is available
 RUN touch crates/*/src/lib.rs; \
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node; \
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_load_test --bin papyrus_load_test; \
-    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_storage --bin dump_declared_classes
+    CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node;
 
 # Starting a new stage so that the final image will contain only the executable.
-FROM alpine:3.17.0
+FROM alpine:3.17.0 AS papyrus_node
 ENV ID=1000
 
 WORKDIR /app
 # Copy the node executable and its config.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_node /app/target/release/papyrus_node
 COPY config/ /app/config
-
-# Copy the load test executable and its resources.
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
-COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
-
-# Copy the dump_declared_classes executable.
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
 
 RUN set -ex; \
     apk update; \
