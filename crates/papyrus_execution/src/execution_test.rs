@@ -1,6 +1,7 @@
 // TODO(shahak): Add a test for executing when there's a missing casm that's not required and when
 // there's a missing casm that is required.
 use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
@@ -51,11 +52,7 @@ use crate::test_utils::{
     SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
-use crate::testing_instances::{
-    test_block_execution_config,
-    test_get_default_execution_config,
-    test_get_execution_configs,
-};
+use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
 use crate::{
     estimate_fee,
     execute_call,
@@ -670,10 +667,16 @@ fn test_default_execution_config() {
 /// Test that the execution configs are loaded correctly. Compare the loaded configs to the
 /// expected.
 #[test]
-fn test_execution_configs() {
-    let configs_from_file: Vec<ExecutionConfigByBlock> = test_get_execution_configs();
-    assert_eq!(configs_from_file.len(), 5);
-    for config in configs_from_file {
+fn test_preset_execution_configs() {
+    let mut execution_configs: Vec<ExecutionConfigByBlock> = Vec::new();
+    let preset_files_dir = "../../config/execution";
+    for path in preset_files_dir.parse::<PathBuf>().unwrap().read_dir().unwrap() {
+        let path = path.unwrap().path();
+        let execution_config_file = path.try_into().unwrap();
+        execution_configs.push(execution_config_file);
+    }
+    assert_eq!(execution_configs.len(), 5);
+    for config in execution_configs {
         for (block_number, segment) in config.execution_config_segments {
             if block_number == BlockNumber(0) {
                 assert_eq!(segment.vm_resource_fee_cost, get_vm_resource_fee_cost_first_segment());
@@ -682,38 +685,6 @@ fn test_execution_configs() {
             }
         }
     }
-}
-
-fn get_vm_resource_fee_cost_first_segment() -> Arc<HashMap<String, f64>> {
-    let mut vm_resource_fee_cost = HashMap::new();
-    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
-    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.16);
-    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 20.48);
-    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.64);
-    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("output_builtin".to_owned(), 1.0);
-    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 10.24);
-    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
-
-    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
-    vm_resource_fee_cost
-}
-
-fn get_vm_resource_fee_cost_second_segment() -> Arc<HashMap<String, f64>> {
-    let mut vm_resource_fee_cost = HashMap::new();
-    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.005);
-    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.16);
-    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.08);
-    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 10.24);
-    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.16);
-    vm_resource_fee_cost.insert("output_builtin".to_owned(), 0.5);
-    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 5.12);
-    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 10.24);
-
-    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
-    vm_resource_fee_cost
 }
 
 fn get_default_block_execution_config() -> BlockExecutionConfig {
@@ -946,4 +917,34 @@ fn blockifier_error_mapping() {
     };
     assert_eq!(execution_error, expected);
     assert_eq!(transaction_index, 0);
+}
+
+fn get_vm_resource_fee_cost_first_segment() -> Arc<HashMap<String, f64>> {
+    let mut vm_resource_fee_cost = HashMap::new();
+    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
+    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 20.48);
+    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.64);
+    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("output_builtin".to_owned(), 1.0);
+    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 10.24);
+    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
+
+    Arc::new(vm_resource_fee_cost)
+}
+
+fn get_vm_resource_fee_cost_second_segment() -> Arc<HashMap<String, f64>> {
+    let mut vm_resource_fee_cost = HashMap::new();
+    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.005);
+    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.08);
+    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 10.24);
+    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.32);
+    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.16);
+    vm_resource_fee_cost.insert("output_builtin".to_owned(), 0.5);
+    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 5.12);
+    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 10.24);
+
+    Arc::new(vm_resource_fee_cost)
 }
