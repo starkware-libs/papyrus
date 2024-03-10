@@ -16,7 +16,7 @@ use starknet_api::core::{
 use starknet_api::crypto::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
-use super::ProtobufConversionError;
+use super::{ProtobufBlockHeaderResponseToDataError, ProtobufConversionError};
 use crate::db_executor::Data;
 use crate::protobuf_messages::protobuf;
 use crate::{BlockHashOrNumber, Direction, InternalQuery, Query, SignedBlockHeader};
@@ -258,21 +258,29 @@ impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature 
     }
 }
 
-impl From<Data> for protobuf::BlockHeadersResponse {
-    fn from(data: Data) -> Self {
+impl TryFrom<Data> for protobuf::BlockHeadersResponse {
+    type Error = ProtobufBlockHeaderResponseToDataError;
+
+    fn try_from(data: Data) -> Result<Self, Self::Error> {
         match data {
             Data::BlockHeaderAndSignature { header, signatures } => {
-                protobuf::BlockHeadersResponse {
+                Ok(protobuf::BlockHeadersResponse {
                     header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
                         (header, signatures).into(),
                     )),
-                }
+                })
             }
-            Data::Fin => protobuf::BlockHeadersResponse {
+            Data::Fin => Ok(protobuf::BlockHeadersResponse {
                 header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
                     protobuf::Fin {},
                 )),
-            },
+            }),
+            Data::StateDiff { .. } => {
+                Err(ProtobufBlockHeaderResponseToDataError::UnsupportedDataType {
+                    data_type: "StateDiff".to_string(),
+                    type_description: "BlockHeadersResponse".to_string(),
+                })
+            }
         }
     }
 }

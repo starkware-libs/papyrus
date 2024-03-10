@@ -9,8 +9,10 @@ use futures::{Stream, StreamExt};
 #[cfg(test)]
 use mockall::automock;
 use papyrus_storage::header::HeaderStorageReader;
+use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
 use crate::{BlockHashOrNumber, DataType, InternalQuery};
@@ -30,6 +32,9 @@ pub enum Data {
         header: BlockHeader,
         signatures: Vec<BlockSignature>,
     },
+    StateDiff {
+        state_diff: ThinStateDiff,
+    },
     #[cfg_attr(test, default)]
     Fin,
 }
@@ -46,11 +51,13 @@ pub enum DBExecutorError {
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
     BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
+    // TODO: add data type to the error message.
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
     // This error should be non recoverable.
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
+    // TODO: remove this error, use BlockNotFound instead.
     // This error should be non recoverable.
     #[error(
         "Block {block_number:?} is in the storage but its signature isn't. query_id: {query_id}"
@@ -240,6 +247,19 @@ impl FetchBlockDataFromDb for DataType {
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
                 Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+            }
+            DataType::StateDiff => {
+                let state_diff = txn
+                    .get_state_diff(block_number)
+                    .map_err(|err| DBExecutorError::DBInternalError {
+                        query_id,
+                        storage_error: err,
+                    })?
+                    .ok_or(DBExecutorError::BlockNotFound {
+                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                        query_id,
+                    })?;
+                Ok(Data::StateDiff { state_diff })
             }
         }
     }
