@@ -158,7 +158,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 query,
                 inbound_session_id,
                 peer_id: _,
-                protocol_name: _,
+                protocol_name,
             } => {
                 trace!(
                     "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
@@ -170,11 +170,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     .expect("failed to decode protobuf BlockHeadersRequest")
                     .try_into()
                     .expect("failed to convert BlockHeadersRequest");
-                let query_id = self.db_executor.register_query(
-                    internal_query,
-                    DataType::SignedBlockHeader,
-                    sender,
-                );
+                let data_type = Protocol::try_from(protocol_name)
+                    .map(DataType::from)
+                    // TODO: consider returning error instead of panic.
+                    .expect("failed to deduce data type from protocol");
+                let query_id = self.db_executor.register_query(internal_query, data_type, sender);
                 self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
                 self.query_results_router.push(
                     receiver
