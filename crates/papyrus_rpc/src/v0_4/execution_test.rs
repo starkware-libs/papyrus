@@ -40,6 +40,7 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerContractAddress,
 };
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass,
     EntryPointType,
@@ -1425,6 +1426,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
+                // Test that l1_da_mode is ignored by changing its value
+                l1_da_mode: L1DataAvailabilityMode::Blob,
                 ..Default::default()
             },
         )

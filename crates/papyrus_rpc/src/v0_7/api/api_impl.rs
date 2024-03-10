@@ -136,6 +136,8 @@ use crate::{
     ContinuationTokenAsStruct,
 };
 
+const DONT_IGNORE_L1_DA_MODE: bool = false;
+
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
     pub static ref BLOCK_HASH_TABLE_ADDRESS: ContractAddress = ContractAddress::from(1_u8);
@@ -897,6 +899,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1010,6 +1013,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 validate,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1083,6 +1087,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1153,6 +1158,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 timestamp: pending_block.timestamp(),
                 l1_gas_price: pending_block.l1_gas_price(),
                 l1_data_gas_price: pending_block.l1_data_gas_price(),
+                l1_da_mode: pending_block.l1_da_mode(),
                 sequencer: pending_block.sequencer_address(),
                 // The pending state diff should be empty since we look at the state in the
                 // start of the pending block.
@@ -1234,6 +1240,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1272,6 +1279,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         timestamp: client_pending_data.block.timestamp(),
                         l1_gas_price: client_pending_data.block.l1_gas_price(),
                         l1_data_gas_price: client_pending_data.block.l1_data_gas_price(),
+                        l1_da_mode: client_pending_data.block.l1_da_mode(),
                         sequencer: client_pending_data.block.sequencer_address(),
                         // The pending state diff should be empty since we look at the state in the
                         // start of the pending block.
@@ -1352,6 +1360,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &block_execution_config,
                 true,
                 true,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1422,6 +1431,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 block_number,
                 &block_execution_config,
                 false,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
