@@ -104,8 +104,12 @@ pub enum BlockHashOrNumber {
     Number(BlockNumber),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct QueryId(pub u64);
+
 pub struct ResponseReceivers {
-    pub signed_headers_receiver: Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>,
+    pub signed_headers_receiver:
+        Pin<Box<dyn Stream<Item = (Option<SignedBlockHeader>, QueryId)> + Send>>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]

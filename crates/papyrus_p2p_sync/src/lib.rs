@@ -9,7 +9,7 @@ use futures::{SinkExt, StreamExt};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::{DataType, Direction, Query, ResponseReceivers, SignedBlockHeader};
+use papyrus_network::{DataType, Direction, Query, QueryId, ResponseReceivers, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
@@ -75,14 +75,14 @@ pub enum P2PSyncError {
 
 enum P2PSyncControl {
     ContinueDownloading,
-    PeerFinished,
+    QueryFinished(QueryId),
 }
 
 pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    query_sender: Sender<Query>,
+    query_sender: Sender<(Query, QueryId)>,
     response_receivers: ResponseReceivers,
 }
 
@@ -91,7 +91,7 @@ impl P2PSync {
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
+        query_sender: Sender<(Query, QueryId)>,
         response_receivers: ResponseReceivers,
     ) -> Self {
         Self { config, storage_reader, storage_writer, query_sender, response_receivers }
@@ -110,13 +110,19 @@ impl P2PSync {
                     .expect("Failed converting usize to u64");
             debug!("Downloading blocks [{}, {})", current_block_number.0, end_block_number);
             self.query_sender
-                .send(Query {
-                    start_block: current_block_number,
-                    direction: Direction::Forward,
-                    limit: self.config.num_headers_per_query,
-                    step: STEP,
-                    data_type: DataType::SignedBlockHeader,
-                })
+                .send((
+                    Query {
+                        start_block: current_block_number,
+                        direction: Direction::Forward,
+                        limit: self.config.num_headers_per_query,
+                        step: STEP,
+                        data_type: DataType::SignedBlockHeader,
+                    },
+                    // TODO(shahak): Make query ids unique. (The network works if the query ids
+                    // aren't unique. The change is for the sync when it will need to handle
+                    // multiple queries)
+                    QueryId(0),
+                ))
                 .await?;
             control = self.parse_headers(&mut current_block_number, end_block_number).await?;
         }
@@ -149,9 +155,9 @@ impl P2PSync {
             let Some(maybe_signed_header) = maybe_signed_header_stream_result else {
                 return Err(P2PSyncError::ReceiverChannelTerminated);
             };
-            let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header else {
+            let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header.0 else {
                 debug!("Handle empty signed headers -> mark that peer sent Fin");
-                return Ok(P2PSyncControl::PeerFinished);
+                return Ok(P2PSyncControl::QueryFinished(maybe_signed_header.1));
             };
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
             // and handle reverts.

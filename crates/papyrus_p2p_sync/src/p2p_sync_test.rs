@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
-use papyrus_network::{DataType, Direction, Query, ResponseReceivers, SignedBlockHeader};
+use papyrus_network::{DataType, Direction, Query, QueryId, ResponseReceivers, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
@@ -25,7 +25,13 @@ lazy_static! {
         P2PSyncConfig { num_headers_per_query: QUERY_LENGTH, query_timeout: QUERY_TIMEOUT };
 }
 
-fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<Option<SignedBlockHeader>>) {
+#[allow(clippy::type_complexity)]
+fn setup() -> (
+    P2PSync,
+    StorageReader,
+    Receiver<(Query, QueryId)>,
+    Sender<(Option<SignedBlockHeader>, QueryId)>,
+) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (signed_headers_sender, signed_headers_receiver) =
@@ -71,7 +77,7 @@ async fn signed_headers_basic_flow() {
             let end_block_number = (query_index + 1) * QUERY_LENGTH;
 
             // Receive query and validate it.
-            let query = query_receiver.next().await.unwrap();
+            let (query, query_id) = query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 Query {
@@ -91,14 +97,17 @@ async fn signed_headers_basic_flow() {
                 .skip(start_block_number)
             {
                 signed_headers_sender
-                    .send(Some(SignedBlockHeader {
-                        block_header: BlockHeader {
-                            block_number: BlockNumber(i.try_into().unwrap()),
-                            block_hash: *block_hash,
-                            ..Default::default()
-                        },
-                        signatures: vec![*block_signature],
-                    }))
+                    .send((
+                        Some(SignedBlockHeader {
+                            block_header: BlockHeader {
+                                block_number: BlockNumber(i.try_into().unwrap()),
+                                block_hash: *block_hash,
+                                ..Default::default()
+                            },
+                            signatures: vec![*block_signature],
+                        }),
+                        query_id,
+                    ))
                     .await
                     .unwrap();
             }
@@ -148,27 +157,31 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
 
     // Create a future that will receive a query, send partial responses and receive the next query.
     let parse_queries_future = async move {
-        let _query = query_receiver.next().await.unwrap();
+        let (_query, query_id) = query_receiver.next().await.unwrap();
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
             signed_headers_sender
-                .send(Some(SignedBlockHeader {
-                    block_header: BlockHeader {
-                        block_number: BlockNumber(i.try_into().unwrap()),
-                        block_hash,
-                        ..Default::default()
-                    },
-                    signatures: vec![signature],
-                }))
+                .send((
+                    Some(SignedBlockHeader {
+                        block_header: BlockHeader {
+                            block_number: BlockNumber(i.try_into().unwrap()),
+                            block_hash,
+                            ..Default::default()
+                        },
+                        signatures: vec![signature],
+                    }),
+                    query_id,
+                ))
                 .await
                 .unwrap();
         }
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let query = timeout(TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC, query_receiver.next())
-            .await
-            .unwrap()
-            .unwrap();
+        let (query, _query_id) =
+            timeout(TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC, query_receiver.next())
+                .await
+                .unwrap()
+                .unwrap();
 
         assert_eq!(
             query,
