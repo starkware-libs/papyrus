@@ -1,6 +1,6 @@
 //! Utilities for executing contracts and transactions.
 use std::fs::File;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // Expose the tool for creating entry point selectors from function names.
 pub use blockifier::abi::abi_utils::selector_from_name;
@@ -12,16 +12,13 @@ use blockifier::execution::contract_class::{
 use blockifier::state::cached_state::{CachedState, MutRefState};
 use blockifier::state::state_api::{State, StateReader};
 use blockifier::transaction::objects::TransactionExecutionInfo;
-use blockifier::versioned_constants::VersionedConstants;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
 use papyrus_common::state::{DeployedContract, ReplacedClass, StorageEntry};
 use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::{TransactionKind, RO};
-use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::{StorageError, StorageReader, StorageResult, StorageTxn};
-use starknet_api::block::{BlockNumber, StarknetVersion};
+use papyrus_storage::{StorageError, StorageResult, StorageTxn};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
@@ -36,11 +33,6 @@ use crate::{
     ExecutionError,
     ExecutionResult,
 };
-
-static VERSIONED_CONSTANTS_13_0: VersionedConstants =
-    VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_0.json")).unwrap();
-static VERSIONED_CONSTANTS_13_1: VersionedConstants =
-    VersionedConstants::try_from(Path::new("./resources/versioned_constants.json")).unwrap();
 
 // An error that can occur during the use of the execution utils.
 #[derive(Debug, Error)]
@@ -89,24 +81,6 @@ pub(crate) fn get_contract_class(
     Ok(Some(BlockifierContractClass::V0(
         ContractClassV0::try_from(deprecated_class).map_err(ExecutionUtilsError::ProgramError)?,
     )))
-}
-
-pub(crate) fn get_versioned_constants(
-    storage_reader: &StorageReader,
-    block_number: BlockNumber,
-) -> ExecutionResult<&'static VersionedConstants> {
-    let starknet_version = storage_reader.begin_ro_txn()?.get_starknet_version(block_number)?;
-    let versioned_constants = match starknet_version {
-        Some(starknet_version) => match starknet_version {
-            StarknetVersion(version) if version == "0.13.0" => &VERSIONED_CONSTANTS_13_0,
-            StarknetVersion(version) if version == "0.13.1" => &VERSIONED_CONSTANTS_13_1,
-            _ => VersionedConstants::latest_constants(),
-        },
-        // If the block number is greater than the last block number that exists, we use the latest
-        // constants.
-        None => VersionedConstants::latest_constants(),
-    };
-    Ok(versioned_constants)
 }
 
 /// Given an ExecutableTransactionInput, returns a function that will convert the corresponding
