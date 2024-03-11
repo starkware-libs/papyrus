@@ -12,16 +12,14 @@ use futures::{FutureExt, StreamExt};
 use libp2p::swarm::{DialError, SwarmEvent};
 use libp2p::Swarm;
 use papyrus_storage::StorageReader;
-use prost::Message;
 use tracing::{debug, error, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::{build_swarm, dial};
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
-use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId};
+use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
@@ -41,6 +39,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     sync_subscriber_channels: Option<SubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     peer: Option<PeerAddressConfig>,
+    outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
@@ -77,6 +76,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
             peer,
+            outbound_session_id_to_protocol: HashMap::new(),
         }
     }
 
@@ -165,20 +165,16 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 );
                 let (sender, receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
                 // TODO: use query id for bookkeeping.
-                // TODO: consider moving conversion out of network manager.
-                let internal_query = protobuf::BlockHeadersRequest::decode(&query[..])
-                    .expect("failed to decode protobuf BlockHeadersRequest")
-                    .try_into()
-                    .expect("failed to convert BlockHeadersRequest");
-                let data_type = Protocol::try_from(protocol_name)
-                    .map(DataType::from)
-                    // TODO: consider returning error instead of panic.
-                    .expect("failed to deduce data type from protocol");
+                // TODO: consider returning error instead of panic.
+                let protocol =
+                    Protocol::try_from(protocol_name).expect("Encountered unknown protocol");
+                let internal_query = protocol.bytes_query_to_protobuf_request(query);
+                let data_type = DataType::from(protocol);
                 let query_id = self.db_executor.register_query(internal_query, data_type, sender);
                 self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
                 self.query_results_router.push(
                     receiver
-                        .chain(stream::once(async { Data::Fin }))
+                        .chain(stream::once(async move { Data::Fin(data_type) }))
                         .map(move |data| (data, inbound_session_id))
                         .boxed(),
                 );
@@ -189,8 +185,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                      sync subscriber."
                 );
                 if let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() {
-                    // TODO: once we have more protocols map session id to protocol.
-                    match response_senders.try_send(Protocol::SignedBlockHeader, data) {
+                    let protocol = self
+                        .outbound_session_id_to_protocol
+                        .get(&outbound_session_id)
+                        .expect("Received data from an unknown session id");
+                    match response_senders.try_send(*protocol, data) {
                         Err(RouterError::NoSenderForProtocol { protocol }) => {
                             error!(
                                 "The response sender does't support protocol: {protocol:?}. \
@@ -214,9 +213,15 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             GenericEvent::SessionFailed { session_id, error } => {
                 debug!("Session {session_id:?} failed on {error:?}");
                 // TODO: Handle reputation and retry.
+                if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
+                    self.outbound_session_id_to_protocol.remove(&outbound_session_id);
+                }
             }
             GenericEvent::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
+                if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
+                    self.outbound_session_id_to_protocol.remove(&outbound_session_id);
+                }
             }
         }
     }
@@ -229,10 +234,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
         let (data, inbound_session_id) = res;
         let mut data_bytes = vec![];
-        <Data as TryInto<protobuf::BlockHeadersResponse>>::try_into(data)
-            .expect("DB returned data for query that is not expected by this protocol")
-            .encode(&mut data_bytes)
-            .expect("failed to convert data to bytes");
+        data.encode(&mut data_bytes).expect("failed to encode data");
         self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
             error!("Failed to send data to peer. Session id not found error: {e:?}");
         })
@@ -246,15 +248,15 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             // TODO: get peer id from swarm after dial id not received in config.
             .peer_id;
         let mut query_bytes = vec![];
-        <Query as Into<protobuf::BlockHeadersRequest>>::into(query)
-            .encode(&mut query_bytes)
-            .expect("failed to convert query to bytes");
+        query.encode(&mut query_bytes).expect("failed to encode query");
         match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
             Ok(outbound_session_id) => {
                 debug!(
                     "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
                      {outbound_session_id:?}"
                 );
+                self.outbound_session_id_to_protocol
+                    .insert(outbound_session_id, Protocol::SignedBlockHeader);
             }
             Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),
         }

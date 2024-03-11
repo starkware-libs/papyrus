@@ -1,6 +1,8 @@
 use std::pin::Pin;
 use std::task::Poll;
+use std::vec;
 
+use bytes::BufMut;
 use derive_more::Display;
 use futures::channel::mpsc::Sender;
 use futures::future::poll_fn;
@@ -11,10 +13,13 @@ use mockall::automock;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
+use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
+use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
+use crate::protobuf_messages::protobuf;
 use crate::{BlockHashOrNumber, DataType, InternalQuery};
 
 #[cfg(test)]
@@ -25,18 +30,70 @@ mod utils;
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
 pub struct QueryId(pub usize);
 
-#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq, Default))]
+#[derive(thiserror::Error, Debug)]
+#[error("Failed to encode data")]
+pub struct DataEncodingError;
+
+#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
     // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature {
-        header: BlockHeader,
-        signatures: Vec<BlockSignature>,
-    },
-    StateDiff {
-        state_diff: ThinStateDiff,
-    },
-    #[cfg_attr(test, default)]
-    Fin,
+    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
+    StateDiff { state_diff: ThinStateDiff },
+    Fin(DataType),
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        // TODO: consider this default data type.
+        Data::Fin(DataType::SignedBlockHeader)
+    }
+}
+
+impl Data {
+    pub fn encode<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    where
+        B: BufMut,
+    {
+        match self {
+            Data::BlockHeaderAndSignature { .. } => self
+                .try_into()
+                .map(|data: protobuf::BlockHeadersResponse| {
+                    data.encode(buf).map_err(|_| DataEncodingError)
+                })
+                .map_err(|_| DataEncodingError)?,
+            Data::StateDiff { state_diff } => {
+                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
+                let res = state_diffs_response_vec
+                    .0
+                    .iter()
+                    .map(|data| {
+                        let mut buf = vec![];
+                        data.encode(&mut buf).map_err(|_| DataEncodingError).map(|_| buf)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                for byte in res.iter().flatten() {
+                    buf.put_u8(*byte);
+                }
+                Ok(())
+            }
+            Data::Fin(data_type) => match data_type {
+                DataType::SignedBlockHeader => protobuf::BlockHeadersResponse {
+                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                        protobuf::Fin {},
+                    )),
+                }
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+                DataType::StateDiff => protobuf::BlockHeadersResponse {
+                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                        protobuf::Fin {},
+                    )),
+                }
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+            },
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
