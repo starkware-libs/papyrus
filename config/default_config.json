@@ -154,8 +154,8 @@
     "privacy": "Public",
     "value": 10000
   },
-  "p2p_sync.query_timeout": {
-    "description": "Time in seconds to wait for query responses until we mark it as failed",
+  "p2p_sync.wait_period_for_new_data": {
+    "description": "Time in seconds to wait when a query returned with partial data before sending a new query",
     "privacy": "Public",
     "value": 5
   },

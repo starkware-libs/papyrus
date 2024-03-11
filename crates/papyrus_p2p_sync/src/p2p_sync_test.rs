@@ -17,12 +17,15 @@ use super::{P2PSync, P2PSyncConfig};
 const BUFFER_SIZE: usize = 1000;
 const QUERY_LENGTH: usize = 5;
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::from_millis(10);
-const QUERY_TIMEOUT: Duration = Duration::from_millis(50);
-const TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC: Duration = QUERY_TIMEOUT.saturating_mul(5);
+const WAIT_PERIOD_FOR_NEW_DATA: Duration = Duration::from_millis(50);
+const TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE: Duration =
+    WAIT_PERIOD_FOR_NEW_DATA.saturating_mul(5);
 
 lazy_static! {
-    static ref TEST_CONFIG: P2PSyncConfig =
-        P2PSyncConfig { num_headers_per_query: QUERY_LENGTH, query_timeout: QUERY_TIMEOUT };
+    static ref TEST_CONFIG: P2PSyncConfig = P2PSyncConfig {
+        num_headers_per_query: QUERY_LENGTH,
+        wait_period_for_new_data: WAIT_PERIOD_FOR_NEW_DATA
+    };
 }
 
 fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<Option<SignedBlockHeader>>) {
@@ -83,13 +86,13 @@ async fn signed_headers_basic_flow() {
                 }
             );
 
-            // Send responses
             for (i, (block_hash, block_signature)) in block_hashes_and_signatures
                 .iter()
                 .enumerate()
                 .take(end_block_number)
                 .skip(start_block_number)
             {
+                // Send responses
                 signed_headers_sender
                     .send(Some(SignedBlockHeader {
                         block_header: BlockHeader {
@@ -101,24 +104,15 @@ async fn signed_headers_basic_flow() {
                     }))
                     .await
                     .unwrap();
-            }
 
-            tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
+                tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
 
-            // Check responses were written to the storage.
-            let txn = storage_reader.begin_ro_txn().unwrap();
-            assert_eq!(
-                u64::try_from(end_block_number).unwrap(),
-                txn.get_header_marker().unwrap().0
-            );
-
-            for (i, (block_hash, block_signature)) in block_hashes_and_signatures
-                .iter()
-                .enumerate()
-                .take(end_block_number)
-                .skip(start_block_number)
-            {
+                // Check responses were written to the storage. This way we make sure that the sync
+                // writes to the storage each response it receives before all query responses were
+                // sent.
                 let block_number = BlockNumber(i.try_into().unwrap());
+                let txn = storage_reader.begin_ro_txn().unwrap();
+                assert_eq!(block_number.next(), txn.get_header_marker().unwrap());
                 let block_header = txn.get_block_header(block_number).unwrap().unwrap();
                 assert_eq!(block_number, block_header.block_number);
                 assert_eq!(*block_hash, block_header.block_hash);
@@ -126,6 +120,7 @@ async fn signed_headers_basic_flow() {
                     txn.get_block_signature(block_number).unwrap().unwrap();
                 assert_eq!(*block_signature, actual_block_signature);
             }
+            signed_headers_sender.send(None).await.unwrap();
         }
     };
 
@@ -163,9 +158,10 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
                 .await
                 .unwrap();
         }
+        signed_headers_sender.send(None).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let query = timeout(TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC, query_receiver.next())
+        let query = timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, query_receiver.next())
             .await
             .unwrap()
             .unwrap();
