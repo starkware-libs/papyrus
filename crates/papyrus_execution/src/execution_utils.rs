@@ -29,7 +29,7 @@ use crate::state_reader::ExecutionStateReader;
 use crate::{
     BlockifierError,
     ExecutableTransactionInput,
-    ExecutionConfigByBlock,
+    ExecutionConfig,
     ExecutionError,
     ExecutionResult,
 };
@@ -46,7 +46,7 @@ pub(crate) enum ExecutionUtilsError {
 }
 
 /// Returns the execution config from the config file.
-impl TryFrom<PathBuf> for ExecutionConfigByBlock {
+impl TryFrom<PathBuf> for ExecutionConfig {
     type Error = ExecutionError;
 
     fn try_from(execution_config_file: PathBuf) -> Result<Self, Self::Error> {
