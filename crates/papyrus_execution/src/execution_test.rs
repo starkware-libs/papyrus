@@ -27,7 +27,7 @@ use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{Calldata, Fee};
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 
-use crate::execution_utils::{get_versioned_constants, selector_from_name};
+use crate::execution_utils::selector_from_name;
 use crate::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
@@ -57,6 +57,7 @@ use crate::testing_instances::{test_block_execution_config, test_get_default_exe
 use crate::{
     estimate_fee,
     execute_call,
+    get_versioned_constants,
     BlockExecutionConfig,
     ExecutableTransactionInput,
     ExecutionConfigByBlock,
