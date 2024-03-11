@@ -171,6 +171,13 @@ expression: dumped_default_config
     "value": true,
     "privacy": "TemporaryValue"
   },
+  "p2p_sync.num_block_state_diffs_per_query": {
+    "description": "The maximum amount of block's state diffs to ask from peers in each iteration.",
+    "value": {
+      "$serde_json::private::Number": "100"
+    },
+    "privacy": "Public"
+  },
   "p2p_sync.num_headers_per_query": {
     "description": "The maximum amount of headers to ask from peers in each iteration.",
     "value": {

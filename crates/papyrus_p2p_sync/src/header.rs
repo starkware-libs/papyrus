@@ -6,7 +6,6 @@ use papyrus_network::{DataType, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
-use tracing::debug;
 
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
@@ -41,7 +40,6 @@ impl DataStreamFactory for HeaderStreamFactory {
 
     const DATA_TYPE: DataType = DataType::SignedBlockHeader;
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit = BlockNumberLimit::Unlimited;
-    const SHOULD_LOG_ADDED_BLOCK: bool = true;
 
     fn parse_data_for_block<'a>(
         signed_headers_receiver: &'a mut Pin<
@@ -54,10 +52,9 @@ impl DataStreamFactory for HeaderStreamFactory {
             let maybe_signed_header_stream_result =
                 tokio::time::timeout(NETWORK_DATA_TIMEOUT, signed_headers_receiver.next()).await?;
             let Some(maybe_signed_header) = maybe_signed_header_stream_result else {
-                return Err(P2PSyncError::ReceiverChannelTerminated);
+                return Err(P2PSyncError::ReceiverChannelTerminated { data_type: Self::DATA_TYPE });
             };
             let Some(signed_block_header) = maybe_signed_header else {
-                debug!("Header query sent to network finished");
                 return Ok(None);
             };
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
