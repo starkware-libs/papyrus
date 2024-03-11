@@ -178,8 +178,8 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
-  "p2p_sync.query_timeout": {
-    "description": "Time in seconds to wait for query responses until we mark it as failed",
+  "p2p_sync.wait_period_for_new_data": {
+    "description": "Time in seconds to wait when a query returned with partial data before sending a new query",
     "value": {
       "$serde_json::private::Number": "5"
     },
