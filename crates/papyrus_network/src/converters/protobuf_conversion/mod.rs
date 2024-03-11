@@ -1,6 +1,6 @@
 mod common;
 mod header;
-mod state_diff;
+pub mod state_diff;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
@@ -13,7 +13,7 @@ pub enum ProtobufConversionError {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum ProtobufBlockHeaderResponseToDataError {
+pub enum ProtobufResponseToDataError {
     #[error("Type `{type_description}` got unsupported data type {data_type}")]
     UnsupportedDataType { data_type: String, type_description: String },
 }

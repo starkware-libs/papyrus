@@ -1,7 +1,9 @@
+use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf;
+use crate::protobuf_messages::protobuf::{self, Iteration};
+use crate::{BlockHashOrNumber, Direction};
 
 #[cfg(test)]
 pub const PATRICIA_HEIGHT: u32 = 251;
@@ -179,4 +181,33 @@ impl TestInstance for protobuf::ConsensusSignature {
             s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
         }
     }
+}
+
+pub(crate) fn iteration_to_query_parts(
+    value: Iteration,
+) -> Result<(BlockHashOrNumber, Direction, u64, u64), ProtobufConversionError> {
+    let start = value
+        .start
+        .ok_or(ProtobufConversionError::MissingField { field_description: "Iteration::start" })?;
+    let start_block = match start {
+        protobuf::iteration::Start::BlockNumber(block_number) => {
+            BlockHashOrNumber::Number(BlockNumber(block_number))
+        }
+        protobuf::iteration::Start::Header(protobuf_hash) => {
+            BlockHashOrNumber::Hash(BlockHash(protobuf_hash.try_into()?))
+        }
+    };
+    let direction = match value.direction {
+        0 => Direction::Forward,
+        1 => Direction::Backward,
+        direction => {
+            return Err(ProtobufConversionError::OutOfRangeValue {
+                type_description: "Direction",
+                value_as_str: format!("{direction}"),
+            });
+        }
+    };
+    let limit = value.limit;
+    let step = value.step;
+    Ok((start_block, direction, limit, step))
 }

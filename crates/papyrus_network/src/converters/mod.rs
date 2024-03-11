@@ -14,17 +14,29 @@ use crate::{Protocol, ResponseReceivers};
 
 impl ResponseReceivers {
     pub(crate) fn new(mut protocol_to_receiver_map: HashMap<Protocol, Receiver<Vec<u8>>>) -> Self {
-        let signed_headers_receiver = protocol_to_receiver_map
-            .remove(&Protocol::SignedBlockHeader)
-            .expect("SignedBlockHeader receiver not found")
-            .map(|data_bytes| {
-                protobuf::BlockHeadersResponse::decode(&data_bytes[..])
-                    .expect("failed to decode protobuf SignedBlockHeader")
-                    .try_into()
-                    .expect("failed to convert SignedBlockHeader")
-            })
-            .boxed();
-        Self { signed_headers_receiver }
+        let signed_headers_receiver =
+            protocol_to_receiver_map.remove(&Protocol::SignedBlockHeader).map(|reciever| {
+                reciever
+                    .map(|data_bytes| {
+                        protobuf::BlockHeadersResponse::decode(&data_bytes[..])
+                            .expect("failed to decode protobuf SignedBlockHeader")
+                            .try_into()
+                            .expect("failed to convert SignedBlockHeader")
+                    })
+                    .boxed()
+            });
+        let state_diffs_receiver =
+            protocol_to_receiver_map.remove(&Protocol::StateDiff).map(|reciever| {
+                reciever
+                    .map(|data_bytes| {
+                        protobuf::StateDiffsResponse::decode(&data_bytes[..])
+                            .expect("failed to decode protobuf StateDiff")
+                            .try_into()
+                            .expect("failed to convert ThinkStateDiff")
+                    })
+                    .boxed()
+            });
+        Self { signed_headers_receiver, state_diffs_receiver }
     }
 }
 

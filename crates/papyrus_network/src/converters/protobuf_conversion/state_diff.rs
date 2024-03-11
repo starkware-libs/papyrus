@@ -3,8 +3,10 @@ use starknet_api::core::{ClassHash, CompiledClassHash, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
+use super::common::iteration_to_query_parts;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf;
+use crate::{Direction, InternalQuery, Query};
 
 impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     type Error = ProtobufConversionError;
@@ -214,5 +216,32 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
         }
 
         Self(result)
+    }
+}
+
+impl TryFrom<protobuf::StateDiffsRequest> for InternalQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
+        let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
+            field_description: "StateDiffsRequest::iteration",
+        })?;
+        let (start_block, direction, limit, step) = iteration_to_query_parts(value)?;
+        Ok(Self { start_block, direction, limit, step })
+    }
+}
+
+impl From<Query> for protobuf::StateDiffsRequest {
+    fn from(value: Query) -> Self {
+        protobuf::StateDiffsRequest {
+            iteration: Some(protobuf::Iteration {
+                direction: match value.direction {
+                    Direction::Forward => 0,
+                    Direction::Backward => 1,
+                },
+                limit: value.limit as u64,
+                step: value.step as u64,
+                start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
+            }),
+        }
     }
 }
