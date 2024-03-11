@@ -5866,6 +5866,7 @@ dependencies = [
 name = "papyrus_p2p_sync"
 version = "0.3.0"
 dependencies = [
+ "async-stream",
  "futures",
  "lazy_static",
  "papyrus_config",
