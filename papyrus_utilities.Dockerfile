@@ -19,6 +19,9 @@ RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release
 # Build dump_declared_classes.
 RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --bin dump_declared_classes
 
+# Build storage_benchmark.
+RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --bin storage_benchmark
+
 
 # Starting a new stage so that the final image will contain only the executables.
 FROM alpine:3.17.0 AS papyrus_utilities
@@ -29,3 +32,6 @@ COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 
 # Copy the dump_declared_classes executable.
 COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
+
+# Copy the storage_benchmark executable.
+COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/storage_benchmark /app/target/release/storage_benchmark
