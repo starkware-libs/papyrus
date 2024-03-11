@@ -136,7 +136,11 @@ impl P2PSync {
             // a sleep when a query finished with partial responses.
             let Ok(maybe_signed_header_stream_result) = timeout(
                 self.config.query_timeout,
-                self.response_receivers.signed_headers_receiver.next(),
+                self.response_receivers
+                    .signed_headers_receiver
+                    .as_mut()
+                    .expect("P2p sync expects signed block header receiver")
+                    .next(),
             )
             .await
             else {

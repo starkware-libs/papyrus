@@ -108,7 +108,7 @@ impl SwarmTrait for MockSwarm {
             .get(&inbound_session_id)
             .expect("Called send_data without calling get_data_sent_to_inbound_session first");
         let data = protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
-        let is_fin = matches!(data, Data::Fin);
+        let is_fin = matches!(data, Data::Fin(DataType::SignedBlockHeader));
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
             data_sender.close_channel();
@@ -213,6 +213,7 @@ async fn register_subscriber_and_use_channels() {
 
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
+        .unwrap()
         .enumerate()
         .take(query_limit)
         .map(|(i, signed_block_header)| {
@@ -284,7 +285,7 @@ async fn process_incoming_query() {
                     header, signatures: vec![]
                 }})
                 .collect::<Vec<_>>();
-            expected_data.push(Data::Fin);
+            expected_data.push(Data::Fin(DataType::SignedBlockHeader));
             assert_eq!(inbound_session_data, expected_data);
         }
         _ = network_manager.run() => {

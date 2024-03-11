@@ -16,10 +16,10 @@ use starknet_api::core::{
 use starknet_api::crypto::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
-use super::{ProtobufBlockHeaderResponseToDataError, ProtobufConversionError};
+use super::{ProtobufConversionError, ProtobufResponseToDataError};
 use crate::db_executor::Data;
-use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, Direction, InternalQuery, Query, SignedBlockHeader};
+use crate::protobuf_messages::protobuf::{self};
+use crate::{DataType, InternalQuery, Query, SignedBlockHeader};
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {
     type Error = ProtobufConversionError;
@@ -259,7 +259,7 @@ impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature 
 }
 
 impl TryFrom<Data> for protobuf::BlockHeadersResponse {
-    type Error = ProtobufBlockHeaderResponseToDataError;
+    type Error = ProtobufResponseToDataError;
 
     fn try_from(data: Data) -> Result<Self, Self::Error> {
         match data {
@@ -270,17 +270,21 @@ impl TryFrom<Data> for protobuf::BlockHeadersResponse {
                     )),
                 })
             }
-            Data::Fin => Ok(protobuf::BlockHeadersResponse {
-                header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
-                    protobuf::Fin {},
-                )),
-            }),
-            Data::StateDiff { .. } => {
-                Err(ProtobufBlockHeaderResponseToDataError::UnsupportedDataType {
-                    data_type: "StateDiff".to_string(),
+            Data::Fin(data_type) => match data_type {
+                DataType::SignedBlockHeader => Ok(protobuf::BlockHeadersResponse {
+                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                        protobuf::Fin {},
+                    )),
+                }),
+                _ => Err(ProtobufResponseToDataError::UnsupportedDataType {
+                    data_type: data_type.to_string(),
                     type_description: "BlockHeadersResponse".to_string(),
-                })
-            }
+                }),
+            },
+            Data::StateDiff { .. } => Err(ProtobufResponseToDataError::UnsupportedDataType {
+                data_type: "StateDiff".to_string(),
+                type_description: "BlockHeadersResponse".to_string(),
+            }),
         }
     }
 }
@@ -297,7 +301,9 @@ impl TryFrom<protobuf::BlockHeadersResponse> for Data {
                     signatures: signed_block_header.signatures,
                 })
             }
-            Some(protobuf::block_headers_response::HeaderMessage::Fin(_)) => Ok(Data::Fin),
+            Some(protobuf::block_headers_response::HeaderMessage::Fin(_)) => {
+                Ok(Data::Fin(DataType::SignedBlockHeader))
+            }
             None => Err(ProtobufConversionError::MissingField {
                 field_description: "BlockHeadersResponse::header_message",
             }),
@@ -311,45 +317,12 @@ impl TryFrom<protobuf::BlockHeadersRequest> for InternalQuery {
         let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
             field_description: "BlockHeadersRequest::iteration",
         })?;
-        let start = value.start.ok_or(ProtobufConversionError::MissingField {
-            field_description: "Iteration::start",
-        })?;
-        let start_block = match start {
-            protobuf::iteration::Start::BlockNumber(block_number) => {
-                BlockHashOrNumber::Number(BlockNumber(block_number))
-            }
-            protobuf::iteration::Start::Header(protobuf_hash) => {
-                BlockHashOrNumber::Hash(BlockHash(protobuf_hash.try_into()?))
-            }
-        };
-        let direction = match value.direction {
-            0 => Direction::Forward,
-            1 => Direction::Backward,
-            direction => {
-                return Err(ProtobufConversionError::OutOfRangeValue {
-                    type_description: "Direction",
-                    value_as_str: format!("{direction}"),
-                });
-            }
-        };
-        let limit = value.limit;
-        let step = value.step;
-        Ok(Self { start_block, direction, limit, step })
+        value.try_into()
     }
 }
 
 impl From<Query> for protobuf::BlockHeadersRequest {
     fn from(value: Query) -> Self {
-        protobuf::BlockHeadersRequest {
-            iteration: Some(protobuf::Iteration {
-                direction: match value.direction {
-                    Direction::Forward => 0,
-                    Direction::Backward => 1,
-                },
-                limit: value.limit as u64,
-                step: value.step as u64,
-                start: Some(protobuf::iteration::Start::BlockNumber(value.start_block.0)),
-            }),
-        }
+        protobuf::BlockHeadersRequest { iteration: Some(value.into()) }
     }
 }
