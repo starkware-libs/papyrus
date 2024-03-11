@@ -5868,14 +5868,18 @@ version = "0.3.0"
 dependencies = [
  "async-stream",
  "futures",
+ "indexmap 2.1.0",
  "lazy_static",
  "papyrus_config",
  "papyrus_network",
  "papyrus_storage",
+ "rand",
  "serde",
  "starknet_api",
+ "test_utils",
  "thiserror",
  "tokio",
+ "tokio-stream",
  "tracing",
 ]
 
@@ -7958,7 +7962,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.10.0"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541#fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541"
+source = "git+https://github.com/starkware-libs/starknet-api?branch=shahak/ThinStateDiff_is_empty#5aa435475c782868f7622cc9094903b40588e4ba"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",

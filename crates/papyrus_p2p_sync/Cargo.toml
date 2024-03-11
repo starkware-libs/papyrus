@@ -8,6 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-stream.workspace = true
 futures.workspace = true
+indexmap.workspace = true
 papyrus_config = { path = "../papyrus_config", version = "0.3.0" }
 papyrus_network = { path = "../papyrus_network", version = "0.3.0" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.3.0" }
@@ -15,8 +16,11 @@ serde.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+tokio-stream.workspace = true
 tracing.workspace = true
 
 [dev-dependencies]
 lazy_static.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+rand.workspace = true
+test_utils = { path = "../test_utils" }
