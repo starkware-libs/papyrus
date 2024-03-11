@@ -5,6 +5,7 @@ use starknet_api::state::{StorageKey, ThinStateDiff};
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf;
+use crate::{Direction, InternalQuery, Query};
 
 impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     type Error = ProtobufConversionError;
@@ -214,5 +215,21 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
         }
 
         Self(result)
+    }
+}
+
+impl TryFrom<protobuf::StateDiffsRequest> for InternalQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
+        let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
+            field_description: "StateDiffsRequest::iteration",
+        })?;
+        value.try_into()
+    }
+}
+
+impl From<Query> for protobuf::StateDiffsRequest {
+    fn from(value: Query) -> Self {
+        protobuf::StateDiffsRequest { iteration: Some(value.into()) }
     }
 }
