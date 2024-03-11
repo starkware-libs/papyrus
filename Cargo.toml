@@ -108,6 +108,7 @@ simple_logger = "4.0.0"
 starknet_api = "0.10.0"
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
+static_assertions = "1.1.0"
 strum = "0.25.0"
 strum_macros = "0.25.2"
 tempfile = "3.3.0"
@@ -125,4 +126,4 @@ url = "2.2.2"
 validator = "0.12"
 
 [patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4409d371a1f85b6e0d745cf23250ecfaae1b6f42" }
