@@ -6,6 +6,7 @@ repository.workspace = true
 license-file.workspace = true
 
 [dependencies]
+async-stream.workspace = true
 futures.workspace = true
 papyrus_config = { path = "../papyrus_config", version = "0.3.0" }
 papyrus_network = { path = "../papyrus_network", version = "0.3.0" }
