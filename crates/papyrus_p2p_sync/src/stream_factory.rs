@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::pin::Pin;
 use std::time::Duration;
 
@@ -7,6 +8,7 @@ use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{SinkExt, Stream, StreamExt};
 use papyrus_network::{DataType, Direction, Query};
+use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
@@ -23,7 +25,7 @@ pub(crate) trait BlockData: Send {
 
 pub(crate) enum BlockNumberLimit {
     Unlimited,
-    // TODO(shahak): Add variant for header marker once we support state diff sync.
+    HeaderMarker,
     // TODO(shahak): Add variant for state diff marker once we support classes sync.
 }
 
@@ -33,7 +35,6 @@ pub(crate) trait DataStreamFactory {
 
     const DATA_TYPE: DataType;
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit;
-    const SHOULD_LOG_ADDED_BLOCK: bool;
 
     // Async functions in trait don't work well with argument references
     fn parse_data_for_block<'a>(
@@ -54,15 +55,37 @@ pub(crate) trait DataStreamFactory {
         stream! {
             let mut current_block_number = Self::get_start_block_number(&storage_reader)?;
             'send_query_and_parse_responses: loop {
+                let limit = match Self::BLOCK_NUMBER_LIMIT {
+                    BlockNumberLimit::Unlimited => num_blocks_per_query,
+                    BlockNumberLimit::HeaderMarker => {
+                        let last_block_number = storage_reader.begin_ro_txn()?.get_header_marker()?;
+                        let limit = min(
+                            usize::try_from(last_block_number.0 - current_block_number.0)
+                                .expect("failed converting u64 to usize"),
+                            num_blocks_per_query,
+                        );
+                        if limit == 0 {
+                            debug!("{:?} sync is waiting for a new header", Self::DATA_TYPE);
+                            tokio::time::sleep(wait_period_for_new_data).await;
+                            continue;
+                        }
+                        limit
+                    }
+                };
                 let end_block_number = current_block_number.0
-                    + u64::try_from(num_blocks_per_query)
+                    + u64::try_from(limit)
                         .expect("Failed converting usize to u64");
-                debug!("Downloading {:?} for blocks [{}, {})", Self::DATA_TYPE, current_block_number.0, end_block_number);
+                debug!(
+                    "Downloading {:?} for blocks [{}, {})",
+                    Self::DATA_TYPE,
+                    current_block_number.0,
+                    end_block_number,
+                );
                 query_sender
                     .send(Query {
                         start_block: current_block_number,
                         direction: Direction::Forward,
-                        limit: num_blocks_per_query,
+                        limit,
                         step: STEP,
                         data_type: Self::DATA_TYPE,
                     })
@@ -84,17 +107,19 @@ pub(crate) trait DataStreamFactory {
                             continue 'send_query_and_parse_responses;
                         }
                     }
-                    if Self::SHOULD_LOG_ADDED_BLOCK {
-                        info!("Added block {}.", current_block_number);
-                    }
+                    info!("Added {:?} for block {}.", Self::DATA_TYPE, current_block_number);
                     current_block_number = current_block_number.unchecked_next();
                 }
 
                 // Consume the None message signaling the end of the query.
                 match data_receiver.next().await {
-                    Some(None) => {},
+                    Some(None) => {
+                        debug!("Query sent to network for {:?} finished", Self::DATA_TYPE);
+                    },
                     Some(Some(_)) => Err(P2PSyncError::TooManyResponses)?,
-                    None => Err(P2PSyncError::ReceiverChannelTerminated)?,
+                    None => Err(P2PSyncError::ReceiverChannelTerminated {
+                        data_type: Self::DATA_TYPE
+                    })?,
                 }
             }
         }
