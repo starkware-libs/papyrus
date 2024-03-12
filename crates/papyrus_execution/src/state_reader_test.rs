@@ -135,7 +135,7 @@ fn read_state() {
         .commit()
         .unwrap();
 
-    let state_number0 = StateNumber::right_after_block(BlockNumber(0));
+    let state_number0 = StateNumber::unchecked_right_after_block(BlockNumber(0));
     let mut state_reader0 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number0,
@@ -156,7 +156,7 @@ fn read_state() {
     );
     assert_eq!(state_reader0.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
 
-    let state_number1 = StateNumber::right_after_block(BlockNumber(1));
+    let state_number1 = StateNumber::unchecked_right_after_block(BlockNumber(1));
     let mut state_reader1 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number1,
@@ -178,7 +178,7 @@ fn read_state() {
     state_reader1.get_compiled_contract_class(class_hash5).unwrap_err();
     assert_eq!(state_reader1.missing_compiled_class.unwrap(), class_hash5);
 
-    let state_number2 = StateNumber::right_after_block(BlockNumber(2));
+    let state_number2 = StateNumber::unchecked_right_after_block(BlockNumber(2));
     let mut state_reader2 = ExecutionStateReader {
         storage_reader,
         state_number: state_number2,

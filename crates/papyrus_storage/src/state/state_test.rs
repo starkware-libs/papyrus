@@ -375,7 +375,10 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .unwrap()
         .get_state_reader()
         .unwrap()
-        .get_deprecated_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .get_deprecated_class_definition_at(
+            StateNumber::unchecked_right_after_block(BlockNumber(0)),
+            &cl0,
+        )
         .unwrap();
     assert!(declared_class.is_some());
 
@@ -387,7 +390,10 @@ fn revert_doesnt_delete_previously_declared_classes() {
         .unwrap()
         .get_state_reader()
         .unwrap()
-        .get_deprecated_class_definition_at(StateNumber::right_after_block(BlockNumber(0)), &cl0)
+        .get_deprecated_class_definition_at(
+            StateNumber::unchecked_right_after_block(BlockNumber(0)),
+            &cl0,
+        )
         .unwrap();
     assert!(declared_class.is_none());
 }
@@ -439,7 +445,7 @@ fn revert_state() {
     assert!(txn.get_state_diff(BlockNumber(1)).unwrap().is_some());
 
     let state_reader = txn.get_state_reader().unwrap();
-    let state_number = StateNumber::right_after_block(BlockNumber(1));
+    let state_number = StateNumber::unchecked_right_after_block(BlockNumber(1));
     assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), class1);
     assert_eq!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().unwrap(), class1);
     assert_eq!(state_reader.get_class_hash_at(state_number, &contract2).unwrap().unwrap(), class2);
@@ -475,7 +481,7 @@ fn revert_state() {
     assert!(txn.get_state_diff(BlockNumber(1)).unwrap().is_none());
 
     let state_reader = txn.get_state_reader().unwrap();
-    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    let state_number = StateNumber::unchecked_right_after_block(BlockNumber(0));
     assert_eq!(state_reader.get_class_hash_at(state_number, contract0).unwrap().unwrap(), *class0);
     assert!(state_reader.get_class_hash_at(state_number, &contract1).unwrap().is_none());
     assert!(state_reader.get_class_hash_at(state_number, &contract2).unwrap().is_none());
@@ -655,7 +661,7 @@ fn declare_revert_declare_scenario() {
         .unwrap();
 
     // Assert that both classes are declared.
-    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    let state_number = StateNumber::unchecked_right_after_block(BlockNumber(0));
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());
@@ -689,7 +695,7 @@ fn declare_revert_declare_scenario() {
         .unwrap();
 
     // Assert that both classes are declared.
-    let state_number = StateNumber::right_after_block(BlockNumber(0));
+    let state_number = StateNumber::unchecked_right_after_block(BlockNumber(0));
     let txn = reader.begin_ro_txn().unwrap();
     let state_reader = txn.get_state_reader().unwrap();
     assert!(state_reader.get_class_definition_at(state_number, &class_hash).unwrap().is_some());

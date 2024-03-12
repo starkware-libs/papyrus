@@ -180,7 +180,7 @@ impl P2PSync {
                 )?
                 .commit()?;
             info!("Added block {}.", current_block_number);
-            *current_block_number = current_block_number.next();
+            *current_block_number = current_block_number.unchecked_next();
         }
         // Consume the None message signaling the end of the query.
         match self.response_receivers.signed_headers_receiver.next().await {
