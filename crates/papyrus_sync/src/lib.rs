@@ -409,8 +409,14 @@ impl<
             .append_block_signature(block_number, signature)?
             .append_body(block_number, block.body)?
             .commit()?;
-        metrics::gauge!(papyrus_metrics::PAPYRUS_HEADER_MARKER, block_number.next().0 as f64);
-        metrics::gauge!(papyrus_metrics::PAPYRUS_BODY_MARKER, block_number.next().0 as f64);
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_HEADER_MARKER,
+            block_number.unchecked_next().0 as f64
+        );
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_BODY_MARKER,
+            block_number.unchecked_next().0 as f64
+        );
         let dt = Utc::now()
             - Utc
                 .timestamp_opt(block.header.timestamp.0 as i64, 0)
@@ -440,7 +446,10 @@ impl<
             .begin_rw_txn()?
             .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
             .commit()?;
-        metrics::gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, block_number.next().0 as f64);
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_STATE_MARKER,
+            block_number.unchecked_next().0 as f64
+        );
         let compiled_class_marker = self.reader.begin_ro_txn()?.get_compiled_class_marker()?;
         metrics::gauge!(
             papyrus_metrics::PAPYRUS_COMPILED_CLASS_MARKER,
@@ -510,8 +519,11 @@ impl<
             });
         }
         info!("Verified block {block_number} hash against base layer.");
-        txn.update_base_layer_block_marker(&block_number.next())?.commit()?;
-        metrics::gauge!(papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER, block_number.next().0 as f64);
+        txn.update_base_layer_block_marker(&block_number.unchecked_next())?.commit()?;
+        metrics::gauge!(
+            papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER,
+            block_number.unchecked_next().0 as f64
+        );
         Ok(())
     }
 
@@ -634,7 +646,7 @@ fn stream_new_blocks<
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
             let central_block_marker = latest_central_block.map_or(
-                BlockNumber::default(), |block| block.block_number.next()
+                BlockNumber::default(), |block| block.block_number.unchecked_next()
             );
             metrics::gauge!(
                 papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
@@ -771,7 +783,7 @@ fn stream_new_compiled_classes<TCentralSource: CentralSourceTrait + Sync + Send>
             while from < state_marker {
                 let state_diff = txn.get_state_diff(from)?.expect("Expecting to have state diff up to the marker.");
                 if state_diff.declared_classes.is_empty() {
-                    from = from.next();
+                    from = from.unchecked_next();
                 }
                 else {
                     break;

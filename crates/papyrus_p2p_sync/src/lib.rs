@@ -176,7 +176,7 @@ impl P2PSync {
                 )?
                 .commit()?;
             info!("Added block {}.", current_block_number);
-            *current_block_number = current_block_number.next();
+            *current_block_number = current_block_number.unchecked_next();
         }
         Ok(P2PSyncControl::ContinueDownloading)
     }
