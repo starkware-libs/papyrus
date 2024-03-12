@@ -285,3 +285,12 @@ fn get_reverted_block_signature_returns_none() {
     assert!(maybe_signature.is_some());
     assert!(reader.begin_ro_txn().unwrap().get_block_signature(BlockNumber(0)).unwrap().is_none());
 }
+
+#[test]
+fn revert_overflowing_block_number() {
+    let ((_, mut writer), _temp_dir) = get_test_storage();
+    let (_, header, signature) =
+        writer.begin_rw_txn().unwrap().revert_header(BlockNumber(u64::MAX)).unwrap();
+    assert!(header.is_none());
+    assert!(signature.is_none());
+}

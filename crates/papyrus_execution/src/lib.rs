@@ -314,7 +314,7 @@ fn create_block_context(
         l1_da_mode,
     ) = match maybe_pending_data {
         Some(pending_data) => (
-            block_context_number.next(),
+            block_context_number.unchecked_next(),
             pending_data.timestamp,
             pending_data.l1_gas_price,
             pending_data.l1_data_gas_price,
