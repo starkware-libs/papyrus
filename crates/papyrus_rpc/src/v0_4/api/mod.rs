@@ -417,7 +417,8 @@ fn get_deprecated_class_for_re_execution(
     state_number: StateNumber,
     class_hash: ClassHash,
 ) -> Result<starknet_api::deprecated_contract_class::ContractClass, ErrorObjectOwned> {
-    let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
+    let state_number_after_block =
+        StateNumber::unchecked_right_after_block(state_number.block_after());
     storage_txn
         .get_state_reader()
         .map_err(internal_server_error)?
@@ -433,7 +434,7 @@ fn get_class_lengths(
     state_number: StateNumber,
     class_hash: ClassHash,
 ) -> Result<(SierraSize, AbiSize), ErrorObjectOwned> {
-    let state_number_after_block = StateNumber::right_after_block(state_number.block_after());
+    let state_number_after_block = StateNumber::unchecked_right_after_block(state_number.block_after());
     storage_txn
         .get_state_reader()
         .map_err(internal_server_error)?

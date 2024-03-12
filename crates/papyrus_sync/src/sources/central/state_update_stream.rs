@@ -204,7 +204,7 @@ impl<TStarknetClient: StarknetReader + Send + Sync + 'static> StateUpdateStream<
             self.download_state_update_tasks.push_back(Box::pin(async move {
                 (current_block_number, starknet_client.state_update(current_block_number).await)
             }));
-            self.initial_block_number = self.initial_block_number.next();
+            self.initial_block_number = self.initial_block_number.unchecked_next();
         }
     }
 
@@ -351,7 +351,8 @@ async fn download_class_if_necessary<TStarknetClient: StarknetReader>(
     let txn = storage_reader.begin_ro_txn()?;
     let state_reader = txn.get_state_reader()?;
     let block_number = txn.get_state_marker()?;
-    let state_number = StateNumber::right_after_block(block_number);
+    let state_number =
+        StateNumber::unchecked_right_after_block(block_number);
 
     // Check declared classes.
     if let Ok(Some(class)) = state_reader.get_class_definition_at(state_number, &class_hash) {

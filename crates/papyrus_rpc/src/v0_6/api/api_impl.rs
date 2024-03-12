@@ -304,7 +304,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let res = execution_utils::get_storage_at(
             &txn,
             state_number,
@@ -612,7 +612,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
         // The class might be a deprecated class. Search it first in the declared classes and if not
@@ -659,7 +659,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             };
 
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         execution_utils::get_class_hash_at(
             &txn,
             state_number,
@@ -687,7 +687,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         execution_utils::get_nonce_at(
             &txn,
             state_number,
@@ -730,11 +730,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         };
         let from_block_number = match filter.from_block {
             None => BlockNumber(0),
-            Some(BlockId::Tag(Tag::Pending)) => latest_block_number.next(),
+            Some(BlockId::Tag(Tag::Pending)) => latest_block_number.unchecked_next(),
             Some(block_id) => get_accepted_block_number(&txn, block_id)?,
         };
         let mut to_block_number = match filter.to_block {
-            Some(BlockId::Tag(Tag::Pending)) | None => latest_block_number.next(),
+            Some(BlockId::Tag(Tag::Pending)) | None => latest_block_number.unchecked_next(),
             Some(block_id) => get_accepted_block_number(&txn, block_id)?,
         };
 
@@ -833,7 +833,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                             continuation_token: Some(ContinuationToken::new(
                                 ContinuationTokenAsStruct(EventIndex(
                                     TransactionIndex(
-                                        latest_block_number.next(),
+                                        latest_block_number.unchecked_next(),
                                         TransactionOffsetInBlock(transaction_offset),
                                     ),
                                     EventIndexInTransactionOutput(event_offset),
@@ -896,7 +896,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let block_not_reverted_validator = BlockNotRevertedValidator::new(block_number, &txn)?;
         drop(txn);
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -1012,7 +1012,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -1086,7 +1086,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
@@ -1159,7 +1159,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             // case we treat this as if the pending block is empty.
             let block_number =
                 get_latest_block_number(&storage_txn)?.ok_or(INVALID_TRANSACTION_HASH)?;
-            let state_number = StateNumber::right_after_block(block_number);
+            let state_number = StateNumber::unchecked_right_after_block(block_number);
             let executable_transactions = pending_block
                 .transactions()
                 .iter()
@@ -1333,7 +1333,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         .iter()
                         .map(|receipt| receipt.transaction_hash)
                         .collect(),
-                    StateNumber::right_after_block(block_number),
+                    StateNumber::unchecked_right_after_block(block_number),
                 ),
                 None => (
                     None,
@@ -1433,7 +1433,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let block_execution_config = self
             .execution_config
             .get_execution_config_for_block(block_number)
