@@ -130,7 +130,7 @@ async fn signed_headers_basic_flow() {
                 // sent.
                 let block_number = BlockNumber(i.try_into().unwrap());
                 let txn = storage_reader.begin_ro_txn().unwrap();
-                assert_eq!(block_number.next(), txn.get_header_marker().unwrap());
+                assert_eq!(block_number.unchecked_next(), txn.get_header_marker().unwrap());
                 let block_header = txn.get_block_header(block_number).unwrap().unwrap();
                 assert_eq!(block_number, block_header.block_number);
                 assert_eq!(*block_hash, block_header.block_hash);

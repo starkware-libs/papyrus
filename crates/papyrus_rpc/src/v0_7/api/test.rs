@@ -555,7 +555,7 @@ async fn get_block_w_full_transactions() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block_header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -738,7 +738,7 @@ async fn get_block_w_full_transactions_and_receipts() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block_number.next())
+        .update_base_layer_block_marker(&block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -928,7 +928,7 @@ async fn get_block_w_transaction_hashes() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block_header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -1247,7 +1247,7 @@ async fn get_transaction_status() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block.header.block_number.next())
+        .update_base_layer_block_marker(&block.header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -1367,7 +1367,7 @@ async fn get_transaction_receipt() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block.header.block_number.next())
+        .update_base_layer_block_marker(&block.header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();

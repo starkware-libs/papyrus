@@ -133,7 +133,7 @@ fn update_marker<'env>(
                 break;
             }
         }
-        block_number = block_number.next();
+        block_number = block_number.unchecked_next();
         markers_table.upsert(txn, &MarkerKind::CompiledClass, &block_number)?;
     }
     Ok(())
