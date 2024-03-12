@@ -43,7 +43,7 @@
 //! let txn = reader.begin_ro_txn()?;
 //! let state_reader = txn.get_state_reader()?;
 //! let class_hash = state_reader
-//!     .get_class_hash_at(StateNumber::right_after_block(BlockNumber(0)), &contract_address)?;
+//!     .get_class_hash_at(StateNumber::unchecked_right_after_block(BlockNumber(0)), &contract_address)?;
 //! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
 
@@ -528,7 +528,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let current_state_marker = self.get_state_marker()?;
 
         // Reverts only the last state diff.
-        if current_state_marker != block_number.next() {
+        if current_state_marker != block_number.unchecked_next() {
             debug!(
                 "Attempt to revert a non-existing / old state diff of block {}. Returning without \
                  an action.",
@@ -543,7 +543,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         markers_table.upsert(&self.txn, &MarkerKind::State, &block_number)?;
         let compiled_classes_marker =
             markers_table.get(&self.txn, &MarkerKind::CompiledClass)?.unwrap_or_default();
-        if compiled_classes_marker == block_number.next() {
+        if compiled_classes_marker == block_number.unchecked_next() {
             markers_table.upsert(&self.txn, &MarkerKind::CompiledClass, &block_number)?;
         }
         let deleted_classes = delete_declared_classes(
@@ -607,7 +607,7 @@ fn update_marker<'env>(
     };
 
     // Advance marker.
-    markers_table.upsert(txn, &MarkerKind::State, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::State, &block_number.unchecked_next())?;
     Ok(())
 }
 
@@ -637,7 +637,7 @@ fn update_compiled_class_marker<'env>(
         {
             break;
         }
-        compiled_class_marker = compiled_class_marker.next();
+        compiled_class_marker = compiled_class_marker.unchecked_next();
         markers_table.upsert(txn, &MarkerKind::CompiledClass, &compiled_class_marker)?;
     }
     Ok(())
