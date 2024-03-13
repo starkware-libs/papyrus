@@ -10,6 +10,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::crypto::Signature;
 use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::ThinStateDiff;
 use tokio::time::timeout;
 
 use super::{P2PSync, P2PSyncConfig};
@@ -28,19 +29,30 @@ lazy_static! {
     };
 }
 
-fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<Option<SignedBlockHeader>>) {
+#[allow(clippy::type_complexity)]
+fn setup() -> (
+    P2PSync,
+    StorageReader,
+    Receiver<Query>,
+    Sender<Option<SignedBlockHeader>>,
+    Sender<Option<ThinStateDiff>>,
+) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (signed_headers_sender, signed_headers_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let p2p_sync = P2PSync::new(
         *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
         query_sender,
-        ResponseReceivers { signed_headers_receiver: signed_headers_receiver.boxed() },
+        ResponseReceivers {
+            signed_headers_receiver: Some(signed_headers_receiver.boxed()),
+            state_diffs_receiver: Some(state_diffs_receiver.boxed()),
+        },
     );
-    (p2p_sync, storage_reader, query_receiver, signed_headers_sender)
+    (p2p_sync, storage_reader, query_receiver, signed_headers_sender, state_diffs_sender)
 }
 
 fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSignature)> {
@@ -63,7 +75,13 @@ fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSign
 async fn signed_headers_basic_flow() {
     const NUM_QUERIES: usize = 3;
 
-    let (p2p_sync, storage_reader, mut query_receiver, mut signed_headers_sender) = setup();
+    let (
+        p2p_sync,
+        storage_reader,
+        mut query_receiver,
+        mut signed_headers_sender,
+        _state_diffs_sender,
+    ) = setup();
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures((NUM_QUERIES * QUERY_LENGTH).try_into().unwrap());
 
@@ -138,7 +156,13 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
     const NUM_ACTUAL_RESPONSES: u8 = 2;
     assert!(usize::from(NUM_ACTUAL_RESPONSES) < QUERY_LENGTH);
 
-    let (p2p_sync, _storage_reader, mut query_receiver, mut signed_headers_sender) = setup();
+    let (
+        p2p_sync,
+        _storage_reader,
+        mut query_receiver,
+        mut signed_headers_sender,
+        _state_diffs_sender,
+    ) = setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
 
     // Create a future that will receive a query, send partial responses and receive the next query.

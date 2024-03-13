@@ -110,7 +110,9 @@ impl P2PSync {
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
         let mut data_stream = HeaderStreamFactory::create_stream(
-            self.response_receivers.signed_headers_receiver,
+            self.response_receivers
+                .signed_headers_receiver
+                .expect("p2p sync needs a signed headers receiver"),
             self.query_sender,
             self.storage_reader,
             self.config.wait_period_for_new_data,
