@@ -118,6 +118,7 @@ pub struct MonitoringServer {
     storage_reader: StorageReader,
     version: &'static str,
     prometheus_handle: Option<PrometheusHandle>,
+    own_peer_id: String,
 }
 
 impl MonitoringServer {
@@ -127,6 +128,7 @@ impl MonitoringServer {
         public_general_config_presentation: serde_json::Value,
         storage_reader: StorageReader,
         version: &'static str,
+        own_peer_id: String,
     ) -> Result<Self, BuildError> {
         let prometheus_handle = if config.collect_metrics {
             let mut builder = PrometheusBuilder::new();
@@ -146,6 +148,7 @@ impl MonitoringServer {
             public_general_config_presentation,
             version,
             prometheus_handle,
+            own_peer_id,
         })
     }
 
@@ -174,6 +177,7 @@ impl MonitoringServer {
             self.public_general_config_presentation.clone(),
             self.config.present_full_config_secret.clone(),
             self.prometheus_handle.clone(),
+            self.own_peer_id.clone(),
         );
         debug!("Starting monitoring gateway.");
         axum::Server::bind(&server_address).serve(app.into_make_service()).await
@@ -188,6 +192,7 @@ fn app(
     public_general_config_presentation: serde_json::Value,
     present_full_config_secret: String,
     prometheus_handle: Option<PrometheusHandle>,
+    own_peer_id: String,
 ) -> Router {
     let is_ready_retry_config =
         RetryConfig { retry_base_millis: 50, retry_max_delay_millis: 1000, max_retries: 0 };
@@ -241,6 +246,7 @@ fn app(
             format!("/{MONITORING_PREFIX}/ready").as_str(),
             get(move || is_ready(starknet_client, starknet_feeder_client)),
         )
+        .route(format!("/{MONITORING_PREFIX}/peer_id").as_str(), get(move || async { own_peer_id }))
 }
 
 async fn is_ready<TStarknetWriter: StarknetWriter, TStarknetReader: StarknetReader>(

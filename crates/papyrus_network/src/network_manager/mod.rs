@@ -293,4 +293,8 @@ impl NetworkManager {
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size, peer)
     }
+
+    pub fn get_own_peer_id(&self) -> String {
+        self.swarm.local_peer_id().to_string()
+    }
 }
