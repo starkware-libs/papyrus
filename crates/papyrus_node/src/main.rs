@@ -88,6 +88,11 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         tokio::spawn(pending())
     };
 
+    // P2P network.
+    let (network_future, maybe_query_sender_and_response_receivers, own_peer_id) =
+        run_network(config.network.clone(), storage_reader.clone());
+    let network_handle = tokio::spawn(network_future);
+
     // Monitoring server.
     let monitoring_server = MonitoringServer::new(
         config.monitoring_gateway.clone(),
@@ -95,6 +100,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         get_config_presentation(&config, false)?,
         storage_reader.clone(),
         VERSION_FULL,
+        own_peer_id,
     )?;
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
@@ -120,11 +126,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_reader.clone(),
     )
     .await?;
-
-    // P2P network.
-    let (network_future, maybe_query_sender_and_response_receivers) =
-        run_network(config.network.clone(), storage_reader.clone());
-    let network_handle = tokio::spawn(network_future);
 
     // Sync task.
     let (sync_future, p2p_sync_future) = match (config.sync, config.p2p_sync) {
@@ -235,16 +236,20 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     }
 }
 
-type NetworkRunReturn =
-    (BoxFuture<'static, Result<(), NetworkError>>, Option<(Sender<Query>, ResponseReceivers)>);
+type NetworkRunReturn = (
+    BoxFuture<'static, Result<(), NetworkError>>,
+    Option<(Sender<Query>, ResponseReceivers)>,
+    String,
+);
 
 fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn {
-    let Some(network_config) = config else { return (pending().boxed(), None) };
+    let Some(network_config) = config else { return (pending().boxed(), None, "".to_string()) };
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
+    let own_peer_id = network_manager.get_own_peer_id();
     let (query_sender, response_receivers) =
         network_manager.register_subscriber(vec![Protocol::SignedBlockHeader]);
-    (network_manager.run().boxed(), Some((query_sender, response_receivers)))
+    (network_manager.run().boxed(), Some((query_sender, response_receivers)), own_peer_id)
 }
 
 // TODO(yair): add dynamic level filtering.
