@@ -88,7 +88,7 @@ impl<'env> BaseLayerStorageWriter for StorageTxn<'env, RW> {
     ) -> StorageResult<Self> {
         let cur_marker = self.get_base_layer_block_marker()?;
         // Revert only if we revert a block that is the last block in the base layer we know about.
-        if cur_marker == reverted_block_number.next() {
+        if cur_marker == reverted_block_number.unchecked_next() {
             Ok(self.update_base_layer_block_marker(&reverted_block_number)?)
         } else {
             Ok(self)

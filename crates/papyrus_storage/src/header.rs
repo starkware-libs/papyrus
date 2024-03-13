@@ -199,7 +199,10 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
 
         let starknet_version_table = self.open_table(&self.tables.starknet_version)?;
         let mut cursor = starknet_version_table.cursor(&self.txn)?;
-        cursor.lower_bound(&block_number.next())?;
+        let Some(next_block_number) = block_number.next() else {
+            return Ok(None);
+        };
+        cursor.lower_bound(&next_block_number)?;
         let res = cursor.prev()?;
 
         match res {
@@ -295,14 +298,17 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let current_header_marker = self.get_header_marker()?;
 
         // Reverts only the last header.
-        if current_header_marker != block_number.next() {
+        let Some(next_block_number) = block_number
+            .next()
+            .filter(|next_block_number| *next_block_number == current_header_marker)
+        else {
             debug!(
                 "Attempt to revert a non-existing / old header of block {}. Returning without an \
                  action.",
                 block_number
             );
             return Ok((self, None, None));
-        }
+        };
 
         let reverted_header = headers_table
             .get(&self.txn, &block_number)?
@@ -314,7 +320,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         // Revert starknet version and get the version.
         // TODO(shahak): Fix code duplication with get_starknet_version.
         let mut cursor = starknet_version_table.cursor(&self.txn)?;
-        cursor.lower_bound(&block_number.next())?;
+        cursor.lower_bound(&next_block_number)?;
         let res = cursor.prev()?;
 
         let starknet_version = match res {
@@ -396,6 +402,6 @@ fn update_marker<'env>(
     };
 
     // Advance marker.
-    markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::Header, &block_number.unchecked_next())?;
     Ok(())
 }

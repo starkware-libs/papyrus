@@ -83,7 +83,7 @@ pub(crate) trait DataStreamFactory {
                     if Self::SHOULD_LOG_ADDED_BLOCK {
                         info!("Added block {}.", current_block_number);
                     }
-                    current_block_number = current_block_number.next();
+                    current_block_number = current_block_number.unchecked_next();
                 }
 
                 // Consume the None message signaling the end of the query.

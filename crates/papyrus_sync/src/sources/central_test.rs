@@ -108,7 +108,7 @@ async fn stream_block_headers() {
     pin_mut!(stream);
     while let Some(Ok((block_number, _block, _signature_data))) = stream.next().await {
         assert_eq!(expected_block_num, block_number);
-        expected_block_num = expected_block_num.next();
+        expected_block_num = expected_block_num.unchecked_next();
     }
     assert_eq!(expected_block_num, BlockNumber(END_BLOCK_NUMBER));
 }
@@ -190,7 +190,7 @@ async fn stream_block_headers_some_are_missing() {
                 let block_number = block_tuple.unwrap().0;
                 assert_eq!(expected_block_num, block_number);
             }
-            expected_block_num = expected_block_num.next();
+            expected_block_num = expected_block_num.unchecked_next();
         }
         assert_eq!(expected_block_num, BlockNumber(MISSING_BLOCK_NUMBER + 1));
     }
@@ -252,7 +252,7 @@ async fn stream_block_headers_error() {
             let block_number = block_tuple.unwrap().0;
             assert_eq!(expected_block_num, block_number);
         }
-        expected_block_num = expected_block_num.next();
+        expected_block_num = expected_block_num.unchecked_next();
     }
     assert_eq!(expected_block_num, BlockNumber(ERROR_BLOCK_NUMBER + 1));
 }
@@ -426,7 +426,7 @@ async fn stream_state_updates() {
     };
     let (current_block_num, current_block_hash, state_diff, _deployed_classes) = state_diff_tuple;
 
-    assert_eq!(initial_block_num.next(), current_block_num);
+    assert_eq!(initial_block_num.unchecked_next(), current_block_num);
     assert_eq!(block_hash2, current_block_hash);
     assert_eq!(state_diff, starknet_api::state::StateDiff::default());
 
