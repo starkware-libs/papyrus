@@ -423,20 +423,18 @@ pub async fn send_request(method: &str, params: &str) -> serde_json::Value {
 // Sends a request with method and params to the url. The request will send multiple times until a
 // good answer is received.
 pub async fn send_request_inner(method: &str, params: &str, url: &Url) -> serde_json::Value {
-    let client = Client::new();
+    let builder = Client::new()
+        .post(url.clone())
+        .header("Content-Type", "application/json")
+        .body(format!(r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#));
+
     loop {
-        let Ok(res) = client
-            .post(url.clone())
-            .header("Content-Type", "application/json")
-            .body(format!(
-                r#"{{"jsonrpc":"2.0","id":"1","method":"{method}","params":[{params}]}}"#
-            ))
-            .send()
-            .await
-        else {
+        let Ok(res) = builder.try_clone().unwrap().send().await else {
+            println!("Failed to send request. Retrying...");
             continue;
         };
         let Ok(res) = res.text().await else {
+            println!("Failed to get response text. Retrying...");
             continue;
         };
         return serde_json::from_str(&res).unwrap();
