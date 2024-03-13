@@ -12,7 +12,10 @@ use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
-    fn write_to_storage(&self, storage_writer: &mut StorageWriter) -> Result<(), StorageError> {
+    fn write_to_storage(
+        self: Box<Self>,
+        storage_writer: &mut StorageWriter,
+    ) -> Result<(), StorageError> {
         storage_writer
             .begin_rw_txn()?
             .append_header(self.block_header.block_number, &self.block_header)?
