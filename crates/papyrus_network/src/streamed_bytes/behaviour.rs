@@ -30,15 +30,7 @@ use super::handler::{
     RequestToBehaviourEvent,
     SessionError as HandlerSessionError,
 };
-use super::{
-    Config,
-    DataBound,
-    GenericEvent,
-    InboundSessionId,
-    OutboundSessionId,
-    QueryBound,
-    SessionId,
-};
+use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -46,9 +38,8 @@ pub enum SessionError {
     Timeout { session_timeout: Duration },
     #[error(transparent)]
     IOError(#[from] io::Error),
-    #[error("Remote peer doesn't support the {protocol_name} protocol.")]
-    #[allow(dead_code)]
-    RemoteDoesntSupportProtocol { protocol_name: StreamProtocol },
+    #[error("Remote peer doesn't support the given protocol.")]
+    RemoteDoesntSupportProtocol,
     #[error("In an inbound session, remote peer sent data after sending the query.")]
     OtherOutboundPeerSentData,
     // If there's a connection with a single session and it was closed because of another reason,
@@ -59,14 +50,15 @@ pub enum SessionError {
     ConnectionClosed,
 }
 
-impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerSessionError>>
-    for GenericEvent<Query, Data, SessionError>
-{
-    fn from(event: GenericEvent<Query, Data, HandlerSessionError>) -> Self {
+impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
+    fn from(event: GenericEvent<HandlerSessionError>) -> Self {
         match event {
-            GenericEvent::NewInboundSession { query, inbound_session_id, peer_id } => {
-                Self::NewInboundSession { query, inbound_session_id, peer_id }
-            }
+            GenericEvent::NewInboundSession {
+                query,
+                inbound_session_id,
+                peer_id,
+                protocol_name,
+            } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
             GenericEvent::ReceivedData { outbound_session_id, data } => {
                 Self::ReceivedData { outbound_session_id, data }
             }
@@ -82,11 +74,10 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
             } => Self::SessionFailed { session_id, error: SessionError::IOError(error) },
             GenericEvent::SessionFailed {
                 session_id,
-                error: HandlerSessionError::RemoteDoesntSupportProtocol { protocol_name },
-            } => Self::SessionFailed {
-                session_id,
-                error: SessionError::RemoteDoesntSupportProtocol { protocol_name },
-            },
+                error: HandlerSessionError::RemoteDoesntSupportProtocol,
+            } => {
+                Self::SessionFailed { session_id, error: SessionError::RemoteDoesntSupportProtocol }
+            }
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::OtherOutboundPeerSentData,
@@ -98,7 +89,7 @@ impl<Query: QueryBound, Data: DataBound> From<GenericEvent<Query, Data, HandlerS
     }
 }
 
-pub type Event<Query, Data> = GenericEvent<Query, Data, SessionError>;
+pub type Event = GenericEvent<SessionError>;
 
 #[derive(thiserror::Error, Debug)]
 #[error("The given session ID doesn't exist.")]
@@ -110,12 +101,10 @@ pub struct PeerNotConnected;
 
 // TODO(shahak) remove allow dead code.
 #[allow(dead_code)]
-pub struct Behaviour<Query: QueryBound, Data: DataBound> {
+pub struct Behaviour {
     config: Config,
-    // TODO(shahak): Use deadqueue if using a VecDeque is a bug (libp2p uses VecDeque, so we opened
-    // an issue on it https://github.com/libp2p/rust-libp2p/issues/5147)
-    pending_events: VecDeque<ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>>,
-    pending_queries: DefaultHashMap<PeerId, Vec<(Query, OutboundSessionId)>>,
+    pending_events: VecDeque<ToSwarm<Event, RequestFromBehaviourEvent>>,
+    pending_queries: DefaultHashMap<PeerId, Vec<(Bytes, OutboundSessionId)>>,
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
@@ -124,7 +113,7 @@ pub struct Behaviour<Query: QueryBound, Data: DataBound> {
     wakers_waiting_for_event: Vec<Waker>,
 }
 
-impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
+impl Behaviour {
     pub fn new(config: Config) -> Self {
         Self {
             config,
@@ -143,8 +132,9 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// new session.
     pub fn send_query(
         &mut self,
-        query: Query,
+        query: Bytes,
         peer_id: PeerId,
+        protocol_name: StreamProtocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let connection_id =
             *self.connection_ids_map.get(peer_id).iter().next().ok_or(PeerNotConnected)?;
@@ -158,7 +148,11 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
         self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::CreateOutboundSession { query, outbound_session_id },
+            event: RequestFromBehaviourEvent::CreateOutboundSession {
+                query,
+                outbound_session_id,
+                protocol_name,
+            },
         });
 
         Ok(outbound_session_id)
@@ -167,7 +161,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     /// Send a data message to an open inbound session.
     pub fn send_data(
         &mut self,
-        data: Data,
+        data: Bytes,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
@@ -221,10 +215,7 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
             .ok_or(SessionIdNotFoundError)
     }
 
-    fn add_event_to_queue(
-        &mut self,
-        event: ToSwarm<Event<Query, Data>, RequestFromBehaviourEvent<Query, Data>>,
-    ) {
+    fn add_event_to_queue(&mut self, event: ToSwarm<Event, RequestFromBehaviourEvent>) {
         self.pending_events.push_back(event);
         for waker in self.wakers_waiting_for_event.drain(..) {
             waker.wake();
@@ -232,9 +223,9 @@ impl<Query: QueryBound, Data: DataBound> Behaviour<Query, Data> {
     }
 }
 
-impl<Query: QueryBound, Data: DataBound> NetworkBehaviour for Behaviour<Query, Data> {
-    type ConnectionHandler = Handler<Query, Data>;
-    type ToSwarm = Event<Query, Data>;
+impl NetworkBehaviour for Behaviour {
+    type ConnectionHandler = Handler;
+    type ToSwarm = Event;
 
     fn handle_established_inbound_connection(
         &mut self,

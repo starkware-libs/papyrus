@@ -203,6 +203,8 @@ pub fn execute_simulate_transactions(
         &test_block_execution_config(),
         charge_fee,
         validate,
+        // TODO: Consider testing without overriding DA (It's already tested in the RPC)
+        true,
     )
     .unwrap()
 }

@@ -6,7 +6,10 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
+use papyrus_execution::objects::{
+    FeeEstimation as ExecutionFeeEstimate,
+    PendingData as ExecutionPendingData,
+};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
@@ -71,6 +74,7 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
+use super::super::execution::TransactionTrace;
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
@@ -116,7 +120,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, JsonRpcServerTrait, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::version_config::VERSION_0_6 as VERSION;
@@ -128,13 +132,15 @@ use crate::{
     ContinuationTokenAsStruct,
 };
 
+const IGNORE_L1_DA_MODE: bool = true;
+
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
     pub static ref BLOCK_HASH_TABLE_ADDRESS: ContractAddress = ContractAddress::from(1_u8);
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_6Impl {
+pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -148,7 +154,7 @@ pub struct JsonRpcServerV0_6Impl {
 }
 
 #[async_trait]
-impl JsonRpcServer for JsonRpcServerV0_6Impl {
+impl JsonRpcServer for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn spec_version(&self) -> RpcResult<String> {
         Ok(format!("{VERSION}"))
@@ -913,6 +919,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1026,6 +1033,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 block_number,
                 &block_execution_config,
                 validate,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1036,7 +1044,9 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
+                .map(|ExecutionFeeEstimate { gas_price, overall_fee, unit, .. }| {
+                    FeeEstimate::from(gas_price, overall_fee, unit)
+                })
                 .collect()),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
@@ -1102,6 +1112,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1113,11 +1124,11 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         Ok(simulation_results
             .into_iter()
             .map(|simulation_output| SimulatedTransaction {
-                transaction_trace: simulation_output.transaction_trace,
+                transaction_trace: simulation_output.transaction_trace.into(),
                 fee_estimation: FeeEstimate::from(
-                    simulation_output.gas_price,
-                    simulation_output.fee,
-                    simulation_output.price_unit,
+                    simulation_output.fee_estimation.gas_price,
+                    simulation_output.fee_estimation.overall_fee,
+                    simulation_output.fee_estimation.unit,
                 ),
             })
             .collect())
@@ -1183,6 +1194,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 nonces: Default::default(),
                 replaced_classes: Default::default(),
                 classes: Default::default(),
+                l1_da_mode: Default::default(),
             });
             (
                 maybe_pending_data,
@@ -1253,6 +1265,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1264,7 +1277,8 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
         Ok(simulation_results
             .pop()
             .expect("Should have transaction exeuction result")
-            .transaction_trace)
+            .transaction_trace
+            .into())
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -1303,6 +1317,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                         nonces: Default::default(),
                         replaced_classes: Default::default(),
                         classes: Default::default(),
+                        l1_da_mode: Default::default(),
                     }),
                     client_pending_data
                         .block
@@ -1372,6 +1387,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1385,7 +1401,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
             .zip(transaction_hashes)
             .map(|(simulation_output, transaction_hash)| TransactionTraceWithHash {
                 transaction_hash,
-                trace_root: simulation_output.transaction_trace,
+                trace_root: simulation_output.transaction_trace.into(),
             })
             .collect())
     }
@@ -1438,6 +1454,7 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                 block_number,
                 &block_execution_config,
                 false,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1453,12 +1470,14 @@ impl JsonRpcServer for JsonRpcServerV0_6Impl {
                         fee_as_vec.len()
                     )));
                 }
-                let Some((gas_price, fee, unit)) = fee_as_vec.first() else {
+                let Some(ExecutionFeeEstimate { gas_price, overall_fee, unit, .. }) =
+                    fee_as_vec.first()
+                else {
                     return Err(internal_server_error(
                         "Expected a single fee, got an empty vector",
                     ));
                 };
-                Ok(FeeEstimate::from(*gas_price, *fee, *unit))
+                Ok(FeeEstimate::from(*gas_price, *overall_fee, *unit))
             }
             // Error in the execution of the contract.
             Ok(Err(reverted_tx)) => Err(JsonRpcError::<ContractError>::from(ContractError {
@@ -1512,7 +1531,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_6Impl {
+impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,

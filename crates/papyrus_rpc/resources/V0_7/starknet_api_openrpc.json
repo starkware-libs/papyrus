@@ -96,6 +96,43 @@
             ]
         },
         {
+            "name": "starknet_getBlockWithReceipts",
+            "summary": "Get block information with full transactions and receipts given the block id",
+            "params": [
+                {
+                    "name": "block_id",
+                    "description": "The hash of the requested block, or number (height) of the requested block, or a block tag",
+                    "required": true,
+                    "schema": {
+                        "title": "Block id",
+                        "$ref": "#/components/schemas/BLOCK_ID"
+                    }
+                }
+            ],
+            "result": {
+                "name": "result",
+                "description": "The resulting block information with full transactions",
+                "schema": {
+                    "title": "Starknet get block with txs and receipts result",
+                    "oneOf": [
+                        {
+                            "title": "Block with transactions",
+                            "$ref": "#/components/schemas/BLOCK_WITH_RECEIPTS"
+                        },
+                        {
+                            "title": "Pending block with transactions",
+                            "$ref": "#/components/schemas/PENDING_BLOCK_WITH_RECEIPTS"
+                        }
+                    ]
+                }
+            },
+            "errors": [
+                {
+                    "$ref": "#/components/errors/BLOCK_NOT_FOUND"
+                }
+            ]
+        },
+        {
             "name": "starknet_getStateUpdate",
             "summary": "Get the information about the result of executing the requested block",
             "params": [
@@ -344,16 +381,8 @@
             "result": {
                 "name": "result",
                 "schema": {
-                    "oneOf": [
-                        {
-                            "title": "Transaction receipt",
-                            "$ref": "#/components/schemas/TXN_RECEIPT"
-                        },
-                        {
-                            "title": "Pending transaction receipt",
-                            "$ref": "#/components/schemas/PENDING_TXN_RECEIPT"
-                        }
-                    ]
+                    "title": "Transaction receipt with block info",
+                    "$ref": "#/components/schemas/TXN_RECEIPT_WITH_BLOCK_INFO"
                 }
             },
             "errors": [
@@ -1372,6 +1401,38 @@
                     "transactions"
                 ]
             },
+            "BLOCK_BODY_WITH_RECEIPTS": {
+                "title": "Block body with transactions and receipts",
+                "type": "object",
+                "properties": {
+                    "transactions": {
+                        "title": "Transactions",
+                        "description": "The transactions in this block",
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "title": "transaction and receipt",
+                            "properties": {
+                                "transaction": {
+                                    "title": "transaction",
+                                    "$ref": "#/components/schemas/TXN"
+                                },
+                                "receipt": {
+                                    "title": "receipt",
+                                    "$ref": "#/components/schemas/TXN_RECEIPT"
+                                }
+                            },
+                            "required": [
+                                "transaction",
+                                "receipt"
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "transactions"
+                ]
+            },
             "BLOCK_HEADER": {
                 "title": "Block header",
                 "type": "object",
@@ -1408,8 +1469,22 @@
                     },
                     "l1_gas_price": {
                         "title": "L1 gas price",
-                        "descritpion": "The price of l1 gas in the block",
+                        "description": "The price of l1 gas in the block",
                         "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_data_gas_price": {
+                        "title": "L1 data gas price",
+                        "description": "The price of l1 data gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_da_mode": {
+                        "title": "L1 da mode",
+                        "type": "string",
+                        "description": "specifies whether the data of this block is published via blob data or calldata",
+                        "enum": [
+                            "BLOB",
+                            "CALLDATA"
+                        ]
                     },
                     "starknet_version": {
                         "title": "Starknet version",
@@ -1425,6 +1500,8 @@
                     "timestamp",
                     "sequencer_address",
                     "l1_gas_price",
+                    "l1_data_gas_price",
+                    "l1_da_mode",
                     "starknet_version"
                 ]
             },
@@ -1453,6 +1530,20 @@
                         "description": "The price of l1 gas in the block",
                         "$ref": "#/components/schemas/RESOURCE_PRICE"
                     },
+                    "l1_data_gas_price": {
+                        "title": "L1 data gas price",
+                        "description": "The price of l1 data gas in the block",
+                        "$ref": "#/components/schemas/RESOURCE_PRICE"
+                    },
+                    "l1_da_mode": {
+                        "title": "L1 da mode",
+                        "type": "string",
+                        "description": "specifies whether the data of this block is published via blob data or calldata",
+                        "enum": [
+                            "BLOB",
+                            "CALLDATA"
+                        ]
+                    },
                     "starknet_version": {
                         "title": "Starknet version",
                         "description": "Semver of the current Starknet protocol",
@@ -1464,6 +1555,8 @@
                     "timestamp",
                     "sequencer_address",
                     "l1_gas_price",
+                    "l1_data_gas_price",
+                    "l1_da_mode",
                     "starknet_version"
                 ],
                 "not": {
@@ -1528,6 +1621,33 @@
                     }
                 ]
             },
+            "BLOCK_WITH_RECEIPTS": {
+                "title": "Block with transactions and receipts",
+                "description": "The block object",
+                "allOf": [
+                    {
+                        "title": "block with txs",
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "title": "Status",
+                                "$ref": "#/components/schemas/BLOCK_STATUS"
+                            }
+                        },
+                        "required": [
+                            "status"
+                        ]
+                    },
+                    {
+                        "title": "Block header",
+                        "$ref": "#/components/schemas/BLOCK_HEADER"
+                    },
+                    {
+                        "title": "Block body with transactions and receipts",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_RECEIPTS"
+                    }
+                ]
+            },
             "PENDING_BLOCK_WITH_TX_HASHES": {
                 "title": "Pending block with transaction hashes",
                 "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
@@ -1549,6 +1669,20 @@
                     {
                         "title": "Block body with transactions",
                         "$ref": "#/components/schemas/BLOCK_BODY_WITH_TXS"
+                    },
+                    {
+                        "title": "Pending block header",
+                        "$ref": "#/components/schemas/PENDING_BLOCK_HEADER"
+                    }
+                ]
+            },
+            "PENDING_BLOCK_WITH_RECEIPTS": {
+                "title": "Pending block with transactions and receipts",
+                "description": "The dynamic block being constructed by the sequencer. Note that this object will be deprecated upon decentralization.",
+                "allOf": [
+                    {
+                        "title": "Block body with transactions and receipts",
+                        "$ref": "#/components/schemas/BLOCK_BODY_WITH_RECEIPTS"
                     },
                     {
                         "title": "Pending block header",
@@ -2728,15 +2862,8 @@
                     },
                     "finality_status": {
                         "title": "Finality status",
+                        "description": "finality status of the tx",
                         "$ref": "#/components/schemas/TXN_FINALITY_STATUS"
-                    },
-                    "block_hash": {
-                        "title": "Block hash",
-                        "$ref": "#/components/schemas/BLOCK_HASH"
-                    },
-                    "block_number": {
-                        "title": "Block number",
-                        "$ref": "#/components/schemas/BLOCK_NUMBER"
                     },
                     "messages_sent": {
                         "type": "array",
@@ -2770,8 +2897,6 @@
                     "actual_fee",
                     "finality_status",
                     "execution_status",
-                    "block_hash",
-                    "block_number",
                     "messages_sent",
                     "events",
                     "execution_resources"
@@ -2802,31 +2927,6 @@
                     }
                 ]
             },
-            "PENDING_INVOKE_TXN_RECEIPT": {
-                "title": "Invoke Transaction Receipt",
-                "allOf": [
-                    {
-                        "title": "Type",
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "title": "Type",
-                                "type": "string",
-                                "enum": [
-                                    "INVOKE"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
-                    },
-                    {
-                        "title": "Common receipt properties",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
-                    }
-                ]
-            },
             "DECLARE_TXN_RECEIPT": {
                 "title": "Declare Transaction Receipt",
                 "allOf": [
@@ -2852,68 +2952,12 @@
                     }
                 ]
             },
-            "PENDING_DECLARE_TXN_RECEIPT": {
-                "title": "Declare Transaction Receipt",
-                "allOf": [
-                    {
-                        "title": "Declare txn receipt",
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "title": "Declare",
-                                "type": "string",
-                                "enum": [
-                                    "DECLARE"
-                                ]
-                            }
-                        },
-                        "required": [
-                            "type"
-                        ]
-                    },
-                    {
-                        "title": "Common receipt properties",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
-                    }
-                ]
-            },
             "DEPLOY_ACCOUNT_TXN_RECEIPT": {
                 "title": "Deploy Account Transaction Receipt",
                 "allOf": [
                     {
                         "title": "Common receipt properties",
                         "$ref": "#/components/schemas/COMMON_RECEIPT_PROPERTIES"
-                    },
-                    {
-                        "title": "DeployAccount txn receipt",
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "title": "Deploy account",
-                                "type": "string",
-                                "enum": [
-                                    "DEPLOY_ACCOUNT"
-                                ]
-                            },
-                            "contract_address": {
-                                "title": "Contract address",
-                                "description": "The address of the deployed contract",
-                                "$ref": "#/components/schemas/FELT"
-                            }
-                        },
-                        "required": [
-                            "type",
-                            "contract_address"
-                        ]
-                    }
-                ]
-            },
-            "PENDING_DEPLOY_ACCOUNT_TXN_RECEIPT": {
-                "title": "Deploy Account Transaction Receipt",
-                "allOf": [
-                    {
-                        "title": "Common receipt properties",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
                     },
                     {
                         "title": "DeployAccount txn receipt",
@@ -3002,38 +3046,6 @@
                     }
                 ]
             },
-            "PENDING_L1_HANDLER_TXN_RECEIPT": {
-                "title": "L1 Handler Transaction Receipt",
-                "description": "receipt for l1 handler transaction",
-                "allOf": [
-                    {
-                        "title": "Transaction type",
-                        "type": "object",
-                        "properties": {
-                            "type": {
-                                "title": "type",
-                                "type": "string",
-                                "enum": [
-                                    "L1_HANDLER"
-                                ]
-                            },
-                            "message_hash": {
-                                "title": "Message hash",
-                                "description": "The message hash as it appears on the L1 core contract",
-                                "$ref": "#/components/schemas/NUM_AS_HEX"
-                            }
-                        },
-                        "required": [
-                            "type",
-                            "message_hash"
-                        ]
-                    },
-                    {
-                        "title": "Common receipt properties",
-                        "$ref": "#/components/schemas/PENDING_COMMON_RECEIPT_PROPERTIES"
-                    }
-                ]
-            },
             "TXN_RECEIPT": {
                 "title": "Transaction Receipt",
                 "oneOf": [
@@ -3059,92 +3071,28 @@
                     }
                 ]
             },
-            "PENDING_TXN_RECEIPT": {
-                "title": "Transaction Receipt",
-                "oneOf": [
+            "TXN_RECEIPT_WITH_BLOCK_INFO": {
+                "title": "Transaction receipt with block info",
+                "allOf": [
                     {
-                        "title": "Pending Invoke transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_INVOKE_TXN_RECEIPT"
-                    },
-                    {
-                        "title": "Pending L1 handler transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_L1_HANDLER_TXN_RECEIPT"
+                        "title": "Transaction receipt",
+                        "$ref": "#/components/schemas/TXN_RECEIPT"
                     },
                     {
-                        "title": "Pending Declare transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_DECLARE_TXN_RECEIPT"
-                    },
-                    {
-                        "title": "Pending Deploy account transaction receipt",
-                        "$ref": "#/components/schemas/PENDING_DEPLOY_ACCOUNT_TXN_RECEIPT"
-                    }
-                ],
-                "not": {
-                    "$ref": "#/components/schemas/TXN_RECEIPT"
-                }
-            },
-            "PENDING_COMMON_RECEIPT_PROPERTIES": {
-                "title": "Pending common receipt properties",
-                "description": "Common properties for a pending transaction receipt",
-                "type": "object",
-                "properties": {
-                    "transaction_hash": {
-                        "title": "Transaction hash",
-                        "$ref": "#/components/schemas/TXN_HASH",
-                        "description": "The hash identifying the transaction"
-                    },
-                    "actual_fee": {
-                        "title": "Actual fee",
-                        "$ref": "#/components/schemas/FEE_PAYMENT",
-                        "description": "The fee that was charged by the sequencer"
-                    },
-                    "messages_sent": {
-                        "type": "array",
-                        "title": "Messages sent",
-                        "items": {
-                            "$ref": "#/components/schemas/MSG_TO_L1"
+                        "type": "object",
+                        "properties": {
+                            "block_hash": {
+                                "title": "Block hash",
+                                "$ref": "#/components/schemas/BLOCK_HASH",
+                                "description": "If this field is missing, it means the receipt belongs to the pending block"
+                            },
+                            "block_number": {
+                                "title": "Block number",
+                                "$ref": "#/components/schemas/BLOCK_NUMBER",
+                                "description": "If this field is missing, it means the receipt belongs to the pending block"
+                            }
                         }
-                    },
-                    "events": {
-                        "description": "The events emitted as part of this transaction",
-                        "title": "Events",
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/components/schemas/EVENT"
-                        }
-                    },
-                    "revert_reason": {
-                        "title": "Revert reason",
-                        "name": "revert reason",
-                        "description": "the revert reason for the failed execution",
-                        "type": "string"
-                    },
-                    "finality_status": {
-                        "title": "Finality status",
-                        "type": "string",
-                        "enum": [
-                            "ACCEPTED_ON_L2"
-                        ],
-                        "description": "The finality status of the transaction"
-                    },
-                    "execution_status": {
-                        "title": "Execution status",
-                        "$ref": "#/components/schemas/TXN_EXECUTION_STATUS"
-                    },
-                    "execution_resources": {
-                        "title": "Execution resources",
-                        "description": "The resources consumed by the transaction",
-                        "$ref": "#/components/schemas/EXECUTION_RESOURCES"
                     }
-                },
-                "required": [
-                    "transaction_hash",
-                    "actual_fee",
-                    "messages_sent",
-                    "events",
-                    "finality_status",
-                    "execution_status",
-                    "execution_resources"
                 ]
             },
             "MSG_TO_L1": {
@@ -3668,6 +3616,16 @@
                         "description": "The gas price (in wei or fri, depending on the tx version) that was used in the cost estimation",
                         "$ref": "#/components/schemas/FELT"
                     },
+                    "data_gas_consumed": {
+                        "title": "Data gas consumed",
+                        "description": "The Ethereum data gas consumption of the transaction",
+                        "$ref": "#/components/schemas/FELT"
+                    },
+                    "data_gas_price": {
+                        "title": "Data gas price",
+                        "description": "The data gas price (in wei or fri, depending on the tx version) that was used in the cost estimation",
+                        "$ref": "#/components/schemas/FELT"
+                    },
                     "overall_fee": {
                         "title": "Overall fee",
                         "description": "The estimated fee for the transaction (in wei or fri, depending on the tx version), equals to gas_consumed*gas_price + data_gas_consumed*data_gas_price",
@@ -3682,6 +3640,8 @@
                 "required": [
                     "gas_consumed",
                     "gas_price",
+                    "data_gas_consumed",
+                    "data_gas_price",
                     "overall_fee",
                     "unit"
                 ]
@@ -3773,8 +3733,8 @@
                     "price_in_fri"
                 ]
             },
-            "EXECUTION_RESOURCES": {
-                "title": "Execution resources",
+            "COMPUTATION_RESOURCES": {
+                "title": "Computation resources",
                 "description": "The resources consumed by the VM",
                 "type": "object",
                 "properties": {
@@ -3861,6 +3821,46 @@
                 },
                 "required": [
                     "steps"
+                ]
+            },
+            "EXECUTION_RESOURCES": {
+                "type": "object",
+                "title": "Execution resources",
+                "description": "the resources consumed by the transaction, includes both computation and data",
+                "allOf": [
+                    {
+                        "title": "ComputationResources",
+                        "$ref": "#/components/schemas/COMPUTATION_RESOURCES"
+                    },
+                    {
+                        "type": "object",
+                        "title": "DataResources",
+                        "description": "the data-availability resources of this transaction",
+                        "properties": {
+                            "data_availability": {
+                                "type": "object",
+                                "properties": {
+                                    "l1_gas": {
+                                        "title": "L1Gas",
+                                        "description": "the gas consumed by this transaction's data, 0 if it uses data gas for DA",
+                                        "type": "integer"
+                                    },
+                                    "l1_data_gas": {
+                                        "title": "L1DataGas",
+                                        "description": "the data gas consumed by this transaction's data, 0 if it uses gas for DA",
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "l1_gas",
+                                    "l1_data_gas"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "data_availability"
+                        ]
+                    }
                 ]
             }
         },

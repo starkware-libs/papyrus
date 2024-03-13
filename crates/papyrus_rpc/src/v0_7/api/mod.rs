@@ -8,7 +8,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::deprecated_class_abi::calculate_deprecated_class_abi_length;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::{PriceUnit, TransactionTrace};
+use papyrus_execution::objects::FeeEstimation;
 use papyrus_execution::{AbiSize, ExecutableTransactionInput, ExecutionError, SierraSize};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -17,7 +17,7 @@ use papyrus_storage::db::RO;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockNumber, GasPrice};
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::Program;
 use starknet_api::hash::StarkFelt;
@@ -39,6 +39,7 @@ use super::error::{
     CONTRACT_NOT_FOUND,
     INVALID_CONTINUATION_TOKEN,
 };
+use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,
@@ -87,6 +88,13 @@ pub trait JsonRpc {
     /// Gets block information with full transactions given a block identifier.
     #[method(name = "getBlockWithTxs")]
     async fn get_block_w_full_transactions(&self, block_id: BlockId) -> RpcResult<Block>;
+
+    /// Gets block information with full transactions given a block identifier.
+    #[method(name = "getBlockWithReceipts")]
+    async fn get_block_w_full_transactions_and_receipts(
+        &self,
+        block_id: BlockId,
+    ) -> RpcResult<Block>;
 
     /// Gets the value of the storage at the given address, key, and block.
     #[method(name = "getStorageAt")]
@@ -212,7 +220,7 @@ pub trait JsonRpc {
         request: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
         block_id: BlockId,
-    ) -> RpcResult<Vec<FeeEstimate>>;
+    ) -> RpcResult<Vec<FeeEstimation>>;
 
     /// Estimates the fee of a message from L1.
     #[method(name = "estimateMessageFee")]
@@ -220,7 +228,7 @@ pub trait JsonRpc {
         &self,
         message: MessageFromL1,
         block_id: BlockId,
-    ) -> RpcResult<FeeEstimate>;
+    ) -> RpcResult<FeeEstimation>;
 
     /// Simulates execution of a series of transactions.
     #[method(name = "simulateTransactions")]
@@ -292,32 +300,10 @@ impl ContinuationToken {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Deserialize, Serialize)]
-pub struct FeeEstimate {
-    pub gas_consumed: StarkFelt,
-    pub gas_price: GasPrice,
-    pub overall_fee: Fee,
-    pub unit: PriceUnit,
-}
-
-impl FeeEstimate {
-    pub fn from(gas_price: GasPrice, overall_fee: Fee, unit: PriceUnit) -> Self {
-        match gas_price {
-            GasPrice(0) => Self::default(),
-            _ => Self {
-                gas_consumed: (overall_fee.0 / gas_price.0).into(),
-                gas_price,
-                overall_fee,
-                unit,
-            },
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct SimulatedTransaction {
     pub transaction_trace: TransactionTrace,
-    pub fee_estimation: FeeEstimate,
+    pub fee_estimation: FeeEstimation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]

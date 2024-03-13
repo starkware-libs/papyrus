@@ -8,7 +8,7 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::deprecated_class_abi::calculate_deprecated_class_abi_length;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::BlockHashAndNumber;
-use papyrus_execution::objects::{PriceUnit, TransactionTrace};
+use papyrus_execution::objects::PriceUnit;
 use papyrus_execution::{AbiSize, ExecutableTransactionInput, ExecutionError, SierraSize};
 use papyrus_proc_macros::versioned_rpc;
 use papyrus_storage::compiled_class::CasmStorageReader;
@@ -39,6 +39,7 @@ use super::error::{
     CONTRACT_NOT_FOUND,
     INVALID_CONTINUATION_TOKEN,
 };
+use super::execution::TransactionTrace;
 use super::state::{ContractClass, StateUpdate};
 use super::transaction::{
     DeployAccountTransaction,

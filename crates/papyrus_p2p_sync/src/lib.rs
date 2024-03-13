@@ -1,31 +1,35 @@
+mod header;
 #[cfg(test)]
 mod p2p_sync_test;
+mod stream_factory;
 
 use std::collections::BTreeMap;
 use std::time::Duration;
 
 use futures::channel::mpsc::{SendError, Sender};
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::{DataType, Direction, Query, ResponseReceivers, SignedBlockHeader};
-use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_network::{Query, ResponseReceivers};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
-use tokio::time::timeout;
-use tracing::{debug, instrument};
+use tracing::instrument;
+
+use crate::header::HeaderStreamFactory;
+use crate::stream_factory::DataStreamFactory;
 
 const STEP: usize = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+const NETWORK_DATA_TIMEOUT: Duration = Duration::from_secs(300);
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct P2PSyncConfig {
     pub num_headers_per_query: usize,
-    // TODO(shahak): Remove timeout and check if query finished when the network reports it.
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
-    pub query_timeout: Duration,
+    pub wait_period_for_new_data: Duration,
 }
 
 impl SerializeConfig for P2PSyncConfig {
@@ -38,9 +42,10 @@ impl SerializeConfig for P2PSyncConfig {
                 ParamPrivacyInput::Public,
             ),
             ser_param(
-                "query_timeout",
-                &self.query_timeout.as_secs(),
-                "Time in seconds to wait for query responses until we mark it as failed",
+                "wait_period_for_new_data",
+                &self.wait_period_for_new_data.as_secs(),
+                "Time in seconds to wait when a query returned with partial data before sending a \
+                 new query",
                 ParamPrivacyInput::Public,
             ),
         ])
@@ -49,12 +54,16 @@ impl SerializeConfig for P2PSyncConfig {
 
 impl Default for P2PSyncConfig {
     fn default() -> Self {
-        P2PSyncConfig { num_headers_per_query: 100, query_timeout: Duration::from_secs(5) }
+        P2PSyncConfig {
+            num_headers_per_query: 10000,
+            wait_period_for_new_data: Duration::from_secs(5),
+        }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum P2PSyncError {
+    // TODO(shahak): Remove this and report to network on invalid data once that's possible.
     // TODO(shahak): Consider removing this error and handling unordered headers without failing.
     #[error(
         "Blocks returned unordered from the network. Expected header with \
@@ -62,11 +71,17 @@ pub enum P2PSyncError {
     )]
     HeadersUnordered { expected_block_number: BlockNumber, actual_block_number: BlockNumber },
     #[error("Expected to receive one signature from the network. got {signatures:?} instead.")]
-    // TODO(shahak): Move this error to network.
+    // TODO(shahak): Remove this and report to network on invalid data once that's possible.
+    // Right now we support only one signature. In the future we will support many signatures.
     WrongSignaturesLength { signatures: Vec<BlockSignature> },
+    // TODO(shahak): Remove this and report to network on invalid data once that's possible.
+    #[error("Network returned more responses than expected for a query.")]
+    TooManyResponses,
     // TODO(shahak): Replicate this error for each data type.
     #[error("The sender end of the response receivers was closed.")]
     ReceiverChannelTerminated,
+    #[error(transparent)]
+    NetworkTimeout(#[from] tokio::time::error::Elapsed),
     #[error(transparent)]
     StorageError(#[from] StorageError),
     #[error(transparent)]
@@ -94,76 +109,19 @@ impl P2PSync {
 
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
-        let mut current_block_number = self.storage_reader.begin_ro_txn()?.get_header_marker()?;
-        loop {
-            let end_block_number = current_block_number.0
-                + u64::try_from(self.config.num_headers_per_query)
-                    .expect("Failed converting usize to u64");
-            debug!("Downloading blocks [{}, {})", current_block_number.0, end_block_number);
-            self.query_sender
-                .send(Query {
-                    start_block: current_block_number,
-                    direction: Direction::Forward,
-                    limit: self.config.num_headers_per_query,
-                    step: STEP,
-                    data_type: DataType::SignedBlockHeader,
-                })
-                .await?;
-            self.parse_headers(&mut current_block_number, end_block_number).await?;
-        }
-    }
+        let mut data_stream = HeaderStreamFactory::create_stream(
+            self.response_receivers
+                .signed_headers_receiver
+                .expect("p2p sync needs a signed headers receiver"),
+            self.query_sender,
+            self.storage_reader,
+            self.config.wait_period_for_new_data,
+            self.config.num_headers_per_query,
+        );
 
-    #[instrument(skip(self), level = "debug", err)]
-    async fn parse_headers(
-        &mut self,
-        current_block_number: &mut BlockNumber,
-        end_block_number: u64,
-    ) -> Result<(), P2PSyncError> {
-        while current_block_number.0 < end_block_number {
-            // Adding timeout because the network currently doesn't report when a query
-            // finished because the peers don't know about these blocks. If not all expected
-            // responses returned we will retry the query from the last received block.
-            // TODO(shahak): Once network reports finished queries, remove this timeout and add
-            // a sleep when a query finished with partial responses.
-            let Ok(maybe_signed_header) = timeout(
-                self.config.query_timeout,
-                self.response_receivers.signed_headers_receiver.next(),
-            )
-            .await
-            else {
-                debug!(
-                    "Other peer returned headers until {:?} when we requested until {:?}",
-                    current_block_number, end_block_number
-                );
-                return Ok(());
-            };
-            let Some(SignedBlockHeader { block_header, signatures }) = maybe_signed_header else {
-                return Err(P2PSyncError::ReceiverChannelTerminated);
-            };
-            // TODO(shahak): Check that parent_hash is the same as the previous block's hash
-            // and handle reverts.
-            if *current_block_number != block_header.block_number {
-                return Err(P2PSyncError::HeadersUnordered {
-                    expected_block_number: *current_block_number,
-                    actual_block_number: block_header.block_number,
-                });
-            }
-            if signatures.len() != ALLOWED_SIGNATURES_LENGTH {
-                return Err(P2PSyncError::WrongSignaturesLength { signatures });
-            }
-            self.storage_writer
-                .begin_rw_txn()?
-                .append_header(*current_block_number, &block_header)?
-                .append_block_signature(
-                    *current_block_number,
-                    signatures.first().expect(
-                        "Calling first on a vector of size {ALLOWED_SIGNATURES_LENGTH} returned \
-                         None",
-                    ),
-                )?
-                .commit()?;
-            *current_block_number = current_block_number.next();
+        loop {
+            let data = data_stream.next().await.expect("Sync data stream should never end")?;
+            data.write_to_storage(&mut self.storage_writer)?;
         }
-        Ok(())
     }
 }

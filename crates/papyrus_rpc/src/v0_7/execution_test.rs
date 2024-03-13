@@ -10,17 +10,21 @@ use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
-use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
+use papyrus_common::state::{
+    DeclaredClassHashEntry,
+    DeployedContract as CommonDeployedContract,
+    StorageEntry as CommonStorageEntry,
+};
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_execution::objects::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
+    CallType,
+    FeeEstimation,
+    FunctionCall,
+    OrderedEvent,
+    OrderedL2ToL1Message,
     PriceUnit,
+    Retdata,
     RevertReason,
-    TransactionTrace,
 };
 use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
@@ -49,9 +53,13 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerContractAddress,
 };
-use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
+use starknet_api::data_availability::L1DataAvailabilityMode;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as SN_API_DeprecatedContractClass,
+    EntryPointType,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, StorageKey};
 use starknet_api::transaction::{
     Calldata,
     Fee,
@@ -62,7 +70,7 @@ use starknet_api::transaction::{
 };
 use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
 use starknet_client::reader::objects::pending_data::{
-    DeprecatedPendingBlock,
+    PendingBlock,
     PendingBlockOrDeprecated,
     PendingStateUpdate,
 };
@@ -73,13 +81,18 @@ use starknet_client::reader::objects::transaction::{
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
-use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
+};
 use tokio::sync::RwLock;
 
-use super::api::api_impl::JsonRpcServerV0_7Impl as JsonRpcServerImpl;
+use super::api::api_impl::JsonRpcServerImpl;
 use super::api::{
     decompress_program,
-    FeeEstimate,
     SimulatedTransaction,
     SimulationFlag,
     TransactionTraceWithHash,
@@ -90,8 +103,28 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::error::{TransactionExecutionError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
+use super::execution::{
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    TransactionTrace,
+};
+use super::state::{
+    ClassHashes,
+    ContractNonce,
+    DeployedContract,
+    ReplacedClasses,
+    StorageDiff,
+    StorageEntry,
+    ThinStateDiff,
+};
 use super::transaction::{
+    Builtin,
     DeployAccountTransaction,
+    ExecutionResources,
     InvokeTransaction,
     InvokeTransactionV1,
     MessageFromL1,
@@ -118,6 +151,10 @@ lazy_static! {
         price_in_wei: GasPrice(100 * u128::pow(10, 9)),
         price_in_fri: GasPrice(0),
     };
+    pub static ref DATA_GAS_PRICE: GasPricePerToken = GasPricePerToken{
+        price_in_wei: GasPrice(1),
+        price_in_fri: GasPrice(0),
+    };
     pub static ref MAX_FEE: Fee = Fee(1000000 * GAS_PRICE.price_in_wei.0);
     pub static ref BLOCK_TIMESTAMP: BlockTimestamp = BlockTimestamp(1234);
     pub static ref SEQUENCER_ADDRESS: SequencerContractAddress =
@@ -131,16 +168,20 @@ lazy_static! {
     pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
-    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
+    pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimation = FeeEstimation {
         gas_consumed: stark_felt!("0x680"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(166400000000000,),
         unit: PriceUnit::Wei,
     };
 
-    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
+    pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimation = FeeEstimation {
         gas_consumed: stark_felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
     };
@@ -364,7 +405,7 @@ async fn call_estimate_fee() {
     // Test that calling the same transaction with a different block context with a different gas
     // price produces a different fee.
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![invoke.clone()],
@@ -376,10 +417,25 @@ async fn call_estimate_fee() {
         .unwrap();
     assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
 
+    // Test that calling the same transaction with a different block context with a different l1 DA
+    // mode produces a different fee.
+    let res = module
+        .call::<_, Vec<FeeEstimation>>(
+            "starknet_V0_7_estimateFee",
+            (
+                vec![invoke.clone()],
+                Vec::<SimulationFlag>::new(),
+                BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))),
+            ),
+        )
+        .await
+        .unwrap();
+    assert_ne!(res, vec![EXPECTED_FEE_ESTIMATE.clone()]);
+
     // Test that calling the same transaction with skip_validate produces a lower gas consumed.
     // TODO(yair): test with an account contract which has a lengthy validate function.
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![invoke],
@@ -406,7 +462,7 @@ async fn call_estimate_fee() {
             ..Default::default()
         }));
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (
                 vec![non_existent_entry_point],
@@ -459,7 +515,7 @@ async fn pending_call_estimate_fee() {
     }));
 
     let res = module
-        .call::<_, Vec<FeeEstimate>>(
+        .call::<_, Vec<FeeEstimation>>(
             "starknet_V0_7_estimateFee",
             (vec![invoke.clone()], Vec::<SimulationFlag>::new(), BlockId::Tag(Tag::Pending)),
         )
@@ -725,19 +781,19 @@ async fn trace_block_transactions_regular_and_pending() {
         .begin_rw_txn()
         .unwrap()
         .append_header(
-            BlockNumber(2),
+            BlockNumber(3),
             &BlockHeader {
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x2")),
-                parent_hash: BlockHash(stark_felt!("0x1")),
+                block_hash: BlockHash(stark_felt!("0x3")),
+                parent_hash: BlockHash(stark_felt!("0x2")),
                 ..Default::default()
             },
         )
         .unwrap()
         .append_body(
-            BlockNumber(2),
+            BlockNumber(3),
             BlockBody {
                 transactions: vec![tx1, tx2],
                 transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
@@ -748,7 +804,7 @@ async fn trace_block_transactions_regular_and_pending() {
         )
         .unwrap()
         .append_state_diff(
-            BlockNumber(2),
+            BlockNumber(3),
             StateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
                 ..Default::default()
@@ -780,7 +836,7 @@ async fn trace_block_transactions_regular_and_pending() {
     let res = call_and_validate_schema_for_result::<_, Vec<TransactionTraceWithHash>>(
         &module,
         "starknet_V0_7_traceBlockTransactions",
-        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2))))],
+        vec![Box::new(BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(3))))],
         &VERSION,
         SpecFile::TraceApi,
     )
@@ -797,11 +853,12 @@ async fn trace_block_transactions_regular_and_pending() {
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
-            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            parent_block_hash: BlockHash(stark_felt!("0x2")),
             transactions: vec![client_tx1, client_tx2],
             transaction_receipts: vec![
                 ClientTransactionReceipt {
@@ -896,7 +953,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
                 );
             };
             invoke_tx.calldata = get_calldata_for_test_execution_info(
-                BlockNumber(2),
+                BlockNumber(3),
                 *BLOCK_TIMESTAMP,
                 *SEQUENCER_ADDRESS,
                 &rpc_invoke_v1,
@@ -921,20 +978,20 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         .begin_rw_txn()
         .unwrap()
         .append_header(
-            BlockNumber(2),
+            BlockNumber(3),
             &BlockHeader {
-                block_number: BlockNumber(2),
+                block_number: BlockNumber(3),
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x2")),
-                parent_hash: BlockHash(stark_felt!("0x1")),
+                block_hash: BlockHash(stark_felt!("0x3")),
+                parent_hash: BlockHash(stark_felt!("0x2")),
                 ..Default::default()
             },
         )
         .unwrap()
         .append_body(
-            BlockNumber(2),
+            BlockNumber(3),
             BlockBody {
                 transactions: vec![tx1, tx2],
                 transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
@@ -945,7 +1002,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         )
         .unwrap()
         .append_state_diff(
-            BlockNumber(2),
+            BlockNumber(3),
             StateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
                 ..Default::default()
@@ -981,7 +1038,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
     let res = module
         .call::<_, Vec<TransactionTraceWithHash>>(
             "starknet_V0_7_traceBlockTransactions",
-            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(2)))],
+            [BlockId::HashOrNumber(BlockHashOrNumber::Number(BlockNumber(3)))],
         )
         .await
         .unwrap();
@@ -1024,7 +1081,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
             );
         };
         client_invoke_tx.calldata = get_calldata_for_test_execution_info(
-            BlockNumber(2),
+            BlockNumber(3),
             *BLOCK_TIMESTAMP,
             *SEQUENCER_ADDRESS,
             &invoke_v1,
@@ -1039,11 +1096,12 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
 
     let pending_data = get_test_pending_data();
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
-            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            parent_block_hash: BlockHash(stark_felt!("0x2")),
             transactions: vec![client_tx1, client_tx2],
             transaction_receipts: vec![
                 ClientTransactionReceipt {
@@ -1127,9 +1185,11 @@ async fn call_estimate_message_fee() {
 
     // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
     // is correct.
-    let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x0"),
+    let expected_fee_estimate = FeeEstimation {
+        gas_consumed: stark_felt!("0x3937"),
         gas_price: GAS_PRICE.price_in_wei,
+        data_gas_consumed: StarkFelt::ZERO,
+        data_gas_price: DATA_GAS_PRICE.price_in_wei,
         overall_fee: Fee(0),
         unit: PriceUnit::default(),
     };
@@ -1164,7 +1224,7 @@ fn broadcasted_to_executable_declare_v1() {
 #[test]
 fn validate_fee_estimation_schema() {
     let mut rng = get_rng();
-    let fee_estimate = FeeEstimate::get_test_instance(&mut rng);
+    let fee_estimate = FeeEstimation::get_test_instance(&mut rng);
     let schema = get_starknet_spec_api_schema_for_components(
         &[(SpecFile::StarknetApiOpenrpc, &["FEE_ESTIMATE"])],
         &VERSION,
@@ -1252,16 +1312,127 @@ fn get_test_compressed_program() -> String {
 }
 
 auto_impl_get_test_instance! {
-    pub struct FeeEstimate {
-        pub gas_consumed: StarkFelt,
-        pub gas_price: GasPrice,
-        pub overall_fee: Fee,
-        pub unit: PriceUnit,
+    pub enum TransactionTrace {
+        L1Handler(L1HandlerTransactionTrace) = 0,
+        Invoke(InvokeTransactionTrace) = 1,
+        Declare(DeclareTransactionTrace) = 2,
+        DeployAccount(DeployAccountTransactionTrace) = 3,
+    }
+
+    pub struct L1HandlerTransactionTrace {
+        pub function_invocation: FunctionInvocation,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct InvokeTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub execute_invocation: FunctionInvocationResult,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeclareTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeployAccountTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub constructor_invocation: FunctionInvocation,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+        pub state_diff: ThinStateDiff,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub enum FunctionInvocationResult {
+        Ok(FunctionInvocation) = 0,
+        Err(RevertReason) = 1,
+    }
+
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        SegmentArena = 7,
+    }
+
+    pub struct ThinStateDiff {
+        pub deployed_contracts: Vec<DeployedContract>,
+        pub storage_diffs: Vec<StorageDiff>,
+        pub declared_classes: Vec<ClassHashes>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
+        pub nonces: Vec<ContractNonce>,
+        pub replaced_classes: Vec<ReplacedClasses>,
+    }
+
+    pub struct DeployedContract {
+        pub address: ContractAddress,
+        pub class_hash: ClassHash,
+    }
+
+    pub struct ClassHashes {
+        pub class_hash: ClassHash,
+        pub compiled_class_hash: CompiledClassHash,
+    }
+
+    pub struct ContractNonce {
+        pub contract_address: ContractAddress,
+        pub nonce: Nonce,
+    }
+
+    pub struct StorageDiff {
+        pub address: ContractAddress,
+        pub storage_entries: Vec<StorageEntry>,
+    }
+
+    pub struct StorageEntry {
+        pub key: StorageKey,
+        pub value: StarkFelt,
+    }
+
+    pub struct ReplacedClasses {
+        pub contract_address: ContractAddress,
+        pub class_hash: ClassHash,
     }
 
     pub struct TransactionTraceWithHash {
         pub transaction_hash: TransactionHash,
         pub trace_root: TransactionTrace,
+    }
+}
+
+impl GetTestInstance for FunctionInvocation {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        Self {
+            function_call: FunctionCall::get_test_instance(rng),
+            caller_address: ContractAddress::get_test_instance(rng),
+            class_hash: ClassHash::get_test_instance(rng),
+            entry_point_type: EntryPointType::get_test_instance(rng),
+            call_type: CallType::get_test_instance(rng),
+            result: Retdata::get_test_instance(rng),
+            // TODO(shahak): fill with non empty value.
+            calls: Vec::new(),
+            events: Vec::<OrderedEvent>::get_test_instance(rng),
+            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            execution_resources: starknet_api::transaction::ExecutionResources::get_test_instance(
+                rng,
+            )
+            .into(),
+        }
+    }
+}
+
+impl GetTestInstance for ExecutionResources {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        starknet_api::transaction::ExecutionResources::get_test_instance(rng).into()
     }
 }
 
@@ -1384,8 +1555,9 @@ async fn write_block_0_as_pending(
     );
 
     *pending_data.write().await = PendingData {
-        block: PendingBlockOrDeprecated::Deprecated(DeprecatedPendingBlock {
-            eth_l1_gas_price: GAS_PRICE.price_in_wei,
+        block: PendingBlockOrDeprecated::Current(PendingBlock {
+            l1_gas_price: *GAS_PRICE,
+            l1_data_gas_price: *DATA_GAS_PRICE,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
             ..Default::default()
@@ -1394,13 +1566,16 @@ async fn write_block_0_as_pending(
             old_root: Default::default(),
             state_diff: ClientStateDiff {
                 deployed_contracts: vec![
-                    DeployedContract {
+                    CommonDeployedContract {
                         address: *DEPRECATED_CONTRACT_ADDRESS,
                         class_hash: class_hash1,
                     },
-                    DeployedContract { address: *CONTRACT_ADDRESS, class_hash: class_hash2 },
-                    DeployedContract { address: *ACCOUNT_ADDRESS, class_hash: *ACCOUNT_CLASS_HASH },
-                    DeployedContract {
+                    CommonDeployedContract { address: *CONTRACT_ADDRESS, class_hash: class_hash2 },
+                    CommonDeployedContract {
+                        address: *ACCOUNT_ADDRESS,
+                        class_hash: *ACCOUNT_CLASS_HASH,
+                    },
+                    CommonDeployedContract {
                         address: *TEST_ERC20_CONTRACT_ADDRESS,
                         class_hash: *TEST_ERC20_CONTRACT_CLASS_HASH,
                     },
@@ -1408,11 +1583,11 @@ async fn write_block_0_as_pending(
                 storage_diffs: indexmap!(
                     *TEST_ERC20_CONTRACT_ADDRESS => vec![
                         // Give the accounts some balance.
-                        StorageEntry {
+                        CommonStorageEntry {
                             key: account_balance_key, value: *ACCOUNT_INITIAL_BALANCE
                         },
                         // Give the first account mint permission (what is this?).
-                        StorageEntry {
+                        CommonStorageEntry {
                             key: minter_var_address, value: *ACCOUNT_ADDRESS.0.key()
                         },
                     ],
@@ -1472,6 +1647,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
             BlockNumber(0),
             &BlockHeader {
                 l1_gas_price: *GAS_PRICE,
+                l1_data_gas_price: *DATA_GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()
@@ -1535,6 +1711,24 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_state_diff(BlockNumber(1), StateDiff::default(), indexmap![])
         .unwrap()
+        .append_header(
+            BlockNumber(2),
+            &BlockHeader {
+                l1_gas_price: *GAS_PRICE,
+                sequencer: *SEQUENCER_ADDRESS,
+                timestamp: *BLOCK_TIMESTAMP,
+                // Test that l1_da_mode affects the fee.
+                l1_da_mode: L1DataAvailabilityMode::Blob,
+                block_hash: BlockHash(stark_felt!("0x2")),
+                block_number: BlockNumber(2),
+                ..Default::default()
+            },
+        )
+        .unwrap()
+        .append_body(BlockNumber(2), BlockBody::default())
+        .unwrap()
+        .append_state_diff(BlockNumber(2), StateDiff::default(), indexmap![])
+        .unwrap()
         .commit()
         .unwrap();
 
@@ -1549,6 +1743,7 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
             BlockNumber(0),
             &BlockHeader {
                 l1_gas_price: *GAS_PRICE,
+                l1_data_gas_price: *DATA_GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
                 ..Default::default()

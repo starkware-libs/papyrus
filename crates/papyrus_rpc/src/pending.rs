@@ -17,6 +17,7 @@ pub(crate) fn client_pending_data_to_execution_pending_data(
         timestamp: client_pending_data.block.timestamp(),
         l1_gas_price: client_pending_data.block.l1_gas_price(),
         l1_data_gas_price: client_pending_data.block.l1_data_gas_price(),
+        l1_da_mode: client_pending_data.block.l1_da_mode(),
         sequencer: client_pending_data.block.sequencer_address(),
     }
 }

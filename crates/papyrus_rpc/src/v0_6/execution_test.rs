@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::env;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -13,14 +14,13 @@ use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingC
 use papyrus_common::state::{DeclaredClassHashEntry, DeployedContract, StorageEntry};
 use papyrus_execution::execution_utils::selector_from_name;
 use papyrus_execution::objects::{
-    DeclareTransactionTrace,
-    DeployAccountTransactionTrace,
-    FunctionInvocationResult,
-    InvokeTransactionTrace,
-    L1HandlerTransactionTrace,
+    CallType,
+    FunctionCall,
+    OrderedEvent,
+    OrderedL2ToL1Message,
     PriceUnit,
+    Retdata,
     RevertReason,
-    TransactionTrace,
 };
 use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
@@ -49,7 +49,11 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerContractAddress,
 };
-use starknet_api::deprecated_contract_class::ContractClass as SN_API_DeprecatedContractClass;
+use starknet_api::data_availability::L1DataAvailabilityMode;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as SN_API_DeprecatedContractClass,
+    EntryPointType,
+};
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::StateDiff;
 use starknet_api::transaction::{
@@ -73,10 +77,16 @@ use starknet_client::reader::objects::transaction::{
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
-use test_utils::{auto_impl_get_test_instance, get_rng, read_json_file, GetTestInstance};
+use test_utils::{
+    auto_impl_get_test_instance,
+    get_number_of_variants,
+    get_rng,
+    read_json_file,
+    GetTestInstance,
+};
 use tokio::sync::RwLock;
 
-use super::api::api_impl::JsonRpcServerV0_6Impl as JsonRpcServerImpl;
+use super::api::api_impl::JsonRpcServerImpl;
 use super::api::{
     decompress_program,
     FeeEstimate,
@@ -90,8 +100,19 @@ use super::broadcasted_transaction::{
     BroadcastedTransaction,
 };
 use super::error::{TransactionExecutionError, BLOCK_NOT_FOUND, CONTRACT_NOT_FOUND};
+use super::execution::{
+    DeclareTransactionTrace,
+    DeployAccountTransactionTrace,
+    FunctionInvocation,
+    FunctionInvocationResult,
+    InvokeTransactionTrace,
+    L1HandlerTransactionTrace,
+    TransactionTrace,
+};
 use super::transaction::{
+    Builtin,
     DeployAccountTransaction,
+    ExecutionResources,
     InvokeTransaction,
     InvokeTransactionV1,
     MessageFromL1,
@@ -1252,6 +1273,56 @@ fn get_test_compressed_program() -> String {
 }
 
 auto_impl_get_test_instance! {
+    pub enum TransactionTrace {
+        L1Handler(L1HandlerTransactionTrace) = 0,
+        Invoke(InvokeTransactionTrace) = 1,
+        Declare(DeclareTransactionTrace) = 2,
+        DeployAccount(DeployAccountTransactionTrace) = 3,
+    }
+
+    pub struct L1HandlerTransactionTrace {
+        pub function_invocation: FunctionInvocation,
+    }
+
+    pub struct InvokeTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub execute_invocation: FunctionInvocationResult,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+
+    pub struct DeclareTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+
+    pub struct DeployAccountTransactionTrace {
+        pub validate_invocation: Option<FunctionInvocation>,
+        pub constructor_invocation: FunctionInvocation,
+        pub fee_transfer_invocation: Option<FunctionInvocation>,
+    }
+
+    pub enum FunctionInvocationResult {
+        Ok(FunctionInvocation) = 0,
+        Err(RevertReason) = 1,
+    }
+
+    pub struct ExecutionResources {
+        pub steps: u64,
+        pub builtin_instance_counter: HashMap<Builtin, u64>,
+        pub memory_holes: Option<u64>,
+    }
+
+    pub enum Builtin {
+        RangeCheck = 0,
+        Pedersen = 1,
+        Poseidon = 2,
+        EcOp = 3,
+        Ecdsa = 4,
+        Bitwise = 5,
+        Keccak = 6,
+        SegmentArena = 7,
+    }
+
     pub struct FeeEstimate {
         pub gas_consumed: StarkFelt,
         pub gas_price: GasPrice,
@@ -1262,6 +1333,24 @@ auto_impl_get_test_instance! {
     pub struct TransactionTraceWithHash {
         pub transaction_hash: TransactionHash,
         pub trace_root: TransactionTrace,
+    }
+}
+
+impl GetTestInstance for FunctionInvocation {
+    fn get_test_instance(rng: &mut rand_chacha::ChaCha8Rng) -> Self {
+        Self {
+            function_call: FunctionCall::get_test_instance(rng),
+            caller_address: ContractAddress::get_test_instance(rng),
+            class_hash: ClassHash::get_test_instance(rng),
+            entry_point_type: EntryPointType::get_test_instance(rng),
+            call_type: CallType::get_test_instance(rng),
+            result: Retdata::get_test_instance(rng),
+            // TODO(shahak): fill with non empty value.
+            calls: Vec::new(),
+            events: Vec::<OrderedEvent>::get_test_instance(rng),
+            messages: Vec::<OrderedL2ToL1Message>::get_test_instance(rng),
+            execution_resources: ExecutionResources::get_test_instance(rng),
+        }
     }
 }
 
@@ -1474,6 +1563,8 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
+                // Test that l1_da_mode is ignored by changing its value
+                l1_da_mode: L1DataAvailabilityMode::Blob,
                 ..Default::default()
             },
         )

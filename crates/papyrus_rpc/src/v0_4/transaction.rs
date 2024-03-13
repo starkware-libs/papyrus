@@ -561,17 +561,6 @@ pub enum PendingTransactionOutput {
 }
 
 impl TransactionOutput {
-    #[cfg(test)]
-    pub fn execution_status(&self) -> &TransactionExecutionStatus {
-        match self {
-            TransactionOutput::Declare(tx_output) => &tx_output.execution_status,
-            TransactionOutput::Deploy(tx_output) => &tx_output.execution_status,
-            TransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
-            TransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
-            TransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
-        }
-    }
-
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         events: Vec<starknet_api::transaction::Event>,

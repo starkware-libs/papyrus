@@ -7,6 +7,7 @@ use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
 use papyrus_execution::objects::{
+    FeeEstimation as ExecutionFeeEstimate,
     PendingData as ExecutionPendingData,
     TransactionSimulationOutput,
 };
@@ -116,7 +117,7 @@ use super::{
     SimulationFlag,
     TransactionTraceWithHash,
 };
-use crate::api::{BlockHashOrNumber, JsonRpcServerImpl, Tag};
+use crate::api::{BlockHashOrNumber, JsonRpcServerTrait, Tag};
 use crate::pending::client_pending_data_to_execution_pending_data;
 use crate::syncing_state::{get_last_synced_block, SyncStatus, SyncingState};
 use crate::{
@@ -127,13 +128,15 @@ use crate::{
     ContinuationTokenAsStruct,
 };
 
+const IGNORE_L1_DA_MODE: bool = true;
+
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
     pub static ref BLOCK_HASH_TABLE_ADDRESS: ContractAddress = ContractAddress::from(1_u8);
 }
 
 /// Rpc server.
-pub struct JsonRpcServerV0_4Impl {
+pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
     pub execution_config: ExecutionConfigByBlock,
     pub storage_reader: StorageReader,
@@ -147,7 +150,7 @@ pub struct JsonRpcServerV0_4Impl {
 }
 
 #[async_trait]
-impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
+impl JsonRpcV0_4Server for JsonRpcServerImpl {
     #[instrument(skip(self), level = "debug", err, ret)]
     fn block_number(&self) -> RpcResult<BlockNumber> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
@@ -851,6 +854,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 request.entry_point_selector,
                 request.calldata,
                 &block_execution_config,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -965,6 +969,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 block_number,
                 &block_execution_config,
                 false,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -975,7 +980,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match estimate_fee_result {
             Ok(Ok(fees)) => Ok(fees
                 .into_iter()
-                .map(|(gas_price, fee, _)| FeeEstimate::from(gas_price, fee))
+                .map(|ExecutionFeeEstimate { gas_price, overall_fee, .. }| {
+                    FeeEstimate::from(gas_price, overall_fee)
+                })
                 .collect()),
             Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
             Err(err) => Err(internal_server_error(err)),
@@ -1034,6 +1041,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &block_execution_config,
                 charge_fee,
                 validate,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1044,12 +1052,18 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
         match simulate_transactions_result {
             Ok(simulation_results) => Ok(simulation_results
                 .into_iter()
-                .map(|TransactionSimulationOutput { transaction_trace, gas_price, fee, .. }| {
-                    SimulatedTransaction {
-                        transaction_trace: transaction_trace.into(),
-                        fee_estimation: FeeEstimate::from(gas_price, fee),
-                    }
-                })
+                .map(
+                    |TransactionSimulationOutput {
+                         transaction_trace,
+                         fee_estimation: ExecutionFeeEstimate { gas_price, overall_fee, .. },
+                         ..
+                     }| {
+                        SimulatedTransaction {
+                            transaction_trace: transaction_trace.into(),
+                            fee_estimation: FeeEstimate::from(gas_price, overall_fee),
+                        }
+                    },
+                )
                 .collect()),
             Err(ExecutionError::StorageError(err)) => Err(internal_server_error(err)),
             Err(err) => Err(ErrorObjectOwned::from(JsonRpcError::try_from(err)?)),
@@ -1116,6 +1130,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 nonces: Default::default(),
                 replaced_classes: Default::default(),
                 classes: Default::default(),
+                l1_da_mode: Default::default(),
             });
             (
                 maybe_pending_data,
@@ -1186,6 +1201,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1240,6 +1256,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                         nonces: Default::default(),
                         replaced_classes: Default::default(),
                         classes: Default::default(),
+                        l1_da_mode: Default::default(),
                     }),
                     client_pending_data
                         .block
@@ -1309,6 +1326,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 &block_execution_config,
                 true,
                 true,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1380,6 +1398,7 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                 block_number,
                 &block_execution_config,
                 false,
+                IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1395,8 +1414,9 @@ impl JsonRpcV0_4Server for JsonRpcServerV0_4Impl {
                         fee_as_vec.len()
                     )));
                 }
-                let (gas_price, fee, _unit) = fee_as_vec.first().expect("No fee was returned");
-                Ok(FeeEstimate::from(*gas_price, *fee))
+                let ExecutionFeeEstimate { gas_price, overall_fee, .. } =
+                    fee_as_vec.first().expect("No fee was returned");
+                Ok(FeeEstimate::from(*gas_price, *overall_fee))
             }
             // Error in the execution of the contract.
             Ok(Err(_reverted_tx)) => Err(CONTRACT_ERROR.into()),
@@ -1446,7 +1466,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
     })
 }
 
-impl JsonRpcServerImpl for JsonRpcServerV0_4Impl {
+impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
         execution_config: ExecutionConfigByBlock,

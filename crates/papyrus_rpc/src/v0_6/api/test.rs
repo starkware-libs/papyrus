@@ -60,7 +60,6 @@ use starknet_api::transaction::{
     EventIndexInTransactionOutput,
     EventKey,
     Transaction as StarknetApiTransaction,
-    TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
     TransactionOutput as StarknetApiTransactionOutput,
@@ -162,7 +161,7 @@ use super::super::write_api_result::{
     AddDeployAccountOkResult,
     AddInvokeOkResult,
 };
-use super::api_impl::{JsonRpcServerV0_6Impl as JsonRpcServerImpl, BLOCK_HASH_TABLE_ADDRESS};
+use super::api_impl::{JsonRpcServerImpl, BLOCK_HASH_TABLE_ADDRESS};
 use super::{ContinuationToken, EventFilter, GatewayContractClass};
 use crate::api::{BlockHashOrNumber, BlockId, Tag};
 use crate::syncing_state::SyncStatus;
@@ -1048,7 +1047,6 @@ async fn get_transaction_status() {
         .unwrap();
     let res = module.call::<_, TransactionStatus>(method_name, [transaction_hash]).await.unwrap();
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
-    assert_eq!(res.execution_status, TransactionExecutionStatus::Succeeded);
 
     // Add a pending transaction and ask for its status.
     let mut rng = get_rng();
@@ -1179,7 +1177,6 @@ async fn get_transaction_receipt() {
         .unwrap();
     let res = module.call::<_, TransactionReceipt>(method_name, [transaction_hash]).await.unwrap();
     assert_eq!(res.finality_status, TransactionFinalityStatus::AcceptedOnL1);
-    assert_eq!(res.output.execution_status(), &TransactionExecutionStatus::Succeeded);
 
     // Add a pending transaction and ask for its receipt.
     let mut rng = get_rng();

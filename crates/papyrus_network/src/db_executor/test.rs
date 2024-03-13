@@ -1,17 +1,22 @@
 use std::task::Poll;
 
 use assert_matches::assert_matches;
+use futures::channel::mpsc::Receiver;
 use futures::future::poll_fn;
+use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
+use indexmap::IndexMap;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
+use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::state::{StateDiff, ThinStateDiff};
 
 use super::Data::BlockHeaderAndSignature;
-use crate::db_executor::{DBExecutor, DBExecutorError};
-use crate::{BlockHashOrNumber, Direction, InternalQuery};
+use crate::db_executor::{DBExecutor, DBExecutorError, Data, MockFetchBlockDataFromDb, QueryId};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery};
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -24,26 +29,64 @@ async fn header_db_executor_can_register_and_run_a_query() {
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
 
     // register a query.
-    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = InternalQuery {
         start_block: BlockHashOrNumber::Number(BlockNumber(0)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let query_id = db_executor.register_query(query, sender);
+    let (query_ids, mut receivers): (Vec<QueryId>, Vec<(Receiver<Data>, DataType)>) =
+        enum_iterator::all::<DataType>()
+            .map(|data_type| {
+                let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+                let query_id = db_executor.register_query(query, data_type, sender);
+                (query_id, (receiver, data_type))
+            })
+            .unzip();
+    let mut receivers_stream = SelectAll::new();
+    receivers
+        .iter_mut()
+        .map(|(receiver, requested_data_type)| {
+            receiver
+                .collect::<Vec<_>>()
+                .map(|collected| async move { (collected, requested_data_type) })
+        })
+        .for_each(|fut| {
+            receivers_stream.push(fut.into_stream());
+        });
 
     // run the executor and collect query results.
     tokio::select! {
         res = db_executor.next() => {
             let poll_res = res.unwrap();
             let res_query_id = poll_res.unwrap();
-            assert_eq!(res_query_id, query_id);
+            assert!(query_ids.iter().any(|query_id| query_id == &res_query_id));
         }
-        res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
-            for (i, data) in res.iter().enumerate() {
-                assert_matches!(data, BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} if block_number == &(i as u64));
+        Some(res) = receivers_stream.next() => {
+            let (data, requested_data_type) = res.await;
+            assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
+            for (i, data) in data.iter().enumerate() {
+                if i == 0{
+                    // requested DataType dictates what kind of Data we should expect.
+                    match requested_data_type {
+                        DataType::SignedBlockHeader => {
+                            assert_matches!(data, BlockHeaderAndSignature { .. });
+                        }
+                        DataType::StateDiff => {
+                            assert_matches!(data, Data::StateDiff{..});
+
+                        }
+                    }
+                }
+                match data {
+                    Data::BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} => {
+                        assert_eq!(block_number, &(i as u64));
+                    }
+                    Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
+                        // TODO: check the state diff.
+                    }
+                    _ => panic!("Unexpected data type"),
+                }
             }
         }
     }
@@ -75,7 +118,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let query_id = db_executor.register_query(query, sender);
+    let query_id = db_executor.register_query(query, DataType::SignedBlockHeader, sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -109,7 +152,20 @@ async fn header_db_executor_query_of_missing_block() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let _query_id = db_executor.register_query(query, sender);
+    let mut mock_data_type = MockFetchBlockDataFromDb::new();
+    mock_data_type.expect_fetch_block_data_from_db().times((BLOCKS_DELTA + 1) as usize).returning(
+        |block_number, query_id, _| {
+            if block_number.0 == NUM_OF_BLOCKS {
+                Err(DBExecutorError::BlockNotFound {
+                    block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                    query_id,
+                })
+            } else {
+                Ok(Data::default())
+            }
+        },
+    );
+    let _query_id = db_executor.register_query(query, mock_data_type, sender);
 
     tokio::select! {
         res = db_executor.next() => {
@@ -148,7 +204,12 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
             limit: NUM_OF_BLOCKS,
             step: 1,
         };
-        let query_id = db_executor.register_query(query, sender);
+        let mut mock_data_type = MockFetchBlockDataFromDb::new();
+        mock_data_type
+            .expect_fetch_block_data_from_db()
+            .times(NUM_OF_BLOCKS as usize)
+            .returning(|_, _, _| Ok(Data::default()));
+        let query_id = db_executor.register_query(query, mock_data_type, sender);
 
         // run the executor and collect query results.
         receiver.collect::<Vec<_>>().await;
@@ -183,7 +244,7 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
     drop(receiver);
 
     // register a query.
-    let _query_id = db_executor.register_query(query, sender);
+    let _query_id = db_executor.register_query(query, MockFetchBlockDataFromDb::new(), sender);
 
     // executor should return an error.
     let res = db_executor.next().await;
@@ -205,6 +266,8 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
             // TODO(shahak): Put different signatures for each block to test that we retrieve the
             // right signatures.
             .append_block_signature(BlockNumber(i), &BlockSignature::default())
+            .unwrap()
+            .append_state_diff(BlockNumber(i), StateDiff::default(),IndexMap::new())
             .unwrap()
             .commit()
             .unwrap();

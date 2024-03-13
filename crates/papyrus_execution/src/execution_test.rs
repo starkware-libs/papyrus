@@ -29,6 +29,7 @@ use crate::execution_utils::selector_from_name;
 use crate::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
+    FeeEstimation,
     FunctionInvocationResult,
     InvokeTransactionTrace,
     PriceUnit,
@@ -82,6 +83,7 @@ fn execute_call_cairo0() {
         selector_from_name("without_arg"),
         Calldata::default(),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -98,6 +100,7 @@ fn execute_call_cairo0() {
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -114,6 +117,7 @@ fn execute_call_cairo0() {
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -130,6 +134,7 @@ fn execute_call_cairo0() {
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -157,6 +162,7 @@ fn execute_call_cairo1() {
         selector_from_name("test_storage_read_write"),
         calldata,
         &test_block_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -173,8 +179,8 @@ fn estimate_fee_invoke() {
         .collect();
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -184,8 +190,8 @@ fn estimate_fee_declare_deprecated_class() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -195,8 +201,8 @@ fn estimate_fee_declare_class() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -206,8 +212,8 @@ fn estimate_fee_deploy_account() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -222,8 +228,8 @@ fn estimate_fee_combination() {
 
     let fees = estimate_fees(txs).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -252,6 +258,8 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
         BlockNumber(1),
         &test_block_execution_config(),
         false,
+        // TODO(yair): Add test for blob fee estimation.
+        true,
     )
     .unwrap()
 }
@@ -322,7 +330,7 @@ fn simulate_invoke() {
                 fee_transfer_invocation: Some(_),
             }
         );
-        assert_eq!(charge_fee.gas_price, GAS_PRICE.price_in_wei);
+        assert_eq!(charge_fee.fee_estimation.gas_price, GAS_PRICE.price_in_wei);
 
         assert_eq!(exec_only_trace.execute_invocation, charge_fee_trace.execute_invocation);
 
@@ -613,8 +621,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 
     let Some(TransactionSimulationOutput {
         transaction_trace: TransactionTrace::Invoke(invoke_trace),
-        fee: invoke_fee_estimation,
-        price_unit: invoke_unit,
+        fee_estimation: FeeEstimation { overall_fee: invoke_fee_estimation, unit: invoke_unit, .. },
         ..
     }) = result.pop()
     else {
@@ -622,8 +629,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     };
     let Some(TransactionSimulationOutput {
         transaction_trace: TransactionTrace::DeployAccount(deploy_account_trace),
-        fee: deploy_fee_estimation,
-        price_unit: deploy_unit,
+        fee_estimation: FeeEstimation { overall_fee: deploy_fee_estimation, unit: deploy_unit, .. },
         ..
     }) = result.pop()
     else {
@@ -758,8 +764,8 @@ fn induced_state_diff() {
     let mut account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128;
     let mut sequencer_balance = 0_u128;
 
-    account_balance -= simulation_results[0].fee.0;
-    sequencer_balance += simulation_results[0].fee.0;
+    account_balance -= simulation_results[0].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[0].fee_estimation.overall_fee.0;
     let expected_invoke_deprecated = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deployed_contracts: indexmap! {},
@@ -775,8 +781,8 @@ fn induced_state_diff() {
     };
     assert_eq!(simulation_results[0].induced_state_diff, expected_invoke_deprecated);
 
-    account_balance -= simulation_results[1].fee.0;
-    sequencer_balance += simulation_results[1].fee.0;
+    account_balance -= simulation_results[1].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[1].fee_estimation.overall_fee.0;
     let expected_declare_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))},
         declared_classes: indexmap! {class_hash!(next_declared_class_hash) => CompiledClassHash::default()},
@@ -793,8 +799,8 @@ fn induced_state_diff() {
     assert_eq!(simulation_results[1].induced_state_diff, expected_declare_class);
     next_declared_class_hash += 1;
 
-    account_balance -= simulation_results[2].fee.0;
-    sequencer_balance += simulation_results[2].fee.0;
+    account_balance -= simulation_results[2].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[2].fee_estimation.overall_fee.0;
     let expected_declare_deprecated_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(3_u128))},
         deprecated_declared_classes: vec![class_hash!(next_declared_class_hash)],
@@ -812,10 +818,10 @@ fn induced_state_diff() {
 
     let new_account_balance_key =
         get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
-    let new_account_balance =
-        u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].fee.0;
+    let new_account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128
+        - simulation_results[3].fee_estimation.overall_fee.0;
 
-    sequencer_balance += simulation_results[3].fee.0;
+    sequencer_balance += simulation_results[3].fee_estimation.overall_fee.0;
     let expected_deploy_account = ThinStateDiff {
         nonces: indexmap! {*NEW_ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deprecated_declared_classes: vec![],

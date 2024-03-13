@@ -138,11 +138,6 @@ expression: dumped_default_config
     "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N",
     "privacy": "Public"
   },
-  "network.peer.peer_id.#is_none": {
-    "description": "Flag for an optional field",
-    "value": true,
-    "privacy": "TemporaryValue"
-  },
   "network.peer.tcp_port": {
     "description": "The port on the other peer that the node will dial to to use for TCP transport.",
     "value": {
@@ -168,6 +163,25 @@ expression: dumped_default_config
     "description": "The port that the node listens on for incoming tcp connections.",
     "value": {
       "$serde_json::private::Number": "10000"
+    },
+    "privacy": "Public"
+  },
+  "p2p_sync.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
+  "p2p_sync.num_headers_per_query": {
+    "description": "The maximum amount of headers to ask from peers in each iteration.",
+    "value": {
+      "$serde_json::private::Number": "10000"
+    },
+    "privacy": "Public"
+  },
+  "p2p_sync.wait_period_for_new_data": {
+    "description": "Time in seconds to wait when a query returned with partial data before sending a new query",
+    "value": {
+      "$serde_json::private::Number": "5"
     },
     "privacy": "Public"
   },

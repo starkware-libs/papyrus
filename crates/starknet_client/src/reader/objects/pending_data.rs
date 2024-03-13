@@ -83,7 +83,6 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => &block.transactions,
         }
     }
-    #[cfg(any(feature = "testing", test))]
     pub fn transactions_mutable(&mut self) -> &mut Vec<Transaction> {
         match self {
             PendingBlockOrDeprecated::Deprecated(block) => &mut block.transactions,
@@ -96,11 +95,22 @@ impl PendingBlockOrDeprecated {
             PendingBlockOrDeprecated::Current(block) => &block.transaction_receipts,
         }
     }
-    #[cfg(any(feature = "testing", test))]
     pub fn transaction_receipts_mutable(&mut self) -> &mut Vec<TransactionReceipt> {
         match self {
             PendingBlockOrDeprecated::Deprecated(block) => &mut block.transaction_receipts,
             PendingBlockOrDeprecated::Current(block) => &mut block.transaction_receipts,
+        }
+    }
+    pub fn transactions_and_receipts_mutable(
+        &mut self,
+    ) -> (&mut Vec<Transaction>, &mut Vec<TransactionReceipt>) {
+        match self {
+            PendingBlockOrDeprecated::Deprecated(block) => {
+                (&mut block.transactions, &mut block.transaction_receipts)
+            }
+            PendingBlockOrDeprecated::Current(block) => {
+                (&mut block.transactions, &mut block.transaction_receipts)
+            }
         }
     }
     pub fn starknet_version(&self) -> String {
@@ -140,6 +150,13 @@ impl PendingBlockOrDeprecated {
             // In older versions, data gas price was 0.
             PendingBlockOrDeprecated::Deprecated(_) => GasPricePerToken::default(),
             PendingBlockOrDeprecated::Current(block) => block.l1_data_gas_price,
+        }
+    }
+    pub fn l1_da_mode(&self) -> L1DataAvailabilityMode {
+        match self {
+            // In older versions, all blocks were using calldata.
+            PendingBlockOrDeprecated::Deprecated(_) => L1DataAvailabilityMode::Calldata,
+            PendingBlockOrDeprecated::Current(block) => block.l1_da_mode,
         }
     }
 }
