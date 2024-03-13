@@ -220,8 +220,8 @@ impl BlockOrDeprecated {
     pub fn l1_gas_price(&self) -> GasPricePerToken {
         match self {
             BlockOrDeprecated::Deprecated(block) => GasPricePerToken {
-                price_in_fri: block.eth_l1_gas_price,
-                price_in_wei: block.strk_l1_gas_price,
+                price_in_fri: block.strk_l1_gas_price,
+                price_in_wei: block.eth_l1_gas_price,
             },
             BlockOrDeprecated::Current(block) => block.l1_gas_price,
         }
