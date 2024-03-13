@@ -321,6 +321,8 @@ Gets the current node’s configuration.
 Gets statistics for each table in the libmdbx database. For more information, see https://docs.rs/libmdbx/latest/libmdbx/struct.Stat.html[libmdbx::Stat] in the libmdbx documentation.
 `metrics`::
 Gets metrics of the node’s activity. For more information, see xref:#collecting-metrics[].
+`peer_id`::
+Gets the P2P peer ID of the node (if the network component is inactive returns an empty string).
 
 == Collecting metrics
 
