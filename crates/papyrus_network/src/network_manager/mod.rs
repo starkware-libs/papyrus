@@ -15,7 +15,7 @@ use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
 
 use self::swarm_trait::SwarmTrait;
-use crate::bin_utils::{build_swarm, dial};
+use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
@@ -292,11 +292,5 @@ impl NetworkManager {
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size, peer)
-    }
-
-    // TODO(shahak): Move this to the constructor and add the address to the config once we have
-    // p2p sync.
-    pub fn dial(&mut self, dial_address: &str) {
-        dial(&mut self.swarm, dial_address);
     }
 }
