@@ -15,8 +15,10 @@ serde.workspace = true
 serde_json.workspace = true
 starknet_api.workspace = true
 starknet-crypto.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
+assert_matches.workspace = true
 pretty_assertions.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"]}
 sha3.workspace = true

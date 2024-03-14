@@ -5683,6 +5683,7 @@ dependencies = [
 name = "papyrus_common"
 version = "0.3.0"
 dependencies = [
+ "assert_matches",
  "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
@@ -5694,6 +5695,7 @@ dependencies = [
  "starknet-crypto 0.5.2",
  "starknet_api",
  "test_utils",
+ "thiserror",
 ]
 
 [[package]]
