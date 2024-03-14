@@ -14,7 +14,11 @@ use tracing::{debug, info};
 use crate::{P2PSyncError, STEP};
 
 pub(crate) trait BlockData: Send {
-    fn write_to_storage(&self, storage_writer: &mut StorageWriter) -> Result<(), StorageError>;
+    fn write_to_storage(
+        // This is Box<Self> in order to allow using it with `Box<dyn BlockData>`.
+        self: Box<Self>,
+        storage_writer: &mut StorageWriter,
+    ) -> Result<(), StorageError>;
 }
 
 pub(crate) enum BlockNumberLimit {
