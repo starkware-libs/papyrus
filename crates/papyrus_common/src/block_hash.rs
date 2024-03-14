@@ -4,8 +4,8 @@ mod block_hash_test;
 
 use std::iter::zip;
 
-use starknet_api::block::{Block, BlockBody};
-use starknet_api::core::ChainId;
+use starknet_api::block::{BlockBody, BlockHash, BlockHeader};
+use starknet_api::core::{ChainId, EventCommitment, TransactionCommitment};
 use starknet_api::hash::{pedersen_hash, StarkFelt, StarkHash};
 use starknet_api::transaction::{
     DeployAccountTransaction,
@@ -19,7 +19,15 @@ use starknet_api::StarknetApiError;
 use crate::patricia_hash_tree::calculate_root;
 use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
 
-#[derive(Debug, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, thiserror::Error)]
+pub enum BlockHashError {
+    #[error("Header is missing data (transaction_commitment / event_commitment)")]
+    MissingHeaderData,
+    #[error(transparent)]
+    StarknetApiError(#[from] StarknetApiError),
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
 enum BlockHashVersion {
     V0,
     V1,
@@ -27,77 +35,96 @@ enum BlockHashVersion {
     V3,
 }
 
-/// Validates hash of a starknet block.
+/// Validates hash of a starknet header.
 /// A hash is valid if it is the result of one of the hash functions that were ever used in
 /// Starknet.
-pub fn validate_block_hash(block: &Block, chain_id: &ChainId) -> Result<bool, StarknetApiError> {
+pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool, BlockHashError> {
     for version in
         [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
     {
-        if calculate_block_hash_by_version(block, version, chain_id)? == block.header.block_hash.0 {
+        if calculate_block_hash_by_version(header, version, chain_id)? == header.block_hash {
             return Ok(true);
         }
     }
     Ok(false)
 }
 
+/// Validates the body of a starknet block.
+pub fn validate_body(
+    body: &BlockBody,
+    transaction_commitment: &TransactionCommitment,
+    event_commitment: &EventCommitment,
+) -> Result<bool, BlockHashError> {
+    for version in
+        [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
+    {
+        let calculated_transaction_commitment =
+            calculate_transaction_commitment_by_version(body, &version)?;
+        if calculated_transaction_commitment != *transaction_commitment {
+            continue;
+        }
+        let calculated_event_commitment =
+            calculate_event_commitment_by_version(&body.transaction_outputs, &version);
+        if calculated_event_commitment != *event_commitment {
+            continue;
+        }
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 // Calculates hash of a starknet block by version, ignoring the block hash field in the given block.
 fn calculate_block_hash_by_version(
-    block: &Block,
+    header: &BlockHeader,
     version: BlockHashVersion,
     chain_id: &ChainId,
-) -> Result<StarkFelt, StarknetApiError> {
-    let (n_transactions, transactions_patricia_root) =
-        get_transactions_hash_data(&block.body, &version)?;
-
-    let (n_events, events_patricia_root) =
-        get_events_hash_data(&block.body.transaction_outputs, &version);
-
-    // Can't implement as a clousure because ascii_as_felt returns a Result.
+) -> Result<BlockHash, BlockHashError> {
+    // Can't implement as a closure because ascii_as_felt returns a Result.
     let chain_id_as_felt = if version == BlockHashVersion::V0 {
         Some(ascii_as_felt(chain_id.0.as_str())?)
     } else {
         None
     };
 
-    Ok(HashChain::new()
-        .chain(&block.header.block_number.0.into())
-        .chain(&block.header.state_root.0)
+    Ok(BlockHash(
+        HashChain::new()
+        .chain(&header.block_number.0.into())
+        .chain(&header.state_root.0)
         .chain_if_fn(
             || {
                 if version == BlockHashVersion::V2 {
                     Some(get_chain_sequencer_address(chain_id))
                 } else {
-                    Some(*block.header.sequencer.0.key())
+                    Some(*header.sequencer.0.key())
                 }
             }
         )
         .chain_if_fn(|| {
             if version >= BlockHashVersion::V1 {
-                Some(block.header.timestamp.0.into())
+                Some(header.timestamp.0.into())
             } else {
                 Some(*ZERO)
             }
         })
-        .chain(&n_transactions)
-        .chain(&transactions_patricia_root)
-        .chain(&n_events)
-        .chain(&events_patricia_root)
+        .chain(&usize_into_felt(header.n_transactions.ok_or(BlockHashError::MissingHeaderData)?))
+        .chain(&header.transaction_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
+        .chain(&usize_into_felt(header.n_events.ok_or(BlockHashError::MissingHeaderData)?))
+        .chain(&header.event_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
         .chain(&ZERO) // Not implemented Element.
         .chain(&ZERO) // Not implemented Element.
         .chain_if_fn(|| {
             chain_id_as_felt
         })
 
-        .chain(&block.header.parent_hash.0).get_pedersen_hash())
+        .chain(&header.parent_hash.0).get_pedersen_hash(),
+    ))
 }
 
-// Returns the number of the transactions, and the Patricia root of the transactions.
-fn get_transactions_hash_data(
+// Returns the transaction commitment.
+fn calculate_transaction_commitment_by_version(
     block_body: &BlockBody,
     version: &BlockHashVersion,
-) -> Result<(StarkFelt, StarkFelt), StarknetApiError> {
-    let n_transactions = usize_into_felt(block_body.transactions.len());
+) -> Result<TransactionCommitment, BlockHashError> {
     let transaction_patricia_leaves =
         zip(block_body.transactions.iter(), block_body.transaction_hashes.iter())
             .map(|(transaction, transaction_hash)| {
@@ -105,7 +132,7 @@ fn get_transactions_hash_data(
             })
             .collect::<Result<Vec<_>, _>>()?;
     let transactions_patricia_root = calculate_root(transaction_patricia_leaves);
-    Ok((n_transactions, transactions_patricia_root))
+    Ok(TransactionCommitment(transactions_patricia_root))
 }
 
 // Returns a Patricia leaf value for a transaction.
@@ -145,16 +172,17 @@ fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<StarkFelt> {
 }
 
 // Returns the number of the events, and the Patricia root of the events.
-fn get_events_hash_data(
+fn calculate_event_commitment_by_version(
     transaction_outputs: &[TransactionOutput],
     version: &BlockHashVersion,
-) -> (StarkFelt, StarkFelt) {
+) -> EventCommitment {
     if version < &BlockHashVersion::V1 {
-        return (*ZERO, *ZERO);
+        return EventCommitment(*ZERO);
     }
     let event_patricia_leaves: Vec<_> =
         transaction_outputs.iter().flat_map(|output| output.events()).map(get_event_leaf).collect();
-    (usize_into_felt(event_patricia_leaves.len()), calculate_root(event_patricia_leaves))
+    let event_patricia_root = calculate_root(event_patricia_leaves);
+    EventCommitment(event_patricia_root)
 }
 
 // Returns a Patricia leaf value for an event.
