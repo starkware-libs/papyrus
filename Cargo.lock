@@ -5694,6 +5694,7 @@ dependencies = [
  "starknet-crypto 0.5.2",
  "starknet_api",
  "test_utils",
+ "thiserror",
 ]
 
 [[package]]

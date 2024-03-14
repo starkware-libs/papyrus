@@ -4,22 +4,22 @@
     "parent_hash": "0x43e4033e5c881610a6d6aff2ee84eb9ae703ea7e5412ed19b285852d5c3812b",
     "block_number": 832,
     "l1_gas_price": {
-      "price_in_wei": "0x0",
-      "price_in_fri": "0x0"
+      "price_in_fri": "0x0",
+      "price_in_wei": "0x0"
     },
     "l1_data_gas_price": {
-      "price_in_wei": "0x0",
-      "price_in_fri": "0x0"
+      "price_in_fri": "0x1",
+      "price_in_wei": "0x1"
     },
     "state_root": "0x3810b7805897aff09b3bba1d41fe2eb21a3853d98553794928684d1089f25cf",
     "sequencer": "0x0",
     "timestamp": 1643150436,
     "l1_da_mode": "CALLDATA",
-    "transaction_commitment": "0x0",
+    "transaction_commitment": "0x053191054b8acc338d6624212707ac73ec274150a032ac34fc2a5f22f0ff8104",
     "event_commitment": "0x0",
-    "n_transactions": 0,
+    "n_transactions": 31,
     "n_events": 0,
-    "starknet_version": "test"
+    "starknet_version": ""
   },
   "body": {
     "transactions": [
@@ -458,53 +458,10 @@
           "execution_resources": {
             "steps": 165,
             "builtin_instance_counter": {
-              "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 7,
-              "pedersen_builtin_applications": 2
-            },
-            "memory_holes": 22,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
-          }
-        }
-      },
-      {
-        "Invoke": {
-          "actual_fee": "0x0",
-          "messages_sent": [],
-          "events": [],
-          "execution_status": "SUCCEEDED",
-          "execution_resources": {
-            "steps": 752,
-            "builtin_instance_counter": {
-              "range_check_builtin_applications": 14,
-              "pedersen_builtin_applications": 12,
-              "ec_op_builtin_applications": 0,
-              "bitwise_builtin_applications": 0,
-              "ecdsa_builtin_applications": 1
-            },
-            "memory_holes": 22,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
-          }
-        }
-      },
-      {
-        "Deploy": {
-          "actual_fee": "0x0",
-          "messages_sent": [],
-          "events": [],
-          "contract_address": "0x50eca84f6604030dc4ee03f2671ea5fec3018e06b18f4987bfab02f37f9a621",
-          "execution_status": "SUCCEEDED",
-          "execution_resources": {
-            "steps": 68,
-            "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
-              "bitwise_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
               "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
@@ -522,13 +479,56 @@
           "execution_resources": {
             "steps": 752,
             "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 1,
               "pedersen_builtin_applications": 12,
               "ec_op_builtin_applications": 0,
-              "ecdsa_builtin_applications": 1,
               "range_check_builtin_applications": 14,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 22,
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
+          }
+        }
+      },
+      {
+        "Deploy": {
+          "actual_fee": "0x0",
+          "messages_sent": [],
+          "events": [],
+          "contract_address": "0x50eca84f6604030dc4ee03f2671ea5fec3018e06b18f4987bfab02f37f9a621",
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 68,
+            "builtin_instance_counter": {
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
+            },
+            "memory_holes": 0,
+            "da_l1_gas_consumed": 0,
+            "da_l1_data_gas_consumed": 0
+          }
+        }
+      },
+      {
+        "Invoke": {
+          "actual_fee": "0x0",
+          "messages_sent": [],
+          "events": [],
+          "execution_status": "SUCCEEDED",
+          "execution_resources": {
+            "steps": 752,
+            "builtin_instance_counter": {
+              "range_check_builtin_applications": 14,
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 12,
+              "ecdsa_builtin_applications": 1,
+              "bitwise_builtin_applications": 0
+            },
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -543,13 +543,13 @@
           "execution_resources": {
             "steps": 165,
             "builtin_instance_counter": {
-              "pedersen_builtin_applications": 2,
-              "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
               "range_check_builtin_applications": 7,
-              "ecdsa_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 2,
+              "ec_op_builtin_applications": 0
             },
-            "memory_holes": 22,
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -565,11 +565,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -595,13 +595,13 @@
           "execution_resources": {
             "steps": 71,
             "builtin_instance_counter": {
-              "ecdsa_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
-              "range_check_builtin_applications": 1,
+              "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 1,
               "bitwise_builtin_applications": 0
             },
-            "memory_holes": 1,
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -617,11 +617,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
-              "bitwise_builtin_applications": 0
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -638,10 +638,10 @@
           "execution_resources": {
             "steps": 178,
             "builtin_instance_counter": {
-              "ecdsa_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0
             },
             "memory_holes": 0,
@@ -660,11 +660,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
-              "bitwise_builtin_applications": 0
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -691,10 +691,10 @@
             "steps": 31,
             "builtin_instance_counter": {
               "bitwise_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
-              "pedersen_builtin_applications": 0
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -711,11 +711,11 @@
           "execution_resources": {
             "steps": 178,
             "builtin_instance_counter": {
+              "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
-              "pedersen_builtin_applications": 0
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -732,11 +732,11 @@
           "execution_resources": {
             "steps": 25,
             "builtin_instance_counter": {
-              "pedersen_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "bitwise_builtin_applications": 0
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -754,11 +754,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
               "range_check_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
-              "bitwise_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -776,11 +776,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
+              "range_check_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -806,13 +806,13 @@
           "execution_resources": {
             "steps": 71,
             "builtin_instance_counter": {
-              "ec_op_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
-              "range_check_builtin_applications": 1,
               "bitwise_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 1,
+              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
-            "memory_holes": 1,
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -828,11 +828,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
               "range_check_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
-              "pedersen_builtin_applications": 0
+              "ecdsa_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -850,11 +850,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "range_check_builtin_applications": 0
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -872,10 +872,10 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
               "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
@@ -893,11 +893,11 @@
           "execution_resources": {
             "steps": 25,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
-              "bitwise_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "range_check_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -914,11 +914,11 @@
           "execution_resources": {
             "steps": 25,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "ec_op_builtin_applications": 0
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -936,11 +936,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "pedersen_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
               "range_check_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0
+              "pedersen_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -957,13 +957,13 @@
           "execution_resources": {
             "steps": 169,
             "builtin_instance_counter": {
+              "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 7,
               "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 2,
-              "ecdsa_builtin_applications": 0
+              "pedersen_builtin_applications": 2
             },
-            "memory_holes": 20,
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -979,11 +979,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
               "range_check_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "pedersen_builtin_applications": 0
+              "pedersen_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "ec_op_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -1001,11 +1001,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
               "range_check_builtin_applications": 0,
-              "ec_op_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -1023,11 +1023,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "range_check_builtin_applications": 0,
-              "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0,
+              "ecdsa_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
-              "ecdsa_builtin_applications": 0
+              "ec_op_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -1053,10 +1053,10 @@
           "execution_resources": {
             "steps": 31,
             "builtin_instance_counter": {
-              "ec_op_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
               "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
               "ecdsa_builtin_applications": 0
             },
             "memory_holes": 0,
@@ -1074,13 +1074,13 @@
           "execution_resources": {
             "steps": 752,
             "builtin_instance_counter": {
+              "ec_op_builtin_applications": 0,
+              "bitwise_builtin_applications": 0,
               "range_check_builtin_applications": 14,
               "ecdsa_builtin_applications": 1,
-              "pedersen_builtin_applications": 12,
-              "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0
+              "pedersen_builtin_applications": 12
             },
-            "memory_holes": 22,
+            "memory_holes": 0,
             "da_l1_gas_consumed": 0,
             "da_l1_data_gas_consumed": 0
           }
@@ -1104,11 +1104,11 @@
           "execution_resources": {
             "steps": 332,
             "builtin_instance_counter": {
-              "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
+              "pedersen_builtin_applications": 0,
               "ecdsa_builtin_applications": 0,
-              "range_check_builtin_applications": 0
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -1126,11 +1126,11 @@
           "execution_resources": {
             "steps": 68,
             "builtin_instance_counter": {
-              "ecdsa_builtin_applications": 0,
               "range_check_builtin_applications": 0,
-              "pedersen_builtin_applications": 0,
+              "ec_op_builtin_applications": 0,
               "bitwise_builtin_applications": 0,
-              "ec_op_builtin_applications": 0
+              "ecdsa_builtin_applications": 0,
+              "pedersen_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
@@ -1148,10 +1148,10 @@
             "steps": 238,
             "builtin_instance_counter": {
               "ecdsa_builtin_applications": 0,
-              "range_check_builtin_applications": 0,
               "ec_op_builtin_applications": 0,
-              "bitwise_builtin_applications": 0,
-              "pedersen_builtin_applications": 0
+              "pedersen_builtin_applications": 0,
+              "range_check_builtin_applications": 0,
+              "bitwise_builtin_applications": 0
             },
             "memory_holes": 0,
             "da_l1_gas_consumed": 0,
