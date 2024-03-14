@@ -51,6 +51,7 @@ use starknet_api::block::{
 use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
@@ -77,6 +78,8 @@ pub(crate) struct StorageBlockHeader {
     pub state_diff_commitment: Option<StateDiffCommitment>,
     pub transaction_commitment: Option<TransactionCommitment>,
     pub event_commitment: Option<EventCommitment>,
+    pub receipt_commitment: Option<ReceiptCommitment>,
+    pub state_diff_length: Option<usize>,
     pub n_transactions: Option<usize>,
     pub n_events: Option<usize>,
 }
@@ -173,6 +176,8 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
             state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
+            receipt_commitment: block_header.receipt_commitment,
+            state_diff_length: block_header.state_diff_length,
             n_transactions: block_header.n_transactions,
             n_events: block_header.n_events,
             starknet_version,
@@ -249,6 +254,8 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
+            receipt_commitment: block_header.receipt_commitment,
+            state_diff_length: block_header.state_diff_length,
             n_transactions: block_header.n_transactions,
             n_events: block_header.n_events,
         };
@@ -353,6 +360,8 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 state_diff_commitment: reverted_header.state_diff_commitment,
                 transaction_commitment: reverted_header.transaction_commitment,
                 event_commitment: reverted_header.event_commitment,
+                receipt_commitment: reverted_header.receipt_commitment,
+                state_diff_length: reverted_header.state_diff_length,
                 n_transactions: reverted_header.n_transactions,
                 n_events: reverted_header.n_events,
                 starknet_version,

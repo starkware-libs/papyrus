@@ -38,6 +38,7 @@ use starknet_api::core::{
     GlobalRoot,
     Nonce,
     PatriciaKey,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
@@ -154,6 +155,8 @@ auto_storage_serde! {
         pub state_diff_commitment: Option<StateDiffCommitment>,
         pub transaction_commitment: Option<TransactionCommitment>,
         pub event_commitment: Option<EventCommitment>,
+        pub receipt_commitment: Option<ReceiptCommitment>,
+        pub state_diff_length: Option<usize>,
         pub n_transactions: Option<usize>,
         pub n_events: Option<usize>,
     }
@@ -333,6 +336,7 @@ auto_storage_serde! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
+    pub struct ReceiptCommitment(pub StarkHash);
     pub enum Resource {
         L1Gas = 0,
         L2Gas = 1,

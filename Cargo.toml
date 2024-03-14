@@ -125,4 +125,4 @@ url = "2.2.2"
 validator = "0.12"
 
 [patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "1fc73f22a4e4bcc453eb25bea898256bba3bdf27" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541" }
