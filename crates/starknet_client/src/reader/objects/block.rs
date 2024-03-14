@@ -346,6 +346,10 @@ impl BlockOrDeprecated {
             state_diff_commitment: Some(StateDiffCommitment(PoseidonHash(state_diff_commitment.0))),
             transaction_commitment,
             event_commitment,
+            // TODO(shahak): Add receipt commitment once it's added to the FGW
+            receipt_commitment: None,
+            // TODO(shahak): Add state diff length once it's added to the FGW
+            state_diff_length: None,
             n_transactions,
             n_events,
             starknet_version: StarknetVersion(self.starknet_version()),

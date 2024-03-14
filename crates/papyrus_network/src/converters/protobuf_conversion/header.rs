@@ -164,9 +164,14 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 sequencer,
                 timestamp,
                 l1_da_mode,
+                // TODO(shahak): fill this.
                 state_diff_commitment: None,
                 transaction_commitment,
                 event_commitment,
+                // TODO(shahak): fill this.
+                state_diff_length: None,
+                // TODO(shahak): fill this.
+                receipt_commitment: None,
                 n_transactions,
                 n_events,
                 starknet_version,
