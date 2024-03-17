@@ -12,7 +12,6 @@ pub mod streamed_bytes;
 mod test_utils;
 use std::collections::{BTreeMap, HashMap};
 use std::pin::Pin;
-use std::str::FromStr;
 use std::time::Duration;
 use std::usize;
 
@@ -21,9 +20,9 @@ use derive_more::Display;
 use enum_iterator::Sequence;
 use futures::Stream;
 use lazy_static::lazy_static;
-use libp2p::{PeerId, StreamProtocol};
+use libp2p::{Multiaddr, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
+use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use prost::{EncodeError, Message};
 use protobuf_messages::protobuf;
@@ -40,16 +39,7 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
-    pub peer: Option<PeerAddressConfig>,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub struct PeerAddressConfig {
-    pub peer_id: PeerId,
-    pub ip: String,
-    pub tcp_port: u16,
-    // TODO: Add quic_port as optional, and make tcp_port optional as well while enforcing at least
-    // one of them to have value
+    pub peer_multiaddr: Option<Multiaddr>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Clone, Copy, Display)]
@@ -241,7 +231,13 @@ impl SerializeConfig for NetworkConfig {
                 ParamPrivacyInput::Public,
             ),
         ]);
-        config.extend(ser_optional_sub_config(&self.peer, "peer"));
+        config.extend(ser_optional_param(
+            &self.peer_multiaddr,
+            Multiaddr::empty(),
+            "peer_multiaddress",
+            "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+            ParamPrivacyInput::Public,
+        ));
         config
     }
 }
@@ -254,42 +250,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
-            peer: None,
-        }
-    }
-}
-
-impl SerializeConfig for PeerAddressConfig {
-    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([
-            ser_param(
-                "ip",
-                &self.ip,
-                "The ipv4 address of another peer that the node will dial to.",
-                ParamPrivacyInput::Public,
-            ),
-            ser_param(
-                "tcp_port",
-                &self.tcp_port,
-                "The port on the other peer that the node will dial to to use for TCP transport.",
-                ParamPrivacyInput::Public,
-            ),
-            ser_param(
-                "peer_id", 
-                &self.peer_id,
-                "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/", ParamPrivacyInput::Public),
-        ])
-    }
-}
-
-// TODO: remove default implementation once config stops requiring it.
-impl Default for PeerAddressConfig {
-    fn default() -> Self {
-        Self {
-            peer_id: PeerId::from_str("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N")
-                .expect("QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N should be a valid peer ID"),
-            ip: "127.0.0.1".to_string(),
-            tcp_port: 10002,
+            peer_multiaddr: None,
         }
     }
 }

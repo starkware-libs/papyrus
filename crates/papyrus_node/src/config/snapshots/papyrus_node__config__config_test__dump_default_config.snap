@@ -123,27 +123,15 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
-  "network.peer.#is_none": {
+  "network.peer_multiaddress": {
+    "description": "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+    "value": "",
+    "privacy": "Public"
+  },
+  "network.peer_multiaddress.#is_none": {
     "description": "Flag for an optional field",
     "value": true,
     "privacy": "TemporaryValue"
-  },
-  "network.peer.ip": {
-    "description": "The ipv4 address of another peer that the node will dial to.",
-    "value": "127.0.0.1",
-    "privacy": "Public"
-  },
-  "network.peer.peer_id": {
-    "description": "Peer ID to send requests to. If not set, the node will not send requests. for info: https://docs.libp2p.io/concepts/fundamentals/peers/",
-    "value": "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N",
-    "privacy": "Public"
-  },
-  "network.peer.tcp_port": {
-    "description": "The port on the other peer that the node will dial to to use for TCP transport.",
-    "value": {
-      "$serde_json::private::Number": "10002"
-    },
-    "privacy": "Public"
   },
   "network.quic_port": {
     "description": "The port that the node listens on for incoming quic connections.",
