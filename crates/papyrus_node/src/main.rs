@@ -2,7 +2,7 @@
 mod main_test;
 
 use std::env::args;
-use std::future::{self, pending};
+use std::future::{pending, Future};
 use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
@@ -22,6 +22,7 @@ use papyrus_network::{network_manager, NetworkConfig, Protocol, Query, ResponseR
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+#[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
 use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerSource};
@@ -34,7 +35,7 @@ use starknet_api::stark_felt;
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinError, JoinHandle};
 use tracing::metadata::LevelFilter;
 use tracing::{debug_span, error, info, warn, Instrument};
 use tracing_subscriber::prelude::*;
@@ -47,13 +48,44 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 // Duration between updates to the storage metrics (those in the collect_storage_metrics function).
 const STORAGE_METRICS_UPDATE_INTERVAL: Duration = Duration::from_secs(10);
 
+#[cfg(feature = "rpc")]
+async fn create_rpc_server_future(
+    config: &NodeConfig,
+    shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    pending_data: Arc<RwLock<PendingData>>,
+    pending_classes: Arc<RwLock<PendingClasses>>,
+    storage_reader: StorageReader,
+) -> anyhow::Result<impl Future<Output = Result<(), JoinError>>> {
+    let (_, server_handle) = run_server(
+        &config.rpc,
+        shared_highest_block,
+        pending_data,
+        pending_classes,
+        storage_reader,
+        VERSION_FULL,
+    )
+    .await?;
+    Ok(tokio::spawn(server_handle.stopped()))
+}
+
+#[cfg(not(feature = "rpc"))]
+async fn create_rpc_server_future(
+    _config: &NodeConfig,
+    _shared_highest_block: Arc<RwLock<Option<BlockHashAndNumber>>>,
+    _pending_data: Arc<RwLock<PendingData>>,
+    _pending_classes: Arc<RwLock<PendingClasses>>,
+    _storage_reader: StorageReader,
+) -> anyhow::Result<impl Future<Output = Result<(), JoinError>>> {
+    Ok(pending())
+}
+
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.clone())?;
 
     let storage_metrics_handle = if config.monitoring_gateway.collect_metrics {
         spawn_storage_metrics_collector(storage_reader.clone(), STORAGE_METRICS_UPDATE_INTERVAL)
     } else {
-        tokio::spawn(future::pending())
+        tokio::spawn(pending())
     };
 
     // Monitoring server.
@@ -80,16 +112,14 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let pending_classes = Arc::new(RwLock::new(PendingClasses::default()));
 
     // JSON-RPC server.
-    let (_, server_handle) = run_server(
-        &config.rpc,
+    let server_handle_future = create_rpc_server_future(
+        &config,
         shared_highest_block.clone(),
         pending_data.clone(),
         pending_classes.clone(),
         storage_reader.clone(),
-        VERSION_FULL,
     )
     .await?;
-    let server_handle_future = tokio::spawn(server_handle.stopped());
 
     // P2P network.
     let (network_future, maybe_query_sender_and_response_receivers) =
