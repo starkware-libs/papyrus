@@ -24,7 +24,7 @@ use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_proc_macros::latency_histogram;
-use papyrus_storage::base_layer::BaseLayerStorageWriter;
+use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
 use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::db::DbError;
@@ -518,12 +518,14 @@ impl<
                 l2_hash: expected_hash,
             });
         }
-        info!("Verified block {block_number} hash against base layer.");
-        txn.update_base_layer_block_marker(&block_number.unchecked_next())?.commit()?;
-        metrics::gauge!(
-            papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER,
-            block_number.unchecked_next().0 as f64
-        );
+        if txn.get_base_layer_block_marker()? != block_number.unchecked_next() {
+            info!("Verified block {block_number} hash against base layer.");
+            txn.update_base_layer_block_marker(&block_number.unchecked_next())?.commit()?;
+            metrics::gauge!(
+                papyrus_metrics::PAPYRUS_BASE_LAYER_MARKER,
+                block_number.unchecked_next().0 as f64
+            );
+        }
         Ok(())
     }
 
