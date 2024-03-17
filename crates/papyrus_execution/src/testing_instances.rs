@@ -42,7 +42,8 @@ pub fn test_block_execution_config() -> BlockExecutionConfig {
     let execution_config = test_get_default_execution_config();
     let mut block_execution_config =
         execution_config.execution_config_segments.get(&BlockNumber(0)).unwrap().clone();
-    block_execution_config.fee_contract_address = contract_address!("0x1001");
+    block_execution_config.eth_fee_contract_address = contract_address!("0x1001");
+    block_execution_config.strk_fee_contract_address = contract_address!("0x1001");
     block_execution_config
 }
 
