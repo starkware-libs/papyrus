@@ -5,6 +5,9 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[features]
+compare_endpoints = []
+
 [dependencies]
 anyhow.workspace = true
 assert_matches.workspace = true
@@ -18,4 +21,5 @@ rand.workspace = true
 reqwest.workspace = true
 
 [dev-dependencies]
+lazy_static.workspace = true
 pretty_assertions.workspace = true
