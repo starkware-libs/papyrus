@@ -3,6 +3,9 @@
 // within this crate
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
+#[cfg(feature = "compare_endpoints")]
+#[cfg(test)]
+mod compare_endpoints;
 pub mod create_files;
 pub mod create_request;
 #[cfg(test)]
