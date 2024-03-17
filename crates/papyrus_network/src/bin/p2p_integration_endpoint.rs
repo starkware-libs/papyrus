@@ -2,8 +2,8 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use clap::Parser;
-use libp2p::PeerId;
-use papyrus_network::{network_manager, NetworkConfig, PeerAddressConfig};
+use libp2p::Multiaddr;
+use papyrus_network::{network_manager, NetworkConfig};
 use papyrus_storage::{open_storage, StorageConfig};
 
 /// A dummy P2P capable node for integration with other P2P capable nodes.
@@ -18,17 +18,9 @@ struct Args {
     #[arg(short, long)]
     quic_port: u16,
 
-    /// Id of the peer node.
+    /// Multiaddress of the peer node.
     #[arg(short, long)]
-    peer_id: String,
-
-    /// IP address of the peer node.
-    #[arg(short, long)]
-    peer_ip: String,
-
-    /// TCP port the peer node listens on.
-    #[arg(short, long)]
-    peer_tcp_port: u16,
+    peer_multiaddr: String,
 
     /// Amount of time (in seconds) to wait until closing an idle connection.
     #[arg(short = 't', long, default_value_t = 1)]
@@ -48,11 +40,9 @@ async fn main() {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(args.idle_connection_timeout),
             header_buffer_size: 100000,
-            peer: Some(PeerAddressConfig {
-                peer_id: PeerId::from_str(&args.peer_id).expect("Invalid peer ID"),
-                tcp_port: args.peer_tcp_port,
-                ip: args.peer_ip,
-            }),
+            peer_multiaddr: Some(
+                Multiaddr::from_str(&args.peer_multiaddr).expect("failed to parse peer multiaddr"),
+            ),
         },
         storage_reader,
     );

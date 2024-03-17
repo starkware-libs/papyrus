@@ -9,7 +9,7 @@ use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
 use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use libp2p::PeerId;
+use libp2p::{Multiaddr, PeerId};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -29,7 +29,7 @@ use crate::db_executor::{
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 #[derive(Default)]
 struct MockSwarm {
@@ -133,7 +133,7 @@ impl SwarmTrait for MockSwarm {
         Ok(outbound_session_id)
     }
 
-    fn dial(&mut self, _peer: PeerAddressConfig) -> Result<(), libp2p::swarm::DialError> {
+    fn dial(&mut self, _peer: Multiaddr) -> Result<(), libp2p::swarm::DialError> {
         Ok(())
     }
 }
@@ -193,7 +193,7 @@ async fn register_subscriber_and_use_channels() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
+        Some(Multiaddr::empty().with_p2p(PeerId::random()).expect("Failed to create multiaddr")),
     );
     // define query
     let query_limit = 5;

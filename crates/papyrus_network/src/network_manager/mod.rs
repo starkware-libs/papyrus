@@ -10,7 +10,7 @@ use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::Swarm;
+use libp2p::{Multiaddr, PeerId, Swarm};
 use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
 
@@ -20,7 +20,7 @@ use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
 use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
+use crate::{DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -38,15 +38,16 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
-    peer: Option<PeerAddressConfig>,
+    peer_multiaddr: Option<Multiaddr>,
+    peer_id: Option<PeerId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
     pub async fn run(mut self) -> Result<(), NetworkError> {
-        if let Some(peer) = self.peer.clone() {
-            debug!("Starting network manager connected to peer: {peer:?}");
-            self.swarm.dial(peer)?;
+        if let Some(peer_multiaddr) = self.peer_multiaddr.clone() {
+            debug!("Starting network manager connected to peer: {peer_multiaddr:?}");
+            self.swarm.dial(peer_multiaddr)?;
         } else {
             debug!("Starting network manager not connected to any peer.");
         }
@@ -66,7 +67,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
-        peer: Option<PeerAddressConfig>,
+        peer_multiaddr: Option<Multiaddr>,
     ) -> Self {
         Self {
             swarm,
@@ -75,8 +76,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
-            peer,
+            peer_multiaddr,
             outbound_session_id_to_protocol: HashMap::new(),
+            peer_id: None,
         }
     }
 
@@ -93,8 +95,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
         match event {
-            SwarmEvent::ConnectionEstablished { .. } => {
+            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 debug!("Connected to a peer!");
+                self.peer_id = Some(peer_id);
             }
             SwarmEvent::NewListenAddr { .. }
             | SwarmEvent::IncomingConnection { .. }
@@ -241,12 +244,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
-        let peer_id = self
-            .peer
-            .clone()
-            .expect("Cannot send query without peer")
-            // TODO: get peer id from swarm after dial id not received in config.
-            .peer_id;
+        let peer_id = self.peer_id.expect("peer id not configured");
         let mut query_bytes = vec![];
         query.encode(&mut query_bytes).expect("failed to encode query");
         match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
@@ -273,7 +271,7 @@ impl NetworkManager {
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
-            peer,
+            peer_multiaddr,
         } = config;
 
         let listen_addresses = vec![
@@ -291,6 +289,6 @@ impl NetworkManager {
         );
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
-        Self::generic_new(swarm, db_executor, header_buffer_size, peer)
+        Self::generic_new(swarm, db_executor, header_buffer_size, peer_multiaddr)
     }
 }

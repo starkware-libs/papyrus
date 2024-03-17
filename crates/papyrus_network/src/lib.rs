@@ -21,9 +21,9 @@ use derive_more::Display;
 #[cfg(test)]
 use enum_iterator::Sequence;
 use futures::Stream;
-use libp2p::{PeerId, StreamProtocol};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
+use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use prost::{EncodeError, Message};
 use protobuf_messages::protobuf;
@@ -40,7 +40,7 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
-    pub peer: Option<PeerAddressConfig>,
+    pub peer_multiaddr: Option<Multiaddr>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -227,7 +227,13 @@ impl SerializeConfig for NetworkConfig {
                 ParamPrivacyInput::Public,
             ),
         ]);
-        config.extend(ser_optional_sub_config(&self.peer, "peer"));
+        config.extend(ser_optional_param(
+            &self.peer_multiaddr,
+            Multiaddr::empty(),
+            "peer_multiaddress",
+            "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+            ParamPrivacyInput::Public,
+        ));
         config
     }
 }
@@ -240,7 +246,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
-            peer: None,
+            peer_multiaddr: None,
         }
     }
 }
