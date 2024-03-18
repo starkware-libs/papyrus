@@ -5727,6 +5727,7 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.10.5",
  "lazy_static",
+ "once_cell",
  "papyrus_common",
  "papyrus_config",
  "papyrus_storage",
