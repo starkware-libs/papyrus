@@ -38,8 +38,8 @@ pub enum BlockHashVersion {
 // /// Validates hash of a starknet header.
 // /// A hash is valid if it is the result of one of the hash functions that were ever used in
 // /// Starknet.
-// pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool, BlockHashError> {
-//     for version in
+// pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool, BlockHashError>
+// {     for version in
 //         [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
 //     {
 //         if calculate_block_hash_by_version(header, version, chain_id)? == header.block_hash {
@@ -73,7 +73,8 @@ pub fn validate_body(
     Ok(false)
 }
 
-/// Calculates hash of a starknet block by version, ignoring the block hash field in the given block.
+/// Calculates hash of a starknet block by version, ignoring the block hash field in the given
+/// block.
 pub fn calculate_block_hash_by_version(
     header: &BlockHeader,
     version: BlockHashVersion,
@@ -121,7 +122,7 @@ pub fn calculate_block_hash_by_version(
 }
 
 // Returns the transaction commitment.
-fn calculate_transaction_commitment_by_version(
+pub fn calculate_transaction_commitment_by_version(
     block_body: &BlockBody,
     version: &BlockHashVersion,
 ) -> Result<TransactionCommitment, BlockHashError> {
@@ -172,7 +173,7 @@ fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<StarkFelt> {
 }
 
 // Returns the number of the events, and the Patricia root of the events.
-fn calculate_event_commitment_by_version(
+pub fn calculate_event_commitment_by_version(
     transaction_outputs: &[TransactionOutput],
     version: &BlockHashVersion,
 ) -> EventCommitment {
