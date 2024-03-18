@@ -5749,6 +5749,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "goose",
+ "lazy_static",
  "once_cell",
  "pretty_assertions",
  "rand",
