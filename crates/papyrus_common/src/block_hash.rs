@@ -28,26 +28,26 @@ pub enum BlockHashError {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
-enum BlockHashVersion {
+pub enum BlockHashVersion {
     V0,
     V1,
     V2,
     V3,
 }
 
-/// Validates hash of a starknet header.
-/// A hash is valid if it is the result of one of the hash functions that were ever used in
-/// Starknet.
-pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool, BlockHashError> {
-    for version in
-        [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
-    {
-        if calculate_block_hash_by_version(header, version, chain_id)? == header.block_hash {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
+// /// Validates hash of a starknet header.
+// /// A hash is valid if it is the result of one of the hash functions that were ever used in
+// /// Starknet.
+// pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool, BlockHashError> {
+//     for version in
+//         [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
+//     {
+//         if calculate_block_hash_by_version(header, version, chain_id)? == header.block_hash {
+//             return Ok(true);
+//         }
+//     }
+//     Ok(false)
+// }
 
 /// Validates the body of a starknet block.
 pub fn validate_body(
@@ -73,8 +73,8 @@ pub fn validate_body(
     Ok(false)
 }
 
-// Calculates hash of a starknet block by version, ignoring the block hash field in the given block.
-fn calculate_block_hash_by_version(
+/// Calculates hash of a starknet block by version, ignoring the block hash field in the given block.
+pub fn calculate_block_hash_by_version(
     header: &BlockHeader,
     version: BlockHashVersion,
     chain_id: &ChainId,
