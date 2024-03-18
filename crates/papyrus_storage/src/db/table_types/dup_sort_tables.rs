@@ -36,8 +36,8 @@ pub(crate) struct CommonPrefix;
 impl DupSortTableType for CommonPrefix {}
 
 // TODO(dvir): consider move this to the end of the file.
-// This trait is the functionality that table types using libmdbx DUP_SORT feature should implement
-// to be auto implement the Table trait for them (and cursor trait).
+// This trait represents the required functionality for table types using libmdbx DUP_SORT feature,
+// ensuring their automatic implementation of the Table trait (along with the cursor trait).
 trait DupSortUtils<K: KeyTrait, V: ValueSerde> {
     // Returns the main key bytes.
     fn get_main_key(key: &K) -> DbResult<Vec<u8>>;
@@ -56,7 +56,7 @@ trait DupSortUtils<K: KeyTrait, V: ValueSerde> {
 
     // Returns a key value pair from main_key bytes and sub_key_value bytes. None will return in
     // case of a failure.
-    fn get_key_value_pair(main_key: &[u8], sub_key_value: &[u8]) -> Option<(K, V::Value)>;
+    fn get_key_value_pair(main_key: &[u8], sub_key_and_value: &[u8]) -> Option<(K, V::Value)>;
 }
 
 // TODO(dvir): consider add test for the implementation.
@@ -90,14 +90,17 @@ where
 
     fn get_key_value_pair(
         mut main_key: &[u8],
-        mut sub_key_value: &[u8],
+        mut sub_key_and_value: &[u8],
     ) -> Option<((MainKey, SubKey), V::Value)> {
         // The SubKey::deserialize_from and not SubKey::deserialize is because the deserialize
         // function also checks all the bytes were used, which is not the case before
         // deserialize also the value from sub_key_value.
         Some((
-            (MainKey::deserialize(&mut main_key)?, SubKey::deserialize_from(&mut sub_key_value)?),
-            V::Value::deserialize(&mut sub_key_value)?,
+            (
+                MainKey::deserialize(&mut main_key)?,
+                SubKey::deserialize_from(&mut sub_key_and_value)?,
+            ),
+            V::Value::deserialize(&mut sub_key_and_value)?,
         ))
     }
 }
