@@ -30,9 +30,12 @@ COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 # Copy the dump_declared_classes executable.
 COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
 
+# Set the PATH environment variable to enable running an executable only with its name.
+ENV PATH="/app/target/release:${PATH}"
+
 ENTRYPOINT echo -e \
-"There is no default executable for this image. Run the executables directly using the --entrypoint flag.\n\
+"There is no default executable for this image. Run an executable using its name or path to it.\n\
 The available executables are:\n\
- - papyrus_load_test in path /app/target/release/papyrus_load_test\n\
- - dump_declared_classes in path /app/target/release/dump_declared_classes\n\
-Example: docker run --entrypoint /app/target/release/papyrus_load_test <image>"
+ - papyrus_load_test, performs a stress test on a node RPC gateway.\n\
+ - dump_declared_classes, dumps the declared_classes table from the storage to a file.\n\
+For example, in a docker runtime: docker run --entrypoint papyrus_load_test <image>"
