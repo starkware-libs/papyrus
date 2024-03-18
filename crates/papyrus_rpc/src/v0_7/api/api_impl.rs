@@ -6,14 +6,14 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::{PendingClasses, PendingClassesTrait};
-use papyrus_execution::objects::{PendingData as ExecutionPendingData, TransactionTrace};
+use papyrus_execution::objects::{FeeEstimation, PendingData as ExecutionPendingData};
 use papyrus_execution::{
     estimate_fee as exec_estimate_fee,
     execute_call,
     execution_utils,
     simulate_transactions as exec_simulate_transactions,
     ExecutableTransactionInput,
-    ExecutionConfigByBlock,
+    ExecutionConfig,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -76,6 +76,7 @@ use super::super::error::{
     TOO_MANY_KEYS_IN_FILTER,
     TRANSACTION_HASH_NOT_FOUND,
 };
+use super::super::execution::TransactionTrace;
 use super::super::state::{AcceptedStateUpdate, PendingStateUpdate, StateUpdate};
 use super::super::transaction::{
     get_block_tx_hashes_by_number,
@@ -117,7 +118,6 @@ use super::{
     ContinuationToken,
     EventFilter,
     EventsChunk,
-    FeeEstimate,
     GatewayContractClass,
     JsonRpcV0_7Server as JsonRpcServer,
     SimulatedTransaction,
@@ -136,6 +136,8 @@ use crate::{
     ContinuationTokenAsStruct,
 };
 
+const DONT_IGNORE_L1_DA_MODE: bool = false;
+
 // TODO(yael): implement address 0x1 as a const function in starknet_api.
 lazy_static! {
     pub static ref BLOCK_HASH_TABLE_ADDRESS: ContractAddress = ContractAddress::from(1_u8);
@@ -144,7 +146,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
-    pub execution_config: ExecutionConfigByBlock,
+    pub execution_config: ExecutionConfig,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -337,7 +339,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let res = execution_utils::get_storage_at(
             &txn,
             state_number,
@@ -590,7 +592,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
 
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         let state_reader = txn.get_state_reader().map_err(internal_server_error)?;
 
         // The class might be a deprecated class. Search it first in the declared classes and if not
@@ -637,7 +639,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             };
 
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         execution_utils::get_class_hash_at(
             &txn,
             state_number,
@@ -665,7 +667,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Check that the block is valid and get the state number.
         let block_number = get_accepted_block_number(&txn, block_id)?;
-        let state_number = StateNumber::right_after_block(block_number);
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
         execution_utils::get_nonce_at(
             &txn,
             state_number,
@@ -708,11 +710,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
         };
         let from_block_number = match filter.from_block {
             None => BlockNumber(0),
-            Some(BlockId::Tag(Tag::Pending)) => latest_block_number.next(),
+            Some(BlockId::Tag(Tag::Pending)) => latest_block_number.unchecked_next(),
             Some(block_id) => get_accepted_block_number(&txn, block_id)?,
         };
         let mut to_block_number = match filter.to_block {
-            Some(BlockId::Tag(Tag::Pending)) | None => latest_block_number.next(),
+            Some(BlockId::Tag(Tag::Pending)) | None => latest_block_number.unchecked_next(),
             Some(block_id) => get_accepted_block_number(&txn, block_id)?,
         };
 
@@ -811,7 +813,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                             continuation_token: Some(ContinuationToken::new(
                                 ContinuationTokenAsStruct(EventIndex(
                                     TransactionIndex(
-                                        latest_block_number.next(),
+                                        latest_block_number.unchecked_next(),
                                         TransactionOffsetInBlock(transaction_offset),
                                     ),
                                     EventIndexInTransactionOutput(event_offset),
@@ -874,14 +876,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_number = get_accepted_block_number(&txn, block_id)?;
         let block_not_reverted_validator = BlockNotRevertedValidator::new(block_number, &txn)?;
         drop(txn);
-        let state_number = StateNumber::right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
         let contract_address_copy = request.contract_address;
@@ -896,7 +893,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &contract_address_copy,
                 request.entry_point_selector,
                 request.calldata,
-                &block_execution_config,
+                &execution_config,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -967,7 +965,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         transactions: Vec<BroadcastedTransaction>,
         simulation_flags: Vec<SimulationFlag>,
         block_id: BlockId,
-    ) -> RpcResult<Vec<FeeEstimate>> {
+    ) -> RpcResult<Vec<FeeEstimation>> {
         trace!("Estimating fee of transactions: {:#?}", transactions);
         let validate = !simulation_flags.contains(&SimulationFlag::SkipValidate);
 
@@ -989,14 +987,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1008,8 +1001,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 validate,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1018,10 +1012,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match estimate_fee_result {
-            Ok(Ok(fees)) => Ok(fees
-                .into_iter()
-                .map(|(gas_price, fee, unit)| FeeEstimate::from(gas_price, fee, unit))
-                .collect()),
+            Ok(Ok(fees)) => Ok(fees),
             Ok(Err(reverted_tx)) => {
                 Err(ErrorObjectOwned::from(JsonRpcError::<TransactionExecutionError>::from(
                     TransactionExecutionError {
@@ -1060,14 +1051,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1083,9 +1069,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 charge_fee,
                 validate,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1097,12 +1084,12 @@ impl JsonRpcServer for JsonRpcServerImpl {
         Ok(simulation_results
             .into_iter()
             .map(|simulation_output| SimulatedTransaction {
-                transaction_trace: simulation_output.transaction_trace,
-                fee_estimation: FeeEstimate::from(
-                    simulation_output.gas_price,
-                    simulation_output.fee,
-                    simulation_output.price_unit,
-                ),
+                transaction_trace: (
+                    simulation_output.transaction_trace,
+                    simulation_output.induced_state_diff,
+                )
+                    .into(),
+                fee_estimation: simulation_output.fee_estimation,
             })
             .collect())
     }
@@ -1132,7 +1119,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             // case we treat this as if the pending block is empty.
             let block_number =
                 get_latest_block_number(&storage_txn)?.ok_or(INVALID_TRANSACTION_HASH)?;
-            let state_number = StateNumber::right_after_block(block_number);
+            let state_number = StateNumber::unchecked_right_after_block(block_number);
             let executable_transactions = pending_block
                 .transactions()
                 .iter()
@@ -1156,6 +1143,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 timestamp: pending_block.timestamp(),
                 l1_gas_price: pending_block.l1_gas_price(),
                 l1_data_gas_price: pending_block.l1_data_gas_price(),
+                l1_da_mode: pending_block.l1_da_mode(),
                 sequencer: pending_block.sequencer_address(),
                 // The pending state diff should be empty since we look at the state in the
                 // start of the pending block.
@@ -1215,13 +1203,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         drop(storage_txn);
 
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1234,9 +1217,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 true,
                 true,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1245,10 +1229,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
-        Ok(simulation_results
-            .pop()
-            .expect("Should have transaction exeuction result")
-            .transaction_trace)
+        let simulation_result =
+            simulation_results.pop().expect("Should have transaction exeuction result");
+        Ok((simulation_result.transaction_trace, simulation_result.induced_state_diff).into())
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -1276,6 +1259,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         timestamp: client_pending_data.block.timestamp(),
                         l1_gas_price: client_pending_data.block.l1_gas_price(),
                         l1_data_gas_price: client_pending_data.block.l1_data_gas_price(),
+                        l1_da_mode: client_pending_data.block.l1_da_mode(),
                         sequencer: client_pending_data.block.sequencer_address(),
                         // The pending state diff should be empty since we look at the state in the
                         // start of the pending block.
@@ -1302,7 +1286,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                         .iter()
                         .map(|receipt| receipt.transaction_hash)
                         .collect(),
-                    StateNumber::right_after_block(block_number),
+                    StateNumber::unchecked_right_after_block(block_number),
                 ),
                 None => (
                     None,
@@ -1333,13 +1317,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         drop(storage_txn);
 
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
         let transaction_hashes_clone = transaction_hashes.clone();
@@ -1353,9 +1332,10 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 true,
                 true,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1369,7 +1349,11 @@ impl JsonRpcServer for JsonRpcServerImpl {
             .zip(transaction_hashes)
             .map(|(simulation_output, transaction_hash)| TransactionTraceWithHash {
                 transaction_hash,
-                trace_root: simulation_output.transaction_trace,
+                trace_root: (
+                    simulation_output.transaction_trace,
+                    simulation_output.induced_state_diff,
+                )
+                    .into(),
             })
             .collect())
     }
@@ -1379,7 +1363,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         message: MessageFromL1,
         block_id: BlockId,
-    ) -> RpcResult<FeeEstimate> {
+    ) -> RpcResult<FeeEstimation> {
         trace!("Estimating fee of message: {:#?}", message);
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
@@ -1401,14 +1385,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator =
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
-        let state_number = StateNumber::right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let state_number = StateNumber::unchecked_right_after_block(block_number);
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1420,8 +1399,9 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 false,
+                DONT_IGNORE_L1_DA_MODE,
             )
         })
         .await
@@ -1430,19 +1410,19 @@ impl JsonRpcServer for JsonRpcServerImpl {
         block_not_reverted_validator.validate(&self.storage_reader)?;
 
         match estimate_fee_result {
-            Ok(Ok(fee_as_vec)) => {
+            Ok(Ok(mut fee_as_vec)) => {
                 if fee_as_vec.len() != 1 {
                     return Err(internal_server_error(format!(
                         "Expected a single fee, got {}",
                         fee_as_vec.len()
                     )));
                 }
-                let Some((gas_price, fee, unit)) = fee_as_vec.first() else {
+                let Some(fee_estimation) = fee_as_vec.pop() else {
                     return Err(internal_server_error(
                         "Expected a single fee, got an empty vector",
                     ));
                 };
-                Ok(FeeEstimate::from(*gas_price, *fee, *unit))
+                Ok(fee_estimation)
             }
             // Error in the execution of the contract.
             Ok(Err(reverted_tx)) => Err(JsonRpcError::<ContractError>::from(ContractError {
@@ -1511,6 +1491,11 @@ impl JsonRpcServerImpl {
                     price_in_wei: block.l1_gas_price().price_in_wei,
                     price_in_fri: block.l1_gas_price().price_in_fri,
                 },
+                l1_data_gas_price: ResourcePrice {
+                    price_in_wei: block.l1_data_gas_price().price_in_wei,
+                    price_in_fri: block.l1_data_gas_price().price_in_fri,
+                },
+                l1_da_mode: block.l1_da_mode(),
                 starknet_version: block.starknet_version(),
             };
             let header = GeneralBlockHeader::PendingBlockHeader(pending_block_header);
@@ -1613,7 +1598,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
 impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfigByBlock,
+        execution_config: ExecutionConfig,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,

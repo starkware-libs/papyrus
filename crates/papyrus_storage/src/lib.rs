@@ -496,7 +496,7 @@ struct_field_names! {
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
-        headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 1>, SimpleTable>,
+        headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,

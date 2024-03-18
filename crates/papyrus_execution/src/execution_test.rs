@@ -1,6 +1,6 @@
 // TODO(shahak): Add a test for executing when there's a missing casm that's not required and when
 // there's a missing casm that is required.
-use std::collections::{BTreeMap, HashMap};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
@@ -11,7 +11,7 @@ use blockifier::versioned_constants::VersionedConstants;
 use indexmap::indexmap;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
-use starknet_api::block::BlockNumber;
+use starknet_api::block::{BlockNumber, StarknetVersion};
 use starknet_api::core::{
     ChainId,
     ClassHash,
@@ -29,6 +29,7 @@ use crate::execution_utils::selector_from_name;
 use crate::objects::{
     DeclareTransactionTrace,
     DeployAccountTransactionTrace,
+    FeeEstimation,
     FunctionInvocationResult,
     InvokeTransactionTrace,
     PriceUnit,
@@ -50,17 +51,19 @@ use crate::test_utils::{
     SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
-use crate::testing_instances::{test_block_execution_config, test_get_default_execution_config};
+use crate::testing_instances::test_execution_config;
 use crate::{
     estimate_fee,
     execute_call,
-    BlockExecutionConfig,
+    get_versioned_constants,
     ExecutableTransactionInput,
-    ExecutionConfigByBlock,
+    ExecutionConfig,
     ExecutionError,
     FeeEstimationResult,
     RevertedTransaction,
 };
+
+const NUM_OF_PRESET_EXECUTION_CONFIGS: usize = 5;
 
 // Test calling entry points of a deprecated class.
 #[test]
@@ -76,12 +79,13 @@ fn execute_call_cairo0() {
         storage_reader.clone(),
         None,
         &chain_id,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("without_arg"),
         Calldata::default(),
-        &test_block_execution_config(),
+        &test_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -92,12 +96,13 @@ fn execute_call_cairo0() {
         storage_reader.clone(),
         None,
         &chain_id,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
-        &test_block_execution_config(),
+        &test_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -108,12 +113,13 @@ fn execute_call_cairo0() {
         storage_reader.clone(),
         None,
         &chain_id,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
-        &test_block_execution_config(),
+        &test_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -124,12 +130,13 @@ fn execute_call_cairo0() {
         storage_reader,
         None,
         &chain_id,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(0),
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
-        &test_block_execution_config(),
+        &test_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -151,12 +158,13 @@ fn execute_call_cairo1() {
         storage_reader,
         None,
         &CHAIN_ID,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(0),
         &CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         calldata,
-        &test_block_execution_config(),
+        &test_execution_config(),
+        true,
     )
     .unwrap()
     .retdata;
@@ -173,8 +181,8 @@ fn estimate_fee_invoke() {
         .collect();
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -184,8 +192,8 @@ fn estimate_fee_declare_deprecated_class() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -195,8 +203,8 @@ fn estimate_fee_declare_class() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -206,8 +214,8 @@ fn estimate_fee_deploy_account() {
 
     let fees = estimate_fees(tx).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -222,8 +230,8 @@ fn estimate_fee_combination() {
 
     let fees = estimate_fees(txs).expect("Fee estimation should succeed.");
     for fee in fees {
-        assert_ne!(fee.1, Fee(0));
-        assert_eq!(fee.0, GAS_PRICE.price_in_wei);
+        assert_ne!(fee.overall_fee, Fee(0));
+        assert_eq!(fee.gas_price, GAS_PRICE.price_in_wei);
     }
 }
 
@@ -248,10 +256,12 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
         &CHAIN_ID,
         storage_reader,
         None,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(1),
-        &test_block_execution_config(),
+        &test_execution_config(),
         false,
+        // TODO(yair): Add test for blob fee estimation.
+        true,
     )
     .unwrap()
 }
@@ -322,7 +332,7 @@ fn simulate_invoke() {
                 fee_transfer_invocation: Some(_),
             }
         );
-        assert_eq!(charge_fee.gas_price, GAS_PRICE.price_in_wei);
+        assert_eq!(charge_fee.fee_estimation.gas_price, GAS_PRICE.price_in_wei);
 
         assert_eq!(exec_only_trace.execute_invocation, charge_fee_trace.execute_invocation);
 
@@ -613,8 +623,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
 
     let Some(TransactionSimulationOutput {
         transaction_trace: TransactionTrace::Invoke(invoke_trace),
-        fee: invoke_fee_estimation,
-        price_unit: invoke_unit,
+        fee_estimation: FeeEstimation { overall_fee: invoke_fee_estimation, unit: invoke_unit, .. },
         ..
     }) = result.pop()
     else {
@@ -622,8 +631,7 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     };
     let Some(TransactionSimulationOutput {
         transaction_trace: TransactionTrace::DeployAccount(deploy_account_trace),
-        fee: deploy_fee_estimation,
-        price_unit: deploy_unit,
+        fee_estimation: FeeEstimation { overall_fee: deploy_fee_estimation, unit: deploy_unit, .. },
         ..
     }) = result.pop()
     else {
@@ -647,94 +655,35 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
-/// Test that the execution config is loaded correctly. Compare the loaded config to the expected.
+/// Test that the execution configs are loaded correctly. Compare the loaded configs to the
+/// expected.
 #[test]
-fn test_default_execution_config() {
-    let mut vm_resource_fee_cost = HashMap::new();
-    vm_resource_fee_cost.insert("n_steps".to_owned(), 0.01);
-    vm_resource_fee_cost.insert("pedersen_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("range_check_builtin".to_owned(), 0.16);
-    vm_resource_fee_cost.insert("ecdsa_builtin".to_owned(), 20.48);
-    vm_resource_fee_cost.insert("bitwise_builtin".to_owned(), 0.64);
-    vm_resource_fee_cost.insert("poseidon_builtin".to_owned(), 0.32);
-    vm_resource_fee_cost.insert("output_builtin".to_owned(), 1.0);
-    vm_resource_fee_cost.insert("ec_op_builtin".to_owned(), 10.24);
-    vm_resource_fee_cost.insert("keccak_builtin".to_owned(), 20.48);
+fn test_preset_execution_configs() {
+    let mut execution_configs: Vec<ExecutionConfig> = Vec::new();
+    let preset_files_dir = "../../config/execution";
+    for path in preset_files_dir.parse::<PathBuf>().unwrap().read_dir().unwrap() {
+        let path = path.unwrap().path();
+        let execution_config_file = path.try_into().unwrap();
+        execution_configs.push(execution_config_file);
+    }
+    assert_eq!(execution_configs.len(), NUM_OF_PRESET_EXECUTION_CONFIGS);
+    for config in execution_configs {
+        assert_eq!(config, get_default_execution_config());
+    }
+}
 
-    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
-    let block_execution_config = BlockExecutionConfig {
-        fee_contract_address: contract_address!(
+fn get_default_execution_config() -> ExecutionConfig {
+    ExecutionConfig {
+        strk_fee_contract_address: contract_address!(
+            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
+        ),
+        eth_fee_contract_address: contract_address!(
             "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
         ),
-        invoke_tx_max_n_steps: 3_000_000,
-        validate_tx_max_n_steps: 1_000_000,
-        max_recursion_depth: 50,
-        step_gas_cost: VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
         initial_gas_cost: 10_u64.pow(8)
             * VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
-        vm_resource_fee_cost,
-    };
-    let mut execution_config_segments = BTreeMap::new();
-    execution_config_segments.insert(BlockNumber(0), block_execution_config);
-    let expected_config = ExecutionConfigByBlock { execution_config_segments };
-    let config_from_file = test_get_default_execution_config();
-    assert_eq!(expected_config, config_from_file);
-}
-
-fn fill_up_block_execution_config_segment_with_value(value: usize) -> BlockExecutionConfig {
-    let vm_resource_fee_cost = HashMap::new();
-    let vm_resource_fee_cost = Arc::new(vm_resource_fee_cost);
-    BlockExecutionConfig {
-        fee_contract_address: contract_address!(format!("{:x}", value).as_str()),
-        invoke_tx_max_n_steps: value as u32,
-        validate_tx_max_n_steps: value as u32,
-        max_recursion_depth: value,
-        step_gas_cost: value as u64,
-        initial_gas_cost: value as u64,
-        vm_resource_fee_cost,
     }
 }
-
-#[test]
-/// Test for the get_execution_config_for_block function.
-fn test_get_execution_config_for_block() {
-    let mut execution_config_segments: BTreeMap<BlockNumber, BlockExecutionConfig> =
-        BTreeMap::new();
-    let segment_block_numbers = vec![0, 67, 1005, 20369];
-    for block_number in segment_block_numbers {
-        execution_config_segments.insert(
-            BlockNumber(block_number as u64),
-            fill_up_block_execution_config_segment_with_value(block_number),
-        );
-    }
-    let execution_config_by_block = ExecutionConfigByBlock { execution_config_segments };
-
-    assert_eq!(
-        execution_config_by_block.get_execution_config_for_block(BlockNumber(0)).unwrap(),
-        &fill_up_block_execution_config_segment_with_value(0),
-        "Failed to get config for {:?}",
-        BlockNumber(0),
-    );
-    assert_eq!(
-        execution_config_by_block.get_execution_config_for_block(BlockNumber(67)).unwrap(),
-        &fill_up_block_execution_config_segment_with_value(67),
-        "Failed to get config for {:?}",
-        BlockNumber(67),
-    );
-    assert_eq!(
-        execution_config_by_block.get_execution_config_for_block(BlockNumber(517)).unwrap(),
-        &fill_up_block_execution_config_segment_with_value(67),
-        "Failed to get config for {:?}",
-        BlockNumber(517),
-    );
-    assert_eq!(
-        execution_config_by_block.get_execution_config_for_block(BlockNumber(20400)).unwrap(),
-        &fill_up_block_execution_config_segment_with_value(20369),
-        "Failed to get config for {:?}",
-        BlockNumber(20400),
-    );
-}
-
 #[test]
 fn induced_state_diff() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -758,8 +707,8 @@ fn induced_state_diff() {
     let mut account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128;
     let mut sequencer_balance = 0_u128;
 
-    account_balance -= simulation_results[0].fee.0;
-    sequencer_balance += simulation_results[0].fee.0;
+    account_balance -= simulation_results[0].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[0].fee_estimation.overall_fee.0;
     let expected_invoke_deprecated = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deployed_contracts: indexmap! {},
@@ -775,8 +724,8 @@ fn induced_state_diff() {
     };
     assert_eq!(simulation_results[0].induced_state_diff, expected_invoke_deprecated);
 
-    account_balance -= simulation_results[1].fee.0;
-    sequencer_balance += simulation_results[1].fee.0;
+    account_balance -= simulation_results[1].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[1].fee_estimation.overall_fee.0;
     let expected_declare_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))},
         declared_classes: indexmap! {class_hash!(next_declared_class_hash) => CompiledClassHash::default()},
@@ -793,8 +742,8 @@ fn induced_state_diff() {
     assert_eq!(simulation_results[1].induced_state_diff, expected_declare_class);
     next_declared_class_hash += 1;
 
-    account_balance -= simulation_results[2].fee.0;
-    sequencer_balance += simulation_results[2].fee.0;
+    account_balance -= simulation_results[2].fee_estimation.overall_fee.0;
+    sequencer_balance += simulation_results[2].fee_estimation.overall_fee.0;
     let expected_declare_deprecated_class = ThinStateDiff {
         nonces: indexmap! {*ACCOUNT_ADDRESS => Nonce(stark_felt!(3_u128))},
         deprecated_declared_classes: vec![class_hash!(next_declared_class_hash)],
@@ -812,10 +761,10 @@ fn induced_state_diff() {
 
     let new_account_balance_key =
         get_storage_var_address("ERC20_balances", &[*NEW_ACCOUNT_ADDRESS.0.key()]);
-    let new_account_balance =
-        u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128 - simulation_results[3].fee.0;
+    let new_account_balance = u64::try_from(*ACCOUNT_INITIAL_BALANCE).unwrap() as u128
+        - simulation_results[3].fee_estimation.overall_fee.0;
 
-    sequencer_balance += simulation_results[3].fee.0;
+    sequencer_balance += simulation_results[3].fee_estimation.overall_fee.0;
     let expected_deploy_account = ThinStateDiff {
         nonces: indexmap! {*NEW_ACCOUNT_ADDRESS => Nonce(stark_felt!(1_u128))},
         deprecated_declared_classes: vec![],
@@ -893,4 +842,15 @@ fn blockifier_error_mapping() {
     };
     assert_eq!(execution_error, expected);
     assert_eq!(transaction_index, 0);
+}
+
+// Test that we retrieve the correct versioned constants.
+#[test]
+fn test_get_versioned_constants() {
+    let starknet_version_13_0 = StarknetVersion("0.13.0".to_string());
+    let starknet_version_13_1 = StarknetVersion("0.13.1".to_string());
+    let versioned_constants = get_versioned_constants(Some(&starknet_version_13_0)).unwrap();
+    assert_eq!(versioned_constants.invoke_tx_max_n_steps, 3_000_000);
+    let versioned_constants = get_versioned_constants(Some(&starknet_version_13_1)).unwrap();
+    assert_eq!(versioned_constants.invoke_tx_max_n_steps, 4_000_000);
 }

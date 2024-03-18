@@ -8,6 +8,7 @@ use std::env;
 use std::fs::read_to_string;
 use std::hash::Hash;
 use std::net::SocketAddr;
+use std::num::NonZeroU64;
 use std::ops::{Deref, Index};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -58,6 +59,7 @@ use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
     Nonce,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
@@ -427,6 +429,8 @@ auto_impl_get_test_instance! {
         pub state_diff_commitment: Option<StateDiffCommitment>,
         pub transaction_commitment: Option<TransactionCommitment>,
         pub event_commitment: Option<EventCommitment>,
+        pub receipt_commitment: Option<ReceiptCommitment>,
+        pub state_diff_length: Option<usize>,
         pub n_transactions: Option<usize>,
         pub n_events: Option<usize>,
         pub starknet_version: StarknetVersion,
@@ -663,6 +667,7 @@ auto_impl_get_test_instance! {
         pub prime: serde_json::Value,
         pub reference_manager: serde_json::Value,
     }
+    pub struct ReceiptCommitment(pub StarkHash);
     pub enum Resource {
         L1Gas = 0,
         L2Gas = 1,
@@ -963,14 +968,19 @@ impl GetTestInstance for Hint {
 
 impl GetTestInstance for ExecutionResources {
     fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
-        let rand_not_zero = || max(1, get_rng().next_u64());
         let builtin = Builtin::get_test_instance(rng);
         Self {
-            steps: rand_not_zero(),
-            builtin_instance_counter: [(builtin, rand_not_zero())].into(),
-            memory_holes: rand_not_zero(),
+            steps: NonZeroU64::get_test_instance(rng).into(),
+            builtin_instance_counter: [(builtin, NonZeroU64::get_test_instance(rng).into())].into(),
+            memory_holes: NonZeroU64::get_test_instance(rng).into(),
             da_l1_gas_consumed: rng.next_u64(),
             da_l1_data_gas_consumed: rng.next_u64(),
         }
+    }
+}
+
+impl GetTestInstance for NonZeroU64 {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        max(1, rng.next_u64()).try_into().expect("Failed to convert a non-zero u64 to NonZeroU64")
     }
 }

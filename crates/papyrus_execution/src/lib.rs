@@ -19,8 +19,8 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
-use std::collections::{BTreeMap, HashMap};
 use std::num::NonZeroU128;
+use std::path::Path;
 use std::sync::Arc;
 
 use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
@@ -46,19 +46,20 @@ use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::{PriceUnit, TransactionSimulationOutput};
+use once_cell::sync::Lazy;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockNumber, GasPrice};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
+use starknet_api::block::{BlockNumber, StarknetVersion};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
+use starknet_api::data_availability::L1DataAvailabilityMode;
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::hash::StarkHash;
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
@@ -74,72 +75,39 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::{contract_address, patricia_key, StarknetApiError};
+use starknet_api::StarknetApiError;
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
-use crate::objects::PendingData;
+use crate::objects::{tx_execution_output_to_fee_estimation, FeeEstimation, PendingData};
 
 // TODO(yair): understand what it is and whether the use of this constant should change.
 const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
-// TODO(Eitan): get from config.
-const STRK_FEE_TOKEN_ADDRESS: &str =
-    "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+const STARKNET_VERSION_O_13_0: &str = "0.13.0";
+const STARKNET_VERSION_O_13_1: &str = "0.13.1";
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+static VERSIONED_CONSTANTS_13_0: Lazy<VersionedConstants> = Lazy::new(|| {
+    VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_0.json"))
+        .expect("Versioned constants JSON file is malformed")
+});
+static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
+    VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_1.json"))
+        .expect("Versioned constants JSON file is malformed")
+});
+
+#[derive(Copy, Clone, Serialize, Deserialize, Debug, PartialEq)]
 /// Parameters that are needed for execution.
-// TODO(yair): Find a way to get them from the Starknet general config.
-pub struct BlockExecutionConfig {
-    /// The adress to receive fees
-    pub fee_contract_address: ContractAddress,
-    /// The maximum number of steps for an invoke transaction
-    pub invoke_tx_max_n_steps: u32,
-    /// The maximum number of steps for a validate transaction
-    pub validate_tx_max_n_steps: u32,
-    /// The maximum recursion depth for a transaction
-    pub max_recursion_depth: usize,
-    /// The cost of a single step
-    pub step_gas_cost: u64,
-    /// Parameter used to calculate the fee for a transaction
-    pub vm_resource_fee_cost: Arc<HashMap<String, f64>>,
+pub struct ExecutionConfig {
+    /// The strk address to receive fees
+    pub strk_fee_contract_address: ContractAddress,
+    /// The address to receive fees
+    pub eth_fee_contract_address: ContractAddress,
     /// The initial gas cost for a transaction
     pub initial_gas_cost: u64,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-/// Holds a mapping from the block number, to the corresponding execution configuration.
-pub struct ExecutionConfigByBlock {
-    /// A mapping from the block number to the execution configuration corresponding to the version
-    /// that was updated in this block.
-    pub execution_config_segments: BTreeMap<BlockNumber, BlockExecutionConfig>,
-}
-
-impl ExecutionConfigByBlock {
-    /// Returns the execution config for a given block number.
-    pub fn get_execution_config_for_block(
-        &self,
-        block_number: BlockNumber,
-    ) -> ExecutionResult<&BlockExecutionConfig> {
-        let segments = &self.execution_config_segments;
-        if segments.is_empty() || segments.keys().min() != Some(&BlockNumber(0)) {
-            return Err(ExecutionError::ConfigContentError);
-        }
-
-        // TODO(yael): use the upper_bound feature once stable
-        // Ok(segments.upper_bound(std::ops::Bound::Included(&block_number)).value().unwrap().
-        // clone())
-
-        for (segment_block_number, segment) in segments.iter().rev() {
-            if block_number >= *segment_block_number {
-                return Ok(segment);
-            }
-        }
-        Err(ExecutionError::ConfigContentError)
-    }
 }
 
 #[allow(missing_docs)]
@@ -175,6 +143,8 @@ pub enum ExecutionError {
     StateError(#[from] blockifier::state::errors::StateError),
     #[error(transparent)]
     StorageError(#[from] StorageError),
+    #[error(transparent)]
+    TransactionFeeError(#[from] blockifier::transaction::errors::TransactionFeeError),
     #[error(
         "Execution failed at transaction {transaction_index:?} with error: {execution_error:?}"
     )]
@@ -202,7 +172,8 @@ pub fn execute_call(
     contract_address: &ContractAddress,
     entry_point_selector: EntryPointSelector,
     calldata: Calldata,
-    execution_config: &BlockExecutionConfig,
+    execution_config: &ExecutionConfig,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<CallExecution> {
     verify_contract_exists(
         *contract_address,
@@ -241,6 +212,7 @@ pub fn execute_call(
         &storage_reader,
         maybe_pending_data.as_ref(),
         execution_config,
+        override_kzg_da_to_false,
     )?;
 
     let mut context = EntryPointExecutionContext::new_invoke(
@@ -290,38 +262,56 @@ fn create_block_context(
     chain_id: ChainId,
     storage_reader: &StorageReader,
     maybe_pending_data: Option<&PendingData>,
-    execution_config: &BlockExecutionConfig,
+    execution_config: &ExecutionConfig,
+    // TODO(shahak): Remove this once we stop supporting rpc v0.6.
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<BlockContext> {
-    let (block_number, block_timestamp, l1_gas_price, l1_data_gas_price, sequencer_address) =
-        match maybe_pending_data {
-            Some(pending_data) => (
-                block_context_number.next(),
-                pending_data.timestamp,
-                pending_data.l1_gas_price,
-                pending_data.l1_data_gas_price,
-                pending_data.sequencer,
-            ),
-            None => {
-                let header = storage_reader
-                    .begin_ro_txn()?
-                    .get_block_header(block_context_number)?
-                    .expect("Should have block header.");
-                (
-                    header.block_number,
-                    header.timestamp,
-                    header.l1_gas_price,
-                    header.l1_data_gas_price,
-                    header.sequencer,
-                )
-            }
-        };
+    let (
+        block_number,
+        block_timestamp,
+        l1_gas_price,
+        l1_data_gas_price,
+        sequencer_address,
+        l1_da_mode,
+    ) = match maybe_pending_data {
+        Some(pending_data) => (
+            block_context_number.unchecked_next(),
+            pending_data.timestamp,
+            pending_data.l1_gas_price,
+            pending_data.l1_data_gas_price,
+            pending_data.sequencer,
+            pending_data.l1_da_mode,
+        ),
+        None => {
+            let header = storage_reader
+                .begin_ro_txn()?
+                .get_block_header(block_context_number)?
+                .expect("Should have block header.");
+            (
+                header.block_number,
+                header.timestamp,
+                header.l1_gas_price,
+                header.l1_data_gas_price,
+                header.sequencer,
+                header.l1_da_mode,
+            )
+        }
+    };
     let ten_blocks_ago = get_10_blocks_ago(&block_context_number, cached_state)?;
+
+    let use_kzg_da = if override_kzg_da_to_false {
+        false
+    } else {
+        match l1_da_mode {
+            L1DataAvailabilityMode::Calldata => false,
+            L1DataAvailabilityMode::Blob => true,
+        }
+    };
 
     let block_info = BlockInfo {
         block_timestamp,
         sequencer_address: sequencer_address.0,
-        // TODO(yair): set to true when da mode is Blob (not supported yet).
-        use_kzg_da: false,
+        use_kzg_da,
         block_number,
         // TODO(yair): What to do about blocks pre 0.13.1 where the data gas price were 0?
         gas_prices: GasPrices {
@@ -337,22 +327,22 @@ fn create_block_context(
     };
     let chain_info = ChainInfo {
         chain_id,
-        // TODO(Eitan): add the correct fee token addresses to the execution config.
         fee_token_addresses: FeeTokenAddresses {
-            strk_fee_token_address: contract_address!(STRK_FEE_TOKEN_ADDRESS),
-            eth_fee_token_address: execution_config.fee_contract_address,
+            strk_fee_token_address: execution_config.strk_fee_contract_address,
+            eth_fee_token_address: execution_config.eth_fee_contract_address,
         },
     };
-
-    // TODO(yair): set the correct versioned constants for re-execution.
-    let versioned_constants = VersionedConstants::latest_constants().clone();
+    let starknet_version: Option<StarknetVersion> =
+        storage_reader.begin_ro_txn()?.get_starknet_version(block_number)?;
+    let versioned_constants: &VersionedConstants =
+        get_versioned_constants(starknet_version.as_ref())?;
 
     Ok(pre_process_block(
         cached_state,
         ten_blocks_ago,
         block_info,
         chain_info,
-        versioned_constants,
+        versioned_constants.clone(),
     )?)
 }
 
@@ -507,7 +497,7 @@ pub struct RevertedTransaction {
 
 /// Valid output for fee estimation for a series of transactions can be either a list of fees or the
 /// index and revert reason of the first reverted transaction.
-pub type FeeEstimationResult = Result<Vec<(GasPrice, Fee, PriceUnit)>, RevertedTransaction>;
+pub type FeeEstimationResult = Result<Vec<FeeEstimation>, RevertedTransaction>;
 
 /// Returns the fee estimation for a series of transactions.
 #[allow(clippy::too_many_arguments)]
@@ -518,8 +508,9 @@ pub fn estimate_fee(
     maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
-    execution_config: &BlockExecutionConfig,
+    execution_config: &ExecutionConfig,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<FeeEstimationResult> {
     let (txs_execution_info, block_context) = execute_transactions(
         txs,
@@ -532,31 +523,19 @@ pub fn estimate_fee(
         execution_config,
         false,
         validate,
+        override_kzg_da_to_false,
     )?;
-    Ok(txs_execution_info
-        .into_iter()
-        .enumerate()
-        .map(|(index, tx_execution_output)| {
-            // If the transaction reverted, fail the entire estimation.
-            if let Some(revert_reason) = tx_execution_output.execution_info.revert_error {
-                Err(RevertedTransaction { index, revert_reason })
-            } else {
-                let gas_price = match tx_execution_output.price_unit {
-                    PriceUnit::Wei => {
-                        GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
-                    }
-                    PriceUnit::Fri => {
-                        GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
-                    }
-                };
-                Ok((
-                    gas_price,
-                    tx_execution_output.execution_info.actual_fee,
-                    tx_execution_output.price_unit,
-                ))
-            }
-        })
-        .collect())
+    let mut result = Vec::new();
+    for (index, tx_execution_output) in txs_execution_info.into_iter().enumerate() {
+        // If the transaction reverted, fail the entire estimation.
+        if let Some(revert_reason) = tx_execution_output.execution_info.revert_error {
+            return Ok(Err(RevertedTransaction { index, revert_reason }));
+        } else {
+            result
+                .push(tx_execution_output_to_fee_estimation(&tx_execution_output, &block_context)?);
+        }
+    }
+    Ok(Ok(result))
 }
 
 struct TransactionExecutionOutput {
@@ -576,9 +555,10 @@ fn execute_transactions(
     maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
-    execution_config: &BlockExecutionConfig,
+    execution_config: &ExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
     // The starknet state will be from right before the block in which the transactions should run.
     let mut cached_state = CachedState::new(
@@ -598,6 +578,7 @@ fn execute_transactions(
         &storage_reader,
         maybe_pending_data.as_ref(),
         execution_config,
+        override_kzg_da_to_false,
     )?;
 
     let (txs, tx_hashes) = match tx_hashes {
@@ -839,6 +820,24 @@ fn to_blockifier_tx(
     }
 }
 
+fn get_versioned_constants(
+    starknet_version: Option<&StarknetVersion>,
+) -> ExecutionResult<&'static VersionedConstants> {
+    let versioned_constants = match starknet_version {
+        Some(starknet_version) => match starknet_version {
+            StarknetVersion(version) if version == STARKNET_VERSION_O_13_0 => {
+                &VERSIONED_CONSTANTS_13_0
+            }
+            StarknetVersion(version) if version == STARKNET_VERSION_O_13_1 => {
+                &VERSIONED_CONSTANTS_13_1
+            }
+            _ => VersionedConstants::latest_constants(),
+        },
+        None => VersionedConstants::latest_constants(),
+    };
+    Ok(versioned_constants)
+}
+
 /// Simulates a series of transactions and returns the transaction traces and the fee estimations.
 // TODO(yair): Return structs instead of tuples.
 #[allow(clippy::too_many_arguments)]
@@ -850,9 +849,10 @@ pub fn simulate_transactions(
     maybe_pending_data: Option<PendingData>,
     state_number: StateNumber,
     block_context_block_number: BlockNumber,
-    execution_config: &BlockExecutionConfig,
+    execution_config: &ExecutionConfig,
     charge_fee: bool,
     validate: bool,
+    override_kzg_da_to_false: bool,
 ) -> ExecutionResult<Vec<TransactionSimulationOutput>> {
     let trace_constructors = txs.iter().map(get_trace_constructor).collect::<Vec<_>>();
     let (execution_results, block_context) = execute_transactions(
@@ -866,27 +866,19 @@ pub fn simulate_transactions(
         execution_config,
         charge_fee,
         validate,
+        override_kzg_da_to_false,
     )?;
     execution_results
         .into_iter()
         .zip(trace_constructors)
         .map(|(tx_execution_output, trace_constructor)| {
-            let fee = tx_execution_output.execution_info.actual_fee;
-            let gas_price = match tx_execution_output.price_unit {
-                PriceUnit::Wei => {
-                    GasPrice(block_context.block_info().gas_prices.eth_l1_gas_price.get())
-                }
-                PriceUnit::Fri => {
-                    GasPrice(block_context.block_info().gas_prices.strk_l1_gas_price.get())
-                }
-            };
+            let fee_estimation =
+                tx_execution_output_to_fee_estimation(&tx_execution_output, &block_context)?;
             match trace_constructor(tx_execution_output.execution_info) {
                 Ok(transaction_trace) => Ok(TransactionSimulationOutput {
                     transaction_trace,
                     induced_state_diff: tx_execution_output.induced_state_diff,
-                    gas_price,
-                    fee,
-                    price_unit: tx_execution_output.price_unit,
+                    fee_estimation,
                 }),
                 Err(e) => Err(e),
             }

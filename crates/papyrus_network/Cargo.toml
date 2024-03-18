@@ -12,6 +12,7 @@ clap = { workspace = true, features = ["derive"] }
 defaultmap.workspace = true
 derive_more.workspace = true
 futures.workspace = true
+indexmap.workspace = true
 libp2p = { workspace = true, features = [
     "noise",
     "quic",
@@ -38,6 +39,9 @@ prost-build.workspace = true
 [dev-dependencies]
 assert_matches.workspace = true
 deadqueue = { workspace = true, features = ["unlimited"] }
+enum-iterator.workspace = true
+indexmap.workspace = true
+lazy_static.workspace = true
 libp2p-swarm-test.workspace = true
 mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }

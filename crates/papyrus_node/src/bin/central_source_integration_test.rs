@@ -32,7 +32,7 @@ async fn main() {
         .expect("Central get latest_block")
         .expect("No blocks in central")
         .block_number
-        .next();
+        .unchecked_next();
     let initial_block_number = BlockNumber(last_block_number.0 - STREAM_LENGTH);
 
     let mut block_marker = initial_block_number;
@@ -43,7 +43,7 @@ async fn main() {
             block_marker == block_number,
             "Expected block number ({block_marker}) does not match the result ({block_number}).",
         );
-        block_marker = block_marker.next();
+        block_marker = block_marker.unchecked_next();
     }
     assert!(block_marker == last_block_number);
 
@@ -58,7 +58,7 @@ async fn main() {
             state_marker == block_number,
             "Expected block number ({state_marker}) does not match the result ({block_number}).",
         );
-        state_marker = state_marker.next();
+        state_marker = state_marker.unchecked_next();
     }
     assert!(state_marker == last_block_number);
 }

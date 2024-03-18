@@ -51,6 +51,7 @@ use starknet_api::block::{
 use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
@@ -77,6 +78,8 @@ pub(crate) struct StorageBlockHeader {
     pub state_diff_commitment: Option<StateDiffCommitment>,
     pub transaction_commitment: Option<TransactionCommitment>,
     pub event_commitment: Option<EventCommitment>,
+    pub receipt_commitment: Option<ReceiptCommitment>,
+    pub state_diff_length: Option<usize>,
     pub n_transactions: Option<usize>,
     pub n_events: Option<usize>,
 }
@@ -173,6 +176,8 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
             state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
+            receipt_commitment: block_header.receipt_commitment,
+            state_diff_length: block_header.state_diff_length,
             n_transactions: block_header.n_transactions,
             n_events: block_header.n_events,
             starknet_version,
@@ -199,7 +204,10 @@ impl<'env, Mode: TransactionKind> HeaderStorageReader for StorageTxn<'env, Mode>
 
         let starknet_version_table = self.open_table(&self.tables.starknet_version)?;
         let mut cursor = starknet_version_table.cursor(&self.txn)?;
-        cursor.lower_bound(&block_number.next())?;
+        let Some(next_block_number) = block_number.next() else {
+            return Ok(None);
+        };
+        cursor.lower_bound(&next_block_number)?;
         let res = cursor.prev()?;
 
         match res {
@@ -246,6 +254,8 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             state_diff_commitment: block_header.state_diff_commitment,
             transaction_commitment: block_header.transaction_commitment,
             event_commitment: block_header.event_commitment,
+            receipt_commitment: block_header.receipt_commitment,
+            state_diff_length: block_header.state_diff_length,
             n_transactions: block_header.n_transactions,
             n_events: block_header.n_events,
         };
@@ -295,14 +305,17 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         let current_header_marker = self.get_header_marker()?;
 
         // Reverts only the last header.
-        if current_header_marker != block_number.next() {
+        let Some(next_block_number) = block_number
+            .next()
+            .filter(|next_block_number| *next_block_number == current_header_marker)
+        else {
             debug!(
                 "Attempt to revert a non-existing / old header of block {}. Returning without an \
                  action.",
                 block_number
             );
             return Ok((self, None, None));
-        }
+        };
 
         let reverted_header = headers_table
             .get(&self.txn, &block_number)?
@@ -314,7 +327,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
         // Revert starknet version and get the version.
         // TODO(shahak): Fix code duplication with get_starknet_version.
         let mut cursor = starknet_version_table.cursor(&self.txn)?;
-        cursor.lower_bound(&block_number.next())?;
+        cursor.lower_bound(&next_block_number)?;
         let res = cursor.prev()?;
 
         let starknet_version = match res {
@@ -347,6 +360,8 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
                 state_diff_commitment: reverted_header.state_diff_commitment,
                 transaction_commitment: reverted_header.transaction_commitment,
                 event_commitment: reverted_header.event_commitment,
+                receipt_commitment: reverted_header.receipt_commitment,
+                state_diff_length: reverted_header.state_diff_length,
                 n_transactions: reverted_header.n_transactions,
                 n_events: reverted_header.n_events,
                 starknet_version,
@@ -396,6 +411,6 @@ fn update_marker<'env>(
     };
 
     // Advance marker.
-    markers_table.upsert(txn, &MarkerKind::Header, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::Header, &block_number.unchecked_next())?;
     Ok(())
 }

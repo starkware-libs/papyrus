@@ -269,8 +269,11 @@ impl<'env, Mode: TransactionKind> BodyStorageReader for StorageTxn<'env, Mode> {
 
         let transactions_table = self.open_table(&self.tables.transaction_idx_to_hash)?;
         let mut cursor = transactions_table.cursor(&self.txn)?;
+        let Some(next_block_number) = block_number.next() else {
+            return Ok(None);
+        };
 
-        cursor.lower_bound(&TransactionIndex(block_number.next(), TransactionOffsetInBlock(0)))?;
+        cursor.lower_bound(&TransactionIndex(next_block_number, TransactionOffsetInBlock(0)))?;
         let Some((TransactionIndex(received_block_number, last_tx_index), _tx_hash)) =
             cursor.prev()?
         else {
@@ -354,7 +357,11 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
 
         // Assert that body marker equals the reverted block number + 1
         let current_header_marker = self.get_body_marker()?;
-        if current_header_marker != block_number.next() {
+        if block_number
+            .next()
+            .filter(|next_block_number| current_header_marker == *next_block_number)
+            .is_none()
+        {
             debug!(
                 "Attempt to revert a non-existing / old block {}. Returning without an action.",
                 block_number
@@ -499,6 +506,6 @@ fn update_marker<'env>(
     };
 
     // Advance marker.
-    markers_table.upsert(txn, &MarkerKind::Body, &block_number.next())?;
+    markers_table.upsert(txn, &MarkerKind::Body, &block_number.unchecked_next())?;
     Ok(())
 }

@@ -10,6 +10,7 @@ use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::crypto::Signature;
 use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::state::ThinStateDiff;
 use tokio::time::timeout;
 
 use super::{P2PSync, P2PSyncConfig};
@@ -17,27 +18,41 @@ use super::{P2PSync, P2PSyncConfig};
 const BUFFER_SIZE: usize = 1000;
 const QUERY_LENGTH: usize = 5;
 const DURATION_BEFORE_CHECKING_STORAGE: Duration = Duration::from_millis(10);
-const QUERY_TIMEOUT: Duration = Duration::from_millis(50);
-const TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC: Duration = QUERY_TIMEOUT.saturating_mul(5);
+const WAIT_PERIOD_FOR_NEW_DATA: Duration = Duration::from_millis(50);
+const TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE: Duration =
+    WAIT_PERIOD_FOR_NEW_DATA.saturating_mul(5);
 
 lazy_static! {
-    static ref TEST_CONFIG: P2PSyncConfig =
-        P2PSyncConfig { num_headers_per_query: QUERY_LENGTH, query_timeout: QUERY_TIMEOUT };
+    static ref TEST_CONFIG: P2PSyncConfig = P2PSyncConfig {
+        num_headers_per_query: QUERY_LENGTH,
+        wait_period_for_new_data: WAIT_PERIOD_FOR_NEW_DATA
+    };
 }
 
-fn setup() -> (P2PSync, StorageReader, Receiver<Query>, Sender<SignedBlockHeader>) {
+#[allow(clippy::type_complexity)]
+fn setup() -> (
+    P2PSync,
+    StorageReader,
+    Receiver<Query>,
+    Sender<Option<SignedBlockHeader>>,
+    Sender<Option<ThinStateDiff>>,
+) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (signed_headers_sender, signed_headers_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let p2p_sync = P2PSync::new(
-        TEST_CONFIG.clone(),
+        *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
         query_sender,
-        ResponseReceivers { signed_headers_receiver },
+        ResponseReceivers {
+            signed_headers_receiver: Some(signed_headers_receiver.boxed()),
+            state_diffs_receiver: Some(state_diffs_receiver.boxed()),
+        },
     );
-    (p2p_sync, storage_reader, query_receiver, signed_headers_sender)
+    (p2p_sync, storage_reader, query_receiver, signed_headers_sender, state_diffs_sender)
 }
 
 fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSignature)> {
@@ -60,7 +75,13 @@ fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSign
 async fn signed_headers_basic_flow() {
     const NUM_QUERIES: usize = 3;
 
-    let (p2p_sync, storage_reader, mut query_receiver, mut signed_headers_sender) = setup();
+    let (
+        p2p_sync,
+        storage_reader,
+        mut query_receiver,
+        mut signed_headers_sender,
+        _state_diffs_sender,
+    ) = setup();
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures((NUM_QUERIES * QUERY_LENGTH).try_into().unwrap());
 
@@ -83,42 +104,33 @@ async fn signed_headers_basic_flow() {
                 }
             );
 
-            // Send responses
             for (i, (block_hash, block_signature)) in block_hashes_and_signatures
                 .iter()
                 .enumerate()
                 .take(end_block_number)
                 .skip(start_block_number)
             {
+                // Send responses
                 signed_headers_sender
-                    .send(SignedBlockHeader {
+                    .send(Some(SignedBlockHeader {
                         block_header: BlockHeader {
                             block_number: BlockNumber(i.try_into().unwrap()),
                             block_hash: *block_hash,
                             ..Default::default()
                         },
                         signatures: vec![*block_signature],
-                    })
+                    }))
                     .await
                     .unwrap();
-            }
 
-            tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
+                tokio::time::sleep(DURATION_BEFORE_CHECKING_STORAGE).await;
 
-            // Check responses were written to the storage.
-            let txn = storage_reader.begin_ro_txn().unwrap();
-            assert_eq!(
-                u64::try_from(end_block_number).unwrap(),
-                txn.get_header_marker().unwrap().0
-            );
-
-            for (i, (block_hash, block_signature)) in block_hashes_and_signatures
-                .iter()
-                .enumerate()
-                .take(end_block_number)
-                .skip(start_block_number)
-            {
+                // Check responses were written to the storage. This way we make sure that the sync
+                // writes to the storage each response it receives before all query responses were
+                // sent.
                 let block_number = BlockNumber(i.try_into().unwrap());
+                let txn = storage_reader.begin_ro_txn().unwrap();
+                assert_eq!(block_number.unchecked_next(), txn.get_header_marker().unwrap());
                 let block_header = txn.get_block_header(block_number).unwrap().unwrap();
                 assert_eq!(block_number, block_header.block_number);
                 assert_eq!(*block_hash, block_header.block_hash);
@@ -126,6 +138,7 @@ async fn signed_headers_basic_flow() {
                     txn.get_block_signature(block_number).unwrap().unwrap();
                 assert_eq!(*block_signature, actual_block_signature);
             }
+            signed_headers_sender.send(None).await.unwrap();
         }
     };
 
@@ -143,7 +156,13 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
     const NUM_ACTUAL_RESPONSES: u8 = 2;
     assert!(usize::from(NUM_ACTUAL_RESPONSES) < QUERY_LENGTH);
 
-    let (p2p_sync, _storage_reader, mut query_receiver, mut signed_headers_sender) = setup();
+    let (
+        p2p_sync,
+        _storage_reader,
+        mut query_receiver,
+        mut signed_headers_sender,
+        _state_diffs_sender,
+    ) = setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
 
     // Create a future that will receive a query, send partial responses and receive the next query.
@@ -152,20 +171,21 @@ async fn sync_sends_new_query_if_it_got_partial_responses() {
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
             signed_headers_sender
-                .send(SignedBlockHeader {
+                .send(Some(SignedBlockHeader {
                     block_header: BlockHeader {
                         block_number: BlockNumber(i.try_into().unwrap()),
                         block_hash,
                         ..Default::default()
                     },
                     signatures: vec![signature],
-                })
+                }))
                 .await
                 .unwrap();
         }
+        signed_headers_sender.send(None).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let query = timeout(TIMEOUT_AFTER_QUERY_TIMEOUTED_IN_SYNC, query_receiver.next())
+        let query = timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, query_receiver.next())
             .await
             .unwrap()
             .unwrap();

@@ -47,7 +47,7 @@ use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
 use crate::objects::{PendingData, TransactionSimulationOutput};
-use crate::testing_instances::test_block_execution_config;
+use crate::testing_instances::test_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery, SierraSize};
 
 lazy_static! {
@@ -198,11 +198,13 @@ pub fn execute_simulate_transactions(
         &chain_id,
         storage_reader,
         maybe_pending_data,
-        StateNumber::right_after_block(BlockNumber(0)),
+        StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(1),
-        &test_block_execution_config(),
+        &test_execution_config(),
         charge_fee,
         validate,
+        // TODO: Consider testing without overriding DA (It's already tested in the RPC)
+        true,
     )
     .unwrap()
 }

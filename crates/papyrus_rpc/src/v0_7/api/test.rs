@@ -46,6 +46,7 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerContractAddress,
 };
+use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
     ContractClassAbiEntry,
     FunctionAbiEntry,
@@ -554,7 +555,7 @@ async fn get_block_w_full_transactions() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block_header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -610,6 +611,8 @@ async fn get_block_w_full_transactions() {
                 price_in_wei: pending_l1_gas_price.price_in_wei,
                 price_in_fri: pending_l1_gas_price.price_in_fri,
             },
+            l1_data_gas_price: ResourcePrice::default(),
+            l1_da_mode: L1DataAvailabilityMode::Calldata,
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -735,7 +738,7 @@ async fn get_block_w_full_transactions_and_receipts() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block_number.next())
+        .update_base_layer_block_marker(&block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -795,6 +798,8 @@ async fn get_block_w_full_transactions_and_receipts() {
                 price_in_wei: pending_l1_gas_price.price_in_wei,
                 price_in_fri: pending_l1_gas_price.price_in_fri,
             },
+            l1_data_gas_price: ResourcePrice::default(),
+            l1_da_mode: L1DataAvailabilityMode::Calldata,
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -923,7 +928,7 @@ async fn get_block_w_transaction_hashes() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&expected_block_header.block_number.next())
+        .update_base_layer_block_marker(&expected_block_header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -980,6 +985,8 @@ async fn get_block_w_transaction_hashes() {
                 price_in_wei: pending_l1_gas_price.price_in_wei,
                 price_in_fri: pending_l1_gas_price.price_in_fri,
             },
+            l1_data_gas_price: ResourcePrice::default(),
+            l1_da_mode: L1DataAvailabilityMode::Calldata,
             starknet_version: starknet_version.0.clone(),
         }),
         status: None,
@@ -1240,7 +1247,7 @@ async fn get_transaction_status() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block.header.block_number.next())
+        .update_base_layer_block_marker(&block.header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -1360,7 +1367,7 @@ async fn get_transaction_receipt() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .update_base_layer_block_marker(&block.header.block_number.next())
+        .update_base_layer_block_marker(&block.header.block_number.unchecked_next())
         .unwrap()
         .commit()
         .unwrap();
@@ -3874,6 +3881,8 @@ auto_impl_get_test_instance! {
         pub sequencer_address: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_gas_price: ResourcePrice,
+        pub l1_data_gas_price: ResourcePrice,
+        pub l1_da_mode: L1DataAvailabilityMode,
         pub starknet_version: String,
     }
     pub struct ResourcePrice {

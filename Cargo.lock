@@ -5727,6 +5727,7 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.10.5",
  "lazy_static",
+ "once_cell",
  "papyrus_common",
  "papyrus_config",
  "papyrus_storage",
@@ -5794,7 +5795,10 @@ dependencies = [
  "deadqueue",
  "defaultmap",
  "derive_more",
+ "enum-iterator",
  "futures",
+ "indexmap 2.1.0",
+ "lazy_static",
  "libp2p",
  "libp2p-swarm-test",
  "mockall",
@@ -5838,6 +5842,7 @@ dependencies = [
  "papyrus_config",
  "papyrus_monitoring_gateway",
  "papyrus_network",
+ "papyrus_p2p_sync",
  "papyrus_rpc",
  "papyrus_storage",
  "papyrus_sync",
@@ -5862,6 +5867,7 @@ dependencies = [
 name = "papyrus_p2p_sync"
 version = "0.3.0"
 dependencies = [
+ "async-stream",
  "futures",
  "lazy_static",
  "papyrus_config",
@@ -7953,8 +7959,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e6aeb260177f5ca6dde788e844825d8d83782905dbac1b24c0c620743284475"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541#fa2cf6d6da46c43efe141e9ffc044ae9ebbf4541"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",

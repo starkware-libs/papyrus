@@ -22,7 +22,9 @@ use tempfile::NamedTempFile;
 use test_utils::get_absolute_path;
 use validator::Validate;
 
-use crate::config::{node_command, NodeConfig, CONFIG_POINTERS, DEFAULT_CONFIG_PATH};
+#[cfg(feature = "rpc")]
+use crate::config::pointers::CONFIG_POINTERS;
+use crate::config::{node_command, NodeConfig, DEFAULT_CONFIG_PATH};
 
 // Returns the required and generated params in default_config.json with the default value from the
 // config presentation.
@@ -76,6 +78,9 @@ fn load_http_headers() {
     assert_eq!(config.central.http_headers.unwrap(), target_http_headers);
 }
 
+// insta doesn't work well with features, so if the output between two features are different we
+// can only test one of them. We chose to test rpc over testing not(rpc).
+#[cfg(feature = "rpc")]
 #[test]
 // Regression test which checks that the default config dumping hasn't changed.
 fn test_dump_default_config() {
@@ -98,15 +103,20 @@ fn test_default_config_process() {
 
 #[test]
 fn test_update_dumped_config_by_command() {
-    let args =
-        get_args(vec!["--rpc.max_events_keys", "1234", "--storage.db_config.path_prefix", "/abc"]);
+    let args = get_args(vec![
+        "--central.retry_config.retry_max_delay_millis",
+        "1234",
+        "--storage.db_config.path_prefix",
+        "/abc",
+    ]);
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
     let config = NodeConfig::load_and_process(args).unwrap();
 
-    assert_eq!(config.rpc.max_events_keys, 1234);
+    assert_eq!(config.central.retry_config.retry_max_delay_millis, 1234);
     assert_eq!(config.storage.db_config.path_prefix.to_str(), Some("/abc"));
 }
 
+#[cfg(feature = "rpc")]
 #[test]
 fn default_config_file_is_up_to_date() {
     env::set_current_dir(get_absolute_path("")).expect("Couldn't set working dir.");
