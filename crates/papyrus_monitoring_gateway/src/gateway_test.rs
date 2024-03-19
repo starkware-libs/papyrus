@@ -21,6 +21,7 @@ const TEST_CONFIG_PRESENTATION: &str = "full_general_config_presentation";
 const PUBLIC_TEST_CONFIG_PRESENTATION: &str = "public_general_config_presentation";
 const SECRET: &str = "abcd";
 const TEST_VERSION: &str = "1.2.3-dev";
+const TEST_PEER_ID: &str = "peer_id";
 
 // TODO(dan): consider using a proper fixture.
 fn setup_app() -> Router {
@@ -33,6 +34,7 @@ fn setup_app() -> Router {
         serde_json::to_value(PUBLIC_TEST_CONFIG_PRESENTATION).unwrap(),
         SECRET.to_string(),
         None,
+        TEST_PEER_ID.to_string(),
     )
 }
 
@@ -117,6 +119,16 @@ async fn alive() {
 }
 
 #[tokio::test]
+async fn peer_id() {
+    let app = setup_app();
+    let response = request_app(app, "peer_id").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    assert_eq!(body, TEST_PEER_ID);
+}
+
+#[tokio::test]
 async fn ready() {
     let mut gateway_client_mock = MockStarknetWriter::new();
     let mut feeder_gateway_client_mock = MockStarknetReader::new();
@@ -152,6 +164,7 @@ async fn with_metrics() {
         serde_json::Value::default(),
         String::new(),
         Some(prometheus_handle),
+        TEST_PEER_ID.to_string(),
     );
 
     // Register a metric.
