@@ -243,7 +243,7 @@ fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> 
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     let (query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader]);
+        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader, Protocol::StateDiff]);
     (network_manager.run().boxed(), Some((query_sender, response_receivers)))
 }
 
