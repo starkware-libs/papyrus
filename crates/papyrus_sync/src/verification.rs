@@ -116,7 +116,8 @@ impl Verifier for VerifierImpl {
             block_hash::calculate_block_hash_by_version(header, block_hash_version, chain_id)
                 .map_err(VerificationError::HeaderVerificationError)?;
         if calculated_block_hash != header.block_hash {
-            debug!("Header {} validation failed: calculated block hash: {:?}, header block hash: {:?}",
+            debug!(
+                "Header {} validation failed: calculated block hash: {:?}, header block hash: {:?}",
                 header.block_number.0, calculated_block_hash, header.block_hash
             );
         }

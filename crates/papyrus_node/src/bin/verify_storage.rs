@@ -5,7 +5,10 @@ use std::time::Duration;
 use anyhow::Ok;
 use derive_more::AddAssign;
 use lazy_static::lazy_static;
-use papyrus_common::block_hash::{calculate_event_commitment_by_version, calculate_transaction_commitment_by_version};
+use papyrus_common::block_hash::{
+    calculate_event_commitment_by_version,
+    calculate_transaction_commitment_by_version,
+};
 use papyrus_config::dumping::{
     append_sub_config_name,
     ser_param,
@@ -148,16 +151,17 @@ async fn main() -> anyhow::Result<()> {
     let latest_block = storage_reader.begin_ro_txn()?.get_state_marker()?;
     for bn in BlockNumber(0).iter_up_to(latest_block) {
         let last_update = start.elapsed().as_secs();
-        if  last_update >= next_update {
+        if last_update >= next_update {
             info!("Got to block {bn}. {statistics:#?}");
             next_update += 10;
         }
         statistics.n_blocks += 1;
 
         let start = std::time::Instant::now();
-        let mut header = storage_reader.begin_ro_txn()?.get_block_header(bn)?.unwrap_or_else(|| {
-            panic!("Header for block number {} is missing.", bn);
-        });
+        let mut header =
+            storage_reader.begin_ro_txn()?.get_block_header(bn)?.unwrap_or_else(|| {
+                panic!("Header for block number {} is missing.", bn);
+            });
         statistics.total_storage_read_time += start.elapsed();
 
         let start = std::time::Instant::now();
@@ -179,21 +183,21 @@ async fn main() -> anyhow::Result<()> {
         let start = std::time::Instant::now();
         let is_verified = VerifierImpl::validate_header(&header, &config.chain_id)?;
         match (is_verified, statistics.first_verified_block) {
-            (true, Some(_)) => {},
+            (true, Some(_)) => {}
             (true, None) => {
-                statistics.first_verified_block.insert(bn);
-            },
+                statistics.first_verified_block = Some(bn);
+            }
             (false, Some(_)) => {
                 println!("Statistics: {statistics:#?}");
                 panic!("Failed to validate header for block number {}. \n{:#?}", bn, header);
-            },
-            (false, None) => {},
+            }
+            (false, None) => {}
         };
         statistics.total_header_verification_time += start.elapsed();
     }
     statistics.total_verification_time = start.elapsed();
 
-    println!("Statistics: {statistics:#?}");
+    println!("Done!! {statistics:#?}");
     Ok(())
 }
 
@@ -201,7 +205,7 @@ async fn fix_header(
     header: &mut BlockHeader,
     starknet_client: &StarknetFeederGatewayClient,
     chain_id: &ChainId,
-) -> Result<(), anyhow::Error>{
+) -> Result<(), anyhow::Error> {
     let client_block =
         starknet_client.block(header.block_number).await?.expect("Latest block should exist.");
     let signature_data = starknet_client
@@ -210,25 +214,24 @@ async fn fix_header(
         .expect("Latest block signature should exist.");
 
     let block = client_block
-        .to_starknet_api_block_and_version(
-            signature_data.signature_input.state_diff_commitment,
-        )
+        .to_starknet_api_block_and_version(signature_data.signature_input.state_diff_commitment)
         .unwrap();
 
     header.transaction_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        let commitment = calculate_transaction_commitment_by_version(&block.body, &block_hash_version).expect("Failed to calculate transaction commitment.");
-        commitment
+        calculate_transaction_commitment_by_version(&block.body, &block_hash_version)
+            .expect("Failed to calculate transaction commitment.")
     });
 
     header.event_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        let commitment = calculate_event_commitment_by_version(&block.body.transaction_outputs, &block_hash_version);
-        commitment
+        calculate_event_commitment_by_version(&block.body.transaction_outputs, &block_hash_version)
     });
 
-    header.n_transactions.get_or_insert_with(|| block.body.transactions.len());
-    header.n_events.get_or_insert_with(|| block.body.transaction_outputs.iter().map(|o| o.events().len()).sum());
+    header.n_transactions.get_or_insert(block.body.transactions.len());
+    header.n_events.get_or_insert_with(|| {
+        block.body.transaction_outputs.iter().map(|o| o.events().len()).sum()
+    });
 
     Ok(())
 }
@@ -270,4 +273,3 @@ fn verify_signature(
 
     Ok(())
 }
-
