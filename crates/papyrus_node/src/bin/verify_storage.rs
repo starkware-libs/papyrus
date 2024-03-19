@@ -18,6 +18,8 @@ use papyrus_config::dumping::{
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_node::version::VERSION_FULL;
+use papyrus_storage::body::events::{EventIndex, EventsReader};
+use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageConfig, StorageReader};
@@ -26,6 +28,7 @@ use papyrus_sync::verification::{get_block_hash_version, Verifier, VerifierImpl}
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ChainId, SequencerPublicKey};
+use starknet_api::transaction::{Event, EventIndexInTransactionOutput, TransactionOffsetInBlock};
 use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
 use tracing::info;
 use tracing::metadata::LevelFilter;
@@ -97,7 +100,6 @@ struct Statistics {
     pub total_body_verification_time: Duration,
     pub signature_statistics: SignatureStatistics,
     pub total_header_fixing_time: Duration,
-    pub first_verified_block: Option<BlockNumber>,
 }
 
 impl AddAssign for Statistics {
@@ -181,19 +183,49 @@ async fn main() -> anyhow::Result<()> {
         statistics.total_header_fixing_time += start.elapsed();
 
         let start = std::time::Instant::now();
-        let is_verified = VerifierImpl::validate_header(&header, &config.chain_id)?;
-        match (is_verified, statistics.first_verified_block) {
-            (true, Some(_)) => {}
-            (true, None) => {
-                statistics.first_verified_block = Some(bn);
-            }
-            (false, Some(_)) => {
-                println!("Statistics: {statistics:#?}");
-                panic!("Failed to validate header for block number {}. \n{:#?}", bn, header);
-            }
-            (false, None) => {}
-        };
+        if !VerifierImpl::validate_header(&header, &config.chain_id)? {
+            println!("Statistics: {statistics:#?}");
+            panic!("Failed to validate header for block number {}. \n{:#?}", bn, header);
+        }
         statistics.total_header_verification_time += start.elapsed();
+
+        let start = std::time::Instant::now();
+        let transactions = storage_reader
+            .begin_ro_txn()?
+            .get_block_transactions(bn)?
+            .expect("Transactions should exist.");
+        let events = storage_reader
+            .begin_ro_txn()?
+            .iter_events(
+                None,
+                EventIndex(
+                    TransactionIndex(bn, TransactionOffsetInBlock(0)),
+                    EventIndexInTransactionOutput(0),
+                ),
+                bn.unchecked_next(),
+            )?
+            .map(|((from_address, ..), content)| Event { from_address, content })
+            .collect::<Vec<_>>();
+        let transaction_hashes = storage_reader
+            .begin_ro_txn()?
+            .get_block_transaction_hashes(bn)?
+            .expect("Transaction hashes should exist.");
+        statistics.total_storage_read_time += start.elapsed();
+
+        let start = std::time::Instant::now();
+        if !VerifierImpl::validate_body(
+            &bn,
+            &config.chain_id,
+            &transactions,
+            events.iter(),
+            &transaction_hashes,
+            &header.transaction_commitment.unwrap(),
+            &header.event_commitment.unwrap(),
+        )? {
+            println!("Statistics: {statistics:#?}");
+            panic!("Failed to validate body for block number {}.", bn);
+        }
+        statistics.total_body_verification_time += start.elapsed();
     }
     statistics.total_verification_time = start.elapsed();
 
@@ -219,13 +251,20 @@ async fn fix_header(
 
     header.transaction_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        calculate_transaction_commitment_by_version(&block.body, &block_hash_version)
-            .expect("Failed to calculate transaction commitment.")
+        calculate_transaction_commitment_by_version(
+            &block.body.transactions,
+            &block.body.transaction_hashes,
+            &block_hash_version,
+        )
+        .expect("Failed to calculate transaction commitment.")
     });
 
     header.event_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        calculate_event_commitment_by_version(&block.body.transaction_outputs, &block_hash_version)
+        calculate_event_commitment_by_version(
+            block.body.transaction_outputs.iter().flat_map(|output| output.events()),
+            &block_hash_version,
+        )
     });
 
     header.n_transactions.get_or_insert(block.body.transactions.len());

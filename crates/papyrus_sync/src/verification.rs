@@ -1,10 +1,9 @@
 use std::collections::{BTreeMap, HashMap};
 
 use lazy_static::lazy_static;
-use papyrus_common::block_hash;
+use papyrus_common::{block_hash, transaction_hash, TransactionOptions};
 use starknet_api::block::{
     verify_block_signature,
-    BlockBody,
     BlockHash,
     BlockHeader,
     BlockNumber,
@@ -21,6 +20,7 @@ use starknet_api::core::{
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::transaction::{Event, Transaction, TransactionHash};
 use tracing::debug;
 
 lazy_static! {
@@ -75,10 +75,14 @@ pub trait Verifier {
     /// Verifies that the header is valid.
     fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> VerificationResult;
     /// Verifies that the block body is valid.
-    fn validate_body(
-        body: &BlockBody,
-        transaction_commitment: &TransactionCommitment,
-        event_commitment: &EventCommitment,
+    fn validate_body<'a>(
+        block_number: &BlockNumber,
+        chain_id: &ChainId,
+        transactions: &[Transaction],
+        events: impl Iterator<Item = &'a Event>,
+        transaction_hashes: &[TransactionHash],
+        expected_transaction_commitment: &TransactionCommitment,
+        expected_event_commitment: &EventCommitment,
     ) -> VerificationResult;
     /// Verifies that the state diff is valid.
     fn validate_state_diff(
@@ -124,13 +128,53 @@ impl Verifier for VerifierImpl {
         Ok(calculated_block_hash == header.block_hash)
     }
 
-    fn validate_body(
-        body: &BlockBody,
+    fn validate_body<'a>(
+        block_number: &BlockNumber,
+        chain_id: &ChainId,
+        transactions: &[Transaction],
+        events: impl Iterator<Item = &'a Event>,
+        transaction_hashes: &[TransactionHash],
         expected_transaction_commitment: &TransactionCommitment,
         expected_event_commitment: &EventCommitment,
     ) -> VerificationResult {
-        block_hash::validate_body(body, expected_transaction_commitment, expected_event_commitment)
-            .map_err(VerificationError::BodyVerificationError)
+        let block_hash_version = get_block_hash_version(chain_id, block_number);
+        let calculated_transaction_commitment =
+            block_hash::calculate_transaction_commitment_by_version(
+                transactions,
+                transaction_hashes,
+                &block_hash_version,
+            )
+            .map_err(VerificationError::BodyVerificationError)?;
+        if calculated_transaction_commitment != *expected_transaction_commitment {
+            return Ok(false);
+        }
+        let calculated_event_commitment =
+            block_hash::calculate_event_commitment_by_version(events, &block_hash_version);
+        if calculated_event_commitment != *expected_event_commitment {
+            return Ok(false);
+        }
+        // TODO: Consider parallelizing the validation of the transactions.
+        // TODO(yair): Check if this is blocking for too long.
+        for (i, (tx, expected_tx_hash)) in
+            transactions.iter().zip(transaction_hashes.iter()).enumerate()
+        {
+            if !transaction_hash::validate_transaction_hash(
+                tx,
+                block_number,
+                chain_id,
+                *expected_tx_hash,
+                &TransactionOptions { only_query: false },
+            )
+            .map_err(|err| {
+                VerificationError::BodyVerificationError(
+                    block_hash::BlockHashError::StarknetApiError(err),
+                )
+            })? {
+                debug!("Transaction {} validation failed.", i);
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     fn validate_state_diff(
