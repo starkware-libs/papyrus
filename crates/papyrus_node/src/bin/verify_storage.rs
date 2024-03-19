@@ -5,10 +5,7 @@ use std::time::Duration;
 use anyhow::Ok;
 use derive_more::AddAssign;
 use lazy_static::lazy_static;
-use papyrus_common::block_hash::{
-    calculate_event_commitment_by_version,
-    calculate_transaction_commitment_by_version,
-};
+use papyrus_common::block_hash::{calculate_event_commitment_by_version, calculate_transaction_commitment_by_version};
 use papyrus_config::dumping::{
     append_sub_config_name,
     ser_param,
@@ -96,7 +93,6 @@ struct Statistics {
     pub total_header_verification_time: Duration,
     pub total_body_verification_time: Duration,
     pub signature_statistics: SignatureStatistics,
-    pub first_header_with_commitments: Option<BlockNumber>,
     pub total_header_fixing_time: Duration,
     pub first_verified_block: Option<BlockNumber>,
 }
@@ -142,24 +138,26 @@ async fn main() -> anyhow::Result<()> {
         config.central.retry_config,
     )?;
     info!("Initialized Starknet client.");
+
     let sequencer_pub_key = starknet_client.sequencer_pub_key().await?;
     info!("Got sequencer public key.");
     let mut statistics = Statistics::default();
     info!("Starting verification.");
     let start = std::time::Instant::now();
-
+    let mut next_update = 10;
     let latest_block = storage_reader.begin_ro_txn()?.get_state_marker()?;
-    for bn in BlockNumber(832).iter_up_to(latest_block) {
-        statistics.n_blocks += 1;
-        if bn.0 % 1000 == 0 {
+    for bn in BlockNumber(0).iter_up_to(latest_block) {
+        let last_update = start.elapsed().as_secs();
+        if  last_update >= next_update {
             info!("Got to block {bn}. {statistics:#?}");
+            next_update += 10;
         }
+        statistics.n_blocks += 1;
 
         let start = std::time::Instant::now();
-        let mut header =
-            storage_reader.begin_ro_txn()?.get_block_header(bn)?.unwrap_or_else(|| {
-                panic!("Header for block number {} is missing.", bn);
-            });
+        let mut header = storage_reader.begin_ro_txn()?.get_block_header(bn)?.unwrap_or_else(|| {
+            panic!("Header for block number {} is missing.", bn);
+        });
         statistics.total_storage_read_time += start.elapsed();
 
         let start = std::time::Instant::now();
@@ -173,22 +171,24 @@ async fn main() -> anyhow::Result<()> {
         statistics.total_signature_verification_time += start.elapsed();
 
         let start = std::time::Instant::now();
-        if statistics.first_header_with_commitments.is_none() {
-            if header.transaction_commitment.is_none() && header.event_commitment.is_none() {
-                println!("Fixing header {bn}");
-                fix_header(&mut header, &starknet_client, &config.chain_id).await?;
-                if header.transaction_commitment.is_none() && header.event_commitment.is_none() {
-                    statistics.total_header_fixing_time += start.elapsed();
-                    continue;
-                }
-            } else {
-                statistics.first_header_with_commitments = Some(bn);
-            }
+        if header.transaction_commitment.is_none() && header.event_commitment.is_none() {
+            fix_header(&mut header, &starknet_client, &config.chain_id).await?;
         }
         statistics.total_header_fixing_time += start.elapsed();
 
         let start = std::time::Instant::now();
-        validate_header(bn, &header, &config.chain_id, &mut statistics.first_verified_block)?;
+        let is_verified = VerifierImpl::validate_header(&header, &config.chain_id)?;
+        match (is_verified, statistics.first_verified_block) {
+            (true, Some(_)) => {},
+            (true, None) => {
+                statistics.first_verified_block.insert(bn);
+            },
+            (false, Some(_)) => {
+                println!("Statistics: {statistics:#?}");
+                panic!("Failed to validate header for block number {}. \n{:#?}", bn, header);
+            },
+            (false, None) => {},
+        };
         statistics.total_header_verification_time += start.elapsed();
     }
     statistics.total_verification_time = start.elapsed();
@@ -201,35 +201,37 @@ async fn fix_header(
     header: &mut BlockHeader,
     starknet_client: &StarknetFeederGatewayClient,
     chain_id: &ChainId,
-) -> Result<(), anyhow::Error> {
-    let client_block = starknet_client.latest_block().await?.expect("Latest block should exist.");
+) -> Result<(), anyhow::Error>{
+    let client_block =
+        starknet_client.block(header.block_number).await?.expect("Latest block should exist.");
     let signature_data = starknet_client
         .block_signature(client_block.block_number())
         .await?
         .expect("Latest block signature should exist.");
 
     let block = client_block
-        .to_starknet_api_block_and_version(signature_data.signature_input.state_diff_commitment)
+        .to_starknet_api_block_and_version(
+            signature_data.signature_input.state_diff_commitment,
+        )
         .unwrap();
-    header.transaction_commitment = block.header.transaction_commitment;
-    header.event_commitment = block.header.event_commitment;
-    header.n_transactions = block.header.n_transactions;
-    header.n_events = block.header.n_events;
 
     header.transaction_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        calculate_transaction_commitment_by_version(&block.body, &block_hash_version)
-            .expect("Failed to calculate transaction commitment.")
+        let commitment = calculate_transaction_commitment_by_version(&block.body, &block_hash_version).expect("Failed to calculate transaction commitment.");
+        commitment
     });
 
     header.event_commitment.get_or_insert_with(|| {
         let block_hash_version = get_block_hash_version(chain_id, &header.block_number);
-        calculate_event_commitment_by_version(&block.body.transaction_outputs, &block_hash_version)
+        let commitment = calculate_event_commitment_by_version(&block.body.transaction_outputs, &block_hash_version);
+        commitment
     });
+
+    header.n_transactions.get_or_insert_with(|| block.body.transactions.len());
+    header.n_events.get_or_insert_with(|| block.body.transaction_outputs.iter().map(|o| o.events().len()).sum());
 
     Ok(())
 }
-
 fn configure_tracing() {
     let fmt_layer = tracing_subscriber::fmt::layer().compact().with_target(false);
     let level_filter_layer = tracing_subscriber::EnvFilter::builder()
@@ -269,19 +271,3 @@ fn verify_signature(
     Ok(())
 }
 
-fn validate_header(
-    bn: BlockNumber,
-    header: &BlockHeader,
-    chain_id: &ChainId,
-    first_verified_block: &mut Option<BlockNumber>,
-) -> anyhow::Result<()> {
-    if !VerifierImpl::validate_header(&header, chain_id)? {
-        if first_verified_block.is_some() {
-            panic!("Failed to validate header for block number {}.", bn);
-        }
-        return Ok(());
-    }
-    first_verified_block.get_or_insert(bn);
-
-    Ok(())
-}

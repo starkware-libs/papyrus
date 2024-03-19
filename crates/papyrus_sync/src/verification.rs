@@ -21,6 +21,7 @@ use starknet_api::core::{
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{ContractClass, StateDiff};
+use tracing::debug;
 
 lazy_static! {
     // The block hash versions for each chain.
@@ -30,6 +31,8 @@ lazy_static! {
             BTreeMap::from([
                 (BlockNumber(0), block_hash::BlockHashVersion::V0),
                 (BlockNumber(833), block_hash::BlockHashVersion::V3),
+                (BlockNumber(1466), block_hash::BlockHashVersion::V2),
+                (BlockNumber(2704), block_hash::BlockHashVersion::V3),
             ])
         )]);
 }
@@ -112,6 +115,11 @@ impl Verifier for VerifierImpl {
         let calculated_block_hash =
             block_hash::calculate_block_hash_by_version(header, block_hash_version, chain_id)
                 .map_err(VerificationError::HeaderVerificationError)?;
+        if calculated_block_hash != header.block_hash {
+            debug!("Header {} validation failed: calculated block hash: {:?}, header block hash: {:?}",
+                header.block_number.0, calculated_block_hash, header.block_hash
+            );
+        }
         Ok(calculated_block_hash == header.block_hash)
     }
 
