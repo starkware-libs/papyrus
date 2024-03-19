@@ -248,15 +248,15 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             // TODO: get peer id from swarm after dial id not received in config.
             .peer_id;
         let mut query_bytes = vec![];
+        let protocol = query.data_type.into();
         query.encode(&mut query_bytes).expect("failed to encode query");
-        match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
+        match self.swarm.send_query(query_bytes, peer_id, protocol) {
             Ok(outbound_session_id) => {
                 debug!(
                     "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
                      {outbound_session_id:?}"
                 );
-                self.outbound_session_id_to_protocol
-                    .insert(outbound_session_id, Protocol::SignedBlockHeader);
+                self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
             }
             Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),
         }
@@ -286,7 +286,10 @@ impl NetworkManager {
             idle_connection_timeout,
             Behaviour::new(Config {
                 session_timeout,
-                supported_inbound_protocols: vec![Protocol::SignedBlockHeader.into()],
+                supported_inbound_protocols: vec![
+                    Protocol::SignedBlockHeader.into(),
+                    Protocol::StateDiff.into(),
+                ],
             }),
         );
 
