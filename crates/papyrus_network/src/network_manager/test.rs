@@ -9,7 +9,9 @@ use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
 use futures::future::poll_fn;
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use libp2p::PeerId;
+use libp2p::core::ConnectedPoint;
+use libp2p::swarm::ConnectionId;
+use libp2p::{Multiaddr, PeerId};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -188,13 +190,17 @@ const HEADER_BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
 async fn register_subscriber_and_use_channels() {
-    // create mocked network manager
+    let mock_swarm = MockSwarm::default();
+    let mock_peer_id = PeerId::random();
+    mock_swarm.pending_events.push(get_mock_connection_established_event(mock_peer_id));
+
     let mut network_manager = GenericNetworkManager::generic_new(
-        MockSwarm::default(),
+        mock_swarm,
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
+        Some(PeerAddressConfig { peer_id: mock_peer_id, ..Default::default() }),
     );
+    // create mock swarm event for connection established
     // define query
     let query_limit = 5;
     let start_block_number = 0;
@@ -209,8 +215,12 @@ async fn register_subscriber_and_use_channels() {
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
         network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
-    query_sender.send(query).await.unwrap();
 
+    // spawn the query to a new tokio and delay
+    tokio::spawn(async move {
+        sleep(Duration::from_millis(100)).await;
+        query_sender.send(query).await.unwrap();
+    });
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
         .unwrap()
@@ -294,5 +304,52 @@ async fn process_incoming_query() {
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
+    }
+}
+#[tokio::test]
+async fn sync_subscriber_query_no_peer() {
+    let mut network_manager = GenericNetworkManager::generic_new(
+        MockSwarm::default(),
+        MockDBExecutor::default(),
+        HEADER_BUFFER_SIZE,
+        None,
+    );
+    // register subscriber and send query
+    let (_, response_receivers) =
+        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+
+    // test that data was sent to sync subscriber
+    // let signed_header_receiver_collector = response_receivers
+    //     .signed_headers_receiver
+    //     .unwrap()
+    //     .enumerate()
+    //     .take(1)
+    //     .map(|(i, signed_block_header)| {
+    //         println!("1 {:?}", signed_block_header.clone());
+    //         assert_eq!(signed_block_header.clone().unwrap().block_header.block_number.0, i as
+    // u64);         signed_block_header
+    //     })
+    //     .collect::<Vec<_>>();
+    network_manager.handle_sync_subscriber_query_with_no_peer(DataType::SignedBlockHeader);
+    let mut header = response_receivers.signed_headers_receiver.unwrap();
+
+    tokio::select! {
+        Some(data) = header.next() => {assert!(data.is_none())},
+        _ = sleep(Duration::from_secs(5)) => {
+            panic!("Test timed out");
+        }
+    }
+}
+fn get_mock_connection_established_event(mock_peer_id: PeerId) -> Event {
+    Event::ConnectionEstablished {
+        peer_id: mock_peer_id,
+        connection_id: ConnectionId::new_unchecked(0),
+        endpoint: ConnectedPoint::Dialer {
+            address: Multiaddr::empty(),
+            role_override: libp2p::core::Endpoint::Dialer,
+        },
+        num_established: std::num::NonZeroU32::new(1).unwrap(),
+        concurrent_dial_errors: None,
+        established_in: Duration::from_secs(0),
     }
 }

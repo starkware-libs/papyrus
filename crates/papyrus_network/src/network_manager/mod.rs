@@ -10,7 +10,7 @@ use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::Swarm;
+use libp2p::{PeerId, Swarm};
 use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
 
@@ -40,6 +40,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     peer: Option<PeerAddressConfig>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
+    peer_id: Option<PeerId>,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
@@ -77,6 +78,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_id_to_inbound_session_id: HashMap::new(),
             peer,
             outbound_session_id_to_protocol: HashMap::new(),
+            peer_id: None,
         }
     }
 
@@ -93,8 +95,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
         match event {
-            SwarmEvent::ConnectionEstablished { .. } => {
+            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 debug!("Connected to a peer!");
+                self.peer_id = Some(peer_id);
             }
             SwarmEvent::NewListenAddr { .. }
             | SwarmEvent::IncomingConnection { .. }
@@ -241,25 +244,41 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
-        let peer_id = self
-            .peer
-            .clone()
-            .expect("Cannot send query without peer")
-            // TODO: get peer id from swarm after dial id not received in config.
-            .peer_id;
         let mut query_bytes = vec![];
+        let data_type = query.data_type;
         query.encode(&mut query_bytes).expect("failed to encode query");
-        match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
-            Ok(outbound_session_id) => {
-                debug!(
-                    "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
-                     {outbound_session_id:?}"
-                );
-                self.outbound_session_id_to_protocol
-                    .insert(outbound_session_id, Protocol::SignedBlockHeader);
+        if let Some(peer_id) = self.peer_id {
+            match self.swarm.send_query(query_bytes, peer_id, Protocol::SignedBlockHeader) {
+                Ok(outbound_session_id) => {
+                    debug!(
+                        "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
+                         {outbound_session_id:?}"
+                    );
+                    self.outbound_session_id_to_protocol
+                        .insert(outbound_session_id, Protocol::SignedBlockHeader);
+                }
+                Err(e) => {
+                    error!("Failed to send query to peer. Peer not connected error: {e:?}");
+                    self.handle_sync_subscriber_query_with_no_peer(data_type);
+                }
             }
-            Err(e) => error!("Failed to send query to peer. Peer not connected error: {e:?}"),
+        } else {
+            self.handle_sync_subscriber_query_with_no_peer(data_type);
         }
+    }
+
+    fn handle_sync_subscriber_query_with_no_peer(&mut self, data_type: DataType) {
+        let mut data_bytes = vec![];
+        let protocol = match data_type {
+            DataType::SignedBlockHeader => Protocol::SignedBlockHeader,
+            DataType::StateDiff => Protocol::StateDiff,
+        };
+        Data::Fin(data_type).encode(&mut data_bytes).expect("failed to encode data");
+        let (_, response_senders) =
+            self.sync_subscriber_channels.as_mut().expect("sync subscriber channels not found");
+        response_senders
+            .try_send(protocol, data_bytes)
+            .expect("failed to send data to sync subscriber");
     }
 }
 
