@@ -248,7 +248,7 @@ fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> 
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     let own_peer_id = network_manager.get_own_peer_id();
     let (query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader]);
+        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader, Protocol::StateDiff]);
     (network_manager.run().boxed(), Some((query_sender, response_receivers)), own_peer_id)
 }
 
