@@ -84,10 +84,10 @@ impl Data {
                 }
                 .encode(buf)
                 .map_err(|_| DataEncodingError),
-                DataType::StateDiff => protobuf::BlockHeadersResponse {
-                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
-                        protobuf::Fin {},
-                    )),
+                DataType::StateDiff => protobuf::StateDiffsResponse {
+                    state_diff_message: Some(
+                        protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+                    ),
                 }
                 .encode(buf)
                 .map_err(|_| DataEncodingError),
