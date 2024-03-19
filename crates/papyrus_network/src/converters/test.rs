@@ -7,7 +7,9 @@ use crate::protobuf_messages::protobuf;
 #[test]
 fn block_header_to_protobuf_to_bytes_and_back() {
     let data = Data::BlockHeaderAndSignature {
-        header: BlockHeader { ..Default::default() },
+        // TODO(shahak): Remove state_diff_length from here once we correctly deduce if it should
+        // be None or Some.
+        header: BlockHeader { state_diff_length: Some(0), ..Default::default() },
         signatures: vec![],
     };
     dbg!(&data);
