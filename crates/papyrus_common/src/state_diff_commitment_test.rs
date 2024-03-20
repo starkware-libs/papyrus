@@ -3,11 +3,11 @@ use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
     ContractAddress,
-    GlobalRoot,
     Nonce,
     PatriciaKey,
+    StateDiffCommitment,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
 use starknet_api::state::{StateDiff, StorageKey, ThinStateDiff};
 use starknet_api::{class_hash, contract_address, patricia_key, stark_felt};
 
@@ -38,9 +38,9 @@ fn state_diff_commitment() {
         calculate_state_diff_commitment(&thin_state_diff, StateDiffVersion::V0);
 
     // The expected commitment was calculated using the Python implementation of Starknet.
-    let expected_commitment = GlobalRoot(stark_felt!(
+    let expected_commitment = StateDiffCommitment(PoseidonHash(stark_felt!(
         "0x30eec29bb733bc07197b0e0a41a53808860b2bf9dbb6b4472677a9fc6168a4f"
-    ));
+    )));
 
     assert_eq!(calculated_commitment, expected_commitment);
 }

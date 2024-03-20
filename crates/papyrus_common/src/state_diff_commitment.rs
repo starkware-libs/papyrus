@@ -2,7 +2,7 @@
 #[path = "state_diff_commitment_test.rs"]
 mod state_diff_commitment_test;
 
-use starknet_api::core::GlobalRoot;
+use starknet_api::core::StateDiffCommitment;
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::{poseidon_hash_array, StarkFelt};
 use starknet_api::state::ThinStateDiff;
@@ -39,7 +39,7 @@ impl From<StateDiffVersion> for StarkFelt {
 pub fn calculate_state_diff_commitment(
     state_diff: &ThinStateDiff,
     state_diff_version: StateDiffVersion,
-) -> GlobalRoot {
+) -> StateDiffCommitment {
     let mut flattened_total_state_diff = vec![StarkFelt::from(state_diff_version)];
 
     // Deployed contracts and replaced classes are squashed.
@@ -104,5 +104,5 @@ pub fn calculate_state_diff_commitment(
         flattened_total_state_diff.push(hash_of_storage_domain_state_diff.0);
     }
 
-    GlobalRoot(poseidon_hash_array(flattened_total_state_diff.as_slice()).0)
+    StateDiffCommitment(poseidon_hash_array(flattened_total_state_diff.as_slice()))
 }
