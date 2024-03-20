@@ -180,7 +180,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 );
             }
             GenericEvent::ReceivedData { outbound_session_id, data } => {
-                debug!(
+                trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
                 );
@@ -211,7 +211,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 }
             }
             GenericEvent::SessionFailed { session_id, error } => {
-                debug!("Session {session_id:?} failed on {error:?}");
+                error!("Session {session_id:?} failed on {error:?}");
                 // TODO: Handle reputation and retry.
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
@@ -292,5 +292,9 @@ impl NetworkManager {
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size, peer)
+    }
+
+    pub fn get_own_peer_id(&self) -> String {
+        self.swarm.local_peer_id().to_string()
     }
 }

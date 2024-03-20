@@ -155,6 +155,9 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
             });
         }
         for (contract_address, storage_diffs) in value.storage_diffs {
+            if storage_diffs.is_empty() {
+                continue;
+            }
             result.push(protobuf::StateDiffsResponse {
                 state_diff_message: Some(
                     protobuf::state_diffs_response::StateDiffMessage::ContractDiff(

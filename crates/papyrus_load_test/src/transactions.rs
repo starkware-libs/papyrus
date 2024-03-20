@@ -86,7 +86,7 @@ fn random_request_transaction(requests: Vec<jsonVal>) -> Transaction {
 
 // Given file_name reads the file line by line and, for each line, creates request to the node using
 // convert_to_request function. Returns a vector with all the requests were created from the file.
-fn create_requests_vector_from_file(
+pub(crate) fn create_requests_vector_from_file(
     file_name: &str,
     convert_to_request: fn(&str) -> jsonVal,
 ) -> Vec<jsonVal> {

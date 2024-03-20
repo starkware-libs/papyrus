@@ -16,7 +16,7 @@ use papyrus_execution::{
     execution_utils,
     simulate_transactions as exec_simulate_transactions,
     ExecutableTransactionInput,
-    ExecutionConfigByBlock,
+    ExecutionConfig,
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
@@ -142,7 +142,7 @@ lazy_static! {
 /// Rpc server.
 pub struct JsonRpcServerImpl {
     pub chain_id: ChainId,
-    pub execution_config: ExecutionConfigByBlock,
+    pub execution_config: ExecutionConfig,
     pub storage_reader: StorageReader,
     pub max_events_chunk_size: usize,
     pub max_events_keys: usize,
@@ -897,13 +897,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let block_not_reverted_validator = BlockNotRevertedValidator::new(block_number, &txn)?;
         drop(txn);
         let state_number = StateNumber::unchecked_right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
         let contract_address_copy = request.contract_address;
@@ -918,7 +913,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 &contract_address_copy,
                 request.entry_point_selector,
                 request.calldata,
-                &block_execution_config,
+                &execution_config,
                 IGNORE_L1_DA_MODE,
             )
         })
@@ -1013,13 +1008,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::unchecked_right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1031,7 +1021,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 validate,
                 IGNORE_L1_DA_MODE,
             )
@@ -1087,13 +1077,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::unchecked_right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1109,7 +1094,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 charge_fee,
                 validate,
                 IGNORE_L1_DA_MODE,
@@ -1243,13 +1228,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         drop(storage_txn);
 
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1262,7 +1242,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 true,
                 true,
                 IGNORE_L1_DA_MODE,
@@ -1364,13 +1344,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         drop(storage_txn);
 
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
         let transaction_hashes_clone = transaction_hashes.clone();
@@ -1384,7 +1359,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 true,
                 true,
                 IGNORE_L1_DA_MODE,
@@ -1434,13 +1409,8 @@ impl JsonRpcServer for JsonRpcServerImpl {
             BlockNotRevertedValidator::new(block_number, &storage_txn)?;
         drop(storage_txn);
         let state_number = StateNumber::unchecked_right_after_block(block_number);
-        let block_execution_config = self
-            .execution_config
-            .get_execution_config_for_block(block_number)
-            .map_err(|err| {
-                internal_server_error(format!("Failed to get execution config: {}", err))
-            })?
-            .clone();
+        let execution_config = self.execution_config;
+
         let chain_id = self.chain_id.clone();
         let reader = self.storage_reader.clone();
 
@@ -1452,7 +1422,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 maybe_pending_data,
                 state_number,
                 block_number,
-                &block_execution_config,
+                &execution_config,
                 false,
                 IGNORE_L1_DA_MODE,
             )
@@ -1534,7 +1504,7 @@ fn do_event_keys_match_filter(event_content: &EventContent, filter: &EventFilter
 impl JsonRpcServerTrait for JsonRpcServerImpl {
     fn new(
         chain_id: ChainId,
-        execution_config: ExecutionConfigByBlock,
+        execution_config: ExecutionConfig,
         storage_reader: StorageReader,
         max_events_chunk_size: usize,
         max_events_keys: usize,

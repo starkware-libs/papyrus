@@ -5683,6 +5683,7 @@ dependencies = [
 name = "papyrus_common"
 version = "0.3.0"
 dependencies = [
+ "assert_matches",
  "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
@@ -5694,6 +5695,7 @@ dependencies = [
  "starknet-crypto 0.5.2",
  "starknet_api",
  "test_utils",
+ "thiserror",
 ]
 
 [[package]]
@@ -5727,6 +5729,7 @@ dependencies = [
  "indexmap 2.1.0",
  "itertools 0.10.5",
  "lazy_static",
+ "once_cell",
  "papyrus_common",
  "papyrus_config",
  "papyrus_storage",
@@ -5748,13 +5751,13 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "goose",
+ "lazy_static",
  "once_cell",
  "pretty_assertions",
  "rand",
  "reqwest",
  "serde",
  "serde_json",
- "test_utils",
  "tokio",
 ]
 
