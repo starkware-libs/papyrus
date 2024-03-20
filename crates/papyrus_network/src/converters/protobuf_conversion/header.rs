@@ -153,6 +153,9 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             ),
         };
 
+        let state_diff_length =
+            Some(value.state_diff_length.try_into().expect("Failed converting u64 to usize"));
+
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
                 block_hash,
@@ -168,8 +171,7 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 state_diff_commitment: None,
                 transaction_commitment,
                 event_commitment,
-                // TODO(shahak): fill this.
-                state_diff_length: None,
+                state_diff_length,
                 // TODO(shahak): fill this.
                 receipt_commitment: None,
                 n_transactions,
@@ -194,8 +196,15 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
             number: header.block_number.0,
             time: header.timestamp.0,
             sequencer_address: Some(header.sequencer.0.into()),
-            // TODO(shahak): fill this.
+            // TODO(shahak): fill this. If the state_diff_length is None make this None.
             state_diff_commitment: None,
+            state_diff_length: header
+                .state_diff_length
+                // If state_diff_length is None, then state_diff_commitment is also None and the
+                // other peer will know that this node doesn't know about the state diff.
+                .unwrap_or_default()
+                .try_into()
+                .expect("Failed converting u64 to usize"),
             state: Some(protobuf::Patricia {
                 // TODO(shahak): fill this.
                 height: 0,
@@ -223,15 +232,6 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
             data_gas_price_wei: Some(header.l1_data_gas_price.price_in_wei.0.into()),
             data_gas_price_fri: Some(header.l1_data_gas_price.price_in_fri.0.into()),
             l1_data_availability_mode: l1_data_availability_mode_to_enum_int(header.l1_da_mode),
-            // TODO(shahak): fill this.
-            num_storage_diffs: 0,
-            // TODO(shahak): fill this.
-            num_nonce_updates: 0,
-            // TODO(shahak): fill this.
-            num_declared_classes: 0,
-            // TODO(shahak): fill this.
-            num_deployed_contracts: 0,
-            // TODO(shahak): fill this.
             signatures: signatures.iter().map(|signature| (*signature).into()).collect(),
         }
     }

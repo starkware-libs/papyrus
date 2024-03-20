@@ -242,7 +242,9 @@ async fn process_incoming_query() {
         step: 1,
     };
     let headers = (0..5)
-        .map(|i| BlockHeader { block_number: BlockNumber(i), ..Default::default() })
+        // TODO(shahak): Remove state_diff_length from here once we correctly deduce if it should
+        // be None or Some.
+        .map(|i| BlockHeader { block_number: BlockNumber(i), state_diff_length: Some(0), ..Default::default() })
         .collect::<Vec<_>>();
 
     // Setup mock DB executor and tell it to reply to the query with the given headers.
