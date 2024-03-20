@@ -30,7 +30,7 @@ lazy_static! {
             ChainId("SN_MAIN".to_string()),
             BTreeMap::from([
                 (BlockNumber(0), block_hash::BlockHashVersion::V0),
-                (BlockNumber(833), block_hash::BlockHashVersion::V3),
+                (BlockNumber(833), block_hash::BlockHashVersion::V1),
                 (BlockNumber(1466), block_hash::BlockHashVersion::V2),
                 (BlockNumber(2704), block_hash::BlockHashVersion::V3),
             ])
@@ -146,11 +146,19 @@ impl Verifier for VerifierImpl {
             )
             .map_err(VerificationError::BodyVerificationError)?;
         if calculated_transaction_commitment != *expected_transaction_commitment {
+            debug!(
+                "Transaction commitment validation failed: calculated: {:?}, expected: {:?}",
+                calculated_transaction_commitment, expected_transaction_commitment
+            );
             return Ok(false);
         }
         let calculated_event_commitment =
             block_hash::calculate_event_commitment_by_version(events, &block_hash_version);
         if calculated_event_commitment != *expected_event_commitment {
+            debug!(
+                "Event commitment validation failed: calculated: {:?}, expected: {:?}",
+                calculated_event_commitment, expected_event_commitment
+            );
             return Ok(false);
         }
         // TODO: Consider parallelizing the validation of the transactions.

@@ -30,7 +30,7 @@ use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ChainId, SequencerPublicKey};
 use starknet_api::transaction::{Event, EventIndexInTransactionOutput, TransactionOffsetInBlock};
 use starknet_client::reader::{StarknetFeederGatewayClient, StarknetReader};
-use tracing::info;
+use tracing::{debug, info};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::prelude::*;
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
@@ -202,9 +202,9 @@ async fn main() -> anyhow::Result<()> {
                     TransactionIndex(bn, TransactionOffsetInBlock(0)),
                     EventIndexInTransactionOutput(0),
                 ),
-                bn.unchecked_next(),
+                bn,
             )?
-            .map(|((from_address, ..), content)| Event { from_address, content })
+            .map(|((from_address, ..), content)| { Event { from_address, content }})
             .collect::<Vec<_>>();
         let transaction_hashes = storage_reader
             .begin_ro_txn()?
