@@ -286,7 +286,7 @@ impl FetchBlockDataFromDb for DataType {
     ) -> Result<Data, DBExecutorError> {
         match self {
             DataType::SignedBlockHeader => {
-                let header = txn
+                let mut header = txn
                     .get_block_header(block_number)
                     .map_err(|err| DBExecutorError::DBInternalError {
                         query_id,
@@ -296,6 +296,21 @@ impl FetchBlockDataFromDb for DataType {
                         block_hash_or_number: BlockHashOrNumber::Number(block_number),
                         query_id,
                     })?;
+                // TODO(shahak) Remove this once central sync fills the state_diff_length field.
+                if header.state_diff_length.is_none() {
+                    header.state_diff_length = Some(
+                        txn.get_state_diff(block_number)
+                            .map_err(|err| DBExecutorError::DBInternalError {
+                                query_id,
+                                storage_error: err,
+                            })?
+                            .ok_or(DBExecutorError::BlockNotFound {
+                                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                                query_id,
+                            })?
+                            .len(),
+                    );
+                }
                 let signature = txn
                     .get_block_signature(block_number)
                     .map_err(|err| DBExecutorError::DBInternalError {
