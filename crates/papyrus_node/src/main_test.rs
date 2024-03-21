@@ -2,26 +2,11 @@ use std::time::Duration;
 
 use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_node::config::NodeConfig;
-#[cfg(feature = "rpc")]
-use papyrus_rpc::RpcConfig;
 use papyrus_storage::{open_storage, StorageConfig};
 use tempfile::TempDir;
-#[cfg(feature = "rpc")]
-use test_utils::get_absolute_path;
 use test_utils::prometheus_is_contained;
 
 use crate::{run_threads, spawn_storage_metrics_collector};
-
-#[cfg(feature = "rpc")]
-fn fix_execution_config_path(config: &mut NodeConfig) {
-    let default_execution_config_path = RpcConfig::default().execution_config;
-    config.rpc.execution_config =
-        get_absolute_path(default_execution_config_path.to_str().unwrap());
-}
-
-// If there's no RPC, there's no execution, so we don't need to fix anything
-#[cfg(not(feature = "rpc"))]
-fn fix_execution_config_path(_config: &mut NodeConfig) {}
 
 // The mission of this test is to ensure that if an error is returned from one of the spawned tasks,
 // the node will stop, and this error will be returned. This is done by checking the case of an
@@ -31,8 +16,6 @@ async fn run_threads_stop() {
     let mut config = NodeConfig::default();
     let temp_dir = TempDir::new().unwrap();
     config.storage.db_config.path_prefix = temp_dir.path().into();
-
-    fix_execution_config_path(&mut config);
 
     // Error when not supplying legal central URL.
     config.central.url = "_not_legal_url".to_string();

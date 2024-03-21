@@ -21,7 +21,6 @@ mod version_config;
 use std::collections::BTreeMap;
 use std::fmt::Display;
 use std::net::SocketAddr;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use jsonrpsee::core::RpcResult;
@@ -32,8 +31,9 @@ use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
-use papyrus_config::validators::{validate_ascii, validate_path_exists};
+use papyrus_config::validators::validate_ascii;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_execution::ExecutionConfig;
 use papyrus_storage::base_layer::BaseLayerStorageReader;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::db::TransactionKind;
@@ -73,8 +73,7 @@ pub struct RpcConfig {
     pub collect_metrics: bool,
     pub starknet_url: String,
     pub starknet_gateway_retry_config: RetryConfig,
-    #[validate(custom = "validate_path_exists")]
-    pub execution_config: PathBuf,
+    pub execution_config: ExecutionConfig,
 }
 
 impl Default for RpcConfig {
@@ -91,7 +90,7 @@ impl Default for RpcConfig {
                 retry_max_delay_millis: 1000,
                 max_retries: 5,
             },
-            execution_config: PathBuf::from("config/execution/mainnet.json"),
+            execution_config: ExecutionConfig::default(),
         }
     }
 }
@@ -135,13 +134,10 @@ impl SerializeConfig for RpcConfig {
                 "URL for communicating with Starknet in write_api methods.",
                 ParamPrivacyInput::Public,
             ),
-            ser_param(
-                "execution_config",
-                &self.execution_config,
-                "Path to the execution configuration file.",
-                ParamPrivacyInput::Public,
-            ),
         ]);
+
+        self_params_dump
+            .append(&mut append_sub_config_name(self.execution_config.dump(), "execution_config"));
         let mut retry_config_dump = append_sub_config_name(
             self.starknet_gateway_retry_config.dump(),
             "starknet_gateway_retry_config",
@@ -214,7 +210,7 @@ pub async fn run_server(
     debug!("Starting JSON-RPC.");
     let methods = get_methods_from_supported_apis(
         &config.chain_id,
-        config.execution_config.clone().try_into()?,
+        config.execution_config,
         storage_reader,
         config.max_events_chunk_size,
         config.max_events_keys,
