@@ -1,12 +1,12 @@
 mod header;
 #[cfg(test)]
-mod test_utils;
-#[cfg(test)]
 mod header_test;
+mod state_diff;
 #[cfg(test)]
 mod state_diff_test;
-mod state_diff;
 mod stream_factory;
+#[cfg(test)]
+mod test_utils;
 
 use std::collections::BTreeMap;
 use std::time::Duration;
