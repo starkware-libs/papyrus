@@ -74,7 +74,7 @@ mod test_instances;
 #[cfg(any(feature = "testing", test))]
 pub mod test_utils;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -128,6 +128,7 @@ use crate::db::{
     RW,
 };
 use crate::header::StorageBlockHeader;
+use crate::mmap_file::MMapFileStats;
 use crate::state::data::IndexedDeprecatedContractClass;
 pub use crate::utils::update_storage_metrics;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
@@ -412,6 +413,11 @@ impl StorageReader {
         Ok(DbStats { db_stats: self.db_reader.get_db_stats()?, tables_stats })
     }
 
+    /// Returns metadata about the memory mapped files in the storage.
+    pub fn mmap_files_stats(&self) -> HashMap<String, MMapFileStats> {
+        self.file_readers.stats()
+    }
+
     /// Returns the scope of the storage.
     pub fn get_scope(&self) -> StorageScope {
         self.scope
@@ -672,6 +678,16 @@ impl FileHandlers<RW> {
 }
 
 impl<Mode: TransactionKind> FileHandlers<Mode> {
+    pub fn stats(&self) -> HashMap<String, MMapFileStats> {
+        // TODO: use consts for the file names.
+        HashMap::from_iter([
+            ("thin_state_diff".to_string(), self.thin_state_diff.stats()),
+            ("contract_class".to_string(), self.contract_class.stats()),
+            ("casm".to_string(), self.casm.stats()),
+            ("deprecated_contract_class".to_string(), self.deprecated_contract_class.stats()),
+        ])
+    }
+
     // Returns the thin state diff at the given location or an error in case it doesn't exist.
     fn get_thin_state_diff_unchecked(
         &self,

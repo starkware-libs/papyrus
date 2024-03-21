@@ -21,6 +21,7 @@ use metrics_process::Collector;
 use papyrus_config::converters::{deserialize_optional_map, serialize_optional_map};
 use papyrus_config::dumping::{ser_generated_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
+use papyrus_storage::mmap_file::MMapFileStats;
 use papyrus_storage::{DbStats, StorageError, StorageReader};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -211,10 +212,17 @@ fn app(
             .expect("Failed creating Starknet client."),
     );
 
+    let db_tables_stats_reader = storage_reader.clone();
+    let mmap_files_stats_reader = storage_reader.clone();
+
     Router::new()
         .route(
             format!("/{MONITORING_PREFIX}/dbTablesStats").as_str(),
-            get(move || db_tables_stats(storage_reader)),
+            get(move || db_tables_stats(db_tables_stats_reader)),
+        )
+        .route(
+            format!("/{MONITORING_PREFIX}/mmapFilesStats").as_str(),
+            get(move || mmap_files_stats(mmap_files_stats_reader)),
         )
         .route(
             format!("/{MONITORING_PREFIX}/nodeConfig").as_str(),
@@ -267,6 +275,13 @@ async fn is_ready<TStarknetWriter: StarknetWriter, TStarknetReader: StarknetRead
 #[instrument(skip(storage_reader), level = "debug", ret)]
 async fn db_tables_stats(storage_reader: StorageReader) -> Result<Json<DbStats>, ServerError> {
     Ok(storage_reader.db_tables_stats()?.into())
+}
+
+#[instrument(skip(storage_reader), level = "debug", ret)]
+async fn mmap_files_stats(
+    storage_reader: StorageReader,
+) -> Result<Json<HashMap<String, MMapFileStats>>, ServerError> {
+    Ok(storage_reader.mmap_files_stats().into())
 }
 
 /// Returns the node config.
