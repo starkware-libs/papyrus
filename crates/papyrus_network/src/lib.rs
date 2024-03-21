@@ -10,7 +10,7 @@ pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::pin::Pin;
 use std::str::FromStr;
 use std::time::Duration;
@@ -18,9 +18,9 @@ use std::usize;
 
 use bytes::BufMut;
 use derive_more::Display;
-#[cfg(test)]
 use enum_iterator::Sequence;
 use futures::Stream;
+use lazy_static::lazy_static;
 use libp2p::{PeerId, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
@@ -68,6 +68,15 @@ impl From<Protocol> for DataType {
         match protocol {
             Protocol::SignedBlockHeader => DataType::SignedBlockHeader,
             Protocol::StateDiff => DataType::StateDiff,
+        }
+    }
+}
+
+impl From<DataType> for Protocol {
+    fn from(data_type: DataType) -> Protocol {
+        match data_type {
+            DataType::SignedBlockHeader => Protocol::SignedBlockHeader,
+            DataType::StateDiff => Protocol::StateDiff,
         }
     }
 }
@@ -142,7 +151,7 @@ pub struct ResponseReceivers {
     pub state_diffs_receiver: Option<StateDiffStream>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
 pub enum Protocol {
     SignedBlockHeader,
     StateDiff,
@@ -181,14 +190,19 @@ impl From<Protocol> for StreamProtocol {
 #[error("Unknown protocol: {0}")]
 pub struct UnknownProtocolConversionError(String);
 
+lazy_static! {
+    static ref PROTOCOL_NAME_TO_PROTOCOL: HashMap<&'static str, Protocol> =
+        enum_iterator::all::<Protocol>().map(|protocol| (protocol.as_str(), protocol)).collect();
+}
+
 impl TryFrom<StreamProtocol> for Protocol {
     type Error = UnknownProtocolConversionError;
 
     fn try_from(protocol: StreamProtocol) -> Result<Self, Self::Error> {
-        match protocol.as_ref() {
-            "/starknet/headers/1" => Ok(Protocol::SignedBlockHeader),
-            _ => Err(UnknownProtocolConversionError(protocol.as_ref().to_string())),
-        }
+        PROTOCOL_NAME_TO_PROTOCOL
+            .get(protocol.as_ref())
+            .ok_or(UnknownProtocolConversionError(protocol.as_ref().to_string()))
+            .copied()
     }
 }
 
