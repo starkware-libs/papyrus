@@ -1,3 +1,24 @@
+use futures::future::ready;
+use futures::{FutureExt, SinkExt, StreamExt};
+use indexmap::indexmap;
+use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
+use papyrus_storage::state::StateStorageReader;
+use rand::RngCore;
+use starknet_api::block::{BlockHeader, BlockNumber};
+use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::ThinStateDiff;
+use static_assertions::const_assert;
+use test_utils::get_rng;
+
+use crate::test_utils::{
+    create_block_hashes_and_signatures,
+    setup,
+    HEADER_QUERY_LENGTH,
+    SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
+    STATE_DIFF_QUERY_LENGTH,
+};
+
 fn create_random_state_diff(rng: &mut impl RngCore) -> ThinStateDiff {
     let contract0 = ContractAddress::from(rng.next_u64());
     let contract1 = ContractAddress::from(rng.next_u64());
