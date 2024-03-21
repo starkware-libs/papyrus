@@ -1,26 +1,17 @@
-use std::time::Duration;
-
-use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::ready;
-use futures::{FutureExt, SinkExt, StreamExt};
-use indexmap::indexmap;
-use lazy_static::lazy_static;
-use papyrus_network::{DataType, Direction, Query, ResponseReceivers, SignedBlockHeader};
+use futures::{SinkExt, StreamExt};
+use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
-use papyrus_storage::state::StateStorageReader;
-use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageReader;
-use rand::RngCore;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::crypto::Signature;
-use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::ThinStateDiff;
-use static_assertions::const_assert;
-use test_utils::get_rng;
+use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
 
-use super::{P2PSync, P2PSyncConfig};
+use crate::test_utils::{
+    create_block_hashes_and_signatures,
+    setup,
+    HEADER_QUERY_LENGTH,
+    SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
+    TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE,
+};
 
 #[tokio::test]
 async fn signed_headers_basic_flow() {
