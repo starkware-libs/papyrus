@@ -5,7 +5,7 @@
 // To see all the available scenarios run:
 //      cargo run -r -p papyrus_load_test -- --scenarios-list
 // To create the files of requests run:
-//      cargo run -r -p papyrus_load_test -- --create_files 127.0.0.1:8080
+//      cargo run -r -p papyrus_load_test -- --create_files http://127.0.0.1:8080/rpc/V0_7
 // For more options run:
 //      cargo run -r -p papyrus_load_test -- --help
 

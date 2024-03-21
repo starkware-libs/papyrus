@@ -195,9 +195,21 @@ expression: dumped_default_config
     "value": false,
     "privacy": "Public"
   },
-  "rpc.execution_config": {
-    "description": "Path to the execution configuration file.",
-    "value": "config/execution/mainnet.json",
+  "rpc.execution_config.eth_fee_contract_address": {
+    "description": "For executing transactions, the eth address to receive fees",
+    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
+    "privacy": "Public"
+  },
+  "rpc.execution_config.initial_gas_cost": {
+    "description": "For executing transactions, the initial gas cost for a transaction",
+    "value": {
+      "$serde_json::private::Number": "10000000000"
+    },
+    "privacy": "Public"
+  },
+  "rpc.execution_config.strk_fee_contract_address": {
+    "description": "For executing transactions, the strk address to receive fees",
+    "value": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
     "privacy": "Public"
   },
   "rpc.max_events_chunk_size": {

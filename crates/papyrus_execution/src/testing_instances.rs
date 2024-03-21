@@ -1,6 +1,5 @@
 #![allow(clippy::unwrap_used)]
 //! Utilities for generating testing instances of the execution objects.
-use std::path::PathBuf;
 
 /// Returns the storage key of a storage variable.
 pub use blockifier::abi::abi_utils::get_storage_var_address;
@@ -32,13 +31,12 @@ use crate::objects::{
 use crate::ExecutionConfig;
 
 /// Creates ExecutionConfig for tests.
-pub fn test_execution_config() -> ExecutionConfig {
-    let execution_config_file = PathBuf::from("../../config/execution/mainnet.json");
-    let execution_config: ExecutionConfig = execution_config_file.try_into().unwrap();
-    let mut execution_config = execution_config;
-    execution_config.eth_fee_contract_address = contract_address!("0x1001");
-    execution_config.strk_fee_contract_address = contract_address!("0x1001");
-    execution_config
+pub fn get_mock_execution_config() -> ExecutionConfig {
+    ExecutionConfig {
+        strk_fee_contract_address: contract_address!("0x1001"),
+        eth_fee_contract_address: contract_address!("0x1001"),
+        initial_gas_cost: 10_u64.pow(10),
+    }
 }
 
 auto_impl_get_test_instance! {

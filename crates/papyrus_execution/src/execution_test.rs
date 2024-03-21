@@ -1,13 +1,11 @@
 // TODO(shahak): Add a test for executing when there's a missing casm that's not required and when
 // there's a missing casm that is required.
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
 use blockifier::execution::call_info::Retdata;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
-use blockifier::versioned_constants::VersionedConstants;
 use indexmap::indexmap;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
@@ -51,19 +49,16 @@ use crate::test_utils::{
     SEQUENCER_ADDRESS,
     TEST_ERC20_CONTRACT_ADDRESS,
 };
-use crate::testing_instances::test_execution_config;
+use crate::testing_instances::get_mock_execution_config;
 use crate::{
     estimate_fee,
     execute_call,
     get_versioned_constants,
     ExecutableTransactionInput,
-    ExecutionConfig,
     ExecutionError,
     FeeEstimationResult,
     RevertedTransaction,
 };
-
-const NUM_OF_PRESET_EXECUTION_CONFIGS: usize = 5;
 
 // Test calling entry points of a deprecated class.
 #[test]
@@ -84,7 +79,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("without_arg"),
         Calldata::default(),
-        &test_execution_config(),
+        &get_mock_execution_config(),
         true,
     )
     .unwrap()
@@ -101,7 +96,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("with_arg"),
         Calldata(Arc::new(vec![StarkFelt::from(25u128)])),
-        &test_execution_config(),
+        &get_mock_execution_config(),
         true,
     )
     .unwrap()
@@ -118,7 +113,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("return_result"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128)])),
-        &test_execution_config(),
+        &get_mock_execution_config(),
         true,
     )
     .unwrap()
@@ -135,7 +130,7 @@ fn execute_call_cairo0() {
         &DEPRECATED_CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         Calldata(Arc::new(vec![StarkFelt::from(123u128), StarkFelt::from(456u128)])),
-        &test_execution_config(),
+        &get_mock_execution_config(),
         true,
     )
     .unwrap()
@@ -163,7 +158,7 @@ fn execute_call_cairo1() {
         &CONTRACT_ADDRESS,
         selector_from_name("test_storage_read_write"),
         calldata,
-        &test_execution_config(),
+        &get_mock_execution_config(),
         true,
     )
     .unwrap()
@@ -258,7 +253,7 @@ fn estimate_fees(txs: Vec<ExecutableTransactionInput>) -> FeeEstimationResult {
         None,
         StateNumber::unchecked_right_after_block(BlockNumber(0)),
         BlockNumber(1),
-        &test_execution_config(),
+        &get_mock_execution_config(),
         false,
         // TODO(yair): Add test for blob fee estimation.
         true,
@@ -655,35 +650,6 @@ fn simulate_invoke_from_new_account_validate_and_charge() {
     assert_matches!(invoke_trace.fee_transfer_invocation, Some(_));
 }
 
-/// Test that the execution configs are loaded correctly. Compare the loaded configs to the
-/// expected.
-#[test]
-fn test_preset_execution_configs() {
-    let mut execution_configs: Vec<ExecutionConfig> = Vec::new();
-    let preset_files_dir = "../../config/execution";
-    for path in preset_files_dir.parse::<PathBuf>().unwrap().read_dir().unwrap() {
-        let path = path.unwrap().path();
-        let execution_config_file = path.try_into().unwrap();
-        execution_configs.push(execution_config_file);
-    }
-    assert_eq!(execution_configs.len(), NUM_OF_PRESET_EXECUTION_CONFIGS);
-    for config in execution_configs {
-        assert_eq!(config, get_default_execution_config());
-    }
-}
-
-fn get_default_execution_config() -> ExecutionConfig {
-    ExecutionConfig {
-        strk_fee_contract_address: contract_address!(
-            "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
-        ),
-        eth_fee_contract_address: contract_address!(
-            "0x049d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
-        ),
-        initial_gas_cost: 10_u64.pow(8)
-            * VersionedConstants::latest_constants().gas_cost("step_gas_cost"),
-    }
-}
 #[test]
 fn induced_state_diff() {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();

@@ -19,6 +19,7 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
+use std::collections::BTreeMap;
 use std::num::NonZeroU128;
 use std::path::Path;
 use std::sync::Arc;
@@ -49,17 +50,20 @@ use objects::{PriceUnit, TransactionSimulationOutput};
 use once_cell::sync::Lazy;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, StarknetVersion};
-use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector};
+use starknet_api::core::{ChainId, ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 // TODO: merge multiple EntryPointType structs in SN_API into one.
 use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
@@ -75,7 +79,7 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::StarknetApiError;
+use starknet_api::{contract_address, patricia_key, StarknetApiError};
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
@@ -86,6 +90,11 @@ const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
 const STARKNET_VERSION_O_13_0: &str = "0.13.0";
 const STARKNET_VERSION_O_13_1: &str = "0.13.1";
+const STRK_FEE_CONTRACT_ADDRESS: &str =
+    "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
+const ETH_FEE_CONTRACT_ADDRESS: &str =
+    "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7";
+const INITIAL_GAS_COST: u64 = 10000000000;
 
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
@@ -104,10 +113,45 @@ static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
 pub struct ExecutionConfig {
     /// The strk address to receive fees
     pub strk_fee_contract_address: ContractAddress,
-    /// The address to receive fees
+    /// The eth address to receive fees
     pub eth_fee_contract_address: ContractAddress,
     /// The initial gas cost for a transaction
     pub initial_gas_cost: u64,
+}
+
+impl Default for ExecutionConfig {
+    fn default() -> Self {
+        ExecutionConfig {
+            strk_fee_contract_address: contract_address!(STRK_FEE_CONTRACT_ADDRESS),
+            eth_fee_contract_address: contract_address!(ETH_FEE_CONTRACT_ADDRESS),
+            initial_gas_cost: INITIAL_GAS_COST,
+        }
+    }
+}
+
+impl SerializeConfig for ExecutionConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "strk_fee_contract_address",
+                &self.strk_fee_contract_address,
+                "The strk address to receive fees",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "eth_fee_contract_address",
+                &self.eth_fee_contract_address,
+                "The eth address to receive fees",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "initial_gas_cost",
+                &self.initial_gas_cost,
+                "The initial gas cost for a transaction",
+                ParamPrivacyInput::Public,
+            ),
+        ])
+    }
 }
 
 #[allow(missing_docs)]
