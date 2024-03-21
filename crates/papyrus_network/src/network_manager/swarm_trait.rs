@@ -11,7 +11,7 @@ use crate::{PeerAddressConfig, Protocol};
 pub type Event = SwarmEvent<<Behaviour as NetworkBehaviour>::ToSwarm>;
 
 pub trait SwarmTrait: Stream<Item = Event> + Unpin {
-    fn send_data(
+    fn send_length_prefixed_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
@@ -28,12 +28,12 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
 }
 
 impl SwarmTrait for Swarm<Behaviour> {
-    fn send_data(
+    fn send_length_prefixed_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().send_data(data, inbound_session_id)
+        self.behaviour_mut().send_length_prefixed_data(data, inbound_session_id)
     }
 
     fn send_query(

@@ -234,8 +234,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
         let (data, inbound_session_id) = res;
         let mut data_bytes = vec![];
-        data.encode(&mut data_bytes).expect("failed to encode data");
-        self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
+        data.encode_with_length_prefix(&mut data_bytes).expect("failed to encode data");
+        self.swarm.send_length_prefixed_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
             error!("Failed to send data to peer. Session id not found error: {e:?}");
         })
     }

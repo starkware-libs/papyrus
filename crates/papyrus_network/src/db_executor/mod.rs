@@ -50,7 +50,7 @@ impl Default for Data {
 }
 
 impl Data {
-    pub fn encode<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    pub fn encode_with_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
     where
         B: BufMut,
     {
@@ -58,7 +58,7 @@ impl Data {
             Data::BlockHeaderAndSignature { .. } => self
                 .try_into()
                 .map(|data: protobuf::BlockHeadersResponse| {
-                    data.encode(buf).map_err(|_| DataEncodingError)
+                    data.encode_length_delimited(buf).map_err(|_| DataEncodingError)
                 })
                 .map_err(|_| DataEncodingError)?,
             Data::StateDiff { state_diff } => {
@@ -68,7 +68,9 @@ impl Data {
                     .iter()
                     .map(|data| {
                         let mut buf = vec![];
-                        data.encode(&mut buf).map_err(|_| DataEncodingError).map(|_| buf)
+                        data.encode_length_delimited(&mut buf)
+                            .map_err(|_| DataEncodingError)
+                            .map(|_| buf)
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 for byte in res.iter().flatten() {
@@ -82,14 +84,14 @@ impl Data {
                         protobuf::Fin {},
                     )),
                 }
-                .encode(buf)
+                .encode_length_delimited(buf)
                 .map_err(|_| DataEncodingError),
                 DataType::StateDiff => protobuf::StateDiffsResponse {
                     state_diff_message: Some(
                         protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
                     ),
                 }
-                .encode(buf)
+                .encode_length_delimited(buf)
                 .map_err(|_| DataEncodingError),
             },
         }
