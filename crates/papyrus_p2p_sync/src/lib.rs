@@ -1,6 +1,10 @@
 mod header;
 #[cfg(test)]
-mod p2p_sync_test;
+mod test_utils;
+#[cfg(test)]
+mod header_test;
+#[cfg(test)]
+mod state_diff_test;
 mod state_diff;
 mod stream_factory;
 
