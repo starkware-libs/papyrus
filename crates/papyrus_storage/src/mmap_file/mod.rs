@@ -170,7 +170,7 @@ pub(crate) fn open_file<V: ValueSerde>(
     path: PathBuf,
     offset: usize,
 ) -> MmapFileResult<(FileHandler<V, RW>, FileHandler<V, RO>)> {
-    let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
+    let file = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };
     let mmap_ptr = mmap.as_ptr();
@@ -266,6 +266,22 @@ impl<V: ValueSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
         };
         trace!("Deserializing object: {:?}", bytes);
         Ok(V::deserialize(&mut bytes))
+    }
+}
+
+/// Stats for a memory mapped file.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
+pub struct MMapFileStats {
+    // The current size of the file.
+    size: usize,
+    // The amount of data that has been written to the file.
+    offset: usize,
+}
+
+impl<V: ValueSerde, Mode: TransactionKind> FileHandler<V, Mode> {
+    pub fn stats(&self) -> MMapFileStats {
+        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        MMapFileStats { size: mmap_file.size, offset: mmap_file.offset }
     }
 }
 
