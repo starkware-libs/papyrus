@@ -13,16 +13,18 @@ use statistical::median;
 // TODO(dvir): add this to the readme of the binaries and/or consider reordering the binaries.
 // TODO(dvir): consider adding tests.
 
-fn main() {
+pub fn main() {
     let cli_params = get_cli_params();
 
     // Creates List of queries to be executed.
     println!("Creating queries");
     let mut queries: Vec<StorageQuery> = Vec::new();
-    for line in
-        read_to_string(cli_params.queries_file_path).expect("Fail to read queries file").lines()
+    for line in read_to_string(cli_params.queries_file_path)
+        .expect("Should be able to read the queries file")
+        .lines()
     {
-        queries.push(serde_json::from_str(line).expect("Failed to parse query"));
+        queries
+            .push(serde_json::from_str(line).expect("Query should be a valid query json object"));
     }
 
     // Open storage to execute the queries.
@@ -35,9 +37,9 @@ fn main() {
     let config = StorageConfig { db_config, ..Default::default() };
 
     let (reader, mut _writer) =
-        papyrus_storage::open_storage(config).expect("Failed to open storage");
-    let txn = reader.begin_ro_txn().expect("Failed to begin read only transaction");
-    let state_reader = txn.get_state_reader().expect("Failed to get state reader");
+        papyrus_storage::open_storage(config).expect("Should be able to open storage");
+    let txn = reader.begin_ro_txn().expect("Should be able to begin read only transaction");
+    let state_reader = txn.get_state_reader().expect("Should be able to get state reader");
 
     let mut times = Times::default();
 
@@ -66,15 +68,16 @@ fn main() {
                 times.get_storage_at.push(exec_time);
             }
         }
-        println!("{}", serde_json::to_string(&q).expect("Failed to serialize query"));
+        println!("{}", serde_json::to_string(&q).expect("Should be able to serialize the query"));
         println!("time: {}", exec_time.as_nanos());
     }
 
     println!("Writing results to file");
-    let results_file =
-        File::create(cli_params.output_file_path).expect("Failed to create output file");
+    let results_file = File::create(cli_params.output_file_path)
+        .expect("Should be able to create the output file");
     let final_results = times.get_final_results();
-    serde_json::to_writer(results_file, &final_results).expect("Failed to write to output file");
+    serde_json::to_writer(results_file, &final_results)
+        .expect("Should be able to write to the output file");
 }
 
 // Records the time it takes to execute the queries.
@@ -195,16 +198,16 @@ fn get_cli_params() -> CliParams {
 
     let queries_file_path = matches
         .get_one::<String>("queries_file_path")
-        .expect("Failed parsing queries_file_path")
+        .expect("Missing queries_file_path")
         .to_string();
     let db_file_path =
-        matches.get_one::<String>("db_file_path").expect("Failed parsing db_file_path").to_string();
+        matches.get_one::<String>("db_file_path").expect("Missing db_file_path").to_string();
     let output_file_path = matches
         .get_one::<String>("output_file_path")
-        .expect("Failed parsing output_file_path")
+        .expect("Missing output_file_path")
         .to_string();
     let chain_id =
-        matches.get_one::<String>("chain_id").expect("Failed parsing chain_id").to_string();
+        matches.get_one::<String>("chain_id").expect("Missing parse chain_id").to_string();
 
     CliParams { queries_file_path, db_file_path, output_file_path, chain_id }
 }

@@ -779,6 +779,7 @@ pub enum OffsetKind {
 
 /// A storage query. Used for benchmarking in the storage_benchmark binary.
 // TODO(dvir): add more queries (especially get casm).
+// TODO(dvir): consider move this, maybe to test_utils.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StorageQuery {
