@@ -35,8 +35,6 @@ use super::protocol::{InboundProtocol, OutboundProtocol};
 use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 
 #[derive(Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub enum RequestFromBehaviourEvent {
     CreateOutboundSession {
         query: Bytes,
@@ -62,8 +60,6 @@ pub enum RequestToBehaviourEvent {
 }
 
 #[derive(thiserror::Error, Debug)]
-// TODO(shahak) remove allow(dead_code).
-#[allow(dead_code)]
 pub enum SessionError {
     #[error("Connection timed out after {} seconds.", session_timeout.as_secs())]
     Timeout { session_timeout: Duration },
@@ -99,8 +95,6 @@ pub struct Handler {
 
 impl Handler {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
-    // TODO(shahak) remove allow(dead_code).
-    #[allow(dead_code)]
     pub fn new(config: Config, next_inbound_session_id: Arc<AtomicUsize>, peer_id: PeerId) -> Self {
         Self {
             config,

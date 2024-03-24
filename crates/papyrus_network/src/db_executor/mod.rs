@@ -130,7 +130,6 @@ pub enum DBExecutorError {
     },
 }
 
-#[allow(dead_code)]
 impl DBExecutorError {
     pub fn query_id(&self) -> Option<QueryId> {
         match self {
@@ -174,7 +173,6 @@ pub struct BlockHeaderDBExecutor {
 }
 
 impl BlockHeaderDBExecutor {
-    #[allow(dead_code)]
     pub fn new(storage_reader: StorageReader) -> Self {
         Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
     }
