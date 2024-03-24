@@ -1,6 +1,8 @@
 //! This module is used to log calls to the storage system. This is useful for benchmarking
 //! and used in the storage_benchmark tool.
 
+// TODO(dvir): add a link to the storage_benchmark tool after its publishing.
+
 use std::fs::File;
 use std::io::Write;
 use std::sync::Mutex;
