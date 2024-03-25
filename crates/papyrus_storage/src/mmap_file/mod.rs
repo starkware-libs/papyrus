@@ -170,7 +170,7 @@ pub(crate) fn open_file<V: ValueSerde>(
     path: PathBuf,
     offset: usize,
 ) -> MmapFileResult<(FileHandler<V, RW>, FileHandler<V, RO>)> {
-    let file = OpenOptions::new().read(true).write(true).create(true).open(path)?;
+    let file = OpenOptions::new().read(true).write(true).create(true).truncate(false).open(path)?;
     let size = file.metadata()?.len();
     let mmap = unsafe { MmapOptions::new().len(config.max_size).map_mut(&file)? };
     let mmap_ptr = mmap.as_ptr();
