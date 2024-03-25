@@ -55,6 +55,21 @@ pub fn get_mmap_file_test_config() -> MmapFileConfig {
 pub fn get_test_storage_by_scope(
     storage_scope: StorageScope,
 ) -> ((StorageReader, StorageWriter), TempDir) {
-    let (config, temp_dir) = get_test_config(Some(storage_scope));
-    ((open_storage(config).unwrap()), temp_dir)
+    let ((reader, writer), _config, temp_dir) =
+        get_test_storage_with_config_by_scope(storage_scope);
+    ((reader, writer), temp_dir)
+}
+
+/// Returns [`StorageReader`], [`StorageWriter`] that configured by the given [`StorageScope`] and
+/// the temporary directory that holds a db for testing purposes. The Returned [`StorageConfig`] can
+/// be use to open the exact same storage again (same DB file).
+pub fn get_test_storage_with_config_by_scope(
+    scope: StorageScope,
+) -> ((StorageReader, StorageWriter), StorageConfig, TempDir) {
+    let (mut config, temp_dir) = get_test_config(Some(scope));
+    let (reader, writer) = open_storage(config.clone()).unwrap();
+    config.db_config.path_prefix = temp_dir.path().to_path_buf();
+    config.scope = scope;
+
+    ((reader, writer), config, temp_dir)
 }
