@@ -121,6 +121,30 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
     }
 }
 
+impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> TableHandle<'env, K, V, SimpleTable> {
+    // Append a key value pair to the end of the table. The key must be bigger than or equal to the
+    // last key in the table; otherwise, an error will be returned.
+    #[allow(dead_code)]
+    pub(crate) fn append(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let data = V::serialize(value)?;
+        let bin_key = key.serialize()?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::APPEND).map_err(
+            |err| match err {
+                libmdbx::Error::KeyMismatch => DbError::Append,
+                _ => err.into(),
+            },
+        )?;
+        Ok(())
+    }
+}
+
+// TODO(dvir): consider adding append functionality using a cursor. It should be more efficient for
+// more than a single append operation (also for other table types).
 impl<'txn, Mode: TransactionKind, K: KeyTrait + Debug, V: ValueSerde + Debug> DbCursorTrait
     for DbCursor<'txn, Mode, K, V, SimpleTable>
 {
