@@ -141,7 +141,7 @@ pub const STORAGE_VERSION_STATE: Version = Version { major: 0, minor: 13 };
 /// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
 /// required.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 1, minor: 0 };
+pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 1, minor: 1 };
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
