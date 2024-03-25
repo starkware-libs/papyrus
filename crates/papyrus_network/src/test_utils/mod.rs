@@ -74,11 +74,6 @@ impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamHashMap<K, V> {
     pub fn keys(&self) -> Keys<'_, K, V> {
         self.map.keys()
     }
-
-    #[allow(dead_code)]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.map.get_mut(key)
-    }
 }
 
 impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamTrait for StreamHashMap<K, V> {

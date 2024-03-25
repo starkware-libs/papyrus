@@ -99,12 +99,9 @@ pub struct SessionIdNotFoundError;
 #[error("We are not connected to the given peer. Dial to the given peer and try again.")]
 pub struct PeerNotConnected;
 
-// TODO(shahak) remove allow dead code.
-#[allow(dead_code)]
 pub struct Behaviour {
     config: Config,
     pending_events: VecDeque<ToSwarm<Event, RequestFromBehaviourEvent>>,
-    pending_queries: DefaultHashMap<PeerId, Vec<(Bytes, OutboundSessionId)>>,
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
@@ -118,7 +115,6 @@ impl Behaviour {
         Self {
             config,
             pending_events: Default::default(),
-            pending_queries: Default::default(),
             connection_ids_map: Default::default(),
             session_id_to_peer_id_and_connection_id: Default::default(),
             next_outbound_session_id: Default::default(),
