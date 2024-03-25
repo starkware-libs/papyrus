@@ -50,15 +50,20 @@ impl Default for Data {
 }
 
 impl Data {
-    pub fn encode_with_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    fn encode_template<B>(
+        self,
+        buf: &mut B,
+        encode_with_length_prefix_flag: bool,
+    ) -> Result<(), DataEncodingError>
     where
         B: BufMut,
     {
         match self {
             Data::BlockHeaderAndSignature { .. } => self
                 .try_into()
-                .map(|data: protobuf::BlockHeadersResponse| {
-                    data.encode_length_delimited(buf).map_err(|_| DataEncodingError)
+                .map(|data: protobuf::BlockHeadersResponse| match encode_with_length_prefix_flag {
+                    true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
+                    false => data.encode(buf).map_err(|_| DataEncodingError),
                 })
                 .map_err(|_| DataEncodingError)?,
             Data::StateDiff { state_diff } => {
@@ -67,10 +72,13 @@ impl Data {
                     .0
                     .iter()
                     .map(|data| {
-                        let mut buf = vec![];
-                        data.encode_length_delimited(&mut buf)
-                            .map_err(|_| DataEncodingError)
-                            .map(|_| buf)
+                        let mut buf: Vec<u8> = vec![];
+                        match encode_with_length_prefix_flag {
+                            true => data.encode_length_delimited(&mut buf),
+                            false => data.encode(&mut buf),
+                        }
+                        .map_err(|_| DataEncodingError)
+                        .map(|_| buf)
                     })
                     .collect::<Result<Vec<_>, _>>()?;
                 for byte in res.iter().flatten() {
@@ -79,22 +87,44 @@ impl Data {
                 Ok(())
             }
             Data::Fin(data_type) => match data_type {
-                DataType::SignedBlockHeader => protobuf::BlockHeadersResponse {
-                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
-                        protobuf::Fin {},
-                    )),
+                DataType::SignedBlockHeader => {
+                    let block_header_response = protobuf::BlockHeadersResponse {
+                        header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                            protobuf::Fin {},
+                        )),
+                    };
+                    match encode_with_length_prefix_flag {
+                        true => block_header_response.encode_length_delimited(buf),
+                        false => block_header_response.encode(buf),
+                    }
+                    .map_err(|_| DataEncodingError)
                 }
-                .encode_length_delimited(buf)
-                .map_err(|_| DataEncodingError),
-                DataType::StateDiff => protobuf::StateDiffsResponse {
-                    state_diff_message: Some(
-                        protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
-                    ),
+                DataType::StateDiff => {
+                    let state_diff_response = protobuf::StateDiffsResponse {
+                        state_diff_message: Some(
+                            protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+                        ),
+                    };
+                    match encode_with_length_prefix_flag {
+                        true => state_diff_response.encode_length_delimited(buf),
+                        false => state_diff_response.encode(buf),
+                    }
+                    .map_err(|_| DataEncodingError)
                 }
-                .encode_length_delimited(buf)
-                .map_err(|_| DataEncodingError),
             },
         }
+    }
+    pub fn encode_with_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    where
+        B: BufMut,
+    {
+        self.encode_template(buf, true)
+    }
+    pub fn encode_without_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    where
+        B: BufMut,
+    {
+        self.encode_template(buf, false)
     }
 }
 
