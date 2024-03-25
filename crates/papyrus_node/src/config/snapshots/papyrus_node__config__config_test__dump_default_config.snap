@@ -185,6 +185,18 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "p2p_sync.stop_sync_at_block_number": {
+    "description": "Stops the sync at given block number and closes the node cleanly. Used to run profiling on the node.",
+    "value": {
+      "$serde_json::private::Number": "1000"
+    },
+    "privacy": "Public"
+  },
+  "p2p_sync.stop_sync_at_block_number.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
   "p2p_sync.wait_period_for_new_data": {
     "description": "Time in seconds to wait when a query returned with partial data before sending a new query",
     "value": {

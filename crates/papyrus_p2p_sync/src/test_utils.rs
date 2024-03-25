@@ -26,7 +26,8 @@ lazy_static! {
     static ref TEST_CONFIG: P2PSyncConfig = P2PSyncConfig {
         num_headers_per_query: HEADER_QUERY_LENGTH,
         num_block_state_diffs_per_query: STATE_DIFF_QUERY_LENGTH,
-        wait_period_for_new_data: WAIT_PERIOD_FOR_NEW_DATA
+        wait_period_for_new_data: WAIT_PERIOD_FOR_NEW_DATA,
+        stop_sync_at_block_number: None,
     };
 }
 
