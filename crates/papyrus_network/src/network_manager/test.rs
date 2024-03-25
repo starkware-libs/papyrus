@@ -6,10 +6,13 @@ use std::vec;
 
 use deadqueue::unlimited::Queue;
 use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
-use futures::future::poll_fn;
+use futures::channel::oneshot;
+use futures::future::{poll_fn, FutureExt};
 use futures::stream::{FuturesUnordered, Stream};
-use futures::{pin_mut, Future, FutureExt, SinkExt, StreamExt};
-use libp2p::PeerId;
+use futures::{pin_mut, Future, SinkExt, StreamExt};
+use libp2p::core::ConnectedPoint;
+use libp2p::swarm::ConnectionId;
+use libp2p::{Multiaddr, PeerId};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -37,13 +40,23 @@ struct MockSwarm {
     pub sent_queries: Vec<(InternalQuery, PeerId)>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
+    first_polled_event_notifier: Option<oneshot::Sender<()>>,
 }
 
 impl Stream for MockSwarm {
     type Item = Event;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let fut = self.pending_events.pop().map(Some);
+        let mut_self = self.get_mut();
+        let mut fut = mut_self.pending_events.pop().map(Some).boxed();
+        if let Some(sender) = mut_self.first_polled_event_notifier.take() {
+            fut = fut
+                .then(|res| async {
+                    sender.send(()).unwrap();
+                    res
+                })
+                .boxed();
+        };
         pin_mut!(fut);
         fut.poll_unpin(cx)
     }
@@ -195,12 +208,19 @@ const HEADER_BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
 async fn register_subscriber_and_use_channels() {
-    // create mocked network manager
+    // mock swarm to send and track connection established event
+    let mut mock_swarm = MockSwarm::default();
+    let peer_id = PeerId::random();
+    mock_swarm.pending_events.push(get_test_connection_established_event(peer_id));
+    let (event_notifier, mut event_listner) = oneshot::channel();
+    mock_swarm.first_polled_event_notifier = Some(event_notifier);
+
+    // network manager to register subscriber and send query
     let mut network_manager = GenericNetworkManager::generic_new(
-        MockSwarm::default(),
+        mock_swarm,
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
+        Some(PeerAddressConfig { peer_id, ..Default::default() }),
     );
     // define query
     let query_limit = 5;
@@ -216,7 +236,6 @@ async fn register_subscriber_and_use_channels() {
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
         network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
-    query_sender.send(query).await.unwrap();
 
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
@@ -231,6 +250,8 @@ async fn register_subscriber_and_use_channels() {
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
+        _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
+            query_sender.send(query).await.unwrap()}) => {}
         _ = signed_header_receiver_collector => {}
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
@@ -303,5 +324,79 @@ async fn process_incoming_query() {
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
+    }
+}
+#[tokio::test]
+async fn sync_subscriber_query_before_established_connection() {
+    // network manager to register subscriber and send query
+    let mut network_manager = GenericNetworkManager::generic_new(
+        MockSwarm::default(),
+        MockDBExecutor::default(),
+        HEADER_BUFFER_SIZE,
+        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
+    );
+    // define query
+    let query_limit = 5;
+    let start_block_number = 0;
+    let query = Query {
+        start_block: BlockNumber(start_block_number),
+        direction: Direction::Forward,
+        limit: query_limit,
+        step: 1,
+        data_type: DataType::SignedBlockHeader,
+    };
+
+    // register subscriber and send query
+    let (mut query_sender, response_receivers) =
+        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+    query_sender.send(query).await.unwrap();
+
+    let mut signed_block_header_stream = response_receivers.signed_headers_receiver.unwrap();
+
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        Some(data) = signed_block_header_stream.next() => {assert!(data.is_none())},
+        _ = sleep(Duration::from_secs(5)) => {
+            panic!("Test timed out");
+        }
+    }
+}
+#[tokio::test]
+async fn return_fin_to_subscriber() {
+    // network manager to register subscriber
+    let mut network_manager = GenericNetworkManager::generic_new(
+        MockSwarm::default(),
+        MockDBExecutor::default(),
+        HEADER_BUFFER_SIZE,
+        None,
+    );
+    // register subscriber
+    let (_, response_receivers) =
+        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+
+    // get a fin through the subscriber channel
+    network_manager.return_fin_to_subscriber(DataType::SignedBlockHeader);
+
+    // check that the subscriber received the fin
+    let mut signed_block_header_stream = response_receivers.signed_headers_receiver.unwrap();
+
+    tokio::select! {
+        Some(data) = signed_block_header_stream.next() => {assert!(data.is_none())},
+        _ = sleep(Duration::from_secs(5)) => {
+            panic!("Test timed out");
+        }
+    }
+}
+fn get_test_connection_established_event(mock_peer_id: PeerId) -> Event {
+    Event::ConnectionEstablished {
+        peer_id: mock_peer_id,
+        connection_id: ConnectionId::new_unchecked(0),
+        endpoint: ConnectedPoint::Dialer {
+            address: Multiaddr::empty(),
+            role_override: libp2p::core::Endpoint::Dialer,
+        },
+        num_established: std::num::NonZeroU32::new(1).unwrap(),
+        concurrent_dial_errors: None,
+        established_in: Duration::from_secs(0),
     }
 }
