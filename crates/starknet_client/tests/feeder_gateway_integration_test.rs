@@ -71,37 +71,38 @@ fn into_block_number_vec<T: Serialize>(obj: T) -> Vec<BlockNumber> {
         .collect()
 }
 
-#[tokio::test]
-#[ignore]
-async fn test_integration_testnet() {
-    let _ = simple_logger::init_with_env();
-    let integration_testnet_data = TestEnvData {
-        url: "https://external.integration.starknet.io".to_owned(),
-        get_blocks: BlocksForGetBlock {
-            first_block: 0,
-            declare_tx: 171486,
-            starknet_version: 192397,
-            declare_version_1: 228224,
-            invoke_version_1: 228208,
-            deploy_account: 238699,
-            declare_version_2: 285182,
-        },
-        get_state_updates: BlocksForGetStateUpdate {
-            first_block: 0,
-            old_declared_contracts: 209679,
-            nonces: 228155,
-            declared_classes: 285182,
-            replaced_classes: 0, // No block with this API change yet.
-        },
-        class_hashes: ClassHashes {
-            cairo_0_class_hash: "0x2753ce06a79a9a9c608787a608b424f79c56f465954f1f3a7f6785d575366fb"
-                .to_owned(),
-            cairo_1_class_hash: "0x2f80a64102b148f7142f1ec14a786ef130e2d4320f2214f4aafebb961e3ab45"
-                .to_owned(),
-        },
-    };
-    run(integration_testnet_data).await;
-}
+// TODO(shahak): Uncomment or erase this.
+// #[tokio::test]
+// #[ignore]
+// async fn test_integration_testnet() {
+//     let _ = simple_logger::init_with_env();
+//     let integration_testnet_data = TestEnvData {
+//         url: "https://external.integration.starknet.io".to_owned(),
+//         get_blocks: BlocksForGetBlock {
+//             first_block: 0,
+//             declare_tx: 171486,
+//             starknet_version: 192397,
+//             declare_version_1: 228224,
+//             invoke_version_1: 228208,
+//             deploy_account: 238699,
+//             declare_version_2: 285182,
+//         },
+//         get_state_updates: BlocksForGetStateUpdate {
+//             first_block: 0,
+//             old_declared_contracts: 209679,
+//             nonces: 228155,
+//             declared_classes: 285182,
+//             replaced_classes: 0, // No block with this API change yet.
+//         },
+//         class_hashes: ClassHashes {
+//             cairo_0_class_hash:
+// "0x2753ce06a79a9a9c608787a608b424f79c56f465954f1f3a7f6785d575366fb"                 .to_owned(),
+//             cairo_1_class_hash:
+// "0x2f80a64102b148f7142f1ec14a786ef130e2d4320f2214f4aafebb961e3ab45"                 .to_owned(),
+//         },
+//     };
+//     run(integration_testnet_data).await;
+// }
 
 #[tokio::test]
 #[ignore]
