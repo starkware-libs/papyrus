@@ -96,6 +96,50 @@ impl Data {
             },
         }
     }
+    pub fn encode<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+    where
+        B: BufMut,
+    {
+        match self {
+            Data::BlockHeaderAndSignature { .. } => self
+                .try_into()
+                .map(|data: protobuf::BlockHeadersResponse| {
+                    data.encode(buf).map_err(|_| DataEncodingError)
+                })
+                .map_err(|_| DataEncodingError)?,
+            Data::StateDiff { state_diff } => {
+                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
+                let res = state_diffs_response_vec
+                    .0
+                    .iter()
+                    .map(|data| {
+                        let mut buf = vec![];
+                        data.encode(&mut buf).map_err(|_| DataEncodingError).map(|_| buf)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                for byte in res.iter().flatten() {
+                    buf.put_u8(*byte);
+                }
+                Ok(())
+            }
+            Data::Fin(data_type) => match data_type {
+                DataType::SignedBlockHeader => protobuf::BlockHeadersResponse {
+                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                        protobuf::Fin {},
+                    )),
+                }
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+                DataType::StateDiff => protobuf::StateDiffsResponse {
+                    state_diff_message: Some(
+                        protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+                    ),
+                }
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+            },
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
