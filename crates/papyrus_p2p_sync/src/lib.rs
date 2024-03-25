@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{SendError, Sender};
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_network::{DataType, Query, ResponseReceivers};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -33,11 +33,12 @@ pub struct P2PSyncConfig {
     pub num_block_state_diffs_per_query: usize,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
+    pub stop_sync_at_block_number: Option<BlockNumber>,
 }
 
 impl SerializeConfig for P2PSyncConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
-        BTreeMap::from_iter([
+        let mut config = BTreeMap::from_iter([
             ser_param(
                 "num_headers_per_query",
                 &self.num_headers_per_query,
@@ -57,7 +58,16 @@ impl SerializeConfig for P2PSyncConfig {
                  new query",
                 ParamPrivacyInput::Public,
             ),
-        ])
+        ]);
+        config.extend(ser_optional_param(
+            &self.stop_sync_at_block_number,
+            BlockNumber(1000),
+            "stop_sync_at_block_number",
+            "Stops the sync at given block number and closes the node cleanly. Used to run \
+             profiling on the node.",
+            ParamPrivacyInput::Public,
+        ));
+        config
     }
 }
 
@@ -69,6 +79,7 @@ impl Default for P2PSyncConfig {
             // messages in the network buffers.
             num_block_state_diffs_per_query: 100,
             wait_period_for_new_data: Duration::from_secs(5),
+            stop_sync_at_block_number: None,
         }
     }
 }
@@ -149,6 +160,7 @@ impl P2PSync {
             self.storage_reader.clone(),
             self.config.wait_period_for_new_data,
             self.config.num_headers_per_query,
+            self.config.stop_sync_at_block_number,
         );
 
         let state_diff_stream = StateDiffStreamFactory::create_stream(
@@ -159,6 +171,7 @@ impl P2PSync {
             self.storage_reader,
             self.config.wait_period_for_new_data,
             self.config.num_block_state_diffs_per_query,
+            self.config.stop_sync_at_block_number,
         );
 
         let mut data_stream = header_stream.merge(state_diff_stream);
