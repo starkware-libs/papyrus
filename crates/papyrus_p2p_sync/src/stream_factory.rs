@@ -51,6 +51,7 @@ pub(crate) trait DataStreamFactory {
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: usize,
+        stop_sync_at_block_number: Option<BlockNumber>,
     ) -> BoxStream<'static, Result<Box<dyn BlockData>, P2PSyncError>> {
         stream! {
             let mut current_block_number = Self::get_start_block_number(&storage_reader)?;
@@ -109,6 +110,12 @@ pub(crate) trait DataStreamFactory {
                     }
                     info!("Added {:?} for block {}.", Self::DATA_TYPE, current_block_number);
                     current_block_number = current_block_number.unchecked_next();
+                    if stop_sync_at_block_number.is_some_and(|stop_sync_at_block_number| {
+                        current_block_number >= stop_sync_at_block_number
+                    }) {
+                        info!("{:?} hit the stop sync block number.", Self::DATA_TYPE);
+                        return;
+                    }
                 }
 
                 // Consume the None message signaling the end of the query.

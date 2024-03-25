@@ -159,6 +159,16 @@
     "privacy": "Public",
     "value": 10000
   },
+  "p2p_sync.stop_sync_at_block_number": {
+    "description": "Stops the sync at given block number and closes the node cleanly. Used to run profiling on the node.",
+    "privacy": "Public",
+    "value": 1000
+  },
+  "p2p_sync.stop_sync_at_block_number.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
   "p2p_sync.wait_period_for_new_data": {
     "description": "Time in seconds to wait when a query returned with partial data before sending a new query",
     "privacy": "Public",
