@@ -39,6 +39,8 @@ create_compare_endpoints_test! {
     get_block_with_transaction_hashes_by_hash, "block_hash.txt", &[order_arrays];
     get_block_with_full_transactions_by_number, "block_number.txt", &[order_arrays];
     get_block_with_full_transactions_by_hash, "block_hash.txt", &[order_arrays];
+    get_block_with_full_transactions_and_receipts_by_number, "block_number.txt", &[order_arrays];
+    get_block_with_full_transactions_and_receipts_by_hash, "block_hash.txt", &[order_arrays];
     get_block_transaction_count_by_number, "block_number.txt", &[order_arrays];
     get_block_transaction_count_by_hash, "block_hash.txt", &[order_arrays];
     get_state_update_by_number, "block_number.txt", &[order_arrays];

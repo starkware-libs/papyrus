@@ -14,6 +14,8 @@ create_get_transaction_function_with_requests_from_file! {
     get_block_with_transaction_hashes_by_hash, "block_hash.txt";
     get_block_with_full_transactions_by_number, "block_number.txt";
     get_block_with_full_transactions_by_hash, "block_hash.txt";
+    get_block_with_full_transactions_and_receipts_by_number, "block_number.txt";
+    get_block_with_full_transactions_and_receipts_by_hash, "block_hash.txt";
     get_block_transaction_count_by_number, "block_number.txt";
     get_block_transaction_count_by_hash, "block_hash.txt";
     get_state_update_by_number, "block_number.txt";
