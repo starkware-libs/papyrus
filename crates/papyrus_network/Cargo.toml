@@ -23,7 +23,9 @@ libp2p = { workspace = true, features = [
     "yamux",
     "serde",
 ] }
+metrics.workspace = true
 replace_with.workspace = true
+papyrus_common = { path = "../papyrus_common", version = "0.3.0" }
 papyrus_config = { path = "../papyrus_config", version = "0.3.0" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.3.0" }
 prost.workspace = true

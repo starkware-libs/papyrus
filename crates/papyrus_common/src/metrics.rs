@@ -21,3 +21,6 @@ pub const PAPYRUS_BASE_LAYER_MARKER: &str = "papyrus_base_layer_marker";
 /// The latency, in seconds, between a block timestamp (as state in its header) and the time the
 /// node stores the header.
 pub const PAPYRUS_HEADER_LATENCY_SEC: &str = "papyrus_header_latency";
+
+/// The number of peers this node is connected to.
+pub const PAPYRUS_NUM_CONNECTED_PEERS: &str = "papyrus_num_connected_peers";
