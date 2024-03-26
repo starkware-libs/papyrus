@@ -140,6 +140,9 @@ impl SwarmTrait for MockSwarm {
     fn dial(&mut self, _peer: PeerAddressConfig) -> Result<(), libp2p::swarm::DialError> {
         Ok(())
     }
+    fn num_connected_peers(&self) -> usize {
+        0
+    }
 }
 
 #[derive(Default)]

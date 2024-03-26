@@ -25,6 +25,8 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     ) -> Result<OutboundSessionId, PeerNotConnected>;
 
     fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError>;
+
+    fn num_connected_peers(&self) -> usize;
 }
 
 impl SwarmTrait for Swarm<Behaviour> {
@@ -52,5 +54,9 @@ impl SwarmTrait for Swarm<Behaviour> {
             .with(LibP2pProtocol::Tcp(peer.tcp_port));
 
         self.dial(DialOpts::peer_id(peer.peer_id).addresses(vec![address]).build())
+    }
+
+    fn num_connected_peers(&self) -> usize {
+        self.network_info().num_peers()
     }
 }

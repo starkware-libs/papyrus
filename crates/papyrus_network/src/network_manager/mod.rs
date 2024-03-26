@@ -11,6 +11,8 @@ use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::swarm::{DialError, SwarmEvent};
 use libp2p::Swarm;
+use metrics::gauge;
+use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
 use tracing::{debug, error, trace};
 
@@ -68,6 +70,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         header_buffer_size: usize,
         peer: Option<PeerAddressConfig>,
     ) -> Self {
+        gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
         Self {
             swarm,
             db_executor,
@@ -95,10 +98,24 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         match event {
             SwarmEvent::ConnectionEstablished { .. } => {
                 debug!("Connected to a peer!");
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS,
+                    self.swarm.num_connected_peers() as f64
+                );
             }
-            SwarmEvent::NewListenAddr { .. }
-            | SwarmEvent::IncomingConnection { .. }
-            | SwarmEvent::ConnectionClosed { .. } => {}
+            SwarmEvent::NewListenAddr { .. } | SwarmEvent::IncomingConnection { .. } => {}
+            SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
+                match cause {
+                    Some(connection_error) => {
+                        debug!("Connection to {peer_id:?} closed due to {connection_error:?}.")
+                    }
+                    None => debug!("Connection to {peer_id:?} closed."),
+                }
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS,
+                    self.swarm.num_connected_peers() as f64
+                );
+            }
             SwarmEvent::Behaviour(event) => {
                 self.handle_behaviour_event(event);
             }
