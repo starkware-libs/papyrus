@@ -156,6 +156,17 @@ pub fn get_block_with_full_transactions_by_number(block_number: &str) -> jsonVal
     )
 }
 
+pub fn get_block_with_full_transactions_and_receipts_by_hash(block_hash: &str) -> jsonVal {
+    jsonrpc_request("starknet_getBlockWithReceipts", json!([{ "block_hash": block_hash }]))
+}
+
+pub fn get_block_with_full_transactions_and_receipts_by_number(block_number: &str) -> jsonVal {
+    jsonrpc_request(
+        "starknet_getBlockWithReceipts",
+        json!([{ "block_number": block_number.parse::<u64>().unwrap() }]),
+    )
+}
+
 pub fn get_block_with_full_transactions_by_hash(block_hash: &str) -> jsonVal {
     jsonrpc_request("starknet_getBlockWithTxs", json!([{ "block_hash": block_hash }]))
 }
