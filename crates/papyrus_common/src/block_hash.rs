@@ -18,6 +18,7 @@ use starknet_api::StarknetApiError;
 
 use crate::patricia_hash_tree::calculate_root;
 use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
+use crate::usize_into_felt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockHashError {
@@ -206,8 +207,4 @@ fn get_chain_sequencer_address(chain_id: &ChainId) -> StarkHash {
         // with block hash version 2.
         _ => unimplemented!("Sequencer address for chain"),
     }
-}
-
-fn usize_into_felt(u: usize) -> StarkFelt {
-    u128::try_from(u).expect("Expect at most 128 bits").into()
 }
