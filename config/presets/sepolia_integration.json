@@ -1,6 +1,0 @@
-{
-    "chain_id": "SN_INTEGRATION_SEPOLIA",
-    "starknet_url": "https://integration-sepolia.starknet.io/",
-    "rpc.execution_config": "config/execution/sepolia_integration.json",
-    "base_layer.starknet_contract_address": "0x4737c0c1b4d5b1a687b42610ddabee781152359c"
-}

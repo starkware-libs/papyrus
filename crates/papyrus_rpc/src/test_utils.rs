@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use derive_more::Display;
@@ -8,13 +8,16 @@ use jsonrpsee::types::ErrorObjectOwned;
 use jsonschema::JSONSchema;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
+use papyrus_execution::ExecutionConfig;
 use papyrus_storage::test_utils::get_test_storage_by_scope;
 use papyrus_storage::{StorageScope, StorageWriter};
 use pretty_assertions::assert_eq;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
-use starknet_api::core::ChainId;
+use starknet_api::core::{ChainId, ContractAddress, PatriciaKey};
+use starknet_api::hash::StarkHash;
+use starknet_api::{contract_address, patricia_key};
 use starknet_client::reader::PendingData;
 use starknet_client::writer::MockStarknetWriter;
 use strum::IntoEnumIterator;
@@ -25,13 +28,14 @@ use crate::api::JsonRpcServerTrait;
 use crate::version_config::{VersionId, VERSION_PATTERN};
 use crate::RpcConfig;
 
-/// The path to the test execution config file.
-pub const TEST_EXECUTION_CONFIG_PATH: &str = "resources/test_config.json";
-
 pub fn get_test_rpc_config() -> RpcConfig {
     RpcConfig {
         chain_id: ChainId("SN_GOERLI".to_string()),
-        execution_config: PathBuf::from(TEST_EXECUTION_CONFIG_PATH),
+        execution_config: ExecutionConfig {
+            eth_fee_contract_address: contract_address!("0x1001"),
+            strk_fee_contract_address: contract_address!("0x1001"),
+            initial_gas_cost: 10000000000,
+        },
         server_address: String::from("127.0.0.1:0"),
         max_events_chunk_size: 10,
         max_events_keys: 10,
@@ -76,7 +80,7 @@ pub(crate) fn get_test_rpc_server_and_storage_writer_from_params<T: JsonRpcServe
     (
         T::new(
             config.chain_id,
-            config.execution_config.try_into().expect("failed to load execution config"),
+            config.execution_config,
             storage_reader,
             config.max_events_chunk_size,
             config.max_events_keys,
