@@ -291,6 +291,46 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
     }
 }
 
+// TODO(dvir): consider adding append functionality for the case that the main key is the last in
+// the table.
+// TODO(dvir): consider adding unchecked version of the append function.
+#[allow(private_bounds)]
+impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + DupSortUtils<K, V>>
+    TableHandle<'env, K, V, T>
+{
+    // Append a new value to the given key. The sub key must be bigger than the last for the given
+    // main key, otherwise an error will be returned.
+    #[allow(dead_code)]
+    fn append(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let main_key = T::get_main_key(key)?;
+        let sub_key_and_value = T::get_sub_key_and_value(key, value)?;
+
+        let mut cursor = txn.txn.cursor(&self.database)?;
+        cursor.put(&main_key, &sub_key_and_value, WriteFlags::APPEND_DUP).map_err(
+            |err| match err {
+                libmdbx::Error::KeyMismatch => DbError::Append,
+                _ => err.into(),
+            },
+        )?;
+
+        // This checks the case where the the sub key is already the last in the sub tree.
+        if let Some(prev) = cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()? {
+            if prev.1.starts_with(&T::get_sub_key(key)?) {
+                cursor.next_dup::<DbKeyType<'_>, DbValueType<'_>>()?;
+                cursor.del(WriteFlags::empty())?;
+                return Err(DbError::Append);
+            }
+        }
+
+        Ok(())
+    }
+}
+
 impl<
     'txn,
     Mode: TransactionKind,
