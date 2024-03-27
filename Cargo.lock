@@ -963,7 +963,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto 0.5.2",
- "starknet_api 0.10.0",
+ "starknet_api",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "thiserror",
@@ -5670,7 +5670,7 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
- "starknet_api 0.11.0",
+ "starknet_api",
  "tar",
  "tempfile",
  "test-with",
@@ -5693,7 +5693,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto 0.5.2",
- "starknet_api 0.11.0",
+ "starknet_api",
  "test_utils",
  "thiserror",
 ]
@@ -5738,7 +5738,7 @@ dependencies = [
  "rand_chacha",
  "serde",
  "serde_json",
- "starknet_api 0.11.0",
+ "starknet_api",
  "test_utils",
  "thiserror",
  "tracing",
@@ -5803,7 +5803,9 @@ dependencies = [
  "lazy_static",
  "libp2p",
  "libp2p-swarm-test",
+ "metrics",
  "mockall",
+ "papyrus_common",
  "papyrus_config",
  "papyrus_storage",
  "pretty_assertions",
@@ -5813,7 +5815,7 @@ dependencies = [
  "rand",
  "replace_with",
  "serde",
- "starknet_api 0.11.0",
+ "starknet_api",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -5852,7 +5854,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api 0.11.0",
+ "starknet_api",
  "starknet_client",
  "tempfile",
  "test_utils",
@@ -5878,7 +5880,7 @@ dependencies = [
  "papyrus_storage",
  "rand",
  "serde",
- "starknet_api 0.11.0",
+ "starknet_api",
  "static_assertions",
  "test_utils",
  "thiserror",
@@ -5941,7 +5943,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-core",
- "starknet_api 0.11.0",
+ "starknet_api",
  "starknet_client",
  "strum 0.25.0",
  "strum_macros 0.25.3",
@@ -5990,7 +5992,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "starknet_api 0.11.0",
+ "starknet_api",
  "tempfile",
  "test-case",
  "test-log",
@@ -6029,7 +6031,7 @@ dependencies = [
  "reqwest",
  "serde",
  "simple_logger",
- "starknet_api 0.11.0",
+ "starknet_api",
  "starknet_client",
  "test_utils",
  "thiserror",
@@ -7966,28 +7968,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e6aeb260177f5ca6dde788e844825d8d83782905dbac1b24c0c620743284475"
-dependencies = [
- "cairo-lang-starknet-classes",
- "derive_more",
- "hex",
- "indexmap 2.1.0",
- "once_cell",
- "primitive-types",
- "serde",
- "serde_json",
- "starknet-crypto 0.5.2",
- "strum 0.24.1",
- "strum_macros 0.24.3",
- "thiserror",
-]
-
-[[package]]
-name = "starknet_api"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "365ec5c0662466f299762bd012012da30e9a28319000cfade372b8787111f202"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=4409d371a1f85b6e0d745cf23250ecfaae1b6f42#4409d371a1f85b6e0d745cf23250ecfaae1b6f42"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",
@@ -8026,7 +8007,7 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "simple_logger",
- "starknet_api 0.11.0",
+ "starknet_api",
  "test_utils",
  "thiserror",
  "tokio",
@@ -8329,7 +8310,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api 0.11.0",
+ "starknet_api",
  "tracing",
 ]
 
