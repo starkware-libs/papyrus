@@ -5872,9 +5872,12 @@ name = "papyrus_p2p_sync"
 version = "0.3.0"
 dependencies = [
  "async-stream",
+ "chrono",
  "futures",
  "indexmap 2.1.0",
  "lazy_static",
+ "metrics",
+ "papyrus_common",
  "papyrus_config",
  "papyrus_network",
  "papyrus_storage",

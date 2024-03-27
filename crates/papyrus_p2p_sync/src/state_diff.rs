@@ -5,6 +5,8 @@ use std::pin::Pin;
 use futures::future::BoxFuture;
 use futures::{FutureExt, Stream, StreamExt};
 use indexmap::IndexMap;
+use metrics::gauge;
+use papyrus_common::metrics as papyrus_metrics;
 use papyrus_network::DataType;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
@@ -46,7 +48,11 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
         storage_writer
             .begin_rw_txn()?
             .append_state_diff(self.1, state_diff, IndexMap::new())?
-            .commit()
+            .commit()?;
+
+        gauge!(papyrus_metrics::PAPYRUS_STATE_MARKER, self.1.unchecked_next().0 as f64);
+
+        Ok(())
     }
 }
 
