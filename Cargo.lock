@@ -5869,6 +5869,7 @@ dependencies = [
 name = "papyrus_p2p_sync"
 version = "0.3.0"
 dependencies = [
+ "assert_matches",
  "async-stream",
  "futures",
  "indexmap 2.1.0",
