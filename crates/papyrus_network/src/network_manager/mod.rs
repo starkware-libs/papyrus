@@ -43,6 +43,9 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     peer: Option<PeerAddressConfig>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     peer_id: Option<PeerId>,
+    // Fields for metrics
+    num_active_inbound_sessions: usize,
+    num_active_outbound_sessions: usize,
 }
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
@@ -82,6 +85,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             peer,
             outbound_session_id_to_protocol: HashMap::new(),
             peer_id: None,
+            num_active_inbound_sessions: 0,
+            num_active_outbound_sessions: 0,
         }
     }
 
@@ -183,6 +188,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 trace!(
                     "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
                 );
+                self.num_active_inbound_sessions += 1;
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_ACTIVE_INBOUND_SESSIONS,
+                    self.num_active_inbound_sessions as f64
+                );
                 let (sender, receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
                 // TODO: use query id for bookkeeping.
                 // TODO: consider returning error instead of panic.
@@ -232,6 +242,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             }
             GenericEvent::SessionFailed { session_id, error } => {
                 error!("Session {session_id:?} failed on {error:?}");
+                self.report_session_removed_to_metrics(session_id);
                 // TODO: Handle reputation and retry.
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
@@ -239,6 +250,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             }
             GenericEvent::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
+                self.report_session_removed_to_metrics(session_id);
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
                 }
@@ -272,6 +284,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                         "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
                          {outbound_session_id:?}"
                     );
+                    self.num_active_outbound_sessions += 1;
+                    gauge!(
+                        papyrus_metrics::PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS,
+                        self.num_active_outbound_sessions as f64
+                    );
                     self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
                 }
                 Err(e) => {
@@ -303,6 +320,25 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         response_senders
             .try_send(protocol, data_bytes)
             .expect("Encountered unknown protocol while sending fin");
+    }
+
+    fn report_session_removed_to_metrics(&mut self, session_id: SessionId) {
+        match session_id {
+            SessionId::InboundSessionId(_) => {
+                self.num_active_inbound_sessions -= 1;
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_ACTIVE_INBOUND_SESSIONS,
+                    self.num_active_inbound_sessions as f64
+                );
+            }
+            SessionId::OutboundSessionId(_) => {
+                self.num_active_outbound_sessions += 1;
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS,
+                    self.num_active_outbound_sessions as f64
+                );
+            }
+        }
     }
 }
 
