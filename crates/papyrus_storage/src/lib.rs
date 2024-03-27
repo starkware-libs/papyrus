@@ -53,6 +53,8 @@
 pub mod base_layer;
 pub mod body;
 pub mod compiled_class;
+#[cfg(feature = "document_calls")]
+pub mod document_calls;
 pub mod utils;
 // TODO(yair): Make the compression_utils module pub(crate) or extract it from the crate.
 #[doc(hidden)]
@@ -103,7 +105,7 @@ use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersio
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StorageKey, ThinStateDiff};
+use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
 use tracing::{debug, warn};
 use validator::Validate;
@@ -773,4 +775,18 @@ pub enum OffsetKind {
     Casm,
     /// A deprecated contract class file.
     DeprecatedContractClass,
+}
+
+/// A storage query. Used for benchmarking in the storage_benchmark binary.
+// TODO(dvir): add more queries (especially get casm).
+// TODO(dvir): consider move this, maybe to test_utils.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StorageQuery {
+    /// Get the class hash at a given state number.
+    GetClassHashAt(StateNumber, ContractAddress),
+    /// Get the nonce at a given state number.
+    GetNonceAt(StateNumber, ContractAddress),
+    /// Get the storage at a given state number.
+    GetStorageAt(StateNumber, ContractAddress, StorageKey),
 }

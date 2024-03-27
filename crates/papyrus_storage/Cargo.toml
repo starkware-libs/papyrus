@@ -8,6 +8,7 @@ description = "A storage implementation for a Starknet node."
 
 [features]
 testing = ["tempfile"]
+document_calls = ["lazy_static"]
 
 [dependencies]
 byteorder.workspace = true
@@ -19,6 +20,7 @@ flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
+lazy_static = { workspace = true, optional = true }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 memmap2.workspace = true
 metrics.workspace = true
@@ -31,6 +33,8 @@ primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+# TODO(dvir): make the binaries dependencies used only for the binaries.
+statistical.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
