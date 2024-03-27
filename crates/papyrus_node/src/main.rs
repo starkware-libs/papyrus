@@ -298,5 +298,11 @@ async fn main() -> anyhow::Result<()> {
     }
 
     info!("Booting up.");
-    run_threads(config).await
+    let res = run_threads(config.clone()).await;
+    if config.p2p_sync.is_some_and(|c| c.stop_sync_at_block_number.is_some()) {
+        if let Err(err) = res {
+            error!("Error: {err}");
+        };
+    }
+    Ok(())
 }
