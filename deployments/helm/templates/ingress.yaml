@@ -29,6 +29,13 @@ spec:
               number: {{ .Values.services.monitoring.port }}
         path: /monitoring
         pathType: {{ .Values.ingress.pathType }}
+      - backend:
+          service:
+          name: {{ template "papyrus.name" . }}-peer
+          port:
+            number: {{ .Values.services.peer.port }}
+        path: /peer
+        pathType: {{ .Values.ingress.pathType }}
   tls:
   - hosts:
     - {{ .Values.ingress.host }}

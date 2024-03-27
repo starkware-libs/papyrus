@@ -48,6 +48,11 @@ services:
     type: ClusterIP
     port: 8081
     protocol: TCP
+  # P2P sync endpoint
+  peer:
+    type: ClusterIP
+    port: 8082
+    protocol: TCP
 
 # Persistent volume claim variables for a papyrus pod.
 pvc:
