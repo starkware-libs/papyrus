@@ -19,6 +19,9 @@ RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release
 # Build dump_declared_classes.
 RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --bin dump_declared_classes
 
+# Build train_compression_dictionary.
+RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --bin train_compression_dictionary
+
 
 # Starting a new stage so that the final image will contain only the executables.
 FROM alpine:3.17.0 AS papyrus_utilities
@@ -30,6 +33,9 @@ COPY crates/papyrus_load_test/resources/ /app/crates/papyrus_load_test/resources
 # Copy the dump_declared_classes executable.
 COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/dump_declared_classes /app/target/release/dump_declared_classes
 
+# Copy the train_compression_dictionary executable.
+COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/train_compression_dictionary /app/target/release/train_compression_dictionary
+
 # Set the PATH environment variable to enable running an executable only with its name.
 ENV PATH="/app/target/release:${PATH}"
 
@@ -38,4 +44,5 @@ ENTRYPOINT echo -e \
 The available executables are:\n\
  - papyrus_load_test, performs a stress test on a node RPC gateway.\n\
  - dump_declared_classes, dumps the declared_classes table from the storage to a file.\n\
+ - train_compression_dictionary, trains a compression dictionary for the storage.\n\
 For example, in a docker runtime: docker run --entrypoint papyrus_load_test <image>"
