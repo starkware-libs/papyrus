@@ -71,6 +71,21 @@ async fn db_stats() {
 }
 
 #[tokio::test]
+async fn mmap_files_stats() {
+    let app = setup_app();
+    let response = request_app(app, "mmapFilesStats").await;
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let body: Value = serde_json::from_slice(&body).unwrap();
+    assert!(!body["thin_state_diff"].is_null());
+    assert!(!body["contract_class"].is_null());
+    assert!(!body["casm"].is_null());
+    assert!(!body["deprecated_contract_class"].is_null());
+}
+
+#[tokio::test]
 async fn version() {
     let app = setup_app();
     let response = request_app(app, "nodeVersion").await;

@@ -269,6 +269,22 @@ impl<V: ValueSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
     }
 }
 
+/// Stats for a memory mapped file.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
+pub struct MMapFileStats {
+    // The current size of the file.
+    size: usize,
+    // The amount of data that has been written to the file.
+    offset: usize,
+}
+
+impl<V: ValueSerde, Mode: TransactionKind> FileHandler<V, Mode> {
+    pub fn stats(&self) -> MMapFileStats {
+        let mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
+        MMapFileStats { size: mmap_file.size, offset: mmap_file.offset }
+    }
+}
+
 // TODO(dan): use varint serialization.
 impl StorageSerde for LocationInFile {
     fn serialize_into(
