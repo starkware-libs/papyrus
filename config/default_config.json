@@ -174,10 +174,20 @@
     "pointer_target": "collect_metrics",
     "privacy": "Public"
   },
-  "rpc.execution_config": {
-    "description": "Path to the execution configuration file.",
+  "rpc.execution_config.eth_fee_contract_address": {
+    "description": "The eth fee token address to receive fees",
     "privacy": "Public",
-    "value": "config/execution/mainnet.json"
+    "value": "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7"
+  },
+  "rpc.execution_config.initial_gas_cost": {
+    "description": "The initial gas cost for a transaction",
+    "privacy": "Public",
+    "value": 10000000000
+  },
+  "rpc.execution_config.strk_fee_contract_address": {
+    "description": "The strk fee token address to receive fees",
+    "privacy": "Public",
+    "value": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d"
   },
   "rpc.max_events_chunk_size": {
     "description": "Maximum chunk size supported by the node in get_events requests.",

@@ -1,6 +1,0 @@
-{
-    "chain_id": "SN_MAIN",
-    "starknet_url": "https://alpha-mainnet.starknet.io/",
-    "rpc.execution_config": "config/execution/mainnet.json",
-    "base_layer.starknet_contract_address": "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4"
-}
