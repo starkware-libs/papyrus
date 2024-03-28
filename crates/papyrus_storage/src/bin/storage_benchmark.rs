@@ -69,7 +69,7 @@ pub fn main() {
             }
         }
         println!("{}", serde_json::to_string(&q).expect("Should be able to serialize the query"));
-        println!("time: {}", exec_time.as_nanos());
+        println!("time in microseconds: {}", exec_time.as_micros());
     }
 
     println!("Writing results to file");
@@ -97,34 +97,34 @@ impl Times {
         let get_class_hash_at_median = if self.get_class_hash_at.is_empty() {
             0
         } else {
-            median(&self.get_class_hash_at.iter().map(|x| x.as_millis()).collect::<Vec<u128>>())
+            median(&self.get_class_hash_at.iter().map(|x| x.as_micros()).collect::<Vec<u128>>())
         };
         results.push(Entry {
             name: "get_class_hash_at".to_string(),
-            units: "Milliseconds".to_string(),
+            units: "Microseconds".to_string(),
             value: get_class_hash_at_median as usize,
         });
 
         let get_nonce_at_median = if self.get_nonce_at.is_empty() {
             0
         } else {
-            median(&self.get_nonce_at.iter().map(|x| x.as_millis()).collect::<Vec<u128>>())
+            median(&self.get_nonce_at.iter().map(|x| x.as_micros()).collect::<Vec<u128>>())
         };
         results.push(Entry {
             name: "get_nonce_at".to_string(),
-            units: "Milliseconds".to_string(),
+            units: "Microseconds".to_string(),
             value: get_nonce_at_median as usize,
         });
 
         let get_storage_at_median = if self.get_storage_at.is_empty() {
             0
         } else {
-            median(&self.get_storage_at.iter().map(|x| x.as_millis()).collect::<Vec<u128>>())
+            median(&self.get_storage_at.iter().map(|x| x.as_micros()).collect::<Vec<u128>>())
         };
 
         results.push(Entry {
             name: "get_storage_at".to_string(),
-            units: "Milliseconds".to_string(),
+            units: "Microseconds".to_string(),
             value: get_storage_at_median as usize,
         });
 
