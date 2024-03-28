@@ -1,8 +1,12 @@
 mod header;
 #[cfg(test)]
-mod p2p_sync_test;
+mod header_test;
 mod state_diff;
+#[cfg(test)]
+mod state_diff_test;
 mod stream_factory;
+#[cfg(test)]
+mod test_utils;
 
 use std::collections::BTreeMap;
 use std::time::Duration;
