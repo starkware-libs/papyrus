@@ -88,7 +88,6 @@ use crate::objects::{tx_execution_output_to_fee_estimation, FeeEstimation, Pendi
 // TODO(yair): understand what it is and whether the use of this constant should change.
 const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
-const STARKNET_VERSION_O_13_0: &str = "0.13.0";
 const STARKNET_VERSION_O_13_1: &str = "0.13.1";
 const STRK_FEE_CONTRACT_ADDRESS: &str =
     "0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d";
@@ -99,10 +98,6 @@ const INITIAL_GAS_COST: u64 = 10000000000;
 /// Result type for execution functions.
 pub type ExecutionResult<T> = Result<T, ExecutionError>;
 
-static VERSIONED_CONSTANTS_13_0: Lazy<VersionedConstants> = Lazy::new(|| {
-    VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_0.json"))
-        .expect("Versioned constants JSON file is malformed")
-});
 static VERSIONED_CONSTANTS_13_1: Lazy<VersionedConstants> = Lazy::new(|| {
     VersionedConstants::try_from(Path::new("./resources/versioned_constants_13_1.json"))
         .expect("Versioned constants JSON file is malformed")
@@ -869,9 +864,6 @@ fn get_versioned_constants(
 ) -> ExecutionResult<&'static VersionedConstants> {
     let versioned_constants = match starknet_version {
         Some(starknet_version) => match starknet_version {
-            StarknetVersion(version) if version == STARKNET_VERSION_O_13_0 => {
-                &VERSIONED_CONSTANTS_13_0
-            }
             StarknetVersion(version) if version == STARKNET_VERSION_O_13_1 => {
                 &VERSIONED_CONSTANTS_13_1
             }
