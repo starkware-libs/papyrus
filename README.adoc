@@ -305,7 +305,7 @@ For example, when the node monitoring gateway is exposed at `localhost:8081`, se
 
 [source,bash]
 ----
-curl -X GET https://localhost:8081/monitoring/alive
+curl -X GET http://localhost:8081/monitoring/alive
 ----
 
 === Papyrus monitoring API endpoints
@@ -331,6 +331,7 @@ Papyrus can collect the following types of metrics:
 * JSON-RPC metrics
 * synchronization metrics
 * process metrics
+* p2p network metrics
 
 By default, the node does not collect metrics and the metric path returns the following error code:
 
