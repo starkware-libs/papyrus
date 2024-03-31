@@ -68,7 +68,8 @@ auto_impl_get_test_instance! {
         Header = 0,
         Body = 1,
         State = 2,
-        CompiledClass = 3,
+        Class = 3
+        CompiledClass = 4,
     }
     pub enum OffsetKind {
         ThinStateDiff = 0,

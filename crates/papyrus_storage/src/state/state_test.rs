@@ -260,6 +260,51 @@ fn test_update_compiled_class_marker() {
 }
 
 #[test]
+fn test_update_class_marker() {
+    let ((_, mut writer), _temp_dir) = get_test_storage();
+    let mut txn = writer.begin_rw_txn().unwrap();
+    // Append an empty state diff.
+    txn = txn.append_thin_state_diff(BlockNumber(0), ThinStateDiff::default()).unwrap();
+    assert_eq!(txn.get_class_marker().unwrap(), BlockNumber(1));
+}
+
+#[test]
+fn test_get_class_after_append_thin_state_diff() {
+    const CLASS_HASH: ClassHash = ClassHash(StarkHash::ZERO);
+    const DEPRECATED_CLASS_HASH: ClassHash = ClassHash(StarkHash::ONE);
+
+    let ((_, mut writer), _temp_dir) = get_test_storage();
+    let mut txn = writer.begin_rw_txn().unwrap();
+    // Append an empty state diff.
+    txn = txn
+        .append_thin_state_diff(
+            BlockNumber(0),
+            ThinStateDiff {
+                declared_classes: indexmap! { CLASS_HASH => CompiledClassHash::default() },
+                deprecated_declared_classes: vec![DEPRECATED_CLASS_HASH],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+    assert_eq!(txn.get_class_marker().unwrap(), BlockNumber(0));
+
+    let state_reader = txn.get_state_reader().unwrap();
+    let state_number = StateNumber::unchecked_right_after_block(BlockNumber(0));
+
+    assert_eq!(
+        state_reader.get_class_definition_block_number(&CLASS_HASH).unwrap(),
+        Some(BlockNumber(0))
+    );
+    assert!(state_reader.get_class_definition_at(state_number, &CLASS_HASH).unwrap().is_none());
+    assert!(
+        state_reader
+            .get_deprecated_class_definition_at(state_number, &DEPRECATED_CLASS_HASH)
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
 fn revert_non_existing_state_diff() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
 

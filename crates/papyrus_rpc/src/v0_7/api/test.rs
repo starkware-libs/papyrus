@@ -2406,27 +2406,26 @@ async fn get_state_update() {
         state_root: expected_pending_old_root,
         ..BlockHeader::default()
     };
-    let diff = get_test_state_diff();
+    let diff = starknet_api::state::ThinStateDiff::from(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
 
     let expected_old_root = parent_header.state_root;
-    let expected_state_diff = ThinStateDiff::from(starknet_api::state::ThinStateDiff::from(diff));
+    let expected_state_diff = ThinStateDiff::from(diff);
     let expected_update = StateUpdate::AcceptedStateUpdate(AcceptedStateUpdate {
         block_hash: header.block_hash,
         new_root: header.state_root,

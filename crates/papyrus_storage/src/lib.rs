@@ -138,12 +138,12 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage state code.
 /// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
 /// required.
-pub const STORAGE_VERSION_STATE: Version = Version { major: 0, minor: 13 };
+pub const STORAGE_VERSION_STATE: Version = Version { major: 1, minor: 0 };
 /// The current version of the storage blocks code.
 /// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
 /// required.
 /// This version is only checked for storages that store transactions (StorageScope::FullArchive).
-pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 1, minor: 1 };
+pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 2, minor: 0 };
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
 pub fn open_storage(
@@ -242,6 +242,8 @@ fn set_version_if_needed(
     let mut wtxn = writer.begin_rw_txn()?;
     match existing_storage_version {
         StorageVersion::FullArchive(FullArchiveVersion { state_version, blocks_version }) => {
+            // This allow is for when STORAGE_VERSION_STATE.minor = 0.
+            #[allow(clippy::absurd_extreme_comparisons)]
             if STORAGE_VERSION_STATE.major == state_version.major
                 && STORAGE_VERSION_STATE.minor > state_version.minor
             {
@@ -251,6 +253,7 @@ fn set_version_if_needed(
                 );
                 wtxn = wtxn.set_state_version(&STORAGE_VERSION_STATE)?;
             }
+            // This allow is for when STORAGE_VERSION_BLOCKS.minor = 0.
             #[allow(clippy::absurd_extreme_comparisons)]
             if STORAGE_VERSION_BLOCKS.major == blocks_version.major
                 && STORAGE_VERSION_BLOCKS.minor > blocks_version.minor
@@ -263,6 +266,8 @@ fn set_version_if_needed(
             }
         }
         StorageVersion::StateOnly(StateOnlyVersion { state_version }) => {
+            // This allow is for when STORAGE_VERSION_STATE.minor = 0.
+            #[allow(clippy::absurd_extreme_comparisons)]
             if STORAGE_VERSION_STATE.major == state_version.major
                 && STORAGE_VERSION_STATE.minor > state_version.minor
             {
@@ -616,13 +621,14 @@ pub struct DbStats {
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, Eq, PartialEq, PartialOrd, Ord)]
 // A marker is the first block number for which the corresponding data doesn't exist yet.
 // Invariants:
-// - CompiledClass <= State <= Header
+// - CompiledClass <= Class <= State <= Header
 // - Body <= Header
 // - BaseLayerBlock <= Header
 pub(crate) enum MarkerKind {
     Header,
     Body,
     State,
+    Class,
     CompiledClass,
     BaseLayerBlock,
 }
