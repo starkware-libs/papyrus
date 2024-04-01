@@ -8,8 +8,7 @@ use std::io::Write;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
-
-pub use crate::StorageQuery;
+pub use papyrus_common::storage_query::StorageQuery;
 
 // TODO(dvir): consider enabling the user to choose the file path using an environment variable.
 const QUERY_FILE_PATH: &str = "./document_calls.txt";
