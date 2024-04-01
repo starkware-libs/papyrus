@@ -2,7 +2,22 @@
 
 ## Description
 
-papyrus-config is a flexible and powerful layered configuration system designed specifically for Papyrus, a Starknet node. This system allows you to easily manage configurations for your Papyrus node by leveraging various sources and providing additional helpful features.
+papyrus-config is a flexible and powerful layered configuration system. This system allows you to easily create and manage configurations for your application.
+The crate was designed specifically for Papyrus, a Starknet node, but can be used for any application.
+
+## What you get
+- Manage all things regarding your applications configuration in a single struct.
+- Automatically generated configuration reference file and command (with full help section).
+- Multiple sources for providing configuration. Command example: ```ARG1=1 application --config_file USER_PROVIDED_PATH.json --arg1=1 --arg2=2``` (the rest of the arguments will get the default value).
+- Additional features (see below).
+
+## How to use
+1. Create a configuration struct and implement the `SerializeConfig` trait.
+2. Call the traits method `dump_to_file`. This will create a reference file for the configuration. Save the file in a path available for your application. Note that users should not change this file.
+3. In your application code, call `load_and_process_config` and pass it the default configuration file, a [Clap Command object](https://docs.rs/clap/latest/clap/) and the command args.
+4. The `load_and_process_config` function will return an instance of your configuration struct filled with the user provided values.
+
+For detailed information and examples, refer to the full [documentation](https://docs.rs/papyrus_config/)
 
 ## Configuration sources
 
