@@ -67,9 +67,12 @@ auto_impl_get_test_instance! {
     enum MarkerKind {
         Header = 0,
         Body = 1,
-        State = 2,
-        Class = 3
-        CompiledClass = 4,
+        Event = 2,
+        Receipt = 3,
+        State = 4,
+        Class = 5,
+        CompiledClass = 6,
+        BaseLayerBlock = 7,
     }
     pub enum OffsetKind {
         ThinStateDiff = 0,
