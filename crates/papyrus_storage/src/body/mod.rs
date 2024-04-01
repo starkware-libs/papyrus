@@ -420,6 +420,7 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
         };
 
         markers_table.upsert(&self.txn, &MarkerKind::Body, &block_number)?;
+        markers_table.upsert(&self.txn, &MarkerKind::Event, &block_number)?;
         Ok((self, reverted_block_body))
     }
 }
@@ -504,8 +505,13 @@ fn update_marker<'env>(
     if body_marker != block_number {
         return Err(StorageError::MarkerMismatch { expected: body_marker, found: block_number });
     };
+    let event_marker = markers_table.get(txn, &MarkerKind::Event)?.unwrap_or_default();
+    if event_marker != block_number {
+        return Err(StorageError::MarkerMismatch { expected: event_marker, found: block_number });
+    };
 
     // Advance marker.
     markers_table.upsert(txn, &MarkerKind::Body, &block_number.unchecked_next())?;
+    markers_table.upsert(txn, &MarkerKind::Event, &block_number.unchecked_next())?;
     Ok(())
 }
