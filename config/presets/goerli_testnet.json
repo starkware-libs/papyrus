@@ -1,0 +1,5 @@
+{
+    "chain_id": "SN_GOERLI",
+    "starknet_url": "https://alpha4.starknet.io/",
+    "base_layer.starknet_contract_address": "0xde29d060D45901Fb19ED6C6e959EB22d8626708e"
+}
