@@ -10,8 +10,7 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
-use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::{ContractClass, StateDiff, ThinStateDiff};
+use starknet_api::state::ThinStateDiff;
 
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, NETWORK_DATA_TIMEOUT};
@@ -21,32 +20,7 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
         self: Box<Self>,
         storage_writer: &mut StorageWriter,
     ) -> Result<(), StorageError> {
-        // TODO(shahak): Add a way to write ThinStateDiff to the storage.
-        let state_diff = StateDiff {
-            deployed_contracts: self.0.deployed_contracts,
-            storage_diffs: self.0.storage_diffs,
-            declared_classes: self
-                .0
-                .declared_classes
-                .into_iter()
-                .map(|(class_hash, compiled_class_hash)| {
-                    (class_hash, (compiled_class_hash, ContractClass::default()))
-                })
-                .collect(),
-            deprecated_declared_classes: self
-                .0
-                .deprecated_declared_classes
-                .into_iter()
-                .map(|class_hash| (class_hash, DeprecatedContractClass::default()))
-                .collect(),
-            nonces: self.0.nonces,
-            replaced_classes: self.0.replaced_classes,
-        };
-
-        storage_writer
-            .begin_rw_txn()?
-            .append_state_diff(self.1, state_diff, IndexMap::new())?
-            .commit()
+        storage_writer.begin_rw_txn()?.append_thin_state_diff(self.1, self.0)?.commit()
     }
 }
 
