@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::convert::TryFrom;
 use std::hash::Hash;
 use std::ops::Deref;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use byteorder::BigEndian;
 use cairo_lang_casm::hints::Hint;
@@ -109,7 +109,9 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use zstd::dict::{DecoderDictionary, EncoderDictionary};
 
+use super::compression_utils::DictionaryVersion;
 use crate::body::events::{
     EventIndex,
     ThinDeclareTransactionOutput,
@@ -130,6 +132,10 @@ use crate::compression_utils::{
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
+use crate::serialization::compression_utils::{
+    compress_with_pretrained_dictionary_and_version,
+    decompress_with_pretrained_dictionary_and_version,
+};
 #[cfg(test)]
 use crate::serialization::serializers_test::{create_storage_serde_test, StorageSerdeTest};
 use crate::state::data::IndexedDeprecatedContractClass;
@@ -231,6 +237,7 @@ auto_storage_serde! {
         External = 1,
         L1Handler = 2,
     }
+    pub struct DictionaryVersion(u8);
     pub struct EntryPoint {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
@@ -987,38 +994,6 @@ impl StorageSerde for CasmContractClass {
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
 
-impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        let mut to_compress: Vec<u8> = Vec::new();
-        self.deployed_contracts.serialize_into(&mut to_compress)?;
-        self.storage_diffs.serialize_into(&mut to_compress)?;
-        self.declared_classes.serialize_into(&mut to_compress)?;
-        self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
-        self.nonces.serialize_into(&mut to_compress)?;
-        self.replaced_classes.serialize_into(&mut to_compress)?;
-        let compressed = compress(to_compress.as_slice())?;
-        compressed.serialize_into(res)?;
-        Ok(())
-    }
-
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
-        let data = &mut data.as_slice();
-        Some(Self {
-            deployed_contracts: IndexMap::deserialize_from(data)?,
-            storage_diffs: IndexMap::deserialize_from(data)?,
-            declared_classes: IndexMap::deserialize_from(data)?,
-            deprecated_declared_classes: Vec::deserialize_from(data)?,
-            nonces: IndexMap::deserialize_from(data)?,
-            replaced_classes: IndexMap::deserialize_from(data)?,
-        })
-    }
-}
-
-#[cfg(test)]
-create_storage_serde_test!(ThinStateDiff);
-
 // The following structs are conditionally compressed based on their serialized size.
 macro_rules! auto_storage_serde_conditionally_compressed {
     () => {};
@@ -1127,4 +1102,66 @@ auto_storage_serde_conditionally_compressed! {
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
     }
+}
+
+////////////////////////////////////////////////////////////////////////
+//  Custom serialization with pre-trained dictionary compression.
+////////////////////////////////////////////////////////////////////////
+
+pub(super) const SN_MAIN_THIN_STATE_DIFF_DICTS: [&[u8]; 2] = [&[0], &[1]];
+pub(super) const SN_GOERLI_THIN_STATE_DIFF_DICTS: [&[u8]; 1] = [&[0]];
+pub(super) const THIN_STATE_DIFF_MAX_DICTS: usize =
+    max(SN_MAIN_THIN_STATE_DIFF_DICTS.len(), SN_GOERLI_THIN_STATE_DIFF_DICTS.len());
+
+// TODO(dvir): consider using atomic integer instead of OnceLock.
+pub(super) static THIN_STATE_DIFF_DICT_VERSION: OnceLock<DictionaryVersion> = OnceLock::new();
+pub(super) static THIN_STATE_DIFF_ENCODER_DICT: OnceLock<EncoderDictionary<'static>> =
+    OnceLock::new();
+pub(super) static THIN_STATE_DIFF_DECODERS_DICTS_ARRAY: OnceLock<
+    [DecoderDictionary<'static>; THIN_STATE_DIFF_MAX_DICTS],
+> = OnceLock::new();
+
+impl StorageSerde for ThinStateDiff {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let mut buffer = Vec::new();
+        self.deployed_contracts.serialize_into(&mut buffer)?;
+        self.storage_diffs.serialize_into(&mut buffer)?;
+        self.declared_classes.serialize_into(&mut buffer)?;
+        self.deprecated_declared_classes.serialize_into(&mut buffer)?;
+        self.nonces.serialize_into(&mut buffer)?;
+        self.replaced_classes.serialize_into(&mut buffer)?;
+
+        compress_with_pretrained_dictionary_and_version(
+            &THIN_STATE_DIFF_DICT_VERSION,
+            &THIN_STATE_DIFF_ENCODER_DICT,
+            buffer.as_slice(),
+            res,
+        )?;
+
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        let decompressed_bytes = decompress_with_pretrained_dictionary_and_version(
+            &THIN_STATE_DIFF_DICT_VERSION,
+            &THIN_STATE_DIFF_DECODERS_DICTS_ARRAY,
+            bytes,
+        )?;
+
+        let decompressed_bytes = &mut decompressed_bytes.as_slice();
+        Some(ThinStateDiff {
+            deployed_contracts: IndexMap::deserialize_from(decompressed_bytes)?,
+            storage_diffs: IndexMap::deserialize_from(decompressed_bytes)?,
+            declared_classes: IndexMap::deserialize_from(decompressed_bytes)?,
+            deprecated_declared_classes: Vec::deserialize_from(decompressed_bytes)?,
+            nonces: IndexMap::deserialize_from(decompressed_bytes)?,
+            replaced_classes: IndexMap::deserialize_from(decompressed_bytes)?,
+        })
+        // deserialize_thin_state_diff_without_compression(&mut decompressed.as_slice())
+    }
+}
+
+// Custom max function because the std::cmp::max is not const.
+const fn max(a: usize, b: usize) -> usize {
+    if a > b { a } else { b }
 }

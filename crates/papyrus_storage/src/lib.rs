@@ -101,6 +101,7 @@ use mmap_file::{
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
+use serialization::initialize_dictionary_compression;
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
@@ -181,6 +182,8 @@ pub fn open_storage(
         db_reader.clone(),
         &tables.file_offsets,
     )?;
+
+    initialize_dictionary_compression(storage_config.db_config.chain_id);
 
     let reader = StorageReader {
         db_reader,

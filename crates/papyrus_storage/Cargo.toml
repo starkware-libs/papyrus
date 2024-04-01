@@ -11,6 +11,7 @@ testing = ["tempfile"]
 document_calls = ["lazy_static"]
 
 [dependencies]
+array-macro.workspace =true
 byteorder.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-casm = { workspace = true, features = ["parity-scale-codec"] }
@@ -39,6 +40,7 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+zstd.workspace = true
 
 [dev-dependencies]
 assert_matches.workspace = true
