@@ -13,6 +13,7 @@ quote = "1.0.26"
 [dev-dependencies]
 metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1" }
 prometheus-parse.workspace = true
 test_utils = { path = "../test_utils" }
 

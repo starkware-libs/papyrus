@@ -69,6 +69,11 @@
     "privacy": "TemporaryValue",
     "value": false
   },
+  "collect_profiling_metrics": {
+    "description": "If true, collect profiling metrics for the node.",
+    "privacy": "Public",
+    "value": false
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "pointer_target": "collect_metrics",

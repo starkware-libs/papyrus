@@ -83,7 +83,7 @@ impl<'env, Mode: TransactionKind> CasmStorageReader for StorageTxn<'env, Mode> {
 }
 
 impl<'env> CasmStorageWriter for StorageTxn<'env, RW> {
-    #[latency_histogram("storage_append_casm_latency_seconds")]
+    #[latency_histogram("storage_append_casm_latency_seconds", false)]
     fn append_casm(self, class_hash: &ClassHash, casm: &CasmContractClass) -> StorageResult<Self> {
         let casm_table = self.open_table(&self.tables.casms)?;
         let markers_table = self.open_table(&self.tables.markers)?;

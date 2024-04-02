@@ -16,18 +16,15 @@ use clap::{arg, value_parser, Arg, ArgMatches, Command};
 use itertools::{chain, Itertools};
 use lazy_static::lazy_static;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
-#[cfg(not(feature = "rpc"))]
-use papyrus_config::dumping::ser_param;
 use papyrus_config::dumping::{
     append_sub_config_name,
     ser_optional_sub_config,
+    ser_param,
     ser_pointer_target_param,
     SerializeConfig,
 };
 use papyrus_config::loading::load_and_process_config;
-#[cfg(not(feature = "rpc"))]
-use papyrus_config::ParamPrivacyInput;
-use papyrus_config::{ConfigError, ParamPath, SerializedParam};
+use papyrus_config::{ConfigError, ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_network::NetworkConfig;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig};
@@ -67,6 +64,7 @@ pub struct NodeConfig {
     pub p2p_sync: Option<P2PSyncConfig>,
     // TODO(shahak): Make network non-optional once it's developed enough.
     pub network: Option<NetworkConfig>,
+    pub collect_profiling_metrics: bool,
 }
 
 // Default configuration values.
@@ -82,6 +80,7 @@ impl Default for NodeConfig {
             sync: Some(SyncConfig::default()),
             p2p_sync: None,
             network: None,
+            collect_profiling_metrics: false,
         }
     }
 }
@@ -98,6 +97,12 @@ impl SerializeConfig for NodeConfig {
             ser_optional_sub_config(&self.sync, "sync"),
             ser_optional_sub_config(&self.p2p_sync, "p2p_sync"),
             ser_optional_sub_config(&self.network, "network"),
+            BTreeMap::from_iter([ser_param(
+                "collect_profiling_metrics",
+                &self.collect_profiling_metrics,
+                "If true, collect profiling metrics for the node.",
+                ParamPrivacyInput::Public,
+            )]),
         ];
         #[cfg(feature = "rpc")]
         sub_configs.push(append_sub_config_name(self.rpc.dump(), "rpc"));
