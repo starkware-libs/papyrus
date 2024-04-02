@@ -41,6 +41,7 @@ struct MockSwarm {
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
+    inbound_session_closed_notifier: Option<oneshot::Sender<()>>,
 }
 
 impl Stream for MockSwarm {
@@ -155,6 +156,15 @@ impl SwarmTrait for MockSwarm {
     }
     fn num_connected_peers(&self) -> usize {
         0
+    }
+    fn close_inbound_session(
+        &mut self,
+        _session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        if let Some(sender) = self.inbound_session_closed_notifier.take() {
+            sender.send(()).unwrap();
+        }
+        Ok(())
     }
 }
 
@@ -361,6 +371,65 @@ async fn sync_subscriber_query_before_established_connection() {
         }
     }
 }
+
+#[tokio::test]
+async fn close_inbound_session() {
+    
+    // define query
+    let query_limit = 5;
+    let start_block_number = 0;
+
+    let query = InternalQuery {
+        start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
+        direction: Direction::Forward,
+        limit: query_limit,
+        step: 1,
+    };
+    // get query bytes
+    let mut query_bytes = vec![];
+    protobuf::BlockHeadersRequest {
+        iteration: Some(protobuf::Iteration {
+            start: Some(protobuf::iteration::Start::BlockNumber(start_block_number)),
+            direction: protobuf::iteration::Direction::Forward as i32,
+            limit: query_limit,
+            step: 1,
+        }),
+    }
+    .encode(&mut query_bytes)
+    .unwrap();
+
+    // Setup mock DB executor and tell it to reply to the query
+    let headers = vec![];
+    let mut mock_db_executor = MockDBExecutor::default();
+    mock_db_executor.query_to_headers.insert(query, headers);
+
+    // Setup mock swarm and tell it to pole an event of new inbound query
+    let mut mock_swarm = MockSwarm::default();
+    let inbound_session_id = InboundSessionId { value: 0 };
+    let _fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
+    mock_swarm.pending_events.push(Event::Behaviour(GenericEvent::NewInboundSession {
+        query: query_bytes,
+        inbound_session_id,
+        peer_id: PeerId::random(),
+        protocol_name: crate::Protocol::SignedBlockHeader.into(),
+    }));
+
+    // Initiate swarm notifier to notify upon session closed
+    let (inbound_session_closed_notifier, inbound_session_closed_receiver) = oneshot::channel();
+    mock_swarm.inbound_session_closed_notifier = Some(inbound_session_closed_notifier);
+
+    // Create network manager and run it
+    let network_manager =
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        _ = inbound_session_closed_receiver => {}
+        _ = sleep(Duration::from_secs(5)) => {
+            panic!("Test timed out");
+        }
+    }
+}
+
 #[tokio::test]
 async fn return_fin_to_subscriber_unit_test() {
     // network manager to register subscriber
