@@ -237,26 +237,29 @@ async fn register_subscriber_and_use_channels() {
     let (mut query_sender, response_receivers) =
         network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
 
+    let mut signed_header_receiver_length = 0;
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
         .unwrap()
         .enumerate()
         .take(query_limit)
         .map(|(i, signed_block_header)| {
+            signed_header_receiver_length += 1;
             assert_eq!(signed_block_header.clone().unwrap().block_header.block_number.0, i as u64);
             signed_block_header
         })
         .collect::<Vec<_>>();
-
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()}) => {}
-        _ = signed_header_receiver_collector => {}
+            query_sender.send(query).await.unwrap()}).then(|_| async move {
+                signed_header_receiver_collector.await;
+            }) => {}
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
     }
+    assert_eq!(signed_header_receiver_length, query_limit);
 }
 
 #[tokio::test]
