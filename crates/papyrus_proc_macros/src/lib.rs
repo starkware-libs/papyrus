@@ -119,9 +119,14 @@ pub fn latency_histogram(attr: TokenStream, input: TokenStream) -> TokenStream {
     // Create a new block with the metric update.
     let expanded_block = quote! {
         {
-            let start_function_time=std::time::Instant::now();
+            let mut start_function_time = None;
+            if *(papyrus_common::metrics::PROFILING_STATUS.get().unwrap_or(&false)) {
+                start_function_time=Some(std::time::Instant::now());
+            }
             let return_value=#origin_block;
-            metrics::histogram!(#metric_name, start_function_time.elapsed().as_secs_f64());
+            if let Some(start_time) = start_function_time {
+                metrics::histogram!(#metric_name, start_time.elapsed().as_secs_f64());
+            }
             return_value
         }
     };
