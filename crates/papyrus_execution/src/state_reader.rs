@@ -2,6 +2,8 @@
 #[path = "state_reader_test.rs"]
 mod state_reader_test;
 
+use std::cell::Cell;
+
 use blockifier::execution::contract_class::{
     ContractClass as BlockifierContractClass,
     ContractClassV0,
@@ -28,12 +30,12 @@ pub struct ExecutionStateReader {
     pub maybe_pending_data: Option<PendingData>,
     // We want to return a custom error when missing a compiled class, but we need to return
     // Blockifier's error, so we store the missing class's hash in case of error.
-    pub missing_compiled_class: Option<ClassHash>,
+    pub missing_compiled_class: Cell<Option<ClassHash>>,
 }
 
 impl BlockifierStateReader for ExecutionStateReader {
     fn get_storage_at(
-        &mut self,
+        &self,
         contract_address: ContractAddress,
         key: StorageKey,
     ) -> StateResult<StarkFelt> {
@@ -48,7 +50,7 @@ impl BlockifierStateReader for ExecutionStateReader {
     }
 
     // Returns the default value if the contract address is not found.
-    fn get_nonce_at(&mut self, contract_address: ContractAddress) -> StateResult<Nonce> {
+    fn get_nonce_at(&self, contract_address: ContractAddress) -> StateResult<Nonce> {
         Ok(execution_utils::get_nonce_at(
             &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,
@@ -60,7 +62,7 @@ impl BlockifierStateReader for ExecutionStateReader {
     }
 
     // Returns the default value if the contract address is not found.
-    fn get_class_hash_at(&mut self, contract_address: ContractAddress) -> StateResult<ClassHash> {
+    fn get_class_hash_at(&self, contract_address: ContractAddress) -> StateResult<ClassHash> {
         Ok(execution_utils::get_class_hash_at(
             &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,
@@ -74,7 +76,7 @@ impl BlockifierStateReader for ExecutionStateReader {
     }
 
     fn get_compiled_contract_class(
-        &mut self,
+        &self,
         class_hash: ClassHash,
     ) -> StateResult<BlockifierContractClass> {
         if let Some(pending_casm) = self
@@ -104,7 +106,7 @@ impl BlockifierStateReader for ExecutionStateReader {
             Ok(Some(contract_class)) => Ok(contract_class),
             Ok(None) => Err(StateError::UndeclaredClassHash(class_hash)),
             Err(ExecutionUtilsError::CasmTableNotSynced) => {
-                self.missing_compiled_class = Some(class_hash);
+                self.missing_compiled_class.set(Some(class_hash));
                 Err(StateError::StateReadError("Casm table not fully synced".to_string()))
             }
             Err(ExecutionUtilsError::ProgramError(err)) => Err(StateError::ProgramError(err)),
@@ -112,7 +114,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         }
     }
 
-    fn get_compiled_class_hash(&mut self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
+    fn get_compiled_class_hash(&self, class_hash: ClassHash) -> StateResult<CompiledClassHash> {
         if let Some(pending_data) = &self.maybe_pending_data {
             for DeclaredClassHashEntry { class_hash: other_class_hash, compiled_class_hash } in
                 &pending_data.declared_classes
