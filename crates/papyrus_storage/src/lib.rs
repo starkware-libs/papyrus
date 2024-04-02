@@ -101,6 +101,7 @@ use mmap_file::{
 };
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_proc_macros::latency_histogram;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -655,6 +656,7 @@ struct FileHandlers<Mode: TransactionKind> {
 
 impl FileHandlers<RW> {
     // Appends a thin state diff to the corresponding file and returns its location.
+    #[latency_histogram("storage_file_handler_append_state_diff_latency")]
     fn append_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
         self.clone().thin_state_diff.append(thin_state_diff)
     }

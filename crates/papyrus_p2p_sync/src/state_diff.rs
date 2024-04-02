@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use futures::{FutureExt, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_network::DataType;
+use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -16,6 +17,7 @@ use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
+    #[latency_histogram("p2p_sync_state_diff_write_to_storage_latency")]
     fn write_to_storage(
         self: Box<Self>,
         storage_writer: &mut StorageWriter,
@@ -33,6 +35,7 @@ impl DataStreamFactory for StateDiffStreamFactory {
     const DATA_TYPE: DataType = DataType::StateDiff;
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit = BlockNumberLimit::HeaderMarker;
 
+    #[latency_histogram("p2p_sync_state_diff_parse_data_for_block_latency")]
     fn parse_data_for_block<'a>(
         state_diffs_receiver: &'a mut Pin<
             Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>,
@@ -102,6 +105,7 @@ impl DataStreamFactory for StateDiffStreamFactory {
 
 // For performance reasons, this function does not check if a deprecated class was declared twice.
 // That check is done after we get the final state diff.
+#[latency_histogram("p2p_sync_state_diff_unite_state_diffs_latency")]
 fn unite_state_diffs(
     state_diff: &mut ThinStateDiff,
     other_state_diff: ThinStateDiff,
@@ -140,6 +144,9 @@ fn unite_state_diffs_field<K: Hash + Eq + PartialEq, V>(
     Ok(())
 }
 
+#[latency_histogram(
+    "p2p_sync_state_diff_validate_deprecated_declared_classes_non_conflicting_latency"
+)]
 fn validate_deprecated_declared_classes_non_conflicting(
     state_diff: &ThinStateDiff,
 ) -> Result<(), P2PSyncError> {

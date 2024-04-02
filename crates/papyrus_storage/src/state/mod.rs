@@ -578,6 +578,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     }
 }
 
+#[latency_histogram("storage_update_marker_to_next_block_latency")]
 fn update_marker_to_next_block<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
@@ -595,6 +596,7 @@ fn update_marker_to_next_block<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_advance_compiled_class_marker_over_blocks_without_classes_latency")]
 fn advance_compiled_class_marker_over_blocks_without_classes<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
@@ -626,6 +628,7 @@ fn advance_compiled_class_marker_over_blocks_without_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_deployed_contracts_latency")]
 fn write_deployed_contracts<'env>(
     deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -651,6 +654,7 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_nonce_latency")]
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -663,6 +667,7 @@ fn write_nonces<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_replaced_classes_latency")]
 fn write_replaced_classes<'env>(
     replaced_classes: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -675,6 +680,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_storage_diffs_latency")]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,
