@@ -9,7 +9,6 @@ use blockifier::execution::call_info::{
     Retdata as BlockifierRetdata,
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
-use blockifier::fee::fee_utils::calculate_tx_gas_vector;
 use blockifier::transaction::objects::{GasVector, TransactionExecutionInfo};
 use cairo_vm::vm::runners::builtin_runner::{
     BITWISE_BUILTIN_NAME,
@@ -173,9 +172,9 @@ pub(crate) fn tx_execution_output_to_fee_estimation(
         ),
     };
 
-    let gas_vector = calculate_tx_gas_vector(
-        &tx_execution_output.execution_info.actual_resources,
+    let gas_vector = tx_execution_output.execution_info.actual_resources.to_gas_vector(
         block_context.versioned_constants(),
+        block_context.block_info().use_kzg_da,
     )?;
 
     Ok(FeeEstimation {

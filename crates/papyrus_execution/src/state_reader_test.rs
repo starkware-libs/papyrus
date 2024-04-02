@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use assert_matches::assert_matches;
 use blockifier::execution::contract_class::{
     ContractClass as BlockifierContractClass,
@@ -136,11 +138,11 @@ fn read_state() {
         .unwrap();
 
     let state_number0 = StateNumber::unchecked_right_after_block(BlockNumber(0));
-    let mut state_reader0 = ExecutionStateReader {
+    let state_reader0 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number0,
         maybe_pending_data: None,
-        missing_compiled_class: None,
+        missing_compiled_class: Cell::new(None),
     };
     let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_0, StarkFelt::default());
@@ -157,11 +159,11 @@ fn read_state() {
     assert_eq!(state_reader0.get_compiled_class_hash(class_hash0).unwrap(), compiled_class_hash0);
 
     let state_number1 = StateNumber::unchecked_right_after_block(BlockNumber(1));
-    let mut state_reader1 = ExecutionStateReader {
+    let state_reader1 = ExecutionStateReader {
         storage_reader: storage_reader.clone(),
         state_number: state_number1,
         maybe_pending_data: None,
-        missing_compiled_class: None,
+        missing_compiled_class: Cell::new(None),
     };
     let storage_after_block_1 = state_reader1.get_storage_at(address0, storage_key0).unwrap();
     assert_eq!(storage_after_block_1, storage_value0);
@@ -176,14 +178,14 @@ fn read_state() {
     // Test that if we try to get a casm and it's missing, that an error is returned and the field
     // `missing_compiled_class` is set to its hash
     state_reader1.get_compiled_contract_class(class_hash5).unwrap_err();
-    assert_eq!(state_reader1.missing_compiled_class.unwrap(), class_hash5);
+    assert_eq!(state_reader1.missing_compiled_class.get().unwrap(), class_hash5);
 
     let state_number2 = StateNumber::unchecked_right_after_block(BlockNumber(2));
     let mut state_reader2 = ExecutionStateReader {
         storage_reader,
         state_number: state_number2,
         maybe_pending_data: None,
-        missing_compiled_class: None,
+        missing_compiled_class: Cell::new(None),
     };
     let nonce_after_block_2 = state_reader2.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_2, nonce0);

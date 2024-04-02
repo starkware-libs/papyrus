@@ -5,6 +5,7 @@ use std::sync::Arc;
 use assert_matches::assert_matches;
 use blockifier::abi::abi_utils::get_storage_var_address;
 use blockifier::execution::call_info::Retdata;
+use blockifier::execution::errors::gen_transaction_execution_error_trace;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use indexmap::indexmap;
 use papyrus_storage::test_utils::get_test_storage;
@@ -15,6 +16,7 @@ use starknet_api::core::{
     ClassHash,
     CompiledClassHash,
     ContractAddress,
+    EntryPointSelector,
     Nonce,
     PatriciaKey,
 };
@@ -777,8 +779,11 @@ fn simulate_with_query_bit_outputs_same_as_no_query_bit() {
 fn blockifier_error_mapping() {
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
     let expected = format!("Contract constructor execution has failed: {child}");
-    let blockifier_err =
-        BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(child);
+    let storage_address = contract_address!("0x123");
+    let blockifier_err = BlockifierTransactionExecutionError::ContractConstructorExecutionFailed {
+        error: child,
+        storage_address,
+    };
     let err = ExecutionError::from((0, blockifier_err));
     let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
     else {
@@ -788,8 +793,18 @@ fn blockifier_error_mapping() {
     assert_eq!(transaction_index, 0);
 
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
-    let expected = format!("Transaction execution has failed: {child}");
-    let blockifier_err = BlockifierTransactionExecutionError::ExecutionError(child);
+    let class_hash = class_hash!("0x321");
+    let selector = EntryPointSelector(stark_felt!("0x111"));
+    let blockifier_err = BlockifierTransactionExecutionError::ExecutionError {
+        error: child,
+        class_hash,
+        storage_address,
+        selector,
+    };
+    let expected = format!(
+        "Transaction execution has failed:\n{}",
+        gen_transaction_execution_error_trace(&blockifier_err)
+    );
     let err = ExecutionError::from((0, blockifier_err));
     let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
     else {
@@ -799,8 +814,16 @@ fn blockifier_error_mapping() {
     assert_eq!(transaction_index, 0);
 
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
-    let expected = format!("Transaction validation has failed: {child}");
-    let blockifier_err = BlockifierTransactionExecutionError::ValidateTransactionError(child);
+    let blockifier_err = BlockifierTransactionExecutionError::ValidateTransactionError {
+        error: child,
+        class_hash,
+        storage_address,
+        selector,
+    };
+    let expected = format!(
+        "Transaction validation has failed:\n{}",
+        gen_transaction_execution_error_trace(&blockifier_err)
+    );
     let err = ExecutionError::from((0, blockifier_err));
     let ExecutionError::TransactionExecutionError { transaction_index, execution_error } = err
     else {
