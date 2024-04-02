@@ -315,7 +315,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
 }
 
 impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
-    #[latency_histogram("storage_append_body_latency_seconds")]
+    #[latency_histogram("storage_append_body_latency_seconds", false)]
     fn append_body(self, block_number: BlockNumber, block_body: BlockBody) -> StorageResult<Self> {
         let markers_table = self.open_table(&self.tables.markers)?;
         update_marker(&self.txn, &markers_table, block_number)?;

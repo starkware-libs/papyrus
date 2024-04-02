@@ -79,6 +79,11 @@ expression: dumped_default_config
     "value": "https://alpha-mainnet.starknet.io/",
     "privacy": "Public"
   },
+  "collect_profiling_metrics": {
+    "description": "If true, collect metrics for the node.",
+    "value": false,
+    "privacy": "Public"
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "value": false,

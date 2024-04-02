@@ -8,7 +8,7 @@ description = "A storage implementation for a Starknet node."
 
 [features]
 testing = ["tempfile"]
-document_calls = ["lazy_static", "papyrus_common"]
+document_calls = ["lazy_static"]
 
 [[bin]]
 name = "dump_declared_classes"
@@ -17,7 +17,7 @@ path = "src/bin/dump_declared_classes.rs"
 
 [[bin]]
 name = "storage_benchmark"
-required-features = ["clap", "papyrus_common", "statistical"]
+required-features = ["clap", "statistical"]
 path = "src/bin/storage_benchmark.rs"
 
 [dependencies]
@@ -35,7 +35,7 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1", optional = true }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1" }
 papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.1" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.1" }
 parity-scale-codec.workspace = true

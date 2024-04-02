@@ -450,7 +450,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     // This function is deprecated and will be erased in the future.
     // TODO(shahak): Erase append_state_diff.
-    #[latency_histogram("storage_append_state_diff_latency_seconds")]
+    #[latency_histogram("storage_append_state_diff_latency_seconds", false)]
     fn append_state_diff(
         self,
         block_number: BlockNumber,
@@ -525,7 +525,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         Ok(new_self)
     }
 
-    #[latency_histogram("storage_append_thin_state_diff_latency_seconds")]
+    #[latency_histogram("storage_append_thin_state_diff_latency_seconds", false)]
     fn append_thin_state_diff(
         self,
         block_number: BlockNumber,
