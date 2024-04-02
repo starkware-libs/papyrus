@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::hash::StarkFelt;
 
 pub mod block_hash;
+pub mod class_hash;
 pub mod deprecated_class_abi;
 pub mod metrics;
 pub mod patricia_hash_tree;
@@ -23,4 +25,8 @@ pub struct TransactionOptions {
     /// signature will be different while the execution remain the same). Using this flag will
     /// modify the transaction version by setting the 128-th bit to 1.
     pub only_query: bool,
+}
+
+pub(crate) fn usize_into_felt(u: usize) -> StarkFelt {
+    u128::try_from(u).expect("Expect at most 128 bits").into()
 }
