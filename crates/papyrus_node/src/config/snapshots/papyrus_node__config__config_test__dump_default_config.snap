@@ -204,6 +204,11 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "profiling": {
+    "description": "should the node track profiling information",
+    "value": false,
+    "privacy": "Public"
+  },
   "rpc.chain_id": {
     "description": "The chain to follow. For more details see https://docs.starknet.io/documentation/architecture_and_concepts/Blocks/transactions/#chain-id.",
     "value": "SN_MAIN",

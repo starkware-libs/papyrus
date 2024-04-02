@@ -11,6 +11,7 @@ use futures::channel::mpsc::Sender;
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
+use papyrus_common::metrics::PROFILING_STATUS;
 use papyrus_common::pending_classes::PendingClasses;
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
@@ -296,6 +297,8 @@ async fn main() -> anyhow::Result<()> {
         error!("{}", errors);
         exit(1);
     }
+
+    PROFILING_STATUS.get_or_init(|| config.profiling);
 
     info!("Booting up.");
     let res = run_threads(config.clone()).await;
