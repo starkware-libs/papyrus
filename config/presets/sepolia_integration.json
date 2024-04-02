@@ -1,0 +1,5 @@
+{
+    "chain_id": "SN_INTEGRATION_SEPOLIA",
+    "starknet_url": "https://integration-sepolia.starknet.io/",
+    "base_layer.starknet_contract_address": "0x4737c0c1b4d5b1a687b42610ddabee781152359c"
+}
