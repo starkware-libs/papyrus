@@ -153,9 +153,9 @@ lazy_static! {
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x680"),
+        gas_consumed: stark_felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
-        overall_fee: Fee(166400000000000,),
+        overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
     };
 

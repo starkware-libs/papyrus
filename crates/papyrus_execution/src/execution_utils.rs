@@ -10,7 +10,7 @@ use blockifier::execution::contract_class::{
     ContractClassV1,
 };
 use blockifier::state::cached_state::{CachedState, MutRefState};
-use blockifier::state::state_api::{State, StateReader};
+use blockifier::state::state_api::StateReader;
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
 use indexmap::IndexMap;
