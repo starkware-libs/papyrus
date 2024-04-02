@@ -27,6 +27,11 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError>;
 
     fn num_connected_peers(&self) -> usize;
+
+    fn close_inbound_session(
+        &mut self,
+        session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError>;
 }
 
 impl SwarmTrait for Swarm<Behaviour> {
@@ -58,5 +63,11 @@ impl SwarmTrait for Swarm<Behaviour> {
 
     fn num_connected_peers(&self) -> usize {
         self.network_info().num_peers()
+    }
+    fn close_inbound_session(
+        &mut self,
+        session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        self.behaviour_mut().close_inbound_session(session_id)
     }
 }

@@ -156,6 +156,12 @@ impl SwarmTrait for MockSwarm {
     fn num_connected_peers(&self) -> usize {
         0
     }
+    fn close_inbound_session(
+        &mut self,
+        _session_id: InboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        Ok(())
+    }
 }
 
 #[derive(Default)]
