@@ -1,8 +1,13 @@
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
+use rand::Rng;
 
 use crate::db::table_types::Table;
-use crate::test_utils::{get_test_config, get_test_storage, get_test_storage_by_scope};
+use crate::test_utils::{
+    get_test_storage,
+    get_test_storage_by_scope,
+    get_test_storage_with_config_by_scope,
+};
 use crate::version::{
     StorageVersionError,
     Version,
@@ -17,6 +22,7 @@ use crate::{
     verify_storage_version,
     StorageError,
     StorageScope,
+    StorageWriter,
     STORAGE_VERSION_BLOCKS,
     STORAGE_VERSION_STATE,
 };
@@ -83,32 +89,24 @@ fn set_state_version_test() {
 
 #[test]
 fn version_migration() {
-    let ((reader, mut writer), temp_dir) = get_test_storage();
+    let ((reader, mut writer), config, _temp_dir) =
+        get_test_storage_with_config_by_scope(StorageScope::FullArchive);
 
     // Set the storage version on a lower minor version.
-    let wtxn = writer.begin_rw_txn().unwrap();
-    let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
-    version_table
-        .upsert(
-            &wtxn.txn,
-            &VERSION_STATE_KEY.to_string(),
-            &Version { major: STORAGE_VERSION_STATE.major, minor: 0 },
-        )
-        .unwrap();
-    version_table
-        .upsert(
-            &wtxn.txn,
-            &VERSION_BLOCKS_KEY.to_string(),
-            &Version { major: STORAGE_VERSION_BLOCKS.major, minor: 0 },
-        )
-        .unwrap();
-    wtxn.commit().unwrap();
+    change_storage_version(
+        &mut writer,
+        VERSION_STATE_KEY,
+        &Version { major: STORAGE_VERSION_STATE.major, minor: 0 },
+    );
+    change_storage_version(
+        &mut writer,
+        VERSION_BLOCKS_KEY,
+        &Version { major: STORAGE_VERSION_BLOCKS.major, minor: 0 },
+    );
     drop(reader);
     drop(writer);
 
     // Reopen the storage and verify the version.
-    let (mut config, _) = get_test_config(None);
-    config.db_config.path_prefix = temp_dir.path().to_path_buf();
     let (reader, _) = open_storage(config).unwrap();
 
     let version_state = reader.begin_ro_txn().unwrap().get_state_version().unwrap();
@@ -118,24 +116,16 @@ fn version_migration() {
 }
 
 #[test]
-fn open_storage_failed_different_major_versions() {
-    let ((reader, mut writer), temp_dir) = get_test_storage();
+fn open_storage_full_archive_different_state_major_versions() {
+    let ((reader, mut writer), config, _temp_dir) =
+        get_test_storage_with_config_by_scope(StorageScope::FullArchive);
 
-    // Set the storage version on a different major version.
-    // We can be sure that the major version in the code is less than u32::MAX.
-    let high_major_version = Version { major: u32::MAX, minor: 0 };
-    let wtxn = writer.begin_rw_txn().unwrap();
-    let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
-    version_table.upsert(&wtxn.txn, &VERSION_STATE_KEY.to_string(), &high_major_version).unwrap();
-    version_table.upsert(&wtxn.txn, &VERSION_BLOCKS_KEY.to_string(), &high_major_version).unwrap();
-    wtxn.commit().unwrap();
+    let different_state_major_version = get_different_major_version(STORAGE_VERSION_STATE);
+    change_storage_version(&mut writer, VERSION_STATE_KEY, &different_state_major_version);
     drop(reader);
     drop(writer);
 
     // Reopen the storage and verify the version.
-    let (mut config, _) = get_test_config(None);
-    config.db_config.path_prefix = temp_dir.path().to_path_buf();
-
     let Err(err) = open_storage(config) else {
         panic!("Unexpected Ok.");
     };
@@ -145,8 +135,91 @@ fn open_storage_failed_different_major_versions() {
             crate_version,
             storage_version
         })
-        if crate_version == STORAGE_VERSION_STATE && storage_version == high_major_version
+        if crate_version == STORAGE_VERSION_STATE && storage_version == different_state_major_version
     );
+}
+
+#[test]
+fn open_storage_full_archive_different_blocks_major_versions() {
+    let ((reader, mut writer), config, _temp_dir) =
+        get_test_storage_with_config_by_scope(StorageScope::FullArchive);
+
+    let different_blocks_major_version = get_different_major_version(STORAGE_VERSION_BLOCKS);
+    change_storage_version(&mut writer, VERSION_BLOCKS_KEY, &different_blocks_major_version);
+    drop(reader);
+    drop(writer);
+
+    // Reopen the storage and verify the version.
+    let Err(err) = open_storage(config) else {
+        panic!("Unexpected Ok.");
+    };
+    assert_matches!(
+        err,
+        StorageError::StorageVersionInconsistency(StorageVersionError::InconsistentStorageVersion {
+            crate_version,
+            storage_version
+        })
+        if crate_version == STORAGE_VERSION_BLOCKS && storage_version == different_blocks_major_version
+    );
+}
+
+#[test]
+fn open_storage_state_only_different_state_major_versions() {
+    let ((reader, mut writer), config, _temp_dir) =
+        get_test_storage_with_config_by_scope(StorageScope::StateOnly);
+
+    let different_state_major_version = get_different_major_version(STORAGE_VERSION_STATE);
+    change_storage_version(&mut writer, VERSION_STATE_KEY, &different_state_major_version);
+    drop(reader);
+    drop(writer);
+
+    // Reopen the storage and verify the version.
+    let Err(err) = open_storage(config) else {
+        panic!("Unexpected Ok.");
+    };
+    assert_matches!(
+        err,
+        StorageError::StorageVersionInconsistency(StorageVersionError::InconsistentStorageVersion {
+            crate_version,
+            storage_version
+        })
+        if crate_version == STORAGE_VERSION_STATE && storage_version == different_state_major_version
+    );
+}
+
+#[test]
+fn open_storage_state_only_different_blocks_major_versions() {
+    let ((reader, mut writer), config, _temp_dir) =
+        get_test_storage_with_config_by_scope(StorageScope::StateOnly);
+
+    let different_blocks_major_version = get_different_major_version(STORAGE_VERSION_BLOCKS);
+    change_storage_version(&mut writer, VERSION_BLOCKS_KEY, &different_blocks_major_version);
+    drop(reader);
+    drop(writer);
+
+    // Reopen the storage and verify the version.
+    assert!(open_storage(config.clone()).is_ok());
+}
+
+// Changes the storage version with version_key to the given version.
+fn change_storage_version(writer: &mut StorageWriter, version_key: &str, version: &Version) {
+    let wtxn = writer.begin_rw_txn().unwrap();
+    let version_table = wtxn.open_table(&wtxn.tables.storage_version).unwrap();
+    version_table.upsert(&wtxn.txn, &version_key.to_string(), version).unwrap();
+    wtxn.commit().unwrap();
+}
+
+// Returns a random version with a different major version than the given one.
+fn get_different_major_version(version: Version) -> Version {
+    let mut rng = rand::thread_rng();
+    // The multiplication by two is to make the randomized version to be
+    // with a high enough probability to be less and more than the current version.
+    let minor = rng.gen_range(0..=2 * version.minor);
+    let mut major = rng.gen_range(0..=2 * version.major);
+    if major == version.major {
+        major += 1;
+    }
+    Version { major, minor }
 }
 
 #[test]
