@@ -6043,6 +6043,7 @@ dependencies = [
  "num-bigint 0.4.4",
  "num-traits 0.2.17",
  "page_size",
+ "papyrus_common",
  "papyrus_config",
  "papyrus_proc_macros",
  "parity-scale-codec",
