@@ -115,6 +115,7 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 
+use super::compression_utils::DictionaryVersion;
 use crate::body::events::{
     EventIndex,
     ThinDeclareTransactionOutput,
@@ -236,6 +237,7 @@ auto_storage_serde! {
         External = 1,
         L1Handler = 2,
     }
+    pub struct DictionaryVersion(u8);
     pub struct EntryPoint {
         pub function_idx: FunctionIndex,
         pub selector: EntryPointSelector,
