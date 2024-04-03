@@ -21,6 +21,7 @@ required-features = ["clap", "statistical"]
 path = "src/bin/storage_benchmark.rs"
 
 [dependencies]
+array-macro.workspace =true
 byteorder.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-casm = { workspace = true, features = ["parity-scale-codec"] }
@@ -47,6 +48,7 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+zstd.workspace = true
 
 # Binaries dependencies
 clap = { workspace = true, optional = true }

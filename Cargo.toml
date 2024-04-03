@@ -30,6 +30,7 @@ license-file = "LICENSE"
 
 [workspace.dependencies]
 anyhow = "1.0.44"
+array-macro = "2.1.8"
 assert-json-diff = "2.0.2"
 assert_matches = "1.5.0"
 async-stream = "0.3.3"
@@ -128,3 +129,7 @@ unsigned-varint = "0.8.0"
 url = "2.2.2"
 validator = "0.12"
 void = "1.0.2"
+zstd = "0.13.0"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "4409d371a1f85b6e0d745cf23250ecfaae1b6f42" }

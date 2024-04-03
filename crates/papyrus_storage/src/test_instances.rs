@@ -31,6 +31,7 @@ use crate::body::TransactionIndex;
 use crate::compression_utils::IsCompressed;
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
+use crate::serialization::compression_utils::DictionaryVersion;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
 use crate::{EventIndex, MarkerKind, OffsetKind};
@@ -54,7 +55,7 @@ auto_impl_get_test_instance! {
         pub n_transactions: Option<usize>,
         pub n_events: Option<usize>,
     }
-
+    pub struct DictionaryVersion(u8);
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct IndexedDeprecatedContractClass {
         pub block_number: BlockNumber,
