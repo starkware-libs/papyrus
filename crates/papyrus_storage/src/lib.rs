@@ -52,6 +52,7 @@
 
 pub mod base_layer;
 pub mod body;
+pub mod class;
 pub mod compiled_class;
 #[cfg(feature = "document_calls")]
 pub mod document_calls;
@@ -584,6 +585,19 @@ pub enum StorageError {
          {block_number}."
     )]
     BlockSignatureForNonExistingBlock { block_number: BlockNumber, block_signature: BlockSignature },
+    #[error(
+        "Attempt to advance {surpassing_marker_kind:?} ahead of {surpassed_marker_kind:?}. it \
+         should always be before it."
+    )]
+    MarkersUnorderingAttempt {
+        surpassing_marker_kind: MarkerKind,
+        surpassed_marker_kind: MarkerKind,
+    },
+    #[error(
+        "Attempt to write classes for block {block_number} that aren't identical in the hash to \
+         the classes declared at the block's state diff."
+    )]
+    ClassesStateDiffMismatch { block_number: BlockNumber },
 }
 
 /// A type alias that maps to std::result::Result<T, StorageError>.
@@ -630,12 +644,19 @@ pub struct DbStats {
 // - CompiledClass <= Class <= State <= Header
 // - Body <= Header
 // - BaseLayerBlock <= Header
-pub(crate) enum MarkerKind {
+/// A kind of marker in the storage.
+pub enum MarkerKind {
+    /// Marker for block headers.
     Header,
+    /// Marker for transactions, events and receipts.
     Body,
+    /// Marker for state diff.
     State,
+    /// Marker for classes.
     Class,
+    /// Marker for compiled classes.
     CompiledClass,
+    /// Marker for the first block that is not in the base layer.
     BaseLayerBlock,
 }
 

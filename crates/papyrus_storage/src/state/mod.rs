@@ -81,25 +81,25 @@ use crate::{
     StorageTxn,
 };
 
-type FileOffsetTable<'env> =
+pub(crate) type FileOffsetTable<'env> =
     TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>;
-type DeclaredClassesTable<'env> =
+pub(crate) type DeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>;
-type DeclaredClassesBlockTable<'env> =
+pub(crate) type DeclaredClassesBlockTable<'env> =
     TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
-type DeprecatedDeclaredClassesTable<'env> =
+pub(crate) type DeprecatedDeclaredClassesTable<'env> =
     TableHandle<'env, ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>;
-type CompiledClassesTable<'env> =
+pub(crate) type CompiledClassesTable<'env> =
     TableHandle<'env, ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>;
-type DeployedContractsTable<'env> =
+pub(crate) type DeployedContractsTable<'env> =
     TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>;
-type ContractStorageTable<'env> = TableHandle<
+pub(crate) type ContractStorageTable<'env> = TableHandle<
     'env,
     (ContractAddress, StorageKey, BlockNumber),
     NoVersionValueWrapper<StarkFelt>,
     SimpleTable,
 >;
-type NoncesTable<'env> =
+pub(crate) type NoncesTable<'env> =
     TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>;
 
 /// Interface for reading data related to the state.
@@ -124,8 +124,6 @@ type NoncesTable<'env> =
 pub trait StateStorageReader<Mode: TransactionKind> {
     /// The state marker is the first block number that doesn't exist yet.
     fn get_state_marker(&self) -> StorageResult<BlockNumber>;
-    /// The class marker is the first block number that we don't have classes for yet.
-    fn get_class_marker(&self) -> StorageResult<BlockNumber>;
     /// Returns the state diff at a given block number.
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>>;
     /// Returns a state reader.
@@ -186,10 +184,6 @@ impl<'env, Mode: TransactionKind> StateStorageReader<Mode> for StorageTxn<'env, 
     fn get_state_marker(&self) -> StorageResult<BlockNumber> {
         let markers_table = self.open_table(&self.tables.markers)?;
         Ok(markers_table.get(&self.txn, &MarkerKind::State)?.unwrap_or_default())
-    }
-    fn get_class_marker(&self) -> StorageResult<BlockNumber> {
-        let markers_table = self.open_table(&self.tables.markers)?;
-        Ok(markers_table.get(&self.txn, &MarkerKind::Class)?.unwrap_or_default())
     }
     fn get_state_diff(&self, block_number: BlockNumber) -> StorageResult<Option<ThinStateDiff>> {
         let state_diffs_table = self.open_table(&self.tables.state_diffs)?;
@@ -393,6 +387,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         if state_number.is_before(block_number) {
             return Ok(None);
         }
+        // TODO(shahak): Fix code duplication with ClassStorageReader.
         let Some(contract_class_location) =
             self.declared_classes_table.get(self.txn, class_hash)?
         else {
@@ -444,6 +439,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         if state_number.is_before(value.block_number) {
             return Ok(None);
         }
+        // TODO(shahak): Fix code duplication with ClassStorageReader.
         Ok(Some(
             self.file_handlers.get_deprecated_contract_class_unchecked(value.location_in_file)?,
         ))
@@ -468,6 +464,14 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         let declared_classes_table = new_self.open_table(&new_self.tables.declared_classes)?;
         let deprecated_declared_classes_table =
             new_self.open_table(&new_self.tables.deprecated_declared_classes)?;
+        let state_diffs_table = new_self.open_table(&new_self.tables.state_diffs)?;
+
+        advance_class_marker_over_blocks_without_classes(
+            &new_self.txn,
+            &markers_table,
+            &state_diffs_table,
+            &new_self.file_handlers,
+        )?;
 
         if markers_table.get(&new_self.txn, &MarkerKind::Class)?.unwrap_or_default() == block_number
         {
@@ -567,13 +571,6 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         update_marker_to_next_block(&self.txn, &markers_table, MarkerKind::State, block_number)?;
 
         advance_compiled_class_marker_over_blocks_without_classes(
-            &self.txn,
-            &markers_table,
-            &state_diffs_table,
-            &self.file_handlers,
-        )?;
-
-        advance_class_marker_over_blocks_without_classes(
             &self.txn,
             &markers_table,
             &state_diffs_table,

@@ -10,6 +10,7 @@ use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, Thi
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
+use crate::class::ClassStorageReader;
 use crate::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use crate::state::{StateStorageReader, StateStorageWriter};
 use crate::test_utils::get_test_storage;
@@ -257,15 +258,6 @@ fn test_update_compiled_class_marker() {
     // Append an empty state diff.
     txn = txn.append_state_diff(BlockNumber(0), StateDiff::default(), IndexMap::new()).unwrap();
     assert_eq!(txn.get_compiled_class_marker().unwrap(), BlockNumber(1));
-}
-
-#[test]
-fn test_update_class_marker() {
-    let ((_, mut writer), _temp_dir) = get_test_storage();
-    let mut txn = writer.begin_rw_txn().unwrap();
-    // Append an empty state diff.
-    txn = txn.append_thin_state_diff(BlockNumber(0), ThinStateDiff::default()).unwrap();
-    assert_eq!(txn.get_class_marker().unwrap(), BlockNumber(1));
 }
 
 #[test]
