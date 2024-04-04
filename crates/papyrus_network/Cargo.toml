@@ -5,11 +5,20 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[[bin]]
+name = "p2p_integration_endpoint"
+required-features = ["clap"]
+path = "src/bin/p2p_integration_endpoint.rs"
+
+[[bin]]
+name = "streamed_bytes_benchmark"
+required-features = ["clap"]
+path = "src/bin/streamed_bytes_benchmark.rs"
+
 [dependencies]
 async-stream.workspace = true
 bytes.workspace = true
 chrono.workspace = true
-clap = { workspace = true, features = ["derive"] }
 defaultmap.workspace = true
 derive_more.workspace = true
 enum-iterator.workspace = true
@@ -40,6 +49,10 @@ thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
 unsigned-varint = { workspace = true, features = ["std"] }
+
+# Binaries dependencies
+clap = { workspace = true, optional = true, features = ["derive"] }
+
 
 [build-dependencies]
 prost-build.workspace = true
