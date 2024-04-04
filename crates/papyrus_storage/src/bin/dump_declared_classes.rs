@@ -53,7 +53,7 @@ fn get_cli_params() -> CliParams {
                 .short('c')
                 .long("chain_id")
                 .required(true)
-                .help("The chain id SN_MAIN/SN_GOERLI, default value is SN_MAIN."),
+                .help("The chain id SN_MAIN/SN_SEPOLIA, default value is SN_MAIN."),
         )
         .get_matches();
 
