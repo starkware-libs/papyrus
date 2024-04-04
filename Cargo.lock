@@ -5836,6 +5836,7 @@ dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
+ "itertools 0.10.5",
  "lazy_static",
  "pretty_assertions",
  "serde",
