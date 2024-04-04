@@ -46,17 +46,22 @@ use starknet_api::core::{
 use starknet_api::crypto::Signature;
 use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
+    ConstructorType,
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
     EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType,
     EventAbiEntry,
+    EventType,
     FunctionAbiEntry,
     FunctionStateMutability,
+    FunctionType,
+    L1HandlerType,
     Program,
     StructAbiEntry,
     StructMember,
+    StructType,
     TypedParameter,
 };
 use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
@@ -175,9 +180,9 @@ auto_storage_serde! {
     pub struct ContractAddressSalt(pub StarkHash);
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
-        Function(FunctionAbiEntry) = 1,
-        Constructor(FunctionAbiEntry) = 2,
-        L1Handler(FunctionAbiEntry) = 3,
+        Function(FunctionAbiEntry<FunctionType>) = 1,
+        Constructor(FunctionAbiEntry<ConstructorType>) = 2,
+        L1Handler(FunctionAbiEntry<L1HandlerType>) = 3,
         Struct(StructAbiEntry) = 4,
     }
     pub enum DataAvailabilityMode {
@@ -246,9 +251,10 @@ auto_storage_serde! {
     // TODO(dan): consider implementing directly with no H160 dependency.
     pub struct EthAddress(pub H160);
     pub struct EventAbiEntry {
-        pub name: String,
-        pub keys: Vec<TypedParameter>,
         pub data: Vec<TypedParameter>,
+        pub keys: Vec<TypedParameter>,
+        pub name: String,
+        pub r#type: EventType,
     }
     pub struct EventContent {
         pub keys: Vec<EventKey>,
@@ -259,13 +265,10 @@ auto_storage_serde! {
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
-    pub struct Fee(pub u128);
-    pub struct FunctionAbiEntry {
-        pub name: String,
-        pub inputs: Vec<TypedParameter>,
-        pub outputs: Vec<TypedParameter>,
-        pub state_mutability: Option<FunctionStateMutability>,
+    pub enum EventType {
+        Event = 0,
     }
+    pub struct Fee(pub u128);
     pub enum FunctionStateMutability {
         View = 0,
     }
@@ -353,13 +356,18 @@ auto_storage_serde! {
         pub s: StarkFelt,
     }
     pub struct StructAbiEntry {
+        pub members: Vec<StructMember>,
         pub name: String,
         pub size: usize,
-        pub members: Vec<StructMember>,
+        pub r#type: StructType,
     }
     pub struct StructMember {
-        pub param: TypedParameter,
+        pub name: String,
         pub offset: usize,
+        pub r#type: String,
+    }
+    pub enum StructType {
+        Struct = 0,
     }
     pub struct StarknetVersion(pub String);
     pub struct StateDiffCommitment(pub PoseidonHash);
@@ -951,6 +959,26 @@ impl StorageSerde for DeprecatedContractClass {
 }
 #[cfg(test)]
 create_storage_serde_test!(DeprecatedContractClass);
+
+impl<TYPE: Default> StorageSerde for FunctionAbiEntry<TYPE> {
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        self.name.serialize_into(res)?;
+        self.inputs.serialize_into(res)?;
+        self.outputs.serialize_into(res)?;
+        self.state_mutability.serialize_into(res)?;
+        Ok(())
+    }
+
+    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self {
+            name: String::deserialize_from(bytes)?,
+            inputs: Vec::<TypedParameter>::deserialize_from(bytes)?,
+            outputs: Vec::<TypedParameter>::deserialize_from(bytes)?,
+            state_mutability: Option::<FunctionStateMutability>::deserialize_from(bytes)?,
+            r#type: TYPE::default(),
+        })
+    }
+}
 
 impl StorageSerde for CasmContractClass {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {

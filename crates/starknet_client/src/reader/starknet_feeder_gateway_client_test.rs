@@ -19,6 +19,7 @@ use starknet_api::core::{
 };
 use starknet_api::crypto::PublicKey;
 use starknet_api::deprecated_contract_class::{
+    ConstructorType,
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
@@ -233,7 +234,7 @@ async fn deprecated_contract_class() {
     )
     .unwrap();
     let expected_contract_class = DeprecatedContractClass {
-        abi: Some(vec![ContractClassAbiEntry::Constructor(FunctionAbiEntry {
+        abi: Some(vec![ContractClassAbiEntry::Constructor(FunctionAbiEntry::<ConstructorType> {
             name: "constructor".to_string(),
             inputs: vec![TypedParameter {
                 name: "implementation".to_string(),
@@ -241,6 +242,7 @@ async fn deprecated_contract_class() {
             }],
             outputs: vec![],
             state_mutability: None,
+            r#type: ConstructorType::Constructor,
         })]),
         program: Program {
             attributes: serde_json::Value::Array(vec![serde_json::json!(1234)]),
