@@ -12,6 +12,7 @@ use tracing::error;
 
 use crate::db::serialization::{Migratable, StorageSerde, StorageSerdeError};
 use crate::header::StorageBlockHeader;
+use crate::state::data::IndexedDeprecatedContractClass;
 
 impl Migratable for StorageBlockHeader {
     fn try_from_older_version(
@@ -155,5 +156,24 @@ impl From<StorageBlockHeaderV0> for StorageBlockHeaderV1 {
             },
             n_events: if missing_commitments_data { None } else { Some(v0_header.n_events) },
         }
+    }
+}
+
+impl Migratable for IndexedDeprecatedContractClass {
+    fn try_from_older_version(
+        _bytes: &mut impl std::io::Read,
+        older_version: u8,
+    ) -> Result<Self, StorageSerdeError>
+    where
+        Self: std::marker::Sized,
+    {
+        // TODO(yair): Implement the migration for the changes in deprecated contract class
+        // serialization of the current commit.
+        error!(
+            "Unable to migrate stored IndexedDeprecatedContractClass from version {} to current \
+             version - not implemented yet.",
+            older_version
+        );
+        Err(StorageSerdeError::Migration)
     }
 }

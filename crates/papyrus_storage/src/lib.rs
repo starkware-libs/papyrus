@@ -139,7 +139,7 @@ use crate::version::{VersionStorageReader, VersionStorageWriter};
 /// The current version of the storage state code.
 /// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
 /// required.
-pub const STORAGE_VERSION_STATE: Version = Version { major: 1, minor: 0 };
+pub const STORAGE_VERSION_STATE: Version = Version { major: 1, minor: 1 };
 /// The current version of the storage blocks code.
 /// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
 /// required.
@@ -506,7 +506,7 @@ struct_field_names! {
         contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
         headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,

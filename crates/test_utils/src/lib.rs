@@ -67,17 +67,22 @@ use starknet_api::core::{
 use starknet_api::crypto::Signature;
 use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
+    ConstructorType,
     ContractClass as DeprecatedContractClass,
     ContractClassAbiEntry,
     EntryPoint as DeprecatedEntryPoint,
     EntryPointOffset,
     EntryPointType as DeprecatedEntryPointType,
     EventAbiEntry,
+    EventType,
     FunctionAbiEntry,
     FunctionStateMutability,
+    FunctionType,
+    L1HandlerType,
     Program,
     StructAbiEntry,
     StructMember,
+    StructType,
     TypedParameter,
 };
 use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
@@ -471,9 +476,9 @@ auto_impl_get_test_instance! {
     }
     pub enum ContractClassAbiEntry {
         Event(EventAbiEntry) = 0,
-        Function(FunctionAbiEntry) = 1,
-        Constructor(FunctionAbiEntry) = 2,
-        L1Handler(FunctionAbiEntry) = 3,
+        Function(FunctionAbiEntry<FunctionType>) = 1,
+        Constructor(FunctionAbiEntry<ConstructorType>) = 2,
+        L1Handler(FunctionAbiEntry<L1HandlerType>) = 3,
         Struct(StructAbiEntry) = 4,
     }
     pub enum DataAvailabilityMode {
@@ -574,6 +579,7 @@ auto_impl_get_test_instance! {
         pub name: String,
         pub keys: Vec<TypedParameter>,
         pub data: Vec<TypedParameter>,
+        pub r#type: EventType,
     }
     pub struct EventContent {
         pub keys: Vec<EventKey>,
@@ -582,15 +588,15 @@ auto_impl_get_test_instance! {
     pub struct EventData(pub Vec<StarkFelt>);
     pub struct EventIndexInTransactionOutput(pub usize);
     pub struct EventKey(pub StarkFelt);
-    pub struct Fee(pub u128);
-    pub struct FunctionAbiEntry {
-        pub name: String,
-        pub inputs: Vec<TypedParameter>,
-        pub outputs: Vec<TypedParameter>,
-        pub state_mutability: Option<FunctionStateMutability>,
+    pub enum EventType {
+        Event = 0,
     }
+    pub struct Fee(pub u128);
     pub enum FunctionStateMutability {
         View = 0,
+    }
+    pub enum FunctionType {
+        Function = 0,
     }
     pub struct GasPrice(pub u128);
     pub struct GasPricePerToken {
@@ -692,8 +698,12 @@ auto_impl_get_test_instance! {
     }
     pub struct StateDiffCommitment(pub PoseidonHash);
     pub struct StructMember {
-        pub param: TypedParameter,
+        pub name: String,
         pub offset: usize,
+        pub r#type: String,
+    }
+    pub enum StructType {
+        Struct = 0,
     }
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
@@ -948,6 +958,19 @@ impl GetTestInstance for StructAbiEntry {
             name: String::default(),
             size: 1, // Should be minimum 1.
             members: Vec::<StructMember>::get_test_instance(rng),
+            r#type: StructType::Struct,
+        }
+    }
+}
+
+impl<TYPE: Default> GetTestInstance for FunctionAbiEntry<TYPE> {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> FunctionAbiEntry<TYPE> {
+        FunctionAbiEntry::<TYPE> {
+            name: String::get_test_instance(rng),
+            inputs: Vec::<TypedParameter>::get_test_instance(rng),
+            outputs: Vec::<TypedParameter>::get_test_instance(rng),
+            state_mutability: Option::<FunctionStateMutability>::get_test_instance(rng),
+            r#type: TYPE::default(),
         }
     }
 }

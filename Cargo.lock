@@ -4050,6 +4050,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8187,14 +8196,15 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.12.0-dev.0"
+version = "0.12.0-dev.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d83d0987fc20eb9d39e39ce768534718174c30bc6532fa5c6e493a611b5f4303"
+checksum = "4333a5d836f1018c87a0db36ffe673e8f79db4c40718dca65ad82430d9204b16"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",
  "hex",
  "indexmap 2.1.0",
+ "itertools 0.12.1",
  "once_cell",
  "primitive-types",
  "serde",
