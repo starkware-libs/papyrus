@@ -109,11 +109,11 @@ To specify custom configuration files, include the `--config_file` command-line 
 cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file <path_to_custom_configuration_file_1> <path_to_custom_configuration_file___n__>
 ----
 
-For example, preset `.json` files for several Starknet networks are located in this repository at  https://github.com/starkware-libs/papyrus/blob/main/config/presets[`/config/presets`]. To use Goerli testnet, you need to override the default values by using the file `/config/presets/testnet1.json`, as follows:
+For example, preset `.json` files for several Starknet networks are located in this repository at  https://github.com/starkware-libs/papyrus/blob/main/config/presets[`/config/presets`]. To use Sepolia testnet, you need to override the default values by using the file `/config/presets/sepolia_testnet.json`, as follows:
 
 [source,bash,subs="verbatim,quotes"]
 ----
-cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file /config/presets/testnet1.json
+cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> --config-file /config/presets/sepolia_testnet.json
 ----
 
 ==== Configuration via the command-line (local node and Docker image)
@@ -125,15 +125,15 @@ You can specify configuration parameters as command-line options. To see all ava
 cargo run --release --package papyrus_node --bin papyrus_node -- --help
 ----
 
-For example, to use Goerli testnet, run the following command:
+For example, to use Sepolia testnet, run the following command:
 
 [source,base,subs="verbatim,quotes"]
 ----
 cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.node_url <ethereum_node_url> \
---central.url https://alpha4.starknet.io/ \
---chain_id SN_GOERLI \
---rpc.starknet_url https://alpha4.starknet.io/ \
---base_layer.starknet_contract_address 0xde29d060D45901Fb19ED6C6e959EB22d8626708e
+--central.url https://alpha-sepolia.starknet.io/ \
+--chain_id SN_SEPOLIA \
+--rpc.starknet_url https://alpha-sepolia.starknet.io/ \
+--base_layer.starknet_contract_address 0xe2bb56ee936fd6433dc0f6e7e3b8365c906aa057
 ----
 
 For more information, see the papyrus-config https://github.com/starkware-libs/papyrus/blob/main/crates/papyrus_config/README.md[README].
