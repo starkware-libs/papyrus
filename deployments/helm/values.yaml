@@ -14,13 +14,13 @@ starknet:
   # possible values: "mainnet.json", "goerli_testnet.json", "goerli_integration.json",
   # "sepolia_testnet" and "sepolia_integration".
   preset: mainnet.json
-  additionalHeaders: # optional addtional headers for SN communication
+  additionalHeaders: # optional additional headers for SN communication
 
 deployment:
   # The container image
   image:
     repository: ghcr.io/starkware-libs/papyrus
-    tag: 0.2.0
+    tag: 0.3.0
   # The container's pullPolicy
   pullPolicy: Always
   # Optional - nodeSelector
