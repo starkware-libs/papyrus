@@ -12,13 +12,17 @@ normal = ["papyrus_base_layer"]
 default = ["rpc"]
 rpc = ["papyrus_rpc"]
 
+[[bin]]
+name = "central_source_integration_test"
+required-features = ["futures-util", "tokio-stream"]
+path = "src/bin/central_source_integration_test.rs"
+
 [dependencies]
 anyhow.workspace = true
 async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
 futures.workspace = true
-futures-util.workspace = true
 itertools.workspace = true
 jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
@@ -39,11 +43,15 @@ starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client" }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
-tokio-stream.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing.workspace = true
 url.workspace = true
 validator = { workspace = true, features = ["derive"] }
+
+# Binaries dependencies
+futures-util = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
+
 
 [dev-dependencies]
 assert-json-diff.workspace = true

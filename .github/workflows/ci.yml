@@ -108,7 +108,7 @@ jobs:
           version: ${{env.PROTOC_VERSION}}
       - run: >
           cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
-          cargo run -r -p papyrus_node --bin central_source_integration_test
+          cargo run -r -p papyrus_node --bin central_source_integration_test --features="futures-util tokio-stream"
 
   test-no-rpc:
     runs-on: ubuntu-latest
