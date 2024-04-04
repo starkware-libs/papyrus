@@ -19,11 +19,11 @@ itertools.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lru.workspace = true
 metrics.workspace = true
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.0" }
-papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.0" }
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.0" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.0" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.0" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.1" }
+papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.1" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.1" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.1" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true

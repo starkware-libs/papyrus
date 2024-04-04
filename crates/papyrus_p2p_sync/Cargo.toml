@@ -9,9 +9,9 @@ license-file.workspace = true
 async-stream.workspace = true
 futures.workspace = true
 indexmap.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.0" }
-papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.0" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.1" }
+papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.1" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.1" }
 serde.workspace = true
 starknet_api.workspace = true
 thiserror.workspace = true
