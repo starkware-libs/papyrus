@@ -19,12 +19,13 @@ mod test_utils;
 pub mod testing_instances;
 
 pub mod objects;
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::num::NonZeroU128;
 use std::path::Path;
 use std::sync::Arc;
 
-use blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
+use blockifier::blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
 use blockifier::context::{BlockContext, ChainInfo, FeeTokenAddresses, TransactionContext};
 use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::{ClassInfo, ContractClass as BlockifierContractClass};
@@ -244,7 +245,7 @@ pub fn execute_call(
             storage_reader: storage_reader.clone(),
             state_number,
             maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: None,
+            missing_compiled_class: Cell::new(None),
         },
         GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
     );
@@ -272,7 +273,7 @@ pub fn execute_call(
     let res = call_entry_point
         .execute(&mut cached_state, &mut ExecutionResources::default(), &mut context)
         .map_err(|error| {
-            if let Some(class_hash) = cached_state.state.missing_compiled_class {
+            if let Some(class_hash) = cached_state.state.missing_compiled_class.get() {
                 ExecutionError::MissingCompiledClass { class_hash }
             } else {
                 ExecutionError::ContractError(error.into())
@@ -610,7 +611,7 @@ fn execute_transactions(
             storage_reader: storage_reader.clone(),
             state_number,
             maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: None,
+            missing_compiled_class: Cell::new(None),
         },
         GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
     );
@@ -667,7 +668,7 @@ fn execute_transactions(
             induced_state_diff(&mut transactional_state, deprecated_declared_class_hash)?;
         transactional_state.commit();
         let execution_info = tx_execution_info_result.map_err(|error| {
-            if let Some(class_hash) = cached_state.state.missing_compiled_class {
+            if let Some(class_hash) = cached_state.state.missing_compiled_class.get() {
                 ExecutionError::MissingCompiledClass { class_hash }
             } else {
                 ExecutionError::from((transaction_index, error))
