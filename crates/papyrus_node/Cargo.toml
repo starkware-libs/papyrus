@@ -17,6 +17,7 @@ anyhow.workspace = true
 async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
+derive_more.workspace = true
 futures.workspace = true
 futures-util.workspace = true
 itertools.workspace = true

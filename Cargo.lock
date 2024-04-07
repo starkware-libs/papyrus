@@ -5928,6 +5928,7 @@ dependencies = [
  "clap",
  "colored",
  "const_format",
+ "derive_more",
  "futures",
  "futures-util",
  "insta",
