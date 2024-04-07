@@ -265,11 +265,23 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             self.query_results_router = StreamCollection::new();
         }
         let (data, inbound_session_id) = res;
+        let is_fin = matches!(data, Data::Fin(_));
         let mut data_bytes = vec![];
         data.encode_with_length_prefix(&mut data_bytes).expect("failed to encode data");
         self.swarm.send_length_prefixed_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
-            error!("Failed to send data to peer. Session id not found error: {e:?}");
-        })
+            error!(
+                "Failed to send data to peer. Session id: {inbound_session_id:?} not found error: \
+                 {e:?}"
+            );
+        });
+        if is_fin {
+            self.swarm.close_inbound_session(inbound_session_id).unwrap_or_else(|e| {
+                error!(
+                    "Failed to close session after Fin. Session id: {inbound_session_id:?} not \
+                     found error: {e:?}"
+                )
+            });
+        }
     }
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
