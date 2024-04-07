@@ -4,7 +4,7 @@ mod block_hash_test;
 
 use std::iter::zip;
 
-use starknet_api::block::{BlockBody, BlockHash, BlockHeader};
+use starknet_api::block::{BlockHash, BlockHeader};
 use starknet_api::core::{ChainId, EventCommitment, TransactionCommitment};
 use starknet_api::hash::{pedersen_hash, StarkFelt, StarkHash};
 use starknet_api::transaction::{
@@ -12,7 +12,6 @@ use starknet_api::transaction::{
     Event,
     Transaction,
     TransactionHash,
-    TransactionOutput,
 };
 use starknet_api::StarknetApiError;
 
@@ -29,7 +28,7 @@ pub enum BlockHashError {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
-enum BlockHashVersion {
+pub enum BlockHashVersion {
     V0,
     V1,
     V2,
@@ -51,31 +50,29 @@ pub fn validate_header(header: &BlockHeader, chain_id: &ChainId) -> Result<bool,
 }
 
 /// Validates the body of a starknet block.
-pub fn validate_body(
-    body: &BlockBody,
+pub fn validate_body<'a>(
+    transactions: &[Transaction],
+    transaction_hashes: &[TransactionHash],
+    events_iterator: impl Iterator<Item = &'a Event>,
     transaction_commitment: &TransactionCommitment,
     event_commitment: &EventCommitment,
+    version: &BlockHashVersion,
 ) -> Result<bool, BlockHashError> {
-    for version in
-        [BlockHashVersion::V3, BlockHashVersion::V2, BlockHashVersion::V1, BlockHashVersion::V0]
-    {
-        let calculated_transaction_commitment =
-            calculate_transaction_commitment_by_version(body, &version)?;
-        if calculated_transaction_commitment != *transaction_commitment {
-            continue;
-        }
-        let calculated_event_commitment =
-            calculate_event_commitment_by_version(&body.transaction_outputs, &version);
-        if calculated_event_commitment != *event_commitment {
-            continue;
-        }
-        return Ok(true);
+    let calculated_transaction_commitment =
+        calculate_transaction_commitment_by_version(transactions, transaction_hashes, version)?;
+    if calculated_transaction_commitment != *transaction_commitment {
+        return Ok(false);
     }
-    Ok(false)
+    let calculated_event_commitment =
+        calculate_event_commitment_by_version(events_iterator, version);
+    if calculated_event_commitment != *event_commitment {
+        return Ok(false);
+    }
+    Ok(true)
 }
 
 // Calculates hash of a starknet block by version, ignoring the block hash field in the given block.
-fn calculate_block_hash_by_version(
+pub fn calculate_block_hash_by_version(
     header: &BlockHeader,
     version: BlockHashVersion,
     chain_id: &ChainId,
@@ -122,16 +119,16 @@ fn calculate_block_hash_by_version(
 }
 
 // Returns the transaction commitment.
-fn calculate_transaction_commitment_by_version(
-    block_body: &BlockBody,
+pub fn calculate_transaction_commitment_by_version(
+    transactions: &[Transaction],
+    transaction_hashes: &[TransactionHash],
     version: &BlockHashVersion,
 ) -> Result<TransactionCommitment, BlockHashError> {
-    let transaction_patricia_leaves =
-        zip(block_body.transactions.iter(), block_body.transaction_hashes.iter())
-            .map(|(transaction, transaction_hash)| {
-                get_transaction_leaf(transaction, transaction_hash, version)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+    let transaction_patricia_leaves = zip(transactions.iter(), transaction_hashes.iter())
+        .map(|(transaction, transaction_hash)| {
+            get_transaction_leaf(transaction, transaction_hash, version)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
     let transactions_patricia_root = calculate_root(transaction_patricia_leaves);
     Ok(TransactionCommitment(transactions_patricia_root))
 }
@@ -173,15 +170,14 @@ fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<StarkFelt> {
 }
 
 // Returns the number of the events, and the Patricia root of the events.
-fn calculate_event_commitment_by_version(
-    transaction_outputs: &[TransactionOutput],
+pub fn calculate_event_commitment_by_version<'a>(
+    events_iterator: impl Iterator<Item = &'a Event>,
     version: &BlockHashVersion,
 ) -> EventCommitment {
     if version < &BlockHashVersion::V1 {
         return EventCommitment(*ZERO);
     }
-    let event_patricia_leaves: Vec<_> =
-        transaction_outputs.iter().flat_map(|output| output.events()).map(get_event_leaf).collect();
+    let event_patricia_leaves: Vec<_> = events_iterator.map(get_event_leaf).collect();
     let event_patricia_root = calculate_root(event_patricia_leaves);
     EventCommitment(event_patricia_root)
 }
