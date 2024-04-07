@@ -16,6 +16,7 @@ futures.workspace = true
 hex.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
+lazy_static.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lru.workspace = true
 metrics.workspace = true
@@ -28,6 +29,7 @@ reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 starknet_client = { path = "../starknet_client" }
+starknet-crypto.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
