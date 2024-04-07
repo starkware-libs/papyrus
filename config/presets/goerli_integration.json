@@ -1,5 +1,0 @@
-{
-    "chain_id": "SN_INTEGRATION_GOERLI",
-    "starknet_url": "https://external.integration.starknet.io/",
-    "base_layer.starknet_contract_address": "0xd5c325D183C592C94998000C5e0EED9e6655c020"
-}
