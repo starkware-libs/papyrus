@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::task::{Context, Poll};
 use std::time::Duration;
 use std::vec;
@@ -16,6 +17,7 @@ use libp2p::{Multiaddr, PeerId};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
@@ -247,6 +249,8 @@ async fn register_subscriber_and_use_channels() {
     let (mut query_sender, response_receivers) =
         network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
 
+    let signed_header_receiver_length = Arc::new(Mutex::new(0));
+    let cloned_signed_header_receiver_length = Arc::clone(&signed_header_receiver_length);
     let signed_header_receiver_collector = response_receivers
         .signed_headers_receiver
         .unwrap()
@@ -257,16 +261,17 @@ async fn register_subscriber_and_use_channels() {
             signed_block_header
         })
         .collect::<Vec<_>>();
-
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()}) => {}
-        _ = signed_header_receiver_collector => {}
+            query_sender.send(query).await.unwrap()}).then(|_| async move {
+                *cloned_signed_header_receiver_length.lock().await = signed_header_receiver_collector.await.len();
+            }) => {},
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
     }
+    assert_eq!(*signed_header_receiver_length.lock().await, query_limit);
 }
 
 #[tokio::test]
