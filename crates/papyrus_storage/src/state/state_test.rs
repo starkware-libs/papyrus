@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use assert_matches::assert_matches;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
@@ -749,5 +751,111 @@ fn declare_revert_declare_scenario() {
             .get_deprecated_class_definition_at(state_number, &deprecated_class_hash)
             .unwrap()
             .is_some()
+    );
+}
+
+#[test]
+fn get_contract_storage() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+
+    let ca0 = ContractAddress::from(0_u128);
+    let ca1 = ContractAddress::from(1_u128);
+    let ca2 = ContractAddress::from(2_u128);
+
+    let sk0 = StorageKey::from(0_u128);
+    let sk1 = StorageKey::from(1_u128);
+    let sk2 = StorageKey::from(2_u128);
+
+    let v0 = StarkFelt::ZERO;
+    let v1 = StarkFelt::ONE;
+    let v2 = StarkFelt::TWO;
+
+    // Add three contracts to test all the cases of the contract in the table, first, last, and in
+    // the middle.
+    let state_diff = StateDiff {
+        storage_diffs: indexmap! {
+            ca0 => indexmap! {
+                sk2 => v2,
+            },
+            ca1 => indexmap! {
+                sk0 => v0,
+                sk1 => v1,
+            },
+            ca2 => indexmap! {
+                sk2 => v2,
+            }
+        },
+        ..Default::default()
+    };
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca0, None).unwrap(),
+        Some(HashMap::from([(sk2, v2)]))
+    );
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca1, None).unwrap(),
+        Some(HashMap::from([(sk0, v0), (sk1, v1)]))
+    );
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca2, None).unwrap(),
+        Some(HashMap::from([(sk2, v2)]))
+    );
+
+    // With a limit on the number of storage keys.
+    assert_eq!(state_reader.get_contract_storage(ca1, Some(1)).unwrap(), None);
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca1, Some(2)).unwrap(),
+        Some(HashMap::from([(sk0, v0), (sk1, v1)]))
+    );
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca1, Some(10)).unwrap(),
+        Some(HashMap::from([(sk0, v0), (sk1, v1)]))
+    );
+
+    // Not existing contract.
+    assert_eq!(
+        state_reader.get_contract_storage(ContractAddress::from(3_u128), None).unwrap(),
+        Some(HashMap::new())
+    );
+
+    // Change the state of a contract and test the latest value returned.
+    let state_diff = StateDiff {
+        storage_diffs: indexmap! {
+            ca1 => indexmap! {
+                sk0 => v2,
+            },
+        },
+        ..Default::default()
+    };
+
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(BlockNumber(1), state_diff, IndexMap::new())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    let state_reader = txn.get_state_reader().unwrap();
+
+    assert_eq!(
+        state_reader.get_contract_storage(ca1, None).unwrap(),
+        Some(HashMap::from([(sk0, v2), (sk1, v1)]))
     );
 }

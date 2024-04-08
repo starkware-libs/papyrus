@@ -52,7 +52,7 @@ pub mod data;
 #[cfg(test)]
 mod state_test;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::IndexMap;
@@ -447,6 +447,48 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(Some(
             self.file_handlers.get_deprecated_contract_class_unchecked(value.location_in_file)?,
         ))
+    }
+
+    /// Returns the current state of a contract (all the storage keys and their values).
+    /// If contract is not found, returns `None`.
+    /// If 'storage_keys_limit' is some value and the number of keys is bigger than this value,
+    /// 'None' will be returned.
+    ///
+    /// # Arguments
+    /// * contract_address - contract address to return the state for.
+    /// * storage_keys_limit - limit for the number of storage entries to return. If `None`, all the
+    ///   entries will be returned.
+    ///
+    /// # Errors
+    /// Returns [`StorageError`] if there was an error searching the table.
+    pub fn get_contract_storage(
+        &self,
+        contract_address: ContractAddress,
+        storage_keys_limit: Option<usize>,
+    ) -> StorageResult<Option<HashMap<StorageKey, StarkFelt>>> {
+        // TODO(dvir): consider using lower_bound to get the next key instead of iterating over all
+        // the entries. This should be faster in the worst case but slower in the average case.
+        let keys_limit = storage_keys_limit.unwrap_or(usize::MAX);
+        let mut cursor = self.storage_table.cursor(self.txn)?;
+        let mut current =
+            cursor.lower_bound(&(contract_address, StorageKey::from(0_u128), BlockNumber(0)))?;
+
+        let mut contract_storage = HashMap::new();
+
+        while let Some(((address, key, _block_number), value)) = current {
+            if address != contract_address {
+                break;
+            }
+
+            contract_storage.insert(key, value);
+            if contract_storage.len() > keys_limit {
+                return Ok(None);
+            }
+
+            current = cursor.next()?;
+        }
+
+        Ok(Some(contract_storage))
     }
 }
 
