@@ -8,6 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-stream.workspace = true
 bytes.workspace = true
+chrono.workspace = true
 clap = { workspace = true, features = ["derive"] }
 defaultmap.workspace = true
 derive_more.workspace = true
