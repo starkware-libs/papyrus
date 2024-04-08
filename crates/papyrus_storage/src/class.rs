@@ -4,7 +4,9 @@
 //! classes using a [`StorageTxn`].
 //!
 //! Note that the written classes' hashes should be the same as those declared in the block's state
-//! diff. This is not validated but breaking this will cause the DB to be inconsistent.
+//! diff and deploy transactions (now depreacted). This is not validated but breaking this will
+//! cause the DB to be inconsistent.
+//!
 //! # Example
 //! ```
 //! # use papyrus_storage::{db::DbConfig, StorageConfig};
@@ -108,7 +110,8 @@ where
     /// Stores the classes declared in a block.
     ///
     /// It is assumed that the classes and deprecated classes fit the declared classes in the
-    /// block's state diff. Breaking this assumption will cause the DB to be inconsistent.
+    /// block's state diff and in deploy transactions. Breaking this assumption will cause the DB to
+    /// be inconsistent.
     ///
     /// Note: This function needs to be called for each block, even if there are no classes or
     /// deprecated classes declared in that block
