@@ -8,14 +8,23 @@ description = "A storage implementation for a Starknet node."
 
 [features]
 testing = ["tempfile"]
-document_calls = ["lazy_static"]
+document_calls = ["lazy_static", "papyrus_common"]
+
+[[bin]]
+name = "dump_declared_classes"
+required-features = ["clap"]
+path = "src/bin/dump_declared_classes.rs"
+
+[[bin]]
+name = "storage_benchmark"
+required-features = ["clap", "papyrus_common", "statistical"]
+path = "src/bin/storage_benchmark.rs"
 
 [dependencies]
 byteorder.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-casm = { workspace = true, features = ["parity-scale-codec"] }
 cairo-lang-utils.workspace = true
-clap.workspace = true
 flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
@@ -26,7 +35,7 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.1", optional = true }
 papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.1" }
 papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.1" }
 parity-scale-codec.workspace = true
@@ -34,12 +43,15 @@ primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
-# TODO(dvir): make the binaries dependencies used only for the binaries.
-statistical.workspace = true
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+
+# Binaries dependencies
+clap = { workspace = true, optional = true }
+statistical = { workspace = true, optional = true }
+
 
 [dev-dependencies]
 assert_matches.workspace = true
