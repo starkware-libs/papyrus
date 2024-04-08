@@ -419,7 +419,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         Ok(self.declared_classes_block_table.get(self.txn, class_hash)?)
     }
 
-    // Returns the deprecated contract class at a given state number for a given class hash.
+    /// Returns the deprecated contract class at a given state number for a given class hash.
     /// If class is not found, returns `None`.
     /// If class is defined but in a block after given state number, returns `None`.
     ///
