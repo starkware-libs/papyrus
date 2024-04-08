@@ -6,6 +6,7 @@ pub mod bin_utils;
 mod converters;
 mod db_executor;
 pub mod network_manager;
+mod peer_manager;
 pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
