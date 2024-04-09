@@ -864,9 +864,9 @@ fn delete_declared_classes<'env>(
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let contract_class_location = declared_classes_table
-            .get(txn, class_hash)?
-            .unwrap_or_else(|| panic!("Missing declared class {class_hash:#?}."));
+        let Some(contract_class_location) = declared_classes_table.get(txn, class_hash)? else {
+            continue;
+        };
         deleted_data.insert(
             *class_hash,
             file_handlers.get_contract_class_unchecked(contract_class_location)?,
@@ -898,10 +898,9 @@ fn delete_deprecated_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        // If the class is not in the deprecated classes table, it means that the hash is of a
-        // deployed contract of a new class type. We don't need to delete these classes because
-        // since 0.11 new classes must be explicitly declared. Therefore we can skip hashes that we
-        // don't find in the deprecated classes table.
+        // If the class is not in the deprecated classes table, it means that either we didn't
+        // download it yet or the hash is of a deployed contract of a new class type. We've decided
+        // to avoid deleting these classes because they're from at most 0.11.
         if let Some(IndexedDeprecatedContractClass {
             block_number: declared_block_number,
             location_in_file,

@@ -6,7 +6,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
+use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::{patricia_key, stark_felt};
 use test_utils::get_test_state_diff;
 
@@ -310,11 +310,11 @@ fn revert_non_existing_state_diff() {
 #[tokio::test]
 async fn revert_last_state_diff_success() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
-    let state_diff = get_test_state_diff();
+    let state_diff = get_test_state_diff().into();
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
+        .append_thin_state_diff(BlockNumber(0), state_diff)
         .unwrap()
         .commit()
         .unwrap();
@@ -443,7 +443,8 @@ fn revert_doesnt_delete_previously_declared_classes() {
 
 #[test]
 fn revert_state() {
-    let state_diff0 = get_test_state_diff();
+    let (state_diff0, classes0, deprecated_classes0) =
+        ThinStateDiff::from_state_diff(get_test_state_diff());
     let (contract0, class0) = state_diff0.deployed_contracts.first().unwrap();
     let (_contract0, nonce0) = state_diff0.nonces.first().unwrap();
 
@@ -458,14 +459,11 @@ fn revert_state() {
     let new_data = StarkFelt::from(1_u8);
     let updated_storage = IndexMap::from([(updated_storage_key, new_data)]);
     let nonce1 = Nonce(StarkFelt::from(111_u8));
-    let state_diff1 = StateDiff {
+    let state_diff1 = ThinStateDiff {
         deployed_contracts: IndexMap::from([(contract1, class1), (contract2, class2)]),
         storage_diffs: IndexMap::from([(*contract0, updated_storage)]),
-        deprecated_declared_classes: IndexMap::from([(class1, DeprecatedContractClass::default())]),
-        declared_classes: IndexMap::from([(
-            class2,
-            (CompiledClassHash::default(), ContractClass::default()),
-        )]),
+        deprecated_declared_classes: vec![class1],
+        declared_classes: IndexMap::from([(class2, CompiledClassHash::default())]),
         nonces: IndexMap::from([(contract1, nonce1)]),
         replaced_classes: IndexMap::from([(*contract0, class1)]),
     };
@@ -474,9 +472,24 @@ fn revert_state() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff0.clone(), IndexMap::new())
+        .append_thin_state_diff(BlockNumber(0), state_diff0.clone())
         .unwrap()
-        .append_state_diff(BlockNumber(1), state_diff1.clone(), IndexMap::new())
+        .append_thin_state_diff(BlockNumber(1), state_diff1.clone())
+        .unwrap()
+        .append_classes(
+            BlockNumber(0),
+            &classes0.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),
+            &deprecated_classes0
+                .iter()
+                .map(|(class_hash, deprecated_class)| (*class_hash, deprecated_class))
+                .collect::<Vec<_>>(),
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(1),
+            &[(class2, &ContractClass::default())],
+            &[(class1, &DeprecatedContractClass::default())],
+        )
         .unwrap()
         .append_casm(&class2, &compiled_class2)
         .unwrap()
@@ -504,7 +517,6 @@ fn revert_state() {
         writer.begin_rw_txn().unwrap().revert_state_diff(block_number).unwrap();
     txn.commit().unwrap();
 
-    let expected_deleted_state_diff = ThinStateDiff::from(state_diff1);
     let expected_deleted_deprecated_classes =
         IndexMap::from([(class1, DeprecatedContractClass::default())]);
     let expected_deleted_classes = IndexMap::from([(class2, ContractClass::default())]);
@@ -513,7 +525,7 @@ fn revert_state() {
     assert_matches!(
         deleted_data,
         Some((thin_state_diff, class_definitions, deprecated_class_definitions, compiled_classes))
-        if thin_state_diff == expected_deleted_state_diff
+        if thin_state_diff == state_diff1
         && class_definitions == expected_deleted_classes
         && deprecated_class_definitions == expected_deleted_deprecated_classes
         && compiled_classes == expected_deleted_compiled_classes
