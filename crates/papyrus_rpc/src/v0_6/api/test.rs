@@ -18,6 +18,7 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -266,10 +267,9 @@ async fn block_hash_and_number() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -328,11 +328,7 @@ async fn block_number() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_state_diff(
-            BlockNumber(0),
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
-        )
+        .append_thin_state_diff(BlockNumber(0), starknet_api::state::ThinStateDiff::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -399,10 +395,9 @@ async fn get_block_transaction_count() {
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -498,10 +493,9 @@ async fn get_block_w_full_transactions() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -675,10 +669,9 @@ async fn get_block_w_transaction_hashes() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -845,28 +838,38 @@ async fn get_class() {
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
     };
-    let diff = get_test_state_diff();
+    let (diff, classes, deprecated_classes) =
+        starknet_api::state::ThinStateDiff::from_state_diff(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
+        )
+        .unwrap()
+        .append_classes(
+            parent_header.block_number,
+            &classes.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),
+            &deprecated_classes
+                .iter()
+                .map(|(class_hash, deprecated_class)| (*class_hash, deprecated_class))
+                .collect::<Vec<_>>(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
 
     // Deprecated Class
-    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
-    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    let class_hash = diff.deprecated_declared_classes[0];
+    let expected_contract_class =
+        deprecated_classes.get(&class_hash).unwrap().clone().try_into().unwrap();
 
     // Get class by block hash.
     call_api_then_assert_and_validate_schema_for_result(
@@ -922,8 +925,7 @@ async fn get_class() {
     .await;
 
     // New Class
-    let (class_hash, (_compiled_class_hash, contract_class)) =
-        diff.declared_classes.get_index(0).unwrap();
+    let (class_hash, contract_class) = classes.get_index(0).unwrap();
     let expected_contract_class = contract_class.clone().into();
 
     // Get class by block hash.
@@ -1256,7 +1258,8 @@ async fn get_class_at() {
         parent_hash: parent_header.block_hash,
         ..BlockHeader::default()
     };
-    let mut diff = get_test_state_diff();
+    let (mut diff, classes, deprecated_classes) =
+        starknet_api::state::ThinStateDiff::from_state_diff(get_test_state_diff());
     // Add a deployed contract with Cairo 1 class.
     let new_class_hash = diff.declared_classes.get_index(0).unwrap().0;
     diff.deployed_contracts.insert(ContractAddress(patricia_key!("0x2")), *new_class_hash);
@@ -1265,15 +1268,23 @@ async fn get_class_at() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
+        )
+        .unwrap()
+        .append_classes(
+            parent_header.block_number,
+            &classes.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),
+            &deprecated_classes
+                .iter()
+                .map(|(class_hash, deprecated_class)| (*class_hash, deprecated_class))
+                .collect::<Vec<_>>(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1294,8 +1305,9 @@ async fn get_class_at() {
     pending_classes.write().await.add_class(pending_class_hash, pending_class.clone());
 
     // Deprecated Class
-    let (class_hash, contract_class) = diff.deprecated_declared_classes.get_index(0).unwrap();
-    let expected_contract_class = contract_class.clone().try_into().unwrap();
+    let class_hash = diff.deprecated_declared_classes.last().unwrap();
+    let expected_contract_class =
+        deprecated_classes.get(class_hash).unwrap().clone().try_into().unwrap();
     assert_eq!(diff.deployed_contracts.get_index(0).unwrap().1, class_hash);
     let address = diff.deployed_contracts.get_index(0).unwrap().0;
 
@@ -1324,9 +1336,8 @@ async fn get_class_at() {
     assert_eq!(res, expected_contract_class);
 
     // New Class
-    let (class_hash, (_compiled_hash, contract_class)) =
-        diff.declared_classes.get_index(0).unwrap();
-    let expected_contract_class = contract_class.clone().into();
+    let class_hash = diff.declared_classes.get_index(0).unwrap().0;
+    let expected_contract_class = classes.get(class_hash).unwrap().clone().into();
     assert_eq!(diff.deployed_contracts.get_index(1).unwrap().1, class_hash);
     let address = diff.deployed_contracts.get_index(1).unwrap().0;
 
@@ -1433,14 +1444,15 @@ async fn get_class_hash_at() {
         JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
-    let diff = get_test_state_diff();
+    let diff = starknet_api::state::ThinStateDiff::from(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
+        // No need to write the class definitions.
         .commit()
         .unwrap();
 
@@ -1588,13 +1600,13 @@ async fn get_nonce() {
         JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
-    let diff = get_test_state_diff();
+    let diff = starknet_api::state::ThinStateDiff::from(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1725,13 +1737,13 @@ async fn get_storage_at() {
         JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
     let header = BlockHeader::default();
-    let diff = get_test_state_diff();
+    let diff = starknet_api::state::ThinStateDiff::from(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -2077,10 +2089,9 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -2207,22 +2218,22 @@ async fn get_state_update() {
         state_root: expected_pending_old_root,
         ..BlockHeader::default()
     };
-    let diff = get_test_state_diff();
+    let diff = starknet_api::state::ThinStateDiff::from(get_test_state_diff());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             parent_header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, diff.clone(), IndexMap::new())
+        .append_thin_state_diff(header.block_number, diff.clone())
         .unwrap()
+        // No need to write the class definitions
         .commit()
         .unwrap();
 
@@ -2358,7 +2369,7 @@ async fn get_state_update_with_empty_storage_diff() {
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
         JsonRpcServerImpl,
     >(None, None, Some(pending_data.clone()), None, None);
-    let state_diff = starknet_api::state::StateDiff {
+    let state_diff = starknet_api::state::ThinStateDiff {
         storage_diffs: indexmap!(ContractAddress::default() => indexmap![]),
         ..Default::default()
     };
@@ -2367,7 +2378,7 @@ async fn get_state_update_with_empty_storage_diff() {
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
         .unwrap()
-        .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())
+        .append_thin_state_diff(BlockNumber(0), state_diff)
         .unwrap()
         .commit()
         .unwrap();
@@ -2537,10 +2548,9 @@ async fn test_get_events(
             .unwrap()
             .append_body(block_number, block.body)
             .unwrap()
-            .append_state_diff(
+            .append_thin_state_diff(
                 block.header.block_number,
-                starknet_api::state::StateDiff::default(),
-                IndexMap::new(),
+                starknet_api::state::ThinStateDiff::default(),
             )
             .unwrap();
     }
@@ -3066,10 +3076,9 @@ async fn get_events_invalid_ct() {
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             block.header.block_number,
-            starknet_api::state::StateDiff::default(),
-            IndexMap::new(),
+            starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .commit()
@@ -3123,6 +3132,10 @@ async fn serialize_returns_valid_json() {
         .insert(ContractAddress(patricia_key!("0x2")), ClassHash(stark_felt!("0x2")));
     // TODO(yair): handle replaced classes.
     state_diff.replaced_classes.clear();
+
+    let (thin_state_diff, classes, deprecated_classes) =
+        starknet_api::state::ThinStateDiff::from_state_diff(state_diff.clone());
+
     storage_writer
         .begin_rw_txn()
         .unwrap()
@@ -3130,13 +3143,27 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
-        .append_state_diff(parent_block.header.block_number, StateDiff::default(), IndexMap::new())
+        .append_thin_state_diff(
+            parent_block.header.block_number,
+            starknet_api::state::ThinStateDiff::default(),
+        )
+        .unwrap()
+        .append_classes(parent_block.header.block_number, &vec![], &vec![])
         .unwrap()
         .append_header(block.header.block_number, &block.header)
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_state_diff(block.header.block_number, state_diff.clone(), IndexMap::new())
+        .append_thin_state_diff(block.header.block_number, thin_state_diff)
+        .unwrap()
+        .append_classes(
+            block.header.block_number,
+            &classes.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),
+            &deprecated_classes
+                .iter()
+                .map(|(class_hash, deprecated_class)| (*class_hash, deprecated_class))
+                .collect::<Vec<_>>(),
+        )
         .unwrap()
         .commit()
         .unwrap();
@@ -3292,11 +3319,11 @@ async fn get_deprecated_class_state_mutability() {
         ..Default::default()
     };
 
-    let state_diff = StateDiff {
-        deprecated_declared_classes: IndexMap::from([
-            (ClassHash(stark_felt!("0x0")), class_without_state_mutability),
-            (ClassHash(stark_felt!("0x1")), class_with_state_mutability),
-        ]),
+    let state_diff = starknet_api::state::ThinStateDiff {
+        deprecated_declared_classes: vec![
+            ClassHash(stark_felt!("0x0")),
+            ClassHash(stark_felt!("0x1")),
+        ],
         ..Default::default()
     };
 
@@ -3309,7 +3336,16 @@ async fn get_deprecated_class_state_mutability() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_state_diff(header.block_number, state_diff, IndexMap::new())
+        .append_thin_state_diff(header.block_number, state_diff)
+        .unwrap()
+        .append_classes(
+            header.block_number,
+            &vec![],
+            &vec![
+                (ClassHash(stark_felt!("0x0")), &class_without_state_mutability),
+                (ClassHash(stark_felt!("0x1")), &class_with_state_mutability),
+            ],
+        )
         .unwrap()
         .commit()
         .unwrap();

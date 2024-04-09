@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use assert_matches::assert_matches;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
-use indexmap::{indexmap, IndexMap};
+use indexmap::indexmap;
 use jsonrpsee::core::Error;
 use jsonrpsee::RpcModule;
 use lazy_static::lazy_static;
@@ -29,6 +29,7 @@ use papyrus_execution::objects::{
 use papyrus_execution::testing_instances::get_storage_var_address;
 use papyrus_execution::ExecutableTransactionInput;
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
@@ -59,7 +60,7 @@ use starknet_api::deprecated_contract_class::{
     EntryPointType,
 };
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{StateDiff, StorageKey};
+use starknet_api::state::{StorageKey, ThinStateDiff as StarknetApiStateDiff};
 use starknet_api::transaction::{
     Calldata,
     Fee,
@@ -803,14 +804,15 @@ async fn trace_block_transactions_regular_and_pending() {
             },
         )
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             BlockNumber(3),
-            StateDiff {
+            StarknetApiStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
                 ..Default::default()
             },
-            IndexMap::new(),
         )
+        .unwrap()
+        .append_classes(BlockNumber(3), &vec![], &vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1001,14 +1003,15 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
             },
         )
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             BlockNumber(3),
-            StateDiff {
+            StarknetApiStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
                 ..Default::default()
             },
-            IndexMap::new(),
         )
+        .unwrap()
+        .append_classes(BlockNumber(3), &vec![], &vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1656,9 +1659,9 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_state_diff(
+        .append_thin_state_diff(
             BlockNumber(0),
-            StateDiff {
+            StarknetApiStateDiff {
                 deployed_contracts: indexmap!(
                     *DEPRECATED_CONTRACT_ADDRESS => class_hash1,
                     *CONTRACT_ADDRESS => class_hash2,
@@ -1673,15 +1676,12 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                         minter_var_address => *ACCOUNT_ADDRESS.0.key()
                     ),
                 ),
-                declared_classes: indexmap!(
-                    class_hash2 =>
-                    (compiled_class_hash, class2)
-                ),
-                deprecated_declared_classes: indexmap!(
-                    class_hash1 => class1,
-                    *ACCOUNT_CLASS_HASH => account_class,
-                    *TEST_ERC20_CONTRACT_CLASS_HASH => fee_contract_class,
-                ),
+                declared_classes: indexmap!(class_hash2 => compiled_class_hash),
+                deprecated_declared_classes: vec![
+                    class_hash1,
+                    *ACCOUNT_CLASS_HASH,
+                    *TEST_ERC20_CONTRACT_CLASS_HASH,
+                ],
                 nonces: indexmap!(
                     *TEST_ERC20_CONTRACT_ADDRESS => Nonce::default(),
                     *CONTRACT_ADDRESS => Nonce::default(),
@@ -1690,7 +1690,16 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                 ),
                 replaced_classes: indexmap!(),
             },
-            indexmap!(),
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(0),
+            &vec![(class_hash2, &class2)],
+            &vec![
+                (class_hash1, &class1),
+                (*ACCOUNT_CLASS_HASH, &account_class),
+                (*TEST_ERC20_CONTRACT_CLASS_HASH, &fee_contract_class),
+            ],
         )
         .unwrap()
         .append_casm(&class_hash2, &casm)
@@ -1709,7 +1718,9 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(1), StateDiff::default(), indexmap![])
+        .append_thin_state_diff(BlockNumber(1), StarknetApiStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(1), &vec![], &vec![])
         .unwrap()
         .append_header(
             BlockNumber(2),
@@ -1727,7 +1738,9 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(2), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(2), StateDiff::default(), indexmap![])
+        .append_thin_state_diff(BlockNumber(2), StarknetApiStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(2), &vec![], &vec![])
         .unwrap()
         .commit()
         .unwrap();
@@ -1752,7 +1765,9 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(0), StateDiff::default(), indexmap!())
+        .append_thin_state_diff(BlockNumber(0), StarknetApiStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(0), &vec![], &vec![])
         .unwrap()
         .commit()
         .unwrap();
