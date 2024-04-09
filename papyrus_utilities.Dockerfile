@@ -5,8 +5,6 @@
 # To build the papyrus utilities image, run from the root of the project:
 # DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -f papyrus_utilities.Dockerfile .
 
-# TODO(dvir): consider adding the build of papyrus_utilities to the CI or to the nightly-test.
-
 INCLUDE Dockerfile
 
 
