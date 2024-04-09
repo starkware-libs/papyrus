@@ -8,10 +8,11 @@ use prometheus_parse::Value::{Counter, Gauge};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, CompiledClassHash};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff};
+use starknet_api::state::{ContractClass, ThinStateDiff};
 use test_utils::prometheus_is_contained;
 
 use super::update_storage_metrics;
+use crate::class::ClassStorageWriter;
 use crate::state::StateStorageWriter;
 use crate::test_utils::get_test_storage;
 use crate::utils::{dump_declared_classes_table_by_block_range_internal, DumpDeclaredClass};
@@ -34,19 +35,21 @@ fn test_dump_declared_classes() {
                 abi: "".to_string(),
             },
         ));
-        state_diffs.push(StateDiff {
+        state_diffs.push(ThinStateDiff {
             deployed_contracts: indexmap!(),
             storage_diffs: indexmap!(),
             declared_classes: indexmap!(
-                declared_classes[i].0 =>
-                (compiled_class_hash, declared_classes[i].1.clone()),
+                declared_classes[i].0 => compiled_class_hash
             ),
-            deprecated_declared_classes: indexmap!(),
+            deprecated_declared_classes: vec![],
             nonces: indexmap!(),
             replaced_classes: indexmap!(),
         });
+        let block_number = BlockNumber(i as u64);
         let txn = writer.begin_rw_txn().unwrap();
-        txn.append_state_diff(BlockNumber(i as u64), state_diffs[i].clone(), indexmap!())
+        txn.append_thin_state_diff(block_number, state_diffs[i].clone())
+            .unwrap()
+            .append_classes(block_number, &[(declared_classes[i].0, &declared_classes[i].1)], &[])
             .unwrap()
             .commit()
             .unwrap();
