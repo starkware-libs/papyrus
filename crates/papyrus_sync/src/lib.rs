@@ -26,6 +26,7 @@ use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::db::DbError;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
@@ -36,7 +37,7 @@ use sources::base_layer::BaseLayerSourceError;
 use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, CompiledClassHash, SequencerPublicKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::StateDiff;
+use starknet_api::state::{StateDiff, ThinStateDiff};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
@@ -435,10 +436,25 @@ impl<
         // TODO(dan): verifications - verify state diff against stored header.
         debug!("Storing state diff.");
         trace!("StateDiff data: {state_diff:#?}");
+
+        // TODO(shahak): split the state diff stream to 2 separate streams for blocks and for
+        // classes.
+        let (thin_state_diff, classes, deprecated_classes) =
+            ThinStateDiff::from_state_diff(state_diff);
         self.writer
             .begin_rw_txn()?
-            .append_state_diff(block_number, state_diff, deployed_contract_class_definitions)?
+            .append_thin_state_diff(block_number, thin_state_diff)?
+            .append_classes(
+                block_number,
+                &classes.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),
+                &deprecated_classes
+                    .iter()
+                    .chain(deployed_contract_class_definitions.iter())
+                    .map(|(class_hash, deprecated_class)| (*class_hash, deprecated_class))
+                    .collect::<Vec<_>>(),
+            )?
             .commit()?;
+
         metrics::gauge!(
             papyrus_metrics::PAPYRUS_STATE_MARKER,
             block_number.unchecked_next().0 as f64
