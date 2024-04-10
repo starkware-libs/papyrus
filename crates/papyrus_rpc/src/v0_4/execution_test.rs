@@ -702,7 +702,7 @@ async fn trace_block_transactions_regular_and_pending() {
             },
         )
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(2),
             ThinStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
@@ -900,7 +900,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
             },
         )
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(2),
             ThinStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
@@ -1437,7 +1437,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             ThinStateDiff {
                 deployed_contracts: indexmap!(
@@ -1496,7 +1496,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(1), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(1), &vec![], &vec![])
         .unwrap()
@@ -1522,7 +1522,7 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(0), &vec![], &vec![])
         .unwrap()

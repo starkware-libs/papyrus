@@ -440,7 +440,7 @@ async fn stream_compiled_classes() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             ThinStateDiff {
                 deployed_contracts: indexmap! {},
@@ -455,7 +455,7 @@ async fn stream_compiled_classes() {
             },
         )
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(1),
             ThinStateDiff {
                 deployed_contracts: indexmap! {},

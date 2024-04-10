@@ -30,7 +30,7 @@
 //! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()? // Start a RW transaction.
-//!     .append_thin_state_diff(BlockNumber(0), state_diff.clone())? // Append a state diff.
+//!     .append_state_diff(BlockNumber(0), state_diff.clone())? // Append a state diff.
 //!     .commit()?;
 //!
 //! // Get the state diff.
@@ -145,9 +145,8 @@ pub trait StateStorageWriter
 where
     Self: Sized,
 {
-    // TODO(shahak): Rename to append_state_diff.
     /// Appends a state diff without classes to the storage.
-    fn append_thin_state_diff(
+    fn append_state_diff(
         self,
         block_number: BlockNumber,
         thin_state_diff: ThinStateDiff,
@@ -429,7 +428,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     #[latency_histogram("storage_append_thin_state_diff_latency_seconds")]
-    fn append_thin_state_diff(
+    fn append_state_diff(
         self,
         block_number: BlockNumber,
         thin_state_diff: ThinStateDiff,
@@ -470,7 +469,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         }
 
         // Write state diff.
-        let location = self.file_handlers.append_thin_state_diff(&thin_state_diff);
+        let location = self.file_handlers.append_state_diff(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 

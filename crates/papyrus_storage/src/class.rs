@@ -39,7 +39,7 @@
 //! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
 //!     .begin_rw_txn()? // Start a RW transaction.
-//!     .append_thin_state_diff(
+//!     .append_state_diff(
 //!         BlockNumber(0),
 //!         ThinStateDiff {
 //!             declared_classes: indexmap! { class_hash => CompiledClassHash::default() },

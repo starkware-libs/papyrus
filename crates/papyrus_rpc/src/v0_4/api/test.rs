@@ -245,7 +245,7 @@ async fn block_hash_and_number() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -306,7 +306,7 @@ async fn block_number() {
     storage_writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), starknet_api::state::ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), starknet_api::state::ThinStateDiff::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -373,7 +373,7 @@ async fn get_block_transaction_count() {
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -469,7 +469,7 @@ async fn get_block_w_full_transactions() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -633,7 +633,7 @@ async fn get_block_w_transaction_hashes() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -798,7 +798,7 @@ async fn get_class() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             parent_header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -814,7 +814,7 @@ async fn get_class() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1088,7 +1088,7 @@ async fn get_class_at() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             parent_header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -1104,7 +1104,7 @@ async fn get_class_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1270,7 +1270,7 @@ async fn get_class_hash_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         // No need to write the class definitions.
         .commit()
@@ -1426,7 +1426,7 @@ async fn get_nonce() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1563,7 +1563,7 @@ async fn get_storage_at() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         .commit()
         .unwrap();
@@ -1897,7 +1897,7 @@ async fn get_transaction_by_block_id_and_index() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -2032,14 +2032,14 @@ async fn get_state_update() {
         .unwrap()
         .append_header(parent_header.block_number, &parent_header)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             parent_header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, diff.clone())
+        .append_state_diff(header.block_number, diff.clone())
         .unwrap()
         // No need to write the class definitions
         .commit()
@@ -2186,7 +2186,7 @@ async fn get_state_update_with_empty_storage_diff() {
         .unwrap()
         .append_header(BlockNumber(0), &BlockHeader::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), state_diff)
+        .append_state_diff(BlockNumber(0), state_diff)
         .unwrap()
         .commit()
         .unwrap();
@@ -2356,7 +2356,7 @@ async fn test_get_events(
             .unwrap()
             .append_body(block_number, block.body)
             .unwrap()
-            .append_thin_state_diff(
+            .append_state_diff(
                 block.header.block_number,
                 starknet_api::state::ThinStateDiff::default(),
             )
@@ -2884,7 +2884,7 @@ async fn get_events_invalid_ct() {
         .unwrap()
         .append_body(block.header.block_number, block.body)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -2951,7 +2951,7 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(parent_block.header.block_number, parent_block.body)
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             parent_block.header.block_number,
             starknet_api::state::ThinStateDiff::default(),
         )
@@ -2962,7 +2962,7 @@ async fn serialize_returns_valid_json() {
         .unwrap()
         .append_body(block.header.block_number, block.body.clone())
         .unwrap()
-        .append_thin_state_diff(block.header.block_number, thin_state_diff)
+        .append_state_diff(block.header.block_number, thin_state_diff)
         .unwrap()
         .append_classes(
             block.header.block_number,
@@ -3148,7 +3148,7 @@ async fn get_deprecated_class_state_mutability() {
         .unwrap()
         .append_header(header.block_number, &header)
         .unwrap()
-        .append_thin_state_diff(header.block_number, state_diff)
+        .append_state_diff(header.block_number, state_diff)
         .unwrap()
         .append_classes(
             header.block_number,
