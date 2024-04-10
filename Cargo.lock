@@ -1843,6 +1843,42 @@ dependencies = [
 ]
 
 [[package]]
+name = "consensus"
+version = "0.4.0-dev.1"
+dependencies = [
+ "assert_matches",
+ "cairo-lang-casm",
+ "cairo-lang-starknet-classes",
+ "camelpaste",
+ "derive_more",
+ "enum-iterator",
+ "indexmap 2.1.0",
+ "insta",
+ "itertools 0.10.5",
+ "jsonrpsee",
+ "jsonschema",
+ "lazy_static",
+ "metrics-exporter-prometheus",
+ "mockall",
+ "papyrus_execution",
+ "papyrus_rpc",
+ "papyrus_storage",
+ "pretty_assertions",
+ "prometheus-parse",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "starknet-core",
+ "starknet_api",
+ "starknet_client",
+ "strum 0.25.0",
+ "strum_macros 0.25.3",
+ "test_utils",
+]
+
+[[package]]
 name = "console"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

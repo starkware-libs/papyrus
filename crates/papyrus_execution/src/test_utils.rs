@@ -85,7 +85,9 @@ pub fn get_test_deprecated_contract_class() -> DeprecatedContractClass {
     get_test_instance("deprecated_class.json")
 }
 pub fn get_test_casm() -> CasmContractClass {
-    get_test_instance("casm.json")
+    // DO NOT SUBMIT
+    // get_test_instance("casm.json")
+    get_test_instance("consensus_Staking.compiled_contract_class.json")
 }
 pub fn get_test_erc20_fee_contract_class() -> DeprecatedContractClass {
     get_test_instance("erc20_fee_contract_class.json")

@@ -1,0 +1,43 @@
+[package]
+name = "consensus"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jsonrpsee = { workspace = true, features = ["full"] }
+papyrus_rpc = { path = "../papyrus_rpc" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
+
+[dev-dependencies]
+papyrus_rpc = { path = "../papyrus_rpc", features = ["testing"] }
+assert_matches.workspace = true
+cairo-lang-casm.workspace = true
+cairo-lang-starknet-classes.workspace = true
+camelpaste.workspace = true
+derive_more.workspace = true
+enum-iterator.workspace = true
+insta = { workspace = true, features = ["json"] }
+itertools.workspace = true
+jsonschema.workspace = true
+lazy_static.workspace = true
+metrics-exporter-prometheus.workspace = true
+mockall.workspace = true
+papyrus_execution = { path = "../papyrus_execution", features = ["testing"] }
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+pretty_assertions.workspace = true
+prometheus-parse.workspace = true
+rand_chacha.workspace = true
+reqwest.workspace = true
+test_utils = { path = "../test_utils" }
+starknet_api = { workspace = true, features = ["testing"] }
+starknet_client = { path = "../starknet_client", features = ["testing"] }
+starknet-core.workspace = true
+strum.workspace = true
+strum_macros.workspace = true
+indexmap = { workspace = true, features = ["serde"] }
+rand.workspace = true
