@@ -804,7 +804,7 @@ async fn trace_block_transactions_regular_and_pending() {
             },
         )
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(3),
             StarknetApiStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
@@ -1003,7 +1003,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
             },
         )
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(3),
             StarknetApiStateDiff {
                 nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
@@ -1659,7 +1659,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             StarknetApiStateDiff {
                 deployed_contracts: indexmap!(
@@ -1718,7 +1718,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), StarknetApiStateDiff::default())
+        .append_state_diff(BlockNumber(1), StarknetApiStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(1), &[], &[])
         .unwrap()
@@ -1738,7 +1738,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
         .unwrap()
         .append_body(BlockNumber(2), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(2), StarknetApiStateDiff::default())
+        .append_state_diff(BlockNumber(2), StarknetApiStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(2), &[], &[])
         .unwrap()
@@ -1765,7 +1765,7 @@ fn write_empty_block(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), StarknetApiStateDiff::default())
+        .append_state_diff(BlockNumber(0), StarknetApiStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(0), &[], &[])
         .unwrap()

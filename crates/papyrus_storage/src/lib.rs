@@ -653,7 +653,7 @@ struct FileHandlers<Mode: TransactionKind> {
 
 impl FileHandlers<RW> {
     // Appends a thin state diff to the corresponding file and returns its location.
-    fn append_thin_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
+    fn append_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
         self.clone().thin_state_diff.append(thin_state_diff)
     }
 

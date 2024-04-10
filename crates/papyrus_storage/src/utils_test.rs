@@ -47,7 +47,7 @@ fn test_dump_declared_classes() {
         });
         let block_number = BlockNumber(i as u64);
         let txn = writer.begin_rw_txn().unwrap();
-        txn.append_thin_state_diff(block_number, state_diffs[i].clone())
+        txn.append_state_diff(block_number, state_diffs[i].clone())
             .unwrap()
             .append_classes(block_number, &[(declared_classes[i].0, &declared_classes[i].1)], &[])
             .unwrap()
