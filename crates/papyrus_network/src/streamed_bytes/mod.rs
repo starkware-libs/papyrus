@@ -8,6 +8,7 @@ mod flow_test;
 
 use std::time::Duration;
 
+pub use behaviour::Behaviour;
 use derive_more::Display;
 use libp2p::swarm::StreamProtocol;
 use libp2p::PeerId;
