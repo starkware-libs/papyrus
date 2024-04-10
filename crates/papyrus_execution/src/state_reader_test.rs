@@ -77,7 +77,7 @@ fn read_state() {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(0), &[], &[])
         .unwrap()
@@ -92,7 +92,7 @@ fn read_state() {
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(1),
             ThinStateDiff {
                 deployed_contracts: indexmap!(
@@ -136,7 +136,7 @@ fn read_state() {
         .unwrap()
         .append_body(BlockNumber(2), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(2), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(2), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(2), &[], &[])
         .unwrap()

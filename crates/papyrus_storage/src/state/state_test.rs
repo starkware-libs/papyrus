@@ -40,8 +40,8 @@ fn get_class_definition_at() {
 
     let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
-    txn = txn.append_thin_state_diff(BlockNumber(0), diff0).unwrap();
-    txn = txn.append_thin_state_diff(BlockNumber(1), diff1).unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1).unwrap();
     txn = txn
         .append_classes(
             BlockNumber(0),
@@ -118,9 +118,9 @@ fn append_state_diff_replaced_classes() {
 
     let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
-    txn = txn.append_thin_state_diff(BlockNumber(0), diff0).unwrap();
-    txn = txn.append_thin_state_diff(BlockNumber(1), diff1).unwrap();
-    txn = txn.append_thin_state_diff(BlockNumber(2), diff2).unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1).unwrap();
+    txn = txn.append_state_diff(BlockNumber(2), diff2).unwrap();
     txn.commit().unwrap();
 
     // State numbers.
@@ -187,10 +187,10 @@ fn append_state_diff() {
     let mut txn = writer.begin_rw_txn().unwrap();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap(), None);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_thin_state_diff(BlockNumber(0), diff0.clone()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), diff0.clone()).unwrap();
     assert_eq!(txn.get_state_diff(BlockNumber(0)).unwrap().unwrap(), diff0);
     assert_eq!(txn.get_state_diff(BlockNumber(1)).unwrap(), None);
-    txn = txn.append_thin_state_diff(BlockNumber(1), diff1.clone()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(1), diff1.clone()).unwrap();
 
     txn.commit().unwrap();
 
@@ -258,7 +258,7 @@ fn test_update_compiled_class_marker() {
     let ((_, mut writer), _temp_dir) = get_test_storage();
     let mut txn = writer.begin_rw_txn().unwrap();
     // Append an empty state diff.
-    txn = txn.append_thin_state_diff(BlockNumber(0), ThinStateDiff::default()).unwrap();
+    txn = txn.append_state_diff(BlockNumber(0), ThinStateDiff::default()).unwrap();
     assert_eq!(txn.get_compiled_class_marker().unwrap(), BlockNumber(1));
 }
 
@@ -271,7 +271,7 @@ fn test_get_class_after_append_thin_state_diff() {
     let mut txn = writer.begin_rw_txn().unwrap();
     // Append an empty state diff.
     txn = txn
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             ThinStateDiff {
                 declared_classes: indexmap! { CLASS_HASH => CompiledClassHash::default() },
@@ -314,7 +314,7 @@ async fn revert_last_state_diff_success() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), state_diff)
+        .append_state_diff(BlockNumber(0), state_diff)
         .unwrap()
         .commit()
         .unwrap();
@@ -362,9 +362,9 @@ fn append_2_state_diffs(writer: &mut StorageWriter) {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(1), ThinStateDiff::default())
         .unwrap()
         .commit()
         .unwrap();
@@ -399,11 +399,11 @@ fn revert_doesnt_delete_previously_declared_classes() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), diff0)
+        .append_state_diff(BlockNumber(0), diff0)
         .unwrap()
         .append_classes(BlockNumber(0), &[], &[(cl0, &c_cls0)])
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), diff1)
+        .append_state_diff(BlockNumber(1), diff1)
         .unwrap()
         .append_classes(BlockNumber(1), &[], &[(cl0, &c_cls0)])
         .unwrap()
@@ -472,9 +472,9 @@ fn revert_state() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), state_diff0.clone())
+        .append_state_diff(BlockNumber(0), state_diff0.clone())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), state_diff1.clone())
+        .append_state_diff(BlockNumber(1), state_diff1.clone())
         .unwrap()
         .append_classes(
             BlockNumber(0),
@@ -570,7 +570,7 @@ fn get_nonce_key_serialization() {
         writer
             .begin_rw_txn()
             .unwrap()
-            .append_thin_state_diff(BlockNumber(block_number), state_diff)
+            .append_state_diff(BlockNumber(block_number), state_diff)
             .unwrap()
             .commit()
             .unwrap();
@@ -620,7 +620,7 @@ fn replace_class() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), state_diff1)
+        .append_state_diff(BlockNumber(0), state_diff1)
         .unwrap()
         .commit()
         .unwrap();
@@ -653,7 +653,7 @@ fn replace_class() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), state_diff2)
+        .append_state_diff(BlockNumber(1), state_diff2)
         .unwrap()
         .commit()
         .unwrap();
@@ -707,7 +707,7 @@ fn declare_revert_declare_scenario() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), diff0.clone())
+        .append_state_diff(BlockNumber(0), diff0.clone())
         .unwrap()
         .append_classes(
             BlockNumber(0),
@@ -747,7 +747,7 @@ fn declare_revert_declare_scenario() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), diff0.clone())
+        .append_state_diff(BlockNumber(0), diff0.clone())
         .unwrap()
         .append_classes(
             BlockNumber(0),

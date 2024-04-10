@@ -443,7 +443,7 @@ impl<
             ThinStateDiff::from_state_diff(state_diff);
         self.writer
             .begin_rw_txn()?
-            .append_thin_state_diff(block_number, thin_state_diff)?
+            .append_state_diff(block_number, thin_state_diff)?
             .append_classes(
                 block_number,
                 &classes.iter().map(|(class_hash, class)| (*class_hash, class)).collect::<Vec<_>>(),

@@ -266,7 +266,7 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
             // right signatures.
             .append_block_signature(BlockNumber(i), &BlockSignature::default())
             .unwrap()
-            .append_thin_state_diff(BlockNumber(i), ThinStateDiff::default())
+            .append_state_diff(BlockNumber(i), ThinStateDiff::default())
             .unwrap()
             .commit()
             .unwrap();

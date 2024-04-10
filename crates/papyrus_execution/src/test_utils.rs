@@ -122,7 +122,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             ThinStateDiff {
                 deployed_contracts: indexmap!(
@@ -185,7 +185,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(1), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(1), &[], &[])
         .unwrap()
