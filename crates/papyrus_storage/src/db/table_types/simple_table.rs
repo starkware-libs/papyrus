@@ -113,6 +113,24 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         Ok(())
     }
 
+    #[allow(dead_code)]
+    fn append(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let data = V::serialize(value)?;
+        let bin_key = key.serialize()?;
+        txn.txn.put(&self.database, bin_key, data, WriteFlags::APPEND).map_err(
+            |err| match err {
+                libmdbx::Error::KeyMismatch => DbError::Append,
+                _ => err.into(),
+            },
+        )?;
+        Ok(())
+    }
+
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, bin_key, None)?;
