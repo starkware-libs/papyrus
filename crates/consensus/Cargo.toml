@@ -23,7 +23,7 @@ starknet_api = { workspace = true, features = ["testing"] }
 indexmap = { workspace = true, features = ["serde"] }
 
 [build-dependencies]
-cairo-lang-compiler = "2.6.3"
-cairo-lang-starknet = "2.6.3"
-cairo-lang-starknet-classes = "2.6.3"
+cairo-lang-compiler.workspace = true
+cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
 serde_json = { workspace = true, features = ["arbitrary_precision"] }

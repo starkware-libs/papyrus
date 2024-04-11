@@ -1,19 +1,14 @@
 use std::env;
 use std::io::Result;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-
-use cairo_lang_compiler::{CompilerConfig};
-
-
+use cairo_lang_compiler::CompilerConfig;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 
 fn main() -> Result<()> {
     let cairo_file = PathBuf::from("src/staking.cairo");
-    let casm_output = Path::new(&env::var("OUT_DIR").unwrap()).join("staking.casm");
-    // Only rerun the build script if the contract source changes.kWe don't need to rerun if the
-    // output file changes to allow users to manually edit the output file and rerun tests without
-    // overwriting this.
+    let casm_output = PathBuf::from(env::var("OUT_DIR").unwrap()).join("staking.casm");
+    // Only rerun the build script if the contract source changes.
     println!("cargo::rerun-if-changed={}", cairo_file.to_str().unwrap());
 
     let sierra_program =
