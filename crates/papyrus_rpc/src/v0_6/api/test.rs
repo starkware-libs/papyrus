@@ -213,7 +213,7 @@ async fn chain_id() {
     let (module, _) = get_test_rpc_server_and_storage_writer::<JsonRpcServerImpl>();
 
     // The result should be equal to the result of the following python code
-    // hex(int.from_bytes(b'SN_GOERLI', byteorder="big", signed=False))
+    // hex(int.from_bytes(b'SN_SEPOLIA', byteorder="big", signed=False))
     // taken from starknet documentation:
     // https://docs.starknet.io/documentation/develop/Blocks/transactions/#chain-id.
     call_api_then_assert_and_validate_schema_for_result(
@@ -222,7 +222,7 @@ async fn chain_id() {
         vec![],
         &VERSION,
         SpecFile::StarknetApiOpenrpc,
-        &String::from("0x534e5f474f45524c49"),
+        &String::from("0x534e5f5345504f4c4941"),
     )
     .await;
 }
