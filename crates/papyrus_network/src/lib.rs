@@ -5,6 +5,7 @@
 pub mod bin_utils;
 mod converters;
 mod db_executor;
+pub mod main_behaviour;
 pub mod network_manager;
 pub mod protobuf_messages;
 pub mod streamed_bytes;
