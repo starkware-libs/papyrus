@@ -631,9 +631,11 @@ pub struct DbStats {
 // - CompiledClass <= Class <= State <= Header
 // - Body <= Header
 // - BaseLayerBlock <= Header
+// Event is currently unsupported.
 pub(crate) enum MarkerKind {
     Header,
     Body,
+    Event,
     State,
     Class,
     CompiledClass,

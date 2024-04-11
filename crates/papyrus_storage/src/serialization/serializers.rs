@@ -301,10 +301,11 @@ auto_storage_serde! {
     enum MarkerKind {
         Header = 0,
         Body = 1,
-        State = 2,
-        Class = 3,
-        CompiledClass = 4,
-        BaseLayerBlock = 5,
+        Event = 2,
+        State = 3,
+        Class = 4,
+        CompiledClass = 5,
+        BaseLayerBlock = 6,
     }
     pub struct MessageToL1 {
         pub to_address: EthAddress,
