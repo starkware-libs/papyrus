@@ -1847,7 +1847,11 @@ name = "consensus"
 version = "0.4.0-dev.1"
 dependencies = [
  "assert_matches",
+ "blockifier",
  "cairo-lang-casm",
+ "cairo-lang-compiler",
+ "cairo-lang-sierra-to-casm",
+ "cairo-lang-starknet",
  "cairo-lang-starknet-classes",
  "camelpaste",
  "derive_more",
@@ -1870,6 +1874,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "starknet-compile",
  "starknet-core",
  "starknet_api",
  "starknet_client",
@@ -8111,6 +8116,19 @@ dependencies = [
  "ndarray",
  "num-complex 0.2.4",
  "num-traits 0.1.43",
+]
+
+[[package]]
+name = "starknet-compile"
+version = "2.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "64d51c1a77c7ef6cc49721046eb83006bf2170b46d04d4fa13244fae3d76f23d"
+dependencies = [
+ "anyhow",
+ "cairo-lang-compiler",
+ "cairo-lang-starknet",
+ "cairo-lang-starknet-classes",
+ "clap",
 ]
 
 [[package]]

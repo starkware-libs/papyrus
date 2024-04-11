@@ -282,7 +282,7 @@ fn simulate_invoke() {
         .collect();
     let exec_only_results =
         execute_simulate_transactions(storage_reader.clone(), None, tx.clone(), None, false, false);
-    assert!(false, "{:?}", exec_only_results);
+    assert!(false, "{:?}", exec_only_results); // DO NOT SUBMIT
     let validate_results =
         execute_simulate_transactions(storage_reader.clone(), None, tx.clone(), None, false, true);
     let charge_fee_results =
