@@ -2,31 +2,20 @@
 mod test {
 
     use std::fs::read_to_string;
-    use std::path::{Path, PathBuf};
+    use std::path::Path;
 
-    use blockifier::abi::abi_utils::get_storage_var_address;
     use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
     use indexmap::indexmap;
-    use jsonrpsee::core::RpcResult;
-    use jsonrpsee::server::RpcModule;
     use lazy_static::lazy_static;
     use papyrus_execution::objects::{FunctionInvocationResult, TransactionTrace};
     use papyrus_execution::test_utils::{execute_simulate_transactions, TxsScenarioBuilder};
-    use papyrus_execution::{
-        simulate_transactions,
-        ExecutableTransactionInput,
-        OnlyQuery,
-        SierraSize,
-    };
     use papyrus_storage::body::BodyStorageWriter;
     use papyrus_storage::compiled_class::CasmStorageWriter;
     use papyrus_storage::header::HeaderStorageWriter;
     use papyrus_storage::state::StateStorageWriter;
     use papyrus_storage::test_utils::get_test_storage;
-    use papyrus_storage::{StorageReader, StorageWriter};
+    use papyrus_storage::StorageWriter;
     use serde::de::DeserializeOwned;
-    use serde::{Deserialize, Serialize};
-    use serde_json::{Map, Value};
     use starknet_api::block::{
         BlockBody,
         BlockHash,
@@ -47,22 +36,9 @@ mod test {
     };
     use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
     use starknet_api::hash::{StarkFelt, StarkHash};
-    use starknet_api::state::{ContractClass, StateDiff, StateNumber};
-    use starknet_api::transaction::{
-        Calldata,
-        DeclareTransactionV0V1,
-        DeclareTransactionV2,
-        DeployAccountTransaction,
-        DeployAccountTransactionV1,
-        Fee,
-        InvokeTransaction,
-        InvokeTransactionV1,
-        TransactionHash,
-    };
-    use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
-    use test_utils::{get_test_block, read_json_file};
-
-    const DUMMY_SIERRA_SIZE: SierraSize = 1;
+    use starknet_api::state::{ContractClass, StateDiff};
+    use starknet_api::{class_hash, contract_address, patricia_key, stark_felt};
+    use test_utils::read_json_file;
 
     lazy_static! {
         pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));

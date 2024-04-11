@@ -2,7 +2,7 @@
 // within this crate
 #![cfg_attr(coverage_nightly, feature(coverage_attribute))]
 
-pub mod api;
+mod api;
 mod compression_utils;
 mod middleware;
 mod pending;
@@ -10,8 +10,8 @@ mod rpc_metrics;
 #[cfg(test)]
 mod rpc_test;
 mod syncing_state;
-#[cfg(any(feature = "testing", test))]
-pub mod test_utils;
+#[cfg(test)]
+mod test_utils;
 mod v0_4;
 mod v0_5;
 mod v0_6;

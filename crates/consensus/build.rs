@@ -1,11 +1,11 @@
 use std::env;
 use std::io::Result;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
-use cairo_lang_compiler::{compile_cairo_project_at_path, CompilerConfig};
-use cairo_lang_sierra_to_casm::compiler::SierraToCasmConfig;
-use cairo_lang_sierra_to_casm::metadata::calc_metadata;
+
+use cairo_lang_compiler::{CompilerConfig};
+
+
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 
 fn main() -> Result<()> {
