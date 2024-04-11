@@ -22,7 +22,7 @@ pub trait PeerTrait {
 }
 
 #[derive(Clone)]
-pub(crate) struct Peer {
+pub struct Peer {
     peer_id: PeerId,
     multiaddr: Multiaddr,
     timed_out_until: Option<DateTime<Utc>>,
