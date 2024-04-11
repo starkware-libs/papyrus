@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use rand::rngs::ThreadRng;
 use rand::Rng;
 use tracing::debug;
@@ -42,6 +43,9 @@ pub(crate) fn table_test<T: TableType>(
 
     let upsert_test_table = create_table(&mut writer, "upsert_test").unwrap();
     upsert_test(upsert_test_table, &mut writer);
+
+    let append_test_table = create_table(&mut writer, "append_test").unwrap();
+    append_test(append_test_table, &mut writer);
 
     let delete_test_table = create_table(&mut writer, "delete_test").unwrap();
     delete_test(delete_test_table, &mut writer);
@@ -119,6 +123,47 @@ fn upsert_test<T: TableType>(
     // (1,1) was already inserted, so this is an update.
     table.upsert(&txn, &(1, 1), &0).unwrap();
     assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
+}
+
+fn append_test<T: TableType>(
+    table_id: TableIdentifier<TableKey, TableValue, T>,
+    writer: &mut DbWriter,
+) where
+    for<'env> TableHandle<'env, TableKey, TableValue, T>:
+        Table<'env, Key = TableKey, Value = TableValue>,
+{
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
+
+    // Append to an empty table.
+    table.append(&txn, &(1, 1), &11).unwrap();
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
+
+    // Successful appends.
+    table.append(&txn, &(1, 1), &0).unwrap();
+    table.append(&txn, &(1, 2), &12).unwrap();
+    table.append(&txn, &(2, 0), &20).unwrap();
+
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
+    assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
+    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(20));
+
+    // Override the last key with a smaller value.
+    table.append(&txn, &(2, 0), &0).unwrap();
+    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(0));
+
+    // Override the last key with a bigger value.
+    table.append(&txn, &(2, 0), &100).unwrap();
+    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(100));
+
+    // Append key that is not the last, should fail.
+    assert_matches!(table.append(&txn, &(0, 0), &0), Err(DbError::Append));
+    assert_matches!(table.append(&txn, &(1, 3), &0), Err(DbError::Append));
+
+    // Check the final database.
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
+    assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
+    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(100));
 }
 
 fn delete_test<T: TableType>(
@@ -261,8 +306,7 @@ pub(crate) fn random_table_test<T0: TableType, T1: TableType>(
     for iter in 0..ITERS {
         debug!("iteration: {iter:?}");
         let wtxn = writer.begin_rw_txn().unwrap();
-        // TODO(dvir): add append functionality to this test.
-        let random_op = rng.gen_range(0..3);
+        let random_op = rng.gen_range(0..4);
         let key = get_random_key(&mut rng);
         let value = rng.gen_range(0..MAX_VALUE);
 
@@ -283,6 +327,21 @@ pub(crate) fn random_table_test<T0: TableType, T1: TableType>(
             first_table.upsert(&wtxn, &key, &value).unwrap();
             second_table.upsert(&wtxn, &key, &value).unwrap();
         } else if random_op == 2 {
+            // Append
+            // TODO(dvir): consider increasing the number of successful appends (append of not the
+            // last entry will fail).
+            debug!("append: {key:?}, {value:?}");
+            let first_res = first_table.append(&wtxn, &key, &value);
+            let second_res = second_table.append(&wtxn, &key, &value);
+            if first_res.is_ok() {
+                println!("append");
+            }
+            assert!(
+                (first_res.is_ok() && second_res.is_ok())
+                    || (matches!(first_res.unwrap_err(), DbError::Append)
+                        && matches!(second_res.unwrap_err(), DbError::Append))
+            );
+        } else if random_op == 3 {
             // Delete
             debug!("delete: {key:?}");
             first_table.delete(&wtxn, &key).unwrap();
