@@ -2,13 +2,16 @@ use core::time;
 
 use assert_matches::assert_matches;
 use chrono::Duration;
+use libp2p::swarm::NetworkBehaviour;
 use libp2p::{Multiaddr, PeerId};
 use mockall::predicate::eq;
 use tokio::time::sleep;
 
+use super::behaviour::Event;
 use crate::db_executor::QueryId;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
+use crate::streamed_bytes;
 
 #[test]
 fn peer_assignment_round_robin() {
@@ -32,16 +35,44 @@ fn peer_assignment_round_robin() {
     let res3 = peer_manager.assign_peer_to_query(query3);
 
     // Verify that the peers are assigned in a round-robin fashion
+    let is_peer1_first: bool;
     match res1.unwrap().0 {
         peer_id if peer_id == peer1.peer_id() => {
+            is_peer1_first = true;
             assert_eq!(res2.unwrap().0, peer2.peer_id());
             assert_eq!(res3.unwrap().0, peer1.peer_id());
         }
         peer_id if peer_id == peer2.peer_id() => {
+            is_peer1_first = false;
             assert_eq!(res2.unwrap().0, peer1.peer_id());
             assert_eq!(res3.unwrap().0, peer2.peer_id());
         }
         peer_id => panic!("Unexpected peer_id: {:?}", peer_id),
+    }
+
+    // check assignment events
+    for event in peer_manager.pending_events {
+        match event {
+            Event::NotifyStreamedBytes(
+                streamed_bytes::behaviour::InternalEvent::QueryAssigned(query_id, peer_id, _),
+            ) => {
+                if is_peer1_first {
+                    match query_id {
+                        QueryId(1) => assert_eq!(peer_id, peer1.peer_id()),
+                        QueryId(2) => assert_eq!(peer_id, peer2.peer_id()),
+                        QueryId(3) => assert_eq!(peer_id, peer1.peer_id()),
+                        _ => panic!("Unexpected query_id: {:?}", query_id),
+                    }
+                } else {
+                    match query_id {
+                        QueryId(1) => assert_eq!(peer_id, peer2.peer_id()),
+                        QueryId(2) => assert_eq!(peer_id, peer1.peer_id()),
+                        QueryId(3) => assert_eq!(peer_id, peer2.peer_id()),
+                        _ => panic!("Unexpected query_id: {:?}", query_id),
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -106,7 +137,7 @@ fn report_query_calls_update_reputation() {
 
     // Create a mock peer
     let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true);
-    peer.expect_multiaddr().times(1).return_const(Multiaddr::empty());
+    peer.expect_multiaddr().times(2).return_const(Multiaddr::empty());
     peer.expect_is_blocked().times(1).return_const(false);
 
     // Add the mock peer to the peer manager
@@ -201,7 +232,7 @@ fn wrap_around_in_peer_assignment() {
     // Create a mock peer
     let (mut peer2, peer_id2) = create_mock_peer(config.blacklist_timeout, false);
     peer2.expect_is_blocked().times(2).return_const(false);
-    peer2.expect_multiaddr().times(2).return_const(Multiaddr::empty());
+    peer2.expect_multiaddr().times(4).return_const(Multiaddr::empty());
 
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer2);
@@ -238,4 +269,43 @@ fn create_mock_peer(
     }
 
     (peer, peer_id)
+}
+
+#[test]
+fn block_and_allow_inbound_connection() {
+    // Create a new peer manager
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
+
+    // Create a mock peer - blocked
+    let (mut peer1, peer_id1) = create_mock_peer(config.blacklist_timeout, false);
+    peer1.expect_is_blocked().times(..2).return_const(true);
+
+    // Create a mock peer - not blocked
+    let (mut peer2, peer_id2) = create_mock_peer(config.blacklist_timeout, false);
+    peer2.expect_is_blocked().times(..2).return_const(false);
+
+    // Add the mock peers to the peer manager
+    peer_manager.add_peer(peer1);
+    peer_manager.add_peer(peer2);
+
+    // call handle_established_inbound_connection with the blocked peer
+    let res = peer_manager.handle_established_inbound_connection(
+        libp2p::swarm::ConnectionId::new_unchecked(0),
+        peer_id1,
+        &Multiaddr::empty(),
+        &Multiaddr::empty(),
+    );
+    // ConnectionHandler doesn't implement Debug so we have to assert the result like that.
+    assert!(res.is_err());
+
+    // call handle_established_inbound_connection with the blocked peer
+    let res = peer_manager.handle_established_inbound_connection(
+        libp2p::swarm::ConnectionId::new_unchecked(0),
+        peer_id2,
+        &Multiaddr::empty(),
+        &Multiaddr::empty(),
+    );
+    // ConnectionHandler doesn't implement Debug so we have to assert the result like that.
+    assert!(res.is_ok());
 }

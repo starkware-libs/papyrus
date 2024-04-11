@@ -2,12 +2,13 @@ use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{identify, kad};
 
-use crate::streamed_bytes;
+use crate::{peer_manager, streamed_bytes};
 
 // TODO: consider reducing the pulicity of all behaviour to pub(crate)
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "Event")]
 pub struct MixedBehaviour {
+    pub peer_manager: peer_manager::PeerManager<peer_manager::peer::Peer>,
     pub identify: identify::Behaviour,
     // TODO(shahak): Consider using a different store.
     pub kademlia: kad::Behaviour<MemoryStore>,

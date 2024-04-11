@@ -3,10 +3,14 @@ use std::collections::HashMap;
 use chrono::Duration;
 use libp2p::{Multiaddr, PeerId};
 
+use self::behaviour::Event;
 use self::peer::PeerTrait;
 use crate::db_executor::QueryId;
+use crate::main_behaviour::mixed_behaviour;
+use crate::streamed_bytes;
 
-mod peer;
+pub(crate) mod behaviour;
+pub(crate) mod peer;
 #[cfg(test)]
 mod test;
 
@@ -17,16 +21,17 @@ pub enum ReputationModifier {
     Bad,
 }
 
-struct PeerManager<P> {
+pub struct PeerManager<P> {
     peers: HashMap<PeerId, P>,
     // TODO: consider implementing a cleanup mechanism to not store all queries forever
     query_to_peer_map: HashMap<QueryId, PeerId>,
     config: PeerManagerConfig,
     last_peer_index: usize,
+    pending_events: Vec<Event>,
 }
 
 #[derive(Clone)]
-struct PeerManagerConfig {
+pub struct PeerManagerConfig {
     target_num_for_peers: usize,
     blacklist_timeout: Duration,
 }
@@ -37,6 +42,8 @@ pub(crate) enum PeerManagerError {
     NoSuchPeer(PeerId),
     #[error("No such query: {0}")]
     NoSuchQuery(QueryId),
+    #[error("Peer is blocked: {0}")]
+    PeerIsBlocked(PeerId),
 }
 
 impl Default for PeerManagerConfig {
@@ -52,7 +59,13 @@ where
 {
     pub fn new(config: PeerManagerConfig) -> Self {
         let peers = HashMap::new();
-        Self { peers, query_to_peer_map: HashMap::new(), config, last_peer_index: 0 }
+        Self {
+            peers,
+            query_to_peer_map: HashMap::new(),
+            config,
+            last_peer_index: 0,
+            pending_events: Vec::new(),
+        }
     }
 
     pub fn add_peer(&mut self, mut peer: P) {
@@ -66,7 +79,10 @@ where
     }
 
     pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<(PeerId, Multiaddr)> {
+        // TODO: consider moving this logic to be async (on a different tokio task)
+        // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
+            // TODO: how to handle this case with events? should we send an event for this?
             return None;
         }
         let peer = self
@@ -81,6 +97,13 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same query
             self.query_to_peer_map.insert(query_id, *peer_id);
+            self.pending_events.push(Event::NotifyStreamedBytes(
+                streamed_bytes::behaviour::InternalEvent::QueryAssigned(
+                    query_id,
+                    *peer_id,
+                    peer.multiaddr(),
+                ),
+            ));
             (*peer_id, peer.multiaddr())
         })
     }
@@ -119,5 +142,15 @@ where
         // TODO: consider if we should count blocked peers (and in what cases? what if they are
         // blocked temporarily?)
         self.peers.len() < self.config.target_num_for_peers
+    }
+}
+
+impl From<Event> for mixed_behaviour::Event {
+    fn from(event: Event) -> Self {
+        match event {
+            Event::NotifyStreamedBytes(event) => {
+                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyStreamedBytes(event))
+            }
+        }
     }
 }
