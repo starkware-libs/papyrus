@@ -65,7 +65,19 @@ pub trait SerializeConfig {
     /// adds the target pointer params with the description and a value, and replaces the value of
     /// the pointing params to contain only the name of the target they point to.
     ///
-    /// Note, in the case of a None sub configs, its elements will not included in the file.
+    /// # Example
+    ///
+    /// ```
+    /// let pointer_target_param = ser_pointer_target_param(
+    ///    "chain_id",
+    ///    &ChainId("SN_MAIN".to_string()),
+    ///    "The chain to follow."
+    /// )
+    /// let pointer_param_paths = vec!["conf1.conf2.chain_id".to_owned(), "conf3.chain_id".to_owned()];
+    /// let config_pointers = vec![(pointer_target_param, pointer_param_paths)];
+    /// let config_map = config.dump_to_file(&config_pointers, "path/to/default_config.json");
+    /// ```
+    /// Note, in the case of a None sub configs, its elements will not be included in the file.
     fn dump_to_file(
         &self,
         config_pointers: &Vec<((ParamPath, SerializedParam), Vec<ParamPath>)>,
@@ -205,6 +217,19 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
 }
 
 /// Serializes a pointer target param of a config.
+///
+/// # Example
+///
+/// ```
+/// let pointer_target_param = ser_pointer_target_param(
+///    "chain_id",
+///    &ChainId("SN_MAIN".to_string()),
+///    "The chain to follow."
+/// )
+/// let pointer_param_paths = vec!["conf1.conf2.chain_id".to_owned(), "conf3.chain_id".to_owned()];
+/// let config_pointers = vec![(pointer_target_param, pointer_param_paths)];
+/// let config_map = config.dump_to_file(&config_pointers, "path/to/default_config.json");
+/// ```
 pub fn ser_pointer_target_param<T: Serialize>(
     name: &str,
     value: &T,
