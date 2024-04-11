@@ -30,7 +30,7 @@ use crate::RpcConfig;
 
 pub fn get_test_rpc_config() -> RpcConfig {
     RpcConfig {
-        chain_id: ChainId("SN_GOERLI".to_string()),
+        chain_id: ChainId("SN_SEPOLIA".to_string()),
         execution_config: ExecutionConfig {
             eth_fee_contract_address: contract_address!("0x1001"),
             strk_fee_contract_address: contract_address!("0x1001"),
