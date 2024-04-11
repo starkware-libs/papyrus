@@ -20,7 +20,7 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
         self: Box<Self>,
         storage_writer: &mut StorageWriter,
     ) -> Result<(), StorageError> {
-        storage_writer.begin_rw_txn()?.append_thin_state_diff(self.1, self.0)?.commit()
+        storage_writer.begin_rw_txn()?.append_state_diff(self.1, self.0)?.commit()
     }
 }
 
