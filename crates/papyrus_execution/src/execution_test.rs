@@ -278,11 +278,10 @@ fn simulate_invoke() {
     prepare_storage(storage_writer);
 
     let tx = TxsScenarioBuilder::default()
-        .invoke_deprecated(*ACCOUNT_ADDRESS, *CONTRACT_ADDRESS, None, false)
+        .invoke_deprecated(*ACCOUNT_ADDRESS, *DEPRECATED_CONTRACT_ADDRESS, None, false)
         .collect();
     let exec_only_results =
         execute_simulate_transactions(storage_reader.clone(), None, tx.clone(), None, false, false);
-    assert!(false, "{:?}", exec_only_results); // DO NOT SUBMIT
     let validate_results =
         execute_simulate_transactions(storage_reader.clone(), None, tx.clone(), None, false, true);
     let charge_fee_results =
