@@ -5,13 +5,14 @@ use jsonrpsee::server::logger::{Logger, TransportProtocol};
 use jsonrpsee::Methods;
 use metrics_exporter_prometheus::PrometheusBuilder;
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
 use prometheus_parse::Value::Counter;
 use starknet_api::block::{BlockBody, BlockHeader, BlockNumber};
-use starknet_api::state::StateDiff;
+use starknet_api::state::ThinStateDiff;
 use test_utils::{prometheus_is_contained, send_request};
 
 use crate::rpc_metrics::{
@@ -152,7 +153,9 @@ async fn server_metrics() {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(0), StateDiff::default(), [].into())
+        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(0), &[], &[])
         .unwrap()
         .commit()
         .unwrap();
