@@ -1843,6 +1843,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "consensus"
+version = "0.4.0-dev.1"
+dependencies = [
+ "cairo-lang-compiler",
+ "cairo-lang-starknet",
+ "cairo-lang-starknet-classes",
+ "indexmap 2.1.0",
+ "jsonrpsee",
+ "lazy_static",
+ "papyrus_execution",
+ "papyrus_rpc",
+ "papyrus_storage",
+ "serde",
+ "serde_json",
+ "starknet_api",
+ "test_utils",
+]
+
+[[package]]
 name = "console"
 version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"

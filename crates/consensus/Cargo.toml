@@ -1,0 +1,29 @@
+[package]
+name = "consensus"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+jsonrpsee = { workspace = true, features = ["full"] }
+papyrus_rpc = { path = "../papyrus_rpc" }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true, features = ["arbitrary_precision"] }
+
+[dev-dependencies]
+cairo-lang-starknet-classes.workspace = true
+lazy_static.workspace = true
+papyrus_execution = { path = "../papyrus_execution", features = ["testing"] }
+papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
+test_utils = { path = "../test_utils" }
+starknet_api = { workspace = true, features = ["testing"] }
+indexmap = { workspace = true, features = ["serde"] }
+
+[build-dependencies]
+cairo-lang-compiler.workspace = true
+cairo-lang-starknet.workspace = true
+cairo-lang-starknet-classes.workspace = true
+serde_json = { workspace = true, features = ["arbitrary_precision"] }

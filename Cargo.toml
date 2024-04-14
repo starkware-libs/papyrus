@@ -4,6 +4,7 @@
 resolver = "2"
 
 members = [
+    "crates/consensus",
     "crates/papyrus_base_layer",
     "crates/papyrus_execution",
     "crates/papyrus_load_test",
@@ -38,9 +39,12 @@ bitvec = "1.0.1"
 blockifier = "0.7.0-dev.1"
 bytes = "1"
 byteorder = "1.4.3"
+# cairo-lang dependencies must maintain the same version as the cairo submodule.
 cairo-lang-casm = "2.6.0"
-cairo-lang-utils = "2.6.0"
+cairo-lang-compiler = "2.6.0"
+cairo-lang-starknet = "2.6.0"
 cairo-lang-starknet-classes = "2.6.0"
+cairo-lang-utils = "2.6.0"
 cairo-vm = "0.9.1"
 camelpaste = "0.1.0"
 chrono = "0.4.26"
