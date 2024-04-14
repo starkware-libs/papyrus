@@ -2,13 +2,15 @@ use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{identify, kad};
 
-use crate::{peer_manager, streamed_bytes};
+use crate::discovery::kad_impl::KadFromOtherBehaviourEvent;
+use crate::{discovery, peer_manager, streamed_bytes};
 
 // TODO: consider reducing the pulicity of all behaviour to pub(crate)
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "Event")]
 pub struct MixedBehaviour {
     pub peer_manager: peer_manager::PeerManager<peer_manager::peer::Peer>,
+    pub discovery: discovery::Behaviour,
     pub identify: identify::Behaviour,
     // TODO(shahak): Consider using a different store.
     pub kademlia: kad::Behaviour<MemoryStore>,
@@ -23,30 +25,18 @@ pub enum Event {
 
 pub enum ExternalEvent {
     StreamedBytes(streamed_bytes::behaviour::Event),
-    // TODO: move these to internal when we have discovery
-    Kademilia(kad::Event),
-    Identify(identify::Event),
 }
 
 pub enum InternalEvent {
+    NoOp,
+    NotifyKad(KadFromOtherBehaviourEvent),
+    NotifyDiscovery(discovery::FromOtherBehaviourEvent),
     #[allow(dead_code)]
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
 }
 
 pub trait BridgedBehaviour {
     fn on_other_behaviour_event(&mut self, event: InternalEvent);
-}
-
-impl From<kad::Event> for Event {
-    fn from(event: kad::Event) -> Self {
-        Self::ExternalEvent(ExternalEvent::Kademilia(event))
-    }
-}
-
-impl From<identify::Event> for Event {
-    fn from(event: identify::Event) -> Self {
-        Self::ExternalEvent(ExternalEvent::Identify(event))
-    }
 }
 
 impl From<streamed_bytes::behaviour::Event> for Event {
