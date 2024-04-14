@@ -1,4 +1,4 @@
-mod mixed_behaviour;
+pub(crate) mod mixed_behaviour;
 
 use std::task::{ready, Context, Poll};
 
