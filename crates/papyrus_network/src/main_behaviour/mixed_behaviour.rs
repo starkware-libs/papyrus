@@ -4,6 +4,7 @@ use libp2p::{identify, kad};
 
 use crate::streamed_bytes;
 
+// TODO: consider reducing the pulicity of all behaviour to pub(crate)
 #[derive(NetworkBehaviour)]
 #[behaviour(out_event = "Event")]
 pub struct MixedBehaviour {
@@ -26,7 +27,10 @@ pub enum ExternalEvent {
     Identify(identify::Event),
 }
 
-pub enum InternalEvent {}
+pub enum InternalEvent {
+    #[allow(dead_code)]
+    NotifyStreamedBytes(streamed_bytes::behaviour::InternalEvent),
+}
 
 pub trait BridgedBehaviour {
     fn on_other_behaviour_event(&mut self, event: InternalEvent);
