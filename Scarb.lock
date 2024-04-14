@@ -2,9 +2,43 @@
 version = 1
 
 [[package]]
+name = "alexandria_data_structures"
+version = "0.2.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=800f5ad#800f5ad217847b5ded63c0302a444161766ee9d6"
+dependencies = [
+ "alexandria_encoding",
+]
+
+[[package]]
+name = "alexandria_encoding"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=800f5ad#800f5ad217847b5ded63c0302a444161766ee9d6"
+dependencies = [
+ "alexandria_math",
+ "alexandria_numeric",
+]
+
+[[package]]
+name = "alexandria_math"
+version = "0.2.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=800f5ad#800f5ad217847b5ded63c0302a444161766ee9d6"
+dependencies = [
+ "alexandria_data_structures",
+]
+
+[[package]]
+name = "alexandria_numeric"
+version = "0.1.0"
+source = "git+https://github.com/keep-starknet-strange/alexandria.git?rev=800f5ad#800f5ad217847b5ded63c0302a444161766ee9d6"
+dependencies = [
+ "alexandria_math",
+]
+
+[[package]]
 name = "consensus"
 version = "0.1.0"
 dependencies = [
+ "alexandria_data_structures",
  "snforge_std",
 ]
 

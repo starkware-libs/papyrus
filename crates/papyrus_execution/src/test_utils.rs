@@ -236,13 +236,18 @@ impl TxsScenarioBuilder {
         contract_address: ContractAddress,
         nonce: Option<Nonce>,
         only_query: OnlyQuery,
+        calldata: Option<Calldata>,
     ) -> Self {
-        let calldata = calldata![
-            *contract_address.0.key(),             // Contract address.
-            selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
-        ];
+        let calldata = match calldata {
+            Some(calldata) => calldata,
+            None => calldata![
+                *contract_address.0.key(),             // Contract address.
+                selector_from_name("return_result").0, // EP selector.
+                stark_felt!(1_u8),                     // Calldata length.
+                stark_felt!(2_u8)                      // Calldata: num.
+            ],
+        };
+
         let nonce = match nonce {
             None => self.next_nonce(sender_address),
             Some(nonce) => {
