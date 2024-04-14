@@ -28,6 +28,10 @@ pub enum ExternalEvent {
 
 pub enum InternalEvent {}
 
+pub trait BridgedBehaviour {
+    fn on_other_behaviour_event(&mut self, event: InternalEvent);
+}
+
 impl From<kad::Event> for Event {
     fn from(event: kad::Event) -> Self {
         Self::ExternalEvent(ExternalEvent::Kademilia(event))
