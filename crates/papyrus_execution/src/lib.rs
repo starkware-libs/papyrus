@@ -13,8 +13,9 @@ mod execution_test;
 pub mod execution_utils;
 mod state_reader;
 
-#[cfg(test)]
-mod test_utils;
+#[cfg(any(feature = "testing", test))]
+#[allow(missing_docs)]
+pub mod test_utils;
 #[cfg(any(feature = "testing", test))]
 pub mod testing_instances;
 
