@@ -13,7 +13,7 @@
 //! # use papyrus_storage::{db::DbConfig, StorageConfig};
 //! # use starknet_api::block::BlockNumber;
 //! # use starknet_api::core::{ChainId, ContractAddress};
-//! use starknet_api::state::{StateDiff, StateNumber, ThinStateDiff};
+//! use starknet_api::state::{StateNumber, ThinStateDiff};
 //!
 //! # let dir_handle = tempfile::tempdir().unwrap();
 //! # let dir = dir_handle.path().to_path_buf();
@@ -26,24 +26,26 @@
 //! #     growth_step: 1 << 26, // 64MB
 //! # };
 //! # let storage_config = StorageConfig{db_config, ..Default::default()};
-//! let state_diff = StateDiff::default();
+//! let state_diff = ThinStateDiff::default();
 //! let (reader, mut writer) = open_storage(storage_config)?;
 //! writer
-//!     .begin_rw_txn()?                                                    // Start a RW transaction.
-//!     .append_state_diff(BlockNumber(0), state_diff, IndexMap::new())?    // Append a state diff.
+//!     .begin_rw_txn()? // Start a RW transaction.
+//!     .append_state_diff(BlockNumber(0), state_diff.clone())? // Append a state diff.
 //!     .commit()?;
 //!
-//! // Get the StateDiff stripped of the class definitions (ThinStateDiff).
-//! let thin_state_diff = reader.begin_ro_txn()?.get_state_diff(BlockNumber(0))?;
-//! assert_eq!(thin_state_diff, Some(ThinStateDiff::from(StateDiff::default())));
+//! // Get the state diff.
+//! let read_state_diff = reader.begin_ro_txn()?.get_state_diff(BlockNumber(0))?;
+//! assert_eq!(read_state_diff, Some(state_diff));
 //!
 //! # let contract_address = ContractAddress::default();
 //! // Get the class hash of a contract at a given state number.
 //! // The transaction must live at least as long as the state reader.
 //! let txn = reader.begin_ro_txn()?;
 //! let state_reader = txn.get_state_reader()?;
-//! let class_hash = state_reader
-//!     .get_class_hash_at(StateNumber::unchecked_right_after_block(BlockNumber(0)), &contract_address)?;
+//! let class_hash = state_reader.get_class_hash_at(
+//!     StateNumber::unchecked_right_after_block(BlockNumber(0)),
+//!     &contract_address,
+//! )?;
 //! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
 
@@ -61,7 +63,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey, ThinStateDiff};
+use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use tracing::debug;
 
 use crate::db::serialization::{NoVersionValueWrapper, VersionWrapper, VersionZeroWrapper};
@@ -143,31 +145,8 @@ pub trait StateStorageWriter
 where
     Self: Sized,
 {
-    /// Appends a state diff with classes to the storage.
-    /// * Arg deployed_contract_class_definitions: Until Starknet version 0.11 users could
-    ///   implicitly
-    /// declare new classes by deploying contracts. To append a state diff with such classes, you
-    /// must pass the class definitions of the implicitly declared classes.
-    // To enforce that no commit happen after a failure, we consume and return Self on success.
-    // TODO(shahak): Remove this once we can add classes
-    // append_thin_state_diff to append_state_diff.
-    fn append_state_diff(
-        self,
-        block_number: BlockNumber,
-        state_diff: StateDiff,
-        // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
-        // Class definitions of deployed contracts with classes that were not declared in this
-        // state diff.
-        // Note: Since 0.11 only deprecated classes can be implicitly declared by contract
-        // deployment, so there is no need to pass the classes of deployed contracts if they are of
-        // the new version.
-        deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
-    ) -> StorageResult<Self>;
-
-    // TODO(shahak): Add functionality to add classes for the thin state diff we added.
-    // TODO(shahak): Rename to append_state_diff once we remove append_state_diff.
     /// Appends a state diff without classes to the storage.
-    fn append_thin_state_diff(
+    fn append_state_diff(
         self,
         block_number: BlockNumber,
         thin_state_diff: ThinStateDiff,
@@ -448,85 +427,8 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
-    // This function is deprecated and will be erased in the future.
-    // TODO(shahak): Erase append_state_diff.
-    #[latency_histogram("storage_append_state_diff_latency_seconds")]
-    fn append_state_diff(
-        self,
-        block_number: BlockNumber,
-        state_diff: StateDiff,
-        mut deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
-    ) -> StorageResult<Self> {
-        let (thin_state_diff, declared_classes, deprecated_declared_classes) =
-            ThinStateDiff::from_state_diff(state_diff);
-
-        let new_self = self.append_thin_state_diff(block_number, thin_state_diff)?;
-
-        let file_offset_table = new_self.txn.open_table(&new_self.tables.file_offsets)?;
-        let markers_table = new_self.open_table(&new_self.tables.markers)?;
-        let declared_classes_table = new_self.open_table(&new_self.tables.declared_classes)?;
-        let deprecated_declared_classes_table =
-            new_self.open_table(&new_self.tables.deprecated_declared_classes)?;
-        let state_diffs_table = new_self.open_table(&new_self.tables.state_diffs)?;
-
-        advance_class_marker_over_blocks_without_classes(
-            &new_self.txn,
-            &markers_table,
-            &state_diffs_table,
-            &new_self.file_handlers,
-        )?;
-
-        if markers_table.get(&new_self.txn, &MarkerKind::Class)?.unwrap_or_default() == block_number
-        {
-            update_marker_to_next_block(
-                &new_self.txn,
-                &markers_table,
-                MarkerKind::Class,
-                block_number,
-            )?;
-        }
-
-        // Write declared classes.
-        write_declared_classes(
-            &declared_classes,
-            &new_self.txn,
-            &declared_classes_table,
-            &new_self.file_handlers,
-            &file_offset_table,
-        )?;
-
-        // Write deprecated declared classes.
-        if !deployed_contract_class_definitions.is_empty() {
-            // TODO(anatg): Remove this after regenesis.
-            if !deprecated_declared_classes.is_empty() {
-                deployed_contract_class_definitions.extend(deprecated_declared_classes);
-                //  TODO(anatg): Add a test for this (should fail if not sorted here).
-                deployed_contract_class_definitions.sort_unstable_keys();
-            }
-            write_deprecated_declared_classes(
-                deployed_contract_class_definitions,
-                &new_self.txn,
-                block_number,
-                &deprecated_declared_classes_table,
-                &new_self.file_handlers,
-                &file_offset_table,
-            )?;
-        } else {
-            write_deprecated_declared_classes(
-                deprecated_declared_classes,
-                &new_self.txn,
-                block_number,
-                &deprecated_declared_classes_table,
-                &new_self.file_handlers,
-                &file_offset_table,
-            )?;
-        }
-
-        Ok(new_self)
-    }
-
     #[latency_histogram("storage_append_thin_state_diff_latency_seconds")]
-    fn append_thin_state_diff(
+    fn append_state_diff(
         self,
         block_number: BlockNumber,
         thin_state_diff: ThinStateDiff,
@@ -567,7 +469,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         }
 
         // Write state diff.
-        let location = self.file_handlers.append_thin_state_diff(&thin_state_diff);
+        let location = self.file_handlers.append_state_diff(&thin_state_diff);
         state_diffs_table.insert(&self.txn, &block_number, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 
@@ -724,74 +626,6 @@ fn advance_compiled_class_marker_over_blocks_without_classes<'env>(
     Ok(())
 }
 
-fn advance_class_marker_over_blocks_without_classes<'env>(
-    txn: &DbTransaction<'env, RW>,
-    markers_table: &'env MarkersTable<'env>,
-    state_diffs_table: &'env TableHandle<
-        '_,
-        BlockNumber,
-        VersionZeroWrapper<LocationInFile>,
-        SimpleTable,
-    >,
-    file_handlers: &FileHandlers<RW>,
-) -> StorageResult<()> {
-    let state_marker = markers_table.get(txn, &MarkerKind::State)?.unwrap_or_default();
-    let mut class_marker = markers_table.get(txn, &MarkerKind::Class)?.unwrap_or_default();
-    while class_marker < state_marker {
-        let state_diff_location = state_diffs_table
-            .get(txn, &class_marker)?
-            .unwrap_or_else(|| panic!("Missing state diff for block {class_marker}"));
-        let thin_state_diff = file_handlers.get_thin_state_diff_unchecked(state_diff_location)?;
-        if !thin_state_diff.declared_classes.is_empty()
-            || !thin_state_diff.deprecated_declared_classes.is_empty()
-        {
-            break;
-        }
-        class_marker = class_marker.unchecked_next();
-        markers_table.upsert(txn, &MarkerKind::Class, &class_marker)?;
-    }
-    Ok(())
-}
-
-fn write_declared_classes<'env>(
-    declared_classes: &IndexMap<ClassHash, ContractClass>,
-    txn: &DbTransaction<'env, RW>,
-    declared_classes_table: &'env DeclaredClassesTable<'env>,
-    file_handlers: &FileHandlers<RW>,
-    file_offset_table: &'env FileOffsetTable<'env>,
-) -> StorageResult<()> {
-    for (class_hash, contract_class) in declared_classes {
-        let location = file_handlers.append_contract_class(contract_class);
-        declared_classes_table.insert(txn, class_hash, &location)?;
-        file_offset_table.upsert(txn, &OffsetKind::ContractClass, &location.next_offset())?;
-    }
-    Ok(())
-}
-
-fn write_deprecated_declared_classes<'env>(
-    deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
-    txn: &DbTransaction<'env, RW>,
-    block_number: BlockNumber,
-    deprecated_declared_classes_table: &'env DeprecatedDeclaredClassesTable<'env>,
-    file_handlers: &FileHandlers<RW>,
-    file_offset_table: &'env FileOffsetTable<'env>,
-) -> StorageResult<()> {
-    for (class_hash, deprecated_contract_class) in deprecated_declared_classes {
-        if deprecated_declared_classes_table.get(txn, &class_hash)?.is_some() {
-            continue;
-        }
-        let location = file_handlers.append_deprecated_contract_class(&deprecated_contract_class);
-        let value = IndexedDeprecatedContractClass { block_number, location_in_file: location };
-        file_offset_table.upsert(
-            txn,
-            &OffsetKind::DeprecatedContractClass,
-            &location.next_offset(),
-        )?;
-        deprecated_declared_classes_table.insert(txn, &class_hash, &value)?;
-    }
-    Ok(())
-}
-
 fn write_deployed_contracts<'env>(
     deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -864,9 +698,9 @@ fn delete_declared_classes<'env>(
 ) -> StorageResult<IndexMap<ClassHash, ContractClass>> {
     let mut deleted_data = IndexMap::new();
     for class_hash in thin_state_diff.declared_classes.keys() {
-        let contract_class_location = declared_classes_table
-            .get(txn, class_hash)?
-            .unwrap_or_else(|| panic!("Missing declared class {class_hash:#?}."));
+        let Some(contract_class_location) = declared_classes_table.get(txn, class_hash)? else {
+            continue;
+        };
         deleted_data.insert(
             *class_hash,
             file_handlers.get_contract_class_unchecked(contract_class_location)?,
@@ -898,10 +732,9 @@ fn delete_deprecated_declared_classes<'env>(
 
     let mut deleted_data = IndexMap::new();
     for class_hash in class_hashes {
-        // If the class is not in the deprecated classes table, it means that the hash is of a
-        // deployed contract of a new class type. We don't need to delete these classes because
-        // since 0.11 new classes must be explicitly declared. Therefore we can skip hashes that we
-        // don't find in the deprecated classes table.
+        // If the class is not in the deprecated classes table, it means that either we didn't
+        // download it yet or the hash is of a deployed contract of a new class type. We've decided
+        // to avoid deleting these classes because they're from at most 0.11.
         if let Some(IndexedDeprecatedContractClass {
             block_number: declared_block_number,
             location_in_file,

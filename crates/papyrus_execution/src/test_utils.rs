@@ -5,6 +5,7 @@ use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::indexmap;
 use lazy_static::lazy_static;
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
@@ -30,7 +31,7 @@ use starknet_api::core::{
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber};
+use starknet_api::state::{ContractClass, StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
     DeclareTransactionV0V1,
@@ -123,7 +124,7 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_state_diff(
             BlockNumber(0),
-            StateDiff {
+            ThinStateDiff {
                 deployed_contracts: indexmap!(
                     *TEST_ERC20_CONTRACT_ADDRESS => *TEST_ERC20_CONTRACT_CLASS_HASH,
                     *CONTRACT_ADDRESS => class_hash0,
@@ -140,15 +141,14 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
                     ),
                 ),
                 declared_classes: indexmap!(
-                    class_hash0 =>
                     // The class is not used in the execution, so it can be default.
-                    (CompiledClassHash::default(), ContractClass::default())
+                    class_hash0 => CompiledClassHash::default()
                 ),
-                deprecated_declared_classes: indexmap!(
-                    *TEST_ERC20_CONTRACT_CLASS_HASH => get_test_erc20_fee_contract_class(),
-                    class_hash1 => get_test_deprecated_contract_class(),
-                    *ACCOUNT_CLASS_HASH => get_test_account_class(),
-                ),
+                deprecated_declared_classes: vec![
+                    *TEST_ERC20_CONTRACT_CLASS_HASH,
+                    class_hash1,
+                    *ACCOUNT_CLASS_HASH,
+                ],
                 nonces: indexmap!(
                     *TEST_ERC20_CONTRACT_ADDRESS => Nonce::default(),
                     *CONTRACT_ADDRESS => Nonce::default(),
@@ -157,7 +157,16 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
                 ),
                 replaced_classes: indexmap!(),
             },
-            indexmap!(),
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(0),
+            &[(class_hash0, &ContractClass::default())],
+            &[
+                (*TEST_ERC20_CONTRACT_CLASS_HASH, &get_test_erc20_fee_contract_class()),
+                (class_hash1, &get_test_deprecated_contract_class()),
+                (*ACCOUNT_CLASS_HASH, &get_test_account_class()),
+            ],
         )
         .unwrap()
         .append_casm(&class_hash0, &get_test_casm())
@@ -176,7 +185,9 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
         .unwrap()
         .append_body(BlockNumber(1), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(1), StateDiff::default(), indexmap![])
+        .append_state_diff(BlockNumber(1), ThinStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(1), &[], &[])
         .unwrap()
         .commit()
         .unwrap();

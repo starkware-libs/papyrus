@@ -5,14 +5,13 @@ use futures::channel::mpsc::Receiver;
 use futures::future::poll_fn;
 use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
-use indexmap::IndexMap;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageWriter;
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::state::{StateDiff, ThinStateDiff};
+use starknet_api::state::ThinStateDiff;
 
 use super::Data::BlockHeaderAndSignature;
 use crate::db_executor::{DBExecutor, DBExecutorError, Data, MockFetchBlockDataFromDb, QueryId};
@@ -267,7 +266,7 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
             // right signatures.
             .append_block_signature(BlockNumber(i), &BlockSignature::default())
             .unwrap()
-            .append_state_diff(BlockNumber(i), StateDiff::default(),IndexMap::new())
+            .append_state_diff(BlockNumber(i), ThinStateDiff::default())
             .unwrap()
             .commit()
             .unwrap();

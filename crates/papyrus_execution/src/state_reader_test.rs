@@ -9,7 +9,7 @@ use blockifier::execution::contract_class::{
 use blockifier::state::errors::StateError;
 use blockifier::state::state_api::StateReader;
 use cairo_lang_utils::bigint::BigUintAsHex;
-use indexmap::{indexmap, IndexMap};
+use indexmap::indexmap;
 use papyrus_common::pending_classes::{ApiContractClass, PendingClasses, PendingClassesTrait};
 use papyrus_common::state::{
     DeclaredClassHashEntry,
@@ -18,6 +18,7 @@ use papyrus_common::state::{
     StorageEntry,
 };
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
@@ -25,7 +26,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass, StateDiff, StateNumber, StorageKey};
+use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::{patricia_key, stark_felt};
 
 use crate::objects::PendingData;
@@ -76,7 +77,9 @@ fn read_state() {
         .unwrap()
         .append_body(BlockNumber(0), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(0), StateDiff::default(), IndexMap::new())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(0), &[], &[])
         .unwrap()
         .append_header(
             BlockNumber(1),
@@ -91,7 +94,7 @@ fn read_state() {
         .unwrap()
         .append_state_diff(
             BlockNumber(1),
-            StateDiff {
+            ThinStateDiff {
                 deployed_contracts: indexmap!(
                     address0 => class_hash0,
                     address1 => class_hash1,
@@ -102,21 +105,22 @@ fn read_state() {
                     ),
                 ),
                 declared_classes: indexmap!(
-                    class_hash0 =>
-                    (compiled_class_hash0, class0.clone()),
-                    class_hash5 =>
-                    (compiled_class_hash0, class0.clone())
+                    class_hash0 => compiled_class_hash0,
+                    class_hash5 => compiled_class_hash0,
                 ),
-                deprecated_declared_classes: indexmap!(
-                    class_hash1 => class1.clone(),
-                ),
+                deprecated_declared_classes: vec![class_hash1],
                 nonces: indexmap!(
                     address0 => nonce0,
                     address1 => Nonce::default(),
                 ),
                 replaced_classes: indexmap!(),
             },
-            indexmap!(),
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(1),
+            &[(class_hash0, &class0), (class_hash5, &class0)],
+            &[(class_hash1, &class1)],
         )
         .unwrap()
         .append_casm(&class_hash0, &casm0)
@@ -132,7 +136,9 @@ fn read_state() {
         .unwrap()
         .append_body(BlockNumber(2), BlockBody::default())
         .unwrap()
-        .append_state_diff(BlockNumber(2), StateDiff::default(), IndexMap::new())
+        .append_state_diff(BlockNumber(2), ThinStateDiff::default())
+        .unwrap()
+        .append_classes(BlockNumber(2), &[], &[])
         .unwrap()
         .commit()
         .unwrap();
