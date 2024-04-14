@@ -3,6 +3,8 @@ pub(crate) mod mixed_behaviour;
 use std::task::{ready, Context, Poll};
 
 use libp2p::core::Endpoint;
+use libp2p::identity::PublicKey;
+use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::{
     ConnectionDenied,
     ConnectionHandler,
@@ -11,10 +13,12 @@ use libp2p::swarm::{
     NetworkBehaviour,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{identify, kad, multiaddr, Multiaddr, PeerId, StreamProtocol};
 use mixed_behaviour::MixedBehaviour;
 
 use self::mixed_behaviour::{BridgedBehaviour, Event as MixedBehaviourEvent};
+use crate::peer_manager::{PeerManager, PeerManagerConfig};
+use crate::{discovery, streamed_bytes, PeerAddressConfig};
 
 // TODO(shahak): Make this an enum and fill its variants
 struct Event;
@@ -95,6 +99,57 @@ impl NetworkBehaviour for MainBehaviour {
                 Poll::Pending
             }
             _ => Poll::Ready(mixed_behaviour_event.map_out(|_| Event)),
+        }
+    }
+}
+
+// TODO(shahak): If we decide to remove MainBehaviour, move this to MixedBehaviour.
+impl MainBehaviour {
+    // TODO(shahak): Consider adding Kademlia and Identify config to NetworkConfig.
+    // TODO(shahak): Change PeerId in network config to KeyPair.
+    // TODO(shahak): Add chain_id to NetworkConfig.
+    // TODO(shahak): Add PeerManagerConfig to NetworkConfig.
+    // TODO(shahak): remove allow dead code.
+    #[allow(dead_code)]
+    pub fn new(
+        streamed_bytes_config: streamed_bytes::Config,
+        public_key: PublicKey,
+        chain_id: String,
+        bootstrap_peer_config: PeerAddressConfig,
+        peer_manager_config: PeerManagerConfig,
+    ) -> Self {
+        let peer_id = PeerId::from_public_key(&public_key);
+
+        let mut kad_config = kad::Config::default();
+        kad_config.set_protocol_names(vec![
+            StreamProtocol::try_from_owned(format!("/starknet/kad/{chain_id}/1.0.0")).expect(
+                "Strings that start with / should be converted successfully to StreamProtocol",
+            ),
+        ]);
+
+        Self {
+            mixed_behaviour: MixedBehaviour {
+                peer_manager: PeerManager::new(peer_manager_config),
+                discovery: discovery::Behaviour::new(
+                    bootstrap_peer_config.peer_id,
+                    format!("/ip4/{}", bootstrap_peer_config.ip)
+                        .parse::<Multiaddr>()
+                        .unwrap_or_else(|_| {
+                            panic!("Wrong ip4 address format {}", bootstrap_peer_config.ip)
+                        })
+                        .with(multiaddr::Protocol::Tcp(bootstrap_peer_config.tcp_port)),
+                ),
+                identify: identify::Behaviour::new(identify::Config::new(
+                    "/starknet/1".to_owned(),
+                    public_key,
+                )),
+                kademlia: kad::Behaviour::with_config(
+                    peer_id,
+                    MemoryStore::new(peer_id),
+                    kad_config,
+                ),
+                streamed_bytes: streamed_bytes::Behaviour::new(streamed_bytes_config),
+            },
         }
     }
 }
