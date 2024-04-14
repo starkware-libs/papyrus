@@ -1,4 +1,4 @@
-mod mixed_behaviour;
+pub(crate) mod mixed_behaviour;
 
 use std::task::{ready, Context, Poll};
 
@@ -13,6 +13,8 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 use mixed_behaviour::MixedBehaviour;
+
+use self::mixed_behaviour::{BridgedBehaviour, Event as MixedBehaviourEvent};
 
 // TODO(shahak): Make this an enum and fill its variants
 struct Event;
@@ -75,6 +77,19 @@ impl NetworkBehaviour for MainBehaviour {
         cx: &mut Context<'_>,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
-        Poll::Ready(ready!(self.mixed_behaviour.poll(cx)).map_out(|_| Event))
+        let mixed_behaviour_event = ready!(self.mixed_behaviour.poll(cx));
+        match mixed_behaviour_event {
+            ToSwarm::GenerateEvent(MixedBehaviourEvent::InternalEvent(internal_event)) => {
+                match internal_event {
+                    mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
+                        self.mixed_behaviour
+                            .streamed_bytes
+                            .on_other_behaviour_event(internal_event);
+                        Poll::Pending
+                    }
+                }
+            }
+            _ => return Poll::Ready(mixed_behaviour_event.map_out(|_| Event)),
+        }
     }
 }
