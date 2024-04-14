@@ -1,0 +1,3 @@
+[submodule "cairo"]
+	path = cairo
+	url = git@github.com:starkware-libs/cairo.git
