@@ -81,13 +81,18 @@ impl NetworkBehaviour for MainBehaviour {
         match mixed_behaviour_event {
             ToSwarm::GenerateEvent(MixedBehaviourEvent::InternalEvent(internal_event)) => {
                 match internal_event {
+                    mixed_behaviour::InternalEvent::NoOp => {}
+                    mixed_behaviour::InternalEvent::NotifyKad(_) => {
+                        self.mixed_behaviour.kademlia.on_other_behaviour_event(internal_event)
+                    }
+                    mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
+                        self.mixed_behaviour.discovery.on_other_behaviour_event(internal_event)
+                    }
                     mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
-                        self.mixed_behaviour
-                            .streamed_bytes
-                            .on_other_behaviour_event(internal_event);
-                        Poll::Pending
+                        self.mixed_behaviour.streamed_bytes.on_other_behaviour_event(internal_event)
                     }
                 }
+                Poll::Pending
             }
             _ => Poll::Ready(mixed_behaviour_event.map_out(|_| Event)),
         }
