@@ -21,12 +21,15 @@ RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release
     --bin dump_declared_classes
 
 # Build storage_benchmark.
-RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage  --features "clap statistical" \
-    --bin storage_benchmark
+RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage \
+    --features "clap papyrus_common statistical" --bin storage_benchmark
 
 
 # Starting a new stage so that the final image will contain only the executables.
 FROM alpine:3.17.0 AS papyrus_utilities
+
+# Set the working directory to '/app', to match the main docker file.
+WORKDIR /app
 
 # Copy the load test executable and its resources.
 COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/papyrus_load_test /app/target/release/papyrus_load_test
