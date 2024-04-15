@@ -7,6 +7,7 @@ use futures_util::pin_mut;
 use indexmap::{indexmap, IndexMap};
 use lru::LruCache;
 use mockall::predicate;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use pretty_assertions::assert_eq;
@@ -24,7 +25,7 @@ use starknet_api::core::{
 use starknet_api::crypto::PublicKey;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::{StarkFelt, StarkHash};
-use starknet_api::state::{ContractClass as sn_api_ContractClass, StateDiff, StorageKey};
+use starknet_api::state::{ContractClass as sn_api_ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::{patricia_key, stark_felt};
 use starknet_client::reader::objects::block::DeprecatedBlock;
 use starknet_client::reader::{
@@ -436,35 +437,59 @@ async fn stream_state_updates() {
 #[tokio::test]
 async fn stream_compiled_classes() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
-    writer.begin_rw_txn().unwrap().append_state_diff(
-        BlockNumber(0),
-        StateDiff {
-            deployed_contracts: indexmap! {},
-            storage_diffs: indexmap! {},
-            declared_classes: indexmap! {
-                ClassHash(stark_felt!("0x0")) => (CompiledClassHash(stark_felt!("0x0")), sn_api_ContractClass::default()),
-                ClassHash(stark_felt!("0x1")) => (CompiledClassHash(stark_felt!("0x1")), sn_api_ContractClass::default())
+    writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_state_diff(
+            BlockNumber(0),
+            ThinStateDiff {
+                deployed_contracts: indexmap! {},
+                storage_diffs: indexmap! {},
+                declared_classes: indexmap! {
+                    ClassHash(stark_felt!("0x0")) => CompiledClassHash(stark_felt!("0x0")),
+                    ClassHash(stark_felt!("0x1")) => CompiledClassHash(stark_felt!("0x1")),
+                },
+                deprecated_declared_classes: vec![],
+                nonces: indexmap! {},
+                replaced_classes: indexmap! {},
             },
-            deprecated_declared_classes: indexmap! {},
-            nonces: indexmap! {},
-            replaced_classes: indexmap! {},
-        },
-        indexmap! {},
-    ).unwrap().append_state_diff(
-        BlockNumber(1),
-        StateDiff {
-            deployed_contracts: indexmap! {},
-            storage_diffs: indexmap! {},
-            declared_classes: indexmap! {
-                ClassHash(stark_felt!("0x2")) => (CompiledClassHash(stark_felt!("0x2")), sn_api_ContractClass::default()),
-                ClassHash(stark_felt!("0x3")) => (CompiledClassHash(stark_felt!("0x3")), sn_api_ContractClass::default())
+        )
+        .unwrap()
+        .append_state_diff(
+            BlockNumber(1),
+            ThinStateDiff {
+                deployed_contracts: indexmap! {},
+                storage_diffs: indexmap! {},
+                declared_classes: indexmap! {
+                    ClassHash(stark_felt!("0x2")) => CompiledClassHash(stark_felt!("0x2")),
+                    ClassHash(stark_felt!("0x3")) => CompiledClassHash(stark_felt!("0x3")),
+                },
+                deprecated_declared_classes: vec![],
+                nonces: indexmap! {},
+                replaced_classes: indexmap! {},
             },
-            deprecated_declared_classes: indexmap! {},
-            nonces: indexmap! {},
-            replaced_classes: indexmap! {},
-        },
-        indexmap! {},
-    ).unwrap().commit().unwrap();
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(0),
+            &[
+                (ClassHash(stark_felt!("0x0")), &sn_api_ContractClass::default()),
+                (ClassHash(stark_felt!("0x1")), &sn_api_ContractClass::default()),
+            ],
+            &[],
+        )
+        .unwrap()
+        .append_classes(
+            BlockNumber(1),
+            &[
+                (ClassHash(stark_felt!("0x2")), &sn_api_ContractClass::default()),
+                (ClassHash(stark_felt!("0x3")), &sn_api_ContractClass::default()),
+            ],
+            &[],
+        )
+        .unwrap()
+        .commit()
+        .unwrap();
 
     let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
     let mut mock = MockStarknetReader::new();

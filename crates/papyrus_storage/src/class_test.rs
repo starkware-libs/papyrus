@@ -28,7 +28,7 @@ fn append_classes_writes_correct_data() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(
+        .append_state_diff(
             BlockNumber(0),
             ThinStateDiff {
                 declared_classes: indexmap! { class_hash => CompiledClassHash::default() },
@@ -65,7 +65,7 @@ fn append_classes_marker_mismatch() {
     let Err(err) = writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(1), &Vec::new(), &Vec::new())
     else {
@@ -90,11 +90,11 @@ fn append_deprecated_class_not_in_state_diff() {
     writer
         .begin_rw_txn()
         .unwrap()
-        .append_thin_state_diff(BlockNumber(0), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(0), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(0), &[], &[])
         .unwrap()
-        .append_thin_state_diff(BlockNumber(1), ThinStateDiff::default())
+        .append_state_diff(BlockNumber(1), ThinStateDiff::default())
         .unwrap()
         .append_classes(BlockNumber(1), &[], &[(deprecated_class_hash, &expected_deprecated_class)])
         .unwrap()
