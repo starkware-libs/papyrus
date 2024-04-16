@@ -61,7 +61,7 @@ impl<P> PeerManager<P>
 where
     P: PeerTrait,
 {
-    pub fn new(config: PeerManagerConfig) -> Self {
+    fn new(config: PeerManagerConfig) -> Self {
         let peers = HashMap::new();
         Self {
             peers,
@@ -73,7 +73,7 @@ where
         }
     }
 
-    pub fn add_peer(&mut self, mut peer: P) {
+    fn add_peer(&mut self, mut peer: P) {
         peer.set_timeout_duration(self.config.blacklist_timeout);
         self.peers.insert(peer.peer_id(), peer);
     }
@@ -83,7 +83,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<PeerId> {
+    fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
@@ -124,7 +124,7 @@ where
         })
     }
 
-    pub fn report_peer(
+    fn report_peer(
         &mut self,
         peer_id: PeerId,
         reason: ReputationModifier,
@@ -137,7 +137,7 @@ where
         }
     }
 
-    pub fn report_query(
+    fn report_query(
         &mut self,
         query_id: QueryId,
         reason: ReputationModifier,
@@ -154,7 +154,7 @@ where
         }
     }
 
-    pub fn more_peers_needed(&self) -> bool {
+    fn more_peers_needed(&self) -> bool {
         // TODO: consider if we should count blocked peers (and in what cases? what if they are
         // blocked temporarily?)
         self.peers.len() < self.config.target_num_for_peers
@@ -166,6 +166,9 @@ impl From<Event> for mixed_behaviour::Event {
         match event {
             Event::NotifyStreamedBytes(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyStreamedBytes(event))
+            }
+            Event::NotifyDiscovery(event) => {
+                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
             }
         }
     }
