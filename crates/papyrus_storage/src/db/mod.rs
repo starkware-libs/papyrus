@@ -206,6 +206,29 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
 }
 
+pub(crate) fn open_env_ro(config: &DbConfig) -> DbResult<DbReader> {
+    const UNIX_RO_PERMISSIONS: u32 = 444;
+    let db_file_path = config.path().join("mdbx.dat");
+    // Checks if path exists if enforce_file_exists is true.
+    if config.enforce_file_exists && !db_file_path.exists() {
+        return Err(DbError::FileDoesNotExist(db_file_path));
+    }
+    const MAX_READERS: u32 = 1 << 13; // 8K readers
+    let env = Arc::new(
+        Environment::new()
+            .set_geometry(Geometry {
+                size: Some(config.min_size..config.max_size),
+                growth_step: Some(config.growth_step),
+                page_size: Some(get_page_size(page_size::get())),
+                ..Default::default()
+            })
+            .set_max_tables(MAX_DBS)
+            .set_max_readers(MAX_READERS)
+            .open_with_permissions(&config.path(), UNIX_RO_PERMISSIONS)?,
+    );
+    Ok(DbReader { env: env.clone() })
+}
+
 // Size in bytes.
 const MDBX_MIN_PAGESIZE: usize = 256;
 const MDBX_MAX_PAGESIZE: usize = 65536; // 64KB

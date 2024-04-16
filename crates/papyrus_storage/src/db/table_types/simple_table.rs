@@ -15,6 +15,7 @@ use crate::db::{
     DbCursor,
     DbError,
     DbKeyType,
+    DbReader,
     DbTransaction,
     DbValueType,
     DbWriter,
@@ -38,6 +39,20 @@ impl DbWriter {
         let txn = self.env.begin_rw_txn()?;
         txn.create_table(Some(name), TableFlags::empty())?;
         txn.commit()?;
+        Ok(TableIdentifier {
+            name,
+            _key_type: PhantomData {},
+            _value_type: PhantomData {},
+            _table_type: PhantomData {},
+        })
+    }
+}
+
+impl DbReader {
+    pub(crate) fn open_simple_table<K: KeyTrait + Debug, V: ValueSerde + Debug>(
+        &self,
+        name: &'static str,
+    ) -> DbResult<TableIdentifier<K, V, SimpleTable>> {
         Ok(TableIdentifier {
             name,
             _key_type: PhantomData {},

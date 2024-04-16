@@ -70,6 +70,8 @@ mod version;
 mod deprecated;
 
 #[cfg(test)]
+mod test;
+#[cfg(test)]
 mod test_instances;
 
 #[cfg(any(feature = "testing", test))]
@@ -82,6 +84,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
+use db::open_env_ro;
 use db::serialization::{
     Key,
     NoVersionValueWrapper,
@@ -92,6 +95,7 @@ use db::serialization::{
 use db::table_types::Table;
 use mmap_file::{
     open_file,
+    open_file_ro,
     FileHandler,
     LocationInFile,
     MMapFileError,
@@ -195,6 +199,58 @@ pub fn open_storage(
     let writer = set_version_if_needed(reader.clone(), writer)?;
     verify_storage_version(reader.clone())?;
     Ok((reader, writer))
+}
+
+/// Opens a the storage in read-only mode and returns a [`StorageReader`].
+pub fn open_storage_ro(storage_config: StorageConfig) -> StorageResult<StorageReader> {
+    dbg!(111);
+    let db_reader = open_env_ro(&storage_config.db_config)?;
+    dbg!(222);
+    let tables = Arc::new(Tables {
+        block_hash_to_number: db_reader.open_simple_table("block_hash_to_number")?,
+        block_signatures: db_reader.open_simple_table("block_signatures")?,
+        casms: db_reader.open_simple_table("casms")?,
+        contract_storage: db_reader.open_simple_table("contract_storage")?,
+        declared_classes: db_reader.open_simple_table("declared_classes")?,
+        declared_classes_block: db_reader.open_simple_table("declared_classes_block")?,
+        deprecated_declared_classes: db_reader.open_simple_table("deprecated_declared_classes")?,
+        deployed_contracts: db_reader.open_simple_table("deployed_contracts")?,
+        events: db_reader.open_simple_table("events")?,
+        headers: db_reader.open_simple_table("headers")?,
+        markers: db_reader.open_simple_table("markers")?,
+        nonces: db_reader.open_simple_table("nonces")?,
+        file_offsets: db_reader.open_simple_table("file_offsets")?,
+        state_diffs: db_reader.open_simple_table("state_diffs")?,
+        transaction_hash_to_idx: db_reader.open_simple_table("transaction_hash_to_idx")?,
+        transaction_idx_to_hash: db_reader.open_simple_table("transaction_idx_to_hash")?,
+        transaction_outputs: db_reader.open_simple_table("transaction_outputs")?,
+        transactions: db_reader.open_simple_table("transactions")?,
+
+        // Version tables
+        starknet_version: db_reader.open_simple_table("starknet_version")?,
+        storage_version: db_reader.open_simple_table("storage_version")?,
+    });
+    dbg!(333);
+    let file_readers = open_storage_files_ro(
+        &storage_config.db_config,
+        storage_config.mmap_file_config,
+        db_reader.clone(),
+        &tables.file_offsets,
+    )?;
+    dbg!(444);
+
+    let reader = StorageReader {
+        db_reader,
+        tables: tables.clone(),
+        scope: storage_config.scope,
+        file_readers,
+    };
+    dbg!(555);
+
+    // TODO(yair): Fix the verify_storage_version to accept lower minor versions.
+    verify_storage_version(reader.clone())?;
+    dbg!(666);
+    Ok(reader)
 }
 
 // In case storage version does not exist, set it to the crate version.
@@ -787,6 +843,51 @@ fn open_storage_files(
             deprecated_contract_class: deprecated_contract_class_reader,
         },
     ))
+}
+
+fn open_storage_files_ro(
+    db_config: &DbConfig,
+    mmap_file_config: MmapFileConfig,
+    db_reader: DbReader,
+    file_offsets_table: &TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
+) -> StorageResult<FileHandlers<RO>> {
+    let db_transaction = db_reader.begin_ro_txn()?;
+    let table = db_transaction.open_table(file_offsets_table)?;
+
+    let thin_state_diff_offset =
+        table.get(&db_transaction, &OffsetKind::ThinStateDiff)?.unwrap_or_default();
+    let thin_state_diff_reader = open_file_ro(
+        mmap_file_config.clone(),
+        db_config.path().join("thin_state_diff.dat"),
+        thin_state_diff_offset,
+    )?;
+
+    let contract_class_offset =
+        table.get(&db_transaction, &OffsetKind::ContractClass)?.unwrap_or_default();
+    let contract_class_reader = open_file_ro(
+        mmap_file_config.clone(),
+        db_config.path().join("contract_class.dat"),
+        contract_class_offset,
+    )?;
+
+    let casm_offset = table.get(&db_transaction, &OffsetKind::Casm)?.unwrap_or_default();
+    let casm_reader =
+        open_file_ro(mmap_file_config.clone(), db_config.path().join("casm.dat"), casm_offset)?;
+
+    let deprecated_contract_class_offset =
+        table.get(&db_transaction, &OffsetKind::DeprecatedContractClass)?.unwrap_or_default();
+    let deprecated_contract_class_reader = open_file_ro(
+        mmap_file_config,
+        db_config.path().join("deprecated_contract_class.dat"),
+        deprecated_contract_class_offset,
+    )?;
+
+    Ok(FileHandlers {
+        thin_state_diff: thin_state_diff_reader,
+        contract_class: contract_class_reader,
+        casm: casm_reader,
+        deprecated_contract_class: deprecated_contract_class_reader,
+    })
 }
 
 /// Represents a kind of mmap file.

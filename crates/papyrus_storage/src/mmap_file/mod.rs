@@ -198,6 +198,36 @@ pub(crate) fn open_file<V: ValueSerde>(
     Ok((write_file_handler, read_file_handler))
 }
 
+/// Open a memory mapped file.
+#[instrument(level = "debug", err)]
+pub(crate) fn open_file_ro<V: ValueSerde>(
+    config: MmapFileConfig,
+    path: PathBuf,
+    offset: usize,
+) -> MmapFileResult<FileHandler<V, RO>> {
+    let file =
+        OpenOptions::new().read(true).write(false).create(false).truncate(false).open(path)?;
+    let size = file.metadata()?.len();
+    dbg!("a1");
+    let mmap = unsafe { MmapOptions::new().map_copy_read_only(&file)? }.make_mut()?;
+    dbg!("a2");
+    let mmap_ptr = mmap.as_ptr();
+    let mmap_file = MMapFile {
+        config,
+        file,
+        mmap,
+        size: size.try_into().expect("size should fit in usize"),
+        offset,
+        should_flush: false,
+        _value_type: PhantomData {},
+    };
+    let shared_mmap_file = Arc::new(Mutex::new(mmap_file));
+    let read_file_handler: FileHandler<V, RO> =
+        FileHandler { memory_ptr: mmap_ptr, mmap_file: shared_mmap_file, _mode: PhantomData };
+
+    Ok(read_file_handler)
+}
+
 /// A wrapper around `MMapFile` that provides both write and read interfaces.
 #[derive(Clone, Debug)]
 pub(crate) struct FileHandler<V: ValueSerde, Mode: TransactionKind> {
