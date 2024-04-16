@@ -54,3 +54,4 @@ papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 rand.workspace = true
 tokio-stream.workspace = true
+void.workspace = true
