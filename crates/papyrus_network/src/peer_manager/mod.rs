@@ -167,6 +167,9 @@ impl From<Event> for mixed_behaviour::Event {
             Event::NotifyStreamedBytes(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyStreamedBytes(event))
             }
+            Event::NotifyDiscovery(event) => {
+                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
+            }
         }
     }
 }

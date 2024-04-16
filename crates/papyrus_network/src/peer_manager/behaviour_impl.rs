@@ -7,12 +7,13 @@ use tracing::error;
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
-use crate::streamed_bytes;
+use crate::{discovery, streamed_bytes};
 
 #[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
+// #[cfg_attr(test, derive(PartialEq))]
 pub enum Event {
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
+    NotifyDiscovery(discovery::FromOtherBehaviourEvent),
 }
 
 impl<P: 'static> NetworkBehaviour for PeerManager<P>
@@ -118,7 +119,16 @@ where
                         )
                         .set_connection_id(Some(connection_id));
                 } else if self.peers.get(&peer_id).is_none() {
-                    self.add_peer(P::new(peer_id, endpoint.get_remote_address().clone()))
+                    if self.more_peers_needed() {
+                        self.add_peer(P::new(peer_id, endpoint.get_remote_address().clone()))
+                    } else {
+                        // TODO: consider how and in which cases we resume discovery
+                        self.pending_events.push(libp2p::swarm::ToSwarm::GenerateEvent(
+                            Event::NotifyDiscovery(
+                                discovery::FromOtherBehaviourEvent::PauseDiscovery,
+                            ),
+                        ))
+                    }
                 }
             }
             libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed {
