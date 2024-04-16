@@ -1,5 +1,5 @@
-// TODO(shahak): add tests
-
+#[cfg(test)]
+mod discovery_test;
 pub mod identify_impl;
 pub mod kad_impl;
 
