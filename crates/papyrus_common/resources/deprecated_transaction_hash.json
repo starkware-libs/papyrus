@@ -1,106 +1,55 @@
 [
   {
+    "block_number": 1470,
+    "chain_id": "SN_MAIN",
     "transaction": {
       "Deploy": {
-        "version": "0x0",
-        "class_hash": "0x10455c752b86932ce552f2b0fe81a880746649b9aee7e0d842bf3f52378f9f8",
-        "contract_address_salt": "0x7284a0367fdd636434f76da25532785690d5f27db40ba38b0cfcbc89a472507",
+        "class_hash": "0x71c3c99f5cf76fc19945d4b8b7d34c7c5528f22730d56192b50c6bbfd338a64",
         "constructor_calldata": [
-          "0x635b73abaa9efff71570cb08f3e5014424788470c3b972b952368fb3fc27cc3",
-          "0x7e92479a573a24241ee6f3e4ade742ff37bae4a60bacef5be1caaff5e7e04f3"
-        ]
+          "0x5f28c66afd8a6799ddbe1933bce2c144625031aafa881fa38fa830790eff204"
+        ],
+        "contract_address_salt": "0x1cb8f5514ceac8a6abdf232cd24ea9eacfb310eaba427432784b80b5f95bc8d",
+        "version": "0x0"
       }
     },
-    "transaction_hash": "0x45c61314be4da85f0e13df53d18062e002c04803218f08061e4b274d4b38537",
-    "chain_id": "SN_GOERLI",
-    "block_number": 0
+    "transaction_hash": "0x2b30ab254aaac75326e5d6a1ed6f040ddd61902155381a754a849e9aa616153"
   },
   {
-    "transaction": {
-      "Invoke": {
-        "V0": {
-          "max_fee": "0x0",
-          "signature": [],
-          "entry_point_selector": "0x218f305395474a84a39307fa5297be118fe17bf65e27ac5e2de6617baa44c64",
-          "contract_address": "0x2adb4393384c09f049c06bc0070b7a2f72c9cbdcbe841fa7e109a520466cd66",
-          "calldata": [
-            "0x2f40faa63fdd5871415b2dcfb1a5e3e1ca06435b3dda6e2ba9df3f726fd3251",
-            "0x2"
-          ]
-        }
-      }
-    },
-    "transaction_hash": "0x1822471b7751cbaf98a5cce0003181af95d588e38c958739213af59f389fdc5",
-    "chain_id": "SN_GOERLI",
-    "block_number": 0
-  },
-  {
-    "transaction": {
-      "Invoke": {
-        "V0": {
-          "max_fee": "0x15f95fc1ea3",
-          "signature": [
-            "0x6371bbc217e89142e93f03d667f6a6c0ecfcecaf0fe5b497a2c09b1490ee6ac",
-            "0x3f37ec9f2f198c397366bc04d2acb4e3282387d1d5933b1b6febd00911b4d13"
-          ],
-          "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
-          "contract_address": "0x17239d35be9e3a622b01677fff06c05ea7d926b94f864e59188d1a7eca00b1f",
-          "calldata": [
-            "0x1",
-            "0x49d36570d4e46f48e99674bd3fcc84644ddd6b96f7c741b1562b82f9e004dc7",
-            "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
-            "0x0",
-            "0x3",
-            "0x3",
-            "0x48457b86ae319cdb795b330b53a26141804d2d79",
-            "0x71afd498d0000",
-            "0x0",
-            "0x99c119b69f9e27f9d0d617fc36afd66bdf6e2ddddcf82411a74a71e671071"
-          ]
-        }
-      }
-    },
-    "transaction_hash": "0x394a595572ee0de6ccf79328c24f9e79979c6cae6a9dd2d413b88ee4a1f32e1",
-    "chain_id": "SN_GOERLI",
-    "block_number": 330291
-  },
-  {
-    "transaction": {
-      "L1Handler": {
-        "version": "0x0",
-        "contract_address": "0x45c2f280c6d96a1e1ff740fd38eb6caab833db833ff03a23fbc10fc746025f8",
-        "entry_point_selector": "0x3d7e9aabaee46b2e84062eb3bca33a0c08e1142b329c095d47ec3d6af1adbc6",
-        "nonce": "0x1784",
-        "calldata": [
-          "0xd9cedf07afdd92ef2733b919637744d5e166492e",
-          "0x54ae80a9c33ee3b65961d8a97d29fd9cc5d23e2d4efa521462f6cf00f6fd4b2",
-          "0x2e695b94dc82ae61d665d9f546029f379ffa8bac",
-          "0x53c9f44836ad00b25c65b360c111bdf2d32115faf2f705d84f1acf69f244775",
-          "0x434d"
-        ]
-      }
-    },
-    "transaction_hash": "0x5772cdd88ca51effeeeff8fcdcd9635c90226bd56ed6b5b6b0e3a318c0a2e9a",
-    "chain_id": "SN_GOERLI",
-    "block_number": 100000
-  },
-  {
-    "transaction": {
-      "L1Handler": {
-        "version": "0x0",
-        "contract_address": "0x58b43819bb12aba8ab3fb2e997523e507399a3f48a1e2aa20a5fb7734a0449f",
-        "entry_point_selector": "0xe3f5e9e1456ffa52a3fbc7e8c296631d4cc2120c0be1e2829301c0d8fa026b",
-        "nonce": "0x0",
-        "calldata": [
-          "0x5474c49483aa09993090979ade8101ebb4cdce4a",
-          "0xabf8dd8438d1c21e83a8b5e9c1f9b58aaf3ed360",
-          "0x2",
-          "0x4c04fac82913f01a8f01f6e15ff7e834ff2d9a9a1d8e9adffc7bd45692f4f9a"
-        ]
-      }
-    },
-    "transaction_hash": "0x5d50b7020f7cf8033fd7d913e489f47edf74fbf3c8ada85be512c7baa6a2eab",
+    "block_number": 1470,
     "chain_id": "SN_MAIN",
-    "block_number": 192
+    "transaction": {
+      "Invoke": {
+        "V0": {
+          "calldata": [
+            "0x1cb8f5514ceac8a6abdf232cd24ea9eacfb310eaba427432784b80b5f95bc8d",
+            "0x0"
+          ],
+          "contract_address": "0x67b664b0ea8df2687352cbd636cd0782bf8f563a0072b233853e3c5a70b5897",
+          "entry_point_selector": "0x79dc0da7c54b95f10aa182ad0a46400db63156920adb65eca2654c0945a463",
+          "max_fee": "0x0",
+          "signature": []
+        }
+      }
+    },
+    "transaction_hash": "0x1d7b514ed5f8d37c36bbb70db9df33994e0e77bb8d6f62790894f0b56462e62"
+  },
+  {
+    "block_number": 1367,
+    "chain_id": "SN_MAIN",
+    "transaction": {
+      "L1Handler": {
+        "calldata": [
+          "0x142273bcbfca76512b2a05aed21f134c4495208",
+          "0xd9aa5ef3a8b31910ad5f26fcd782ce18bcfcfc45",
+          "0x2",
+          "0x453b0310bcdfa50d3c2e7f757e284ac6cd4171933a4e67d1bdcfdbc7f3cbc93"
+        ],
+        "contract_address": "0xda8054260ec00606197a4103eb2ef08d6c8af0b6a808b610152d1ce498f8c3",
+        "entry_point_selector": "0xe3f5e9e1456ffa52a3fbc7e8c296631d4cc2120c0be1e2829301c0d8fa026b",
+        "nonce": "0x6",
+        "version": "0x0"
+      }
+    },
+    "transaction_hash": "0x76e77f01890b45e0b0e90e50e5e30cf6e401e7110ffb67ca9a55716d9bc1c0e"
   }
 ]

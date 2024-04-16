@@ -6,7 +6,7 @@ repository.workspace = true
 license-file.workspace = true
 
 [package.metadata.cargo-udeps.ignore]
-normal = ["papyrus_base_layer"]
+normal = ["papyrus_base_layer", "clap", "reqwest", "tokio"]
 
 [features]
 default = ["rpc"]
@@ -41,6 +41,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client" }
+strum.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
