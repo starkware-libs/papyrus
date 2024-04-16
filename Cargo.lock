@@ -5835,9 +5835,11 @@ dependencies = [
  "assert_matches",
  "bitvec",
  "cairo-lang-starknet-classes",
+ "clap",
  "hex",
  "lazy_static",
  "pretty_assertions",
+ "reqwest",
  "serde",
  "serde_json",
  "sha3",
@@ -5845,6 +5847,7 @@ dependencies = [
  "starknet_api",
  "test_utils",
  "thiserror",
+ "tokio",
 ]
 
 [[package]]

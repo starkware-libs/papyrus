@@ -116,7 +116,7 @@ pub fn get_transaction_hash(
 
 // On mainnet, from this block number onwards, there are no deprecated transactions,
 // enabling us to validate against a single hash calculation.
-const MAINNET_TRANSACTION_HASH_WITH_VERSION: BlockNumber = BlockNumber(1470);
+pub const MAINNET_TRANSACTION_HASH_WITH_VERSION: BlockNumber = BlockNumber(1470);
 
 // Calculates a list of deprecated hashes for a transaction.
 fn get_deprecated_transaction_hashes(
