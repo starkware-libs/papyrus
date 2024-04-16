@@ -10,10 +10,10 @@ description = "A storage implementation for a Starknet node."
 testing = ["tempfile"]
 document_calls = ["lazy_static", "papyrus_common"]
 
-[[bin]]
-name = "dump_declared_classes"
-required-features = ["clap"]
-path = "src/bin/dump_declared_classes.rs"
+# [[bin]]
+# name = "dump_declared_classes"
+# required-features = ["clap"]
+# path = "src/bin/dump_declared_classes.rs"
 
 [[bin]]
 name = "storage_benchmark"
@@ -47,9 +47,12 @@ tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+tokio.workspace = true
+reqwest.workspace = true
+futures.workspace = true
 
 # Binaries dependencies
-clap = { workspace = true, optional = true }
+clap = { workspace = true }
 statistical = { workspace = true, optional = true }
 
 

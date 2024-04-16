@@ -1,25 +1,149 @@
-use clap::{Arg, Command};
-use papyrus_storage::utils::dump_declared_classes_table_by_block_range;
+use std::cmp::min;
+use std::fs::File;
+use std::io::{BufRead, BufReader, Write};
+use std::time::Duration;
 
-/// This executable dumps the declared_classes table from the storage to a file.
-fn main() {
+use clap::{Arg, Command};
+use futures::future::join_all;
+use reqwest::{Client, RequestBuilder};
+use serde::{Deserialize, Serialize};
+use serde_json::{from_value, json, Value};
+use starknet_api::core::{ClassHash, CompiledClassHash};
+use starknet_api::hash::StarkFelt;
+use starknet_api::state::ContractClass;
+
+const BATCH_SIZE: u64 = 100;
+const TIMEOUT: Duration = Duration::from_secs(10);
+const RETRIES: usize = 10;
+
+#[tokio::main]
+async fn main() {
     let cli_params = get_cli_params();
-    match dump_declared_classes_table_by_block_range(
-        cli_params.start_block,
-        cli_params.end_block,
-        &cli_params.file_path,
-        &cli_params.chain_id,
-    ) {
-        Ok(_) => println!("Dumped declared_classes table to file: {} .", cli_params.file_path),
-        Err(e) => println!("Failed dumping declared_classes table with error: {}", e),
+    let url = &cli_params.url;
+    let request_builder = Client::new().post(url).timeout(TIMEOUT);
+    let mut class_hashes = Vec::new();
+
+    let mut first_in_batch = cli_params.start_block;
+    while first_in_batch < cli_params.end_block {
+        let last_block_in_batch = min(first_in_batch + BATCH_SIZE, cli_params.end_block);
+        println!("Starting batch from block {} to {}", first_in_batch, last_block_in_batch);
+        let mut futures = Vec::new();
+        for block_number in first_in_batch..last_block_in_batch {
+            futures.push(send_request_with_retries(
+                get_state_update_by_number(block_number),
+                &request_builder,
+            ));
+        }
+
+        let state_diffs = join_all(futures).await;
+
+        // Extract the class hashes from the responses.
+        for sd in state_diffs {
+            let declared_classes =
+                sd["result"]["state_diff"]["declared_classes"].as_array().unwrap();
+            for dc in declared_classes {
+                let class_hash =
+                    ClassHash(StarkFelt::try_from(dc["class_hash"].as_str().unwrap()).unwrap());
+                let compiled_class_hash = CompiledClassHash(
+                    StarkFelt::try_from(dc["compiled_class_hash"].as_str().unwrap()).unwrap(),
+                );
+                class_hashes.push((class_hash, compiled_class_hash));
+            }
+        }
+        first_in_batch += BATCH_SIZE;
     }
+
+    // Write the classes to the file.
+    let mut file = File::create(&cli_params.file_path).unwrap();
+    for current in class_hashes {
+        println!("Getting class with hash: {}", current.0);
+        let response = send_request_with_retries(
+            get_class_by_number(current.0, cli_params.end_block),
+            &request_builder,
+        )
+        .await["result"]
+            .take();
+        let contract = from_value::<ContractClass>(response).unwrap();
+
+        let class = ClassEntry { class_hash: current.0, compiled_class_hash: current.1, contract };
+
+        serde_json::to_writer(&mut file, &class).unwrap();
+        file.write_all(b"\n").unwrap();
+    }
+
+    file.flush().unwrap();
+}
+
+#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
+struct ClassEntry {
+    class_hash: ClassHash,
+    compiled_class_hash: CompiledClassHash,
+    contract: ContractClass,
+}
+
+#[allow(dead_code)]
+fn read_classes_from_file(file_path: &str) -> Vec<ClassEntry> {
+    let file = File::open(file_path).unwrap();
+    let reader = BufReader::new(file);
+    let mut classes = Vec::new();
+    for line in reader.lines() {
+        let line = line.expect("Failed to read line");
+        let class: ClassEntry = serde_json::from_str(&line).expect("Failed to deserialize object");
+        classes.push(class);
+    }
+    classes
+}
+
+pub fn jsonrpc_request(method: &str, params: Value) -> Value {
+    json!({
+        "jsonrpc": "2.0",
+        "id": "0",
+        "method": method,
+        "params": params,
+    })
+}
+
+pub fn get_state_update_by_number(block_number: u64) -> Value {
+    jsonrpc_request("starknet_getStateUpdate", json!([{ "block_number": block_number }]))
+}
+
+pub fn get_class_by_number(class_hash: ClassHash, block_number: u64) -> Value {
+    jsonrpc_request("starknet_getClass", json!([{ "block_number": block_number }, class_hash.0]))
+}
+
+pub async fn send_request_with_retries(request: Value, request_builder: &RequestBuilder) -> Value {
+    for iteration in 0..RETRIES {
+        // let res=request_builder.try_clone().unwrap().json(&request).send().await;
+        let Ok(res) = request_builder.try_clone().unwrap().json(&request).send().await else {
+            println!("Failed to send request in iteration {iteration}. Retrying...");
+            continue;
+        };
+
+        if !res.status().is_success() {
+            println!(
+                "Failed to get successful response in iteration {iteration}, error code: {}. Retrying...", res.status()
+            );
+            continue;
+        }
+
+        let Ok(res) = res.json().await else {
+            println!("Failed to get response value in iteration {iteration}. Retrying...");
+            continue;
+        };
+
+        return res;
+    }
+    panic!(
+        "Failed to get response after {} retries for the following request:\n{}",
+        RETRIES, request
+    );
 }
 
 struct CliParams {
     start_block: u64,
     end_block: u64,
     file_path: String,
-    chain_id: String,
+    url: String,
 }
 
 /// The start_block and end_block arguments are mandatory and define the block range to dump,
@@ -48,13 +172,7 @@ fn get_cli_params() -> CliParams {
                 .required(true)
                 .help("The block number to end dumping at."),
         )
-        .arg(
-            Arg::new("chain_id")
-                .short('c')
-                .long("chain_id")
-                .required(true)
-                .help("The chain id SN_MAIN/SN_GOERLI, default value is SN_MAIN."),
-        )
+        .arg(Arg::new("url").short('u').long("url").required(true).help("A URL to RPC server."))
         .get_matches();
 
     let file_path =
@@ -72,7 +190,6 @@ fn get_cli_params() -> CliParams {
     if start_block >= end_block {
         panic!("start_block must be smaller than end_block");
     }
-    let chain_id =
-        matches.get_one::<String>("chain_id").expect("Failed parsing chain_id").to_string();
-    CliParams { start_block, end_block, file_path, chain_id }
+    let url = matches.get_one::<String>("url").expect("Failed parsing url").to_string();
+    CliParams { start_block, end_block, file_path, url }
 }
