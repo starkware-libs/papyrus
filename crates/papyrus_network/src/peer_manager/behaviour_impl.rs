@@ -1,7 +1,10 @@
 use std::task::Poll;
+use std::vec;
 
-use libp2p::swarm::{dummy, DialFailure, NetworkBehaviour, ToSwarm};
-use libp2p::Multiaddr;
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::dial_opts::DialOpts;
+use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour, ToSwarm};
+use libp2p::{Multiaddr, PeerId};
 use tracing::error;
 
 use super::peer::PeerTrait;
@@ -12,6 +15,7 @@ use crate::streamed_bytes;
 #[cfg_attr(test, derive(PartialEq))]
 pub enum Event {
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
+    Dial(PeerId, Multiaddr),
 }
 
 impl<P: 'static> NetworkBehaviour for PeerManager<P>
@@ -86,6 +90,35 @@ where
                 if res.is_err() {
                     error!("Dial failure of an unknow peer. peer id: {}", peer_id)
                 }
+                // re-assign a peer to the query otherwise no QueryAssigned event
+                // will be emitted.
+                // TODO: test this case
+                if let Some((query_id, _)) =
+                    self.query_to_peer_map.iter().find(|(_, p_id)| *p_id == &peer_id)
+                {
+                    self.assign_peer_to_query(*query_id);
+                }
+            }
+            libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {
+                peer_id,
+                connection_id,
+                ..
+            }) => {
+                if let Some(event) = self.peer_pending_dial_with_event.remove(&peer_id) {
+                    self.pending_events.push(event);
+                    self.peers
+                        .get_mut(&peer_id)
+                        .expect(
+                            "in case we are waiting for a connection established event we assum \
+                             the peer is known to the peer manager",
+                        )
+                        .set_connection_id(Some(connection_id));
+                };
+            }
+            libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed { peer_id, .. }) => {
+                if let Some(peer) = self.peers.get_mut(&peer_id) {
+                    peer.set_connection_id(None);
+                }
             }
             _ => {}
         }
@@ -98,7 +131,15 @@ where
     {
         self.pending_events
             .pop()
-            .map(|event| Poll::Ready(ToSwarm::GenerateEvent(event)))
+            .map(|event| {
+                if let Event::Dial(peer_id, addr) = event {
+                    Poll::Ready(ToSwarm::Dial {
+                        opts: DialOpts::peer_id(peer_id).addresses(vec![addr]).build(),
+                    })
+                } else {
+                    Poll::Ready(ToSwarm::GenerateEvent(event))
+                }
+            })
             .unwrap_or(Poll::Pending)
     }
 }

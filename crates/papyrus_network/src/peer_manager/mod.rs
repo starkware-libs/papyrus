@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use chrono::Duration;
-use libp2p::{Multiaddr, PeerId};
+use libp2p::PeerId;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
@@ -28,6 +28,7 @@ pub struct PeerManager<P> {
     config: PeerManagerConfig,
     last_peer_index: usize,
     pending_events: Vec<Event>,
+    peer_pending_dial_with_event: HashMap<PeerId, Event>,
 }
 
 #[derive(Clone)]
@@ -65,6 +66,7 @@ where
             config,
             last_peer_index: 0,
             pending_events: Vec::new(),
+            peer_pending_dial_with_event: HashMap::new(),
         }
     }
 
@@ -78,7 +80,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<(PeerId, Multiaddr)> {
+    pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
@@ -97,14 +99,19 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same query
             self.query_to_peer_map.insert(query_id, *peer_id);
-            self.pending_events.push(Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(
-                    query_id,
-                    *peer_id,
-                    peer.multiaddr(),
-                ),
-            ));
-            (*peer_id, peer.multiaddr())
+            let event = Event::NotifyStreamedBytes(
+                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, *peer_id),
+            );
+            if peer.connection_id().is_none() {
+                // in case we have a race condition where the connection is closed after we added to
+                // the pending list the reciever will get an error and will need to ask for
+                // re-assignment
+                self.peer_pending_dial_with_event.insert(*peer_id, event);
+                self.pending_events.push(Event::Dial(*peer_id, peer.multiaddr()))
+            } else {
+                self.pending_events.push(event);
+            }
+            *peer_id
         })
     }
 
@@ -151,6 +158,7 @@ impl From<Event> for mixed_behaviour::Event {
             Event::NotifyStreamedBytes(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyStreamedBytes(event))
             }
+            Event::Dial(_, _) => Self::InternalEvent(mixed_behaviour::InternalEvent::NoOp),
         }
     }
 }
