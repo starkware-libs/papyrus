@@ -65,7 +65,37 @@ pub trait SerializeConfig {
     /// adds the target pointer params with the description and a value, and replaces the value of
     /// the pointing params to contain only the name of the target they point to.
     ///
-    /// Note, in the case of a None sub configs, its elements will not included in the file.
+    /// # Example
+    ///
+    /// ```
+    /// # use std::collections::BTreeMap;
+    ///
+    /// # use papyrus_config::dumping::{ser_param, SerializeConfig};
+    /// # use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+    /// # use serde::{Deserialize, Serialize};
+    /// # use tempfile::TempDir;
+    ///
+    /// #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
+    /// struct ConfigExample {
+    ///     key: usize,
+    /// }
+    ///
+    /// impl SerializeConfig for ConfigExample {
+    ///     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+    ///         BTreeMap::from([ser_param(
+    ///             "key",
+    ///             &self.key,
+    ///             "This is key description.",
+    ///             ParamPrivacyInput::Public,
+    ///         )])
+    ///     }
+    /// }
+    ///
+    /// let dir = TempDir::new().unwrap();
+    /// let file_path = dir.path().join("config.json");
+    /// ConfigExample { key: 42 }.dump_to_file(&vec![], file_path.to_str().unwrap());
+    /// ```
+    /// Note, in the case of a None sub configs, its elements will not be included in the file.
     fn dump_to_file(
         &self,
         config_pointers: &Vec<((ParamPath, SerializedParam), Vec<ParamPath>)>,
@@ -205,6 +235,21 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
 }
 
 /// Serializes a pointer target param of a config.
+///
+/// # Example
+/// Create config_pointers vector to be used in `dump_to_file`:
+/// ```
+/// # use papyrus_config::dumping::ser_pointer_target_param;
+///
+/// let pointer_target_param = ser_pointer_target_param(
+///     "shared_param",
+///     &("param".to_string()),
+///     "A string parameter description.",
+/// );
+/// let pointer_param_paths =
+///     vec!["conf1.conf2.same_param".to_owned(), "conf3.same_param".to_owned()];
+/// let config_pointers = vec![(pointer_target_param, pointer_param_paths)];
+/// ```
 pub fn ser_pointer_target_param<T: Serialize>(
     name: &str,
     value: &T,

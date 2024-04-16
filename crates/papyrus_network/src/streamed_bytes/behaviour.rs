@@ -31,6 +31,8 @@ use super::handler::{
     SessionError as HandlerSessionError,
 };
 use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
+use crate::db_executor::QueryId;
+use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -90,6 +92,12 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
 }
 
 pub type Event = GenericEvent<SessionError>;
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
+pub enum FromOtherBehaviour {
+    QueryAssigned(QueryId, PeerId, Multiaddr),
+}
 
 #[derive(thiserror::Error, Debug)]
 #[error("The given session ID doesn't exist.")]
@@ -324,5 +332,17 @@ impl NetworkBehaviour for Behaviour {
         }
         self.wakers_waiting_for_event.push(cx.waker().clone());
         Poll::Pending
+    }
+}
+
+impl BridgedBehaviour for Behaviour {
+    // TODO: do something with the event. For now, we just ignore it.
+    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        let mixed_behaviour::InternalEvent::NotifyStreamedBytes(event) = event else {
+            return;
+        };
+        match event {
+            FromOtherBehaviour::QueryAssigned(..) => {}
+        }
     }
 }

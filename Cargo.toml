@@ -5,6 +5,7 @@ resolver = "2"
 
 members = [
     "crates/papyrus_base_layer",
+    "crates/papyrus_common",
     "crates/papyrus_execution",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
@@ -20,7 +21,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.4.0-dev.1"
+version = "0.4.0-dev.2"
 edition = "2021"
 repository = "https://github.com/starkware-libs/papyrus/"
 license = "Apache-2.0"
@@ -125,3 +126,4 @@ tower = "0.4"
 unsigned-varint = "0.8.0"
 url = "2.2.2"
 validator = "0.12"
+void = "1.0.2"

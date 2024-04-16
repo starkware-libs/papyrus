@@ -6,10 +6,10 @@ use jsonrpsee::rpc_params;
 use papyrus_common::transaction_hash::get_transaction_hash;
 use papyrus_common::TransactionOptions;
 use papyrus_rpc::{
-    AddInvokeOkResultRPC0_4,
-    InvokeTransactionRPC0_4,
-    InvokeTransactionV1RPC0_4,
-    TransactionVersion1RPC0_4,
+    AddInvokeOkResultRPC0_6,
+    InvokeTransactionRPC0_6,
+    InvokeTransactionV1RPC0_6,
+    TransactionVersion1RPC0_6,
 };
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -59,7 +59,7 @@ async fn test_gw_integration_testnet() {
     let node_url = env::var("INTEGRATION_TESTNET_NODE_URL")
         .expect("Node url must be given in INTEGRATION_TESTNET_NODE_URL environment variable.");
     let client =
-        HttpClientBuilder::default().build(format!("https://{}:443/rpc/v0_4", node_url)).unwrap();
+        HttpClientBuilder::default().build(format!("https://{}:443/rpc/v0_6", node_url)).unwrap();
     let sender_address = contract_address!(USER_A_ADDRESS);
     // Sender balance sufficient balance should be maintained outside of this test.
     let sender_balance = get_eth_balance(&client, sender_address).await;
@@ -77,12 +77,12 @@ async fn test_gw_integration_testnet() {
     let receiver_address = contract_address!(USER_B_ADDRESS);
 
     // Create an invoke transaction for Eth transfer with a signature placeholder.
-    let mut invoke_tx = InvokeTransactionV1RPC0_4 {
+    let mut invoke_tx = InvokeTransactionV1RPC0_6 {
         max_fee: Fee(MAX_FEE),
         signature: TransactionSignature::default(),
         nonce,
         sender_address,
-        version: TransactionVersion1RPC0_4::default(),
+        version: TransactionVersion1RPC0_6::default(),
         calldata: calldata![
             stark_felt!(1_u8), // OpenZeppelin call array len (number of calls in this tx).
             // Call Array (4 elements per array struct element).
@@ -102,7 +102,7 @@ async fn test_gw_integration_testnet() {
 
     // Update the signature.
     let hash = get_transaction_hash(
-        &Transaction::Invoke(InvokeTransactionRPC0_4::Version1(invoke_tx.clone()).into()),
+        &Transaction::Invoke(InvokeTransactionRPC0_6::Version1(invoke_tx.clone()).into()),
         &ChainId("SN_GOERLI".to_string()),
         &TransactionOptions::default(),
     )
@@ -118,7 +118,7 @@ async fn test_gw_integration_testnet() {
     invoke_tx.signature = TransactionSignature(vec![signature.r.into(), signature.s.into()]);
 
     let invoke_res = client
-        .request::<AddInvokeOkResultRPC0_4, _>(
+        .request::<AddInvokeOkResultRPC0_6, _>(
             "starknet_addInvokeTransaction",
             rpc_params!(SNClientInvokeTransaction::from(invoke_tx)),
         )
