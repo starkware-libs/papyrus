@@ -1,6 +1,7 @@
 use std::task::Poll;
 
-use libp2p::swarm::{dummy, DialFailure, NetworkBehaviour, ToSwarm};
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour};
 use libp2p::Multiaddr;
 use tracing::error;
 
@@ -86,6 +87,60 @@ where
                 if res.is_err() {
                     error!("Dial failure of an unknow peer. peer id: {}", peer_id)
                 }
+                // Re-assign a peer to the query so that a QueryAssgined Event will be emitted.
+                // TODO: test this case
+                let queries_to_assign = self
+                    .query_to_peer_map
+                    .iter()
+                    .filter_map(
+                        |(query_id, p_id)| {
+                            if *p_id == peer_id { Some(*query_id) } else { None }
+                        },
+                    )
+                    .collect::<Vec<_>>();
+                for query_id in queries_to_assign {
+                    self.assign_peer_to_query(query_id);
+                }
+            }
+            libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {
+                peer_id,
+                connection_id,
+                ..
+            }) => {
+                if let Some(events) = self.peer_pending_dial_with_events.remove(&peer_id) {
+                    self.pending_events.extend(events);
+                    self.peers
+                        .get_mut(&peer_id)
+                        .expect(
+                            "in case we are waiting for a connection established event we assum \
+                             the peer is known to the peer manager",
+                        )
+                        .set_connection_id(Some(connection_id));
+                };
+            }
+            libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed {
+                peer_id,
+                connection_id,
+                ..
+            }) => {
+                if let Some(peer) = self.peers.get_mut(&peer_id) {
+                    if let Some(known_connection_id) = peer.connection_id() {
+                        if known_connection_id == connection_id {
+                            peer.set_connection_id(None);
+                        } else {
+                            error!(
+                                "Connection closed event for a peer with a different connection \
+                                 id. known connection id: {}, emitted connection id: {}",
+                                known_connection_id, connection_id
+                            );
+                            return;
+                        }
+                    } else {
+                        error!("Connection closed event for a peer without a connection id");
+                        return;
+                    }
+                    peer.set_connection_id(None);
+                }
             }
             _ => {}
         }
@@ -96,9 +151,6 @@ where
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<libp2p::swarm::ToSwarm<Self::ToSwarm, libp2p::swarm::THandlerInEvent<Self>>>
     {
-        self.pending_events
-            .pop()
-            .map(|event| Poll::Ready(ToSwarm::GenerateEvent(event)))
-            .unwrap_or(Poll::Pending)
+        self.pending_events.pop().map(Poll::Ready).unwrap_or(Poll::Pending)
     }
 }
