@@ -1,7 +1,8 @@
 use std::task::Poll;
 
-use libp2p::swarm::{dummy, NetworkBehaviour, ToSwarm};
+use libp2p::swarm::{dummy, DialFailure, NetworkBehaviour, ToSwarm};
 use libp2p::Multiaddr;
+use tracing::error;
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
@@ -72,8 +73,22 @@ where
         // no events from dummy handler
     }
 
-    fn on_swarm_event(&mut self, _event: libp2p::swarm::FromSwarm<'_>) {
-        unimplemented!()
+    fn on_swarm_event(&mut self, event: libp2p::swarm::FromSwarm<'_>) {
+        // TODO: consider if we should handle other events
+        #[allow(clippy::single_match)]
+        match event {
+            libp2p::swarm::FromSwarm::DialFailure(DialFailure {
+                peer_id: Some(peer_id),
+                error: _,
+                connection_id: _,
+            }) => {
+                let res = self.report_peer(peer_id, super::ReputationModifier::Bad);
+                if res.is_err() {
+                    error!("Dial failure of an unknow peer. peer id: {}", peer_id)
+                }
+            }
+            _ => {}
+        }
     }
 
     fn poll(
