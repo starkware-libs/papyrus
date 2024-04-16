@@ -105,6 +105,7 @@ where
             libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {
                 peer_id,
                 connection_id,
+                endpoint,
                 ..
             }) => {
                 if let Some(events) = self.peer_pending_dial_with_events.remove(&peer_id) {
@@ -116,7 +117,9 @@ where
                              the peer is known to the peer manager",
                         )
                         .set_connection_id(Some(connection_id));
-                };
+                } else if self.peers.get(&peer_id).is_none() {
+                    self.add_peer(P::new(peer_id, endpoint.get_remote_address().clone()))
+                }
             }
             libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed {
                 peer_id,
