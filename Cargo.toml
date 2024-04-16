@@ -5,6 +5,7 @@ resolver = "2"
 
 members = [
     "crates/papyrus_base_layer",
+    "crates/papyrus_common",
     "crates/papyrus_execution",
     "crates/papyrus_load_test",
     "crates/papyrus_monitoring_gateway",
