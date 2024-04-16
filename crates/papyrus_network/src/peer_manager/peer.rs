@@ -11,6 +11,8 @@ use super::ReputationModifier;
 
 #[cfg_attr(test, automock)]
 pub trait PeerTrait {
+    fn new(peer_id: PeerId, multiaddr: Multiaddr) -> Self;
+
     fn update_reputation(&mut self, reason: ReputationModifier);
 
     fn peer_id(&self) -> PeerId;
@@ -36,9 +38,8 @@ pub struct Peer {
     connection_id: Option<ConnectionId>,
 }
 
-#[allow(dead_code)]
-impl Peer {
-    pub fn new(peer_id: PeerId, multiaddr: Multiaddr) -> Self {
+impl PeerTrait for Peer {
+    fn new(peer_id: PeerId, multiaddr: Multiaddr) -> Self {
         Self {
             peer_id,
             multiaddr,
@@ -47,9 +48,7 @@ impl Peer {
             connection_id: None,
         }
     }
-}
 
-impl PeerTrait for Peer {
     fn update_reputation(&mut self, _reason: ReputationModifier) {
         if let Some(timeout_duration) = self.timeout_duration {
             self.timed_out_until =
