@@ -7,11 +7,16 @@ use std::task::{Context, Poll, Waker};
 
 use kad_impl::KadFromOtherBehaviourEvent;
 use libp2p::core::Endpoint;
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
 use libp2p::swarm::{
     dummy,
+    AddressChange,
+    ConnectionClosed,
     ConnectionDenied,
     ConnectionHandler,
     ConnectionId,
+    DialFailure,
     FromSwarm,
     NetworkBehaviour,
     ToSwarm,
@@ -25,6 +30,10 @@ pub struct Behaviour {
     is_paused: bool,
     // TODO(shahak): Consider running several queries in parallel
     is_query_running: bool,
+    bootstrap_peer_address: Multiaddr,
+    bootstrap_peer_id: PeerId,
+    is_dialing_to_bootstrap_peer: bool,
+    is_connected_to_bootstrap_peer: bool,
     wakers: Vec<Waker>,
 }
 
@@ -36,6 +45,7 @@ pub enum FromOtherBehaviourEvent {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct RequestKadQuery(PeerId);
 
 impl NetworkBehaviour for Behaviour {
@@ -62,7 +72,35 @@ impl NetworkBehaviour for Behaviour {
         Ok(dummy::ConnectionHandler)
     }
 
-    fn on_swarm_event(&mut self, _event: FromSwarm<'_>) {}
+    fn on_swarm_event(&mut self, event: FromSwarm<'_>) {
+        match event {
+            FromSwarm::DialFailure(DialFailure { peer_id: Some(peer_id), .. })
+                if peer_id == self.bootstrap_peer_id =>
+            {
+                self.is_dialing_to_bootstrap_peer = false;
+            }
+            FromSwarm::ConnectionEstablished(ConnectionEstablished { peer_id, .. })
+                if peer_id == self.bootstrap_peer_id =>
+            {
+                self.is_connected_to_bootstrap_peer = true;
+                self.is_dialing_to_bootstrap_peer = false;
+            }
+            FromSwarm::ConnectionClosed(ConnectionClosed {
+                peer_id,
+                remaining_established,
+                ..
+            }) if peer_id == self.bootstrap_peer_id && remaining_established == 0 => {
+                self.is_connected_to_bootstrap_peer = false;
+                self.is_dialing_to_bootstrap_peer = false;
+            }
+            FromSwarm::AddressChange(AddressChange { peer_id, .. })
+                if peer_id == self.bootstrap_peer_id =>
+            {
+                todo!();
+            }
+            _ => {}
+        }
+    }
 
     fn on_connection_handler_event(
         &mut self,
@@ -77,6 +115,24 @@ impl NetworkBehaviour for Behaviour {
         cx: &mut Context<'_>,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
+        if !self.is_dialing_to_bootstrap_peer && !self.is_connected_to_bootstrap_peer {
+            self.is_dialing_to_bootstrap_peer = true;
+            return Poll::Ready(ToSwarm::Dial {
+                opts: DialOpts::peer_id(self.bootstrap_peer_id)
+                    .addresses(vec![self.bootstrap_peer_address.clone()])
+                    // The peer manager might also be dialing to the bootstrap node.
+                    .condition(PeerCondition::DisconnectedAndNotDialing)
+                    .build(),
+            });
+        }
+
+        // If we're not connected to any node, then each Kademlia query we make will automatically
+        // return without any peers. Running queries in that mode will add unnecessary overload to
+        // the swarm.
+        if !self.is_connected_to_bootstrap_peer {
+            return Poll::Pending;
+        }
+
         if !self.is_paused && !self.is_query_running {
             self.is_query_running = true;
             Poll::Ready(ToSwarm::GenerateEvent(RequestKadQuery(PeerId::random())))
@@ -89,8 +145,28 @@ impl NetworkBehaviour for Behaviour {
 
 impl Behaviour {
     #[allow(dead_code)]
-    pub fn new() -> Self {
-        Self { is_paused: false, is_query_running: false, wakers: Vec::new() }
+    // TODO(shahak): Add support to discovery from multiple bootstrap nodes.
+    // TODO(shahak): Add support to multiple addresses for bootstrap node.
+    pub fn new(bootstrap_peer_id: PeerId, bootstrap_peer_address: Multiaddr) -> Self {
+        Self {
+            is_paused: false,
+            is_query_running: false,
+            bootstrap_peer_id,
+            bootstrap_peer_address,
+            is_dialing_to_bootstrap_peer: false,
+            is_connected_to_bootstrap_peer: false,
+            wakers: Vec::new(),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn bootstrap_peer_id(&self) -> PeerId {
+        self.bootstrap_peer_id
+    }
+
+    #[cfg(test)]
+    pub fn bootstrap_peer_address(&self) -> &Multiaddr {
+        &self.bootstrap_peer_address
     }
 }
 
