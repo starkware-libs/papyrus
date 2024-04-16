@@ -9,14 +9,17 @@ description = "Common utils and objects for a Starknet node."
 [dependencies]
 bitvec.workspace = true
 cairo-lang-starknet-classes.workspace = true
+clap.workspace = true
 hex.workspace = true
 lazy_static.workspace = true
+reqwest = { workspace = true, features = ["json"]}
 serde.workspace = true
 serde_json.workspace = true
 sha3.workspace = true
 starknet_api.workspace = true
 starknet-crypto.workspace = true
 thiserror.workspace = true
+tokio = { workspace = true, features = ["full", "sync"] }
 
 [dev-dependencies]
 assert_matches.workspace = true
