@@ -40,6 +40,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use strum_macros::EnumIter;
 use tracing::error;
 
 use crate::reader::ReaderClientError;
@@ -842,7 +843,18 @@ impl From<L2ToL1Message> for starknet_api::transaction::MessageToL1 {
 }
 
 #[derive(
-    Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord, Default,
+    Debug,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Hash,
+    Deserialize,
+    Serialize,
+    PartialOrd,
+    Ord,
+    Default,
+    EnumIter,
 )]
 pub enum TransactionType {
     #[serde(rename(deserialize = "DECLARE", serialize = "DECLARE"))]
