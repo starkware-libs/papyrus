@@ -2,7 +2,9 @@ use core::time;
 
 use assert_matches::assert_matches;
 use chrono::Duration;
-use libp2p::swarm::NetworkBehaviour;
+use futures::future::poll_fn;
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::{ConnectionId, NetworkBehaviour, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
 use mockall::predicate::eq;
 use tokio::time::sleep;
@@ -36,41 +38,41 @@ fn peer_assignment_round_robin() {
 
     // Verify that the peers are assigned in a round-robin fashion
     let is_peer1_first: bool;
-    match res1.unwrap().0 {
+    match res1.unwrap() {
         peer_id if peer_id == peer1.peer_id() => {
             is_peer1_first = true;
-            assert_eq!(res2.unwrap().0, peer2.peer_id());
-            assert_eq!(res3.unwrap().0, peer1.peer_id());
+            assert_eq!(res2.unwrap(), peer2.peer_id());
+            assert_eq!(res3.unwrap(), peer1.peer_id());
         }
         peer_id if peer_id == peer2.peer_id() => {
             is_peer1_first = false;
-            assert_eq!(res2.unwrap().0, peer1.peer_id());
-            assert_eq!(res3.unwrap().0, peer2.peer_id());
+            assert_eq!(res2.unwrap(), peer1.peer_id());
+            assert_eq!(res3.unwrap(), peer2.peer_id());
         }
         peer_id => panic!("Unexpected peer_id: {:?}", peer_id),
     }
 
     // check assignment events
     for event in peer_manager.pending_events {
-        match event {
-            Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, peer_id, _),
-            ) => {
-                if is_peer1_first {
-                    match query_id {
-                        QueryId(1) => assert_eq!(peer_id, peer1.peer_id()),
-                        QueryId(2) => assert_eq!(peer_id, peer2.peer_id()),
-                        QueryId(3) => assert_eq!(peer_id, peer1.peer_id()),
-                        _ => panic!("Unexpected query_id: {:?}", query_id),
-                    }
-                } else {
-                    match query_id {
-                        QueryId(1) => assert_eq!(peer_id, peer2.peer_id()),
-                        QueryId(2) => assert_eq!(peer_id, peer1.peer_id()),
-                        QueryId(3) => assert_eq!(peer_id, peer2.peer_id()),
-                        _ => panic!("Unexpected query_id: {:?}", query_id),
-                    }
-                }
+        let ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+            streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, peer_id),
+        )) = event
+        else {
+            continue;
+        };
+        if is_peer1_first {
+            match query_id {
+                QueryId(1) => assert_eq!(peer_id, peer1.peer_id()),
+                QueryId(2) => assert_eq!(peer_id, peer2.peer_id()),
+                QueryId(3) => assert_eq!(peer_id, peer1.peer_id()),
+                _ => panic!("Unexpected query_id: {:?}", query_id),
+            }
+        } else {
+            match query_id {
+                QueryId(1) => assert_eq!(peer_id, peer2.peer_id()),
+                QueryId(2) => assert_eq!(peer_id, peer1.peer_id()),
+                QueryId(3) => assert_eq!(peer_id, peer2.peer_id()),
+                _ => panic!("Unexpected query_id: {:?}", query_id),
             }
         }
     }
@@ -95,7 +97,7 @@ fn report_peer_calls_update_reputation() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer
-    let (peer, peer_id) = create_mock_peer(config.blacklist_timeout, true);
+    let (peer, peer_id) = create_mock_peer(config.blacklist_timeout, true, None);
 
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);
@@ -136,8 +138,8 @@ fn report_query_calls_update_reputation() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer
-    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true);
-    peer.expect_multiaddr().times(2).return_const(Multiaddr::empty());
+    let (mut peer, peer_id) =
+        create_mock_peer(config.blacklist_timeout, true, Some(ConnectionId::new_unchecked(0)));
     peer.expect_is_blocked().times(1).return_const(false);
 
     // Add the mock peer to the peer manager
@@ -147,7 +149,7 @@ fn report_query_calls_update_reputation() {
     let query_id = QueryId(1);
 
     // Assign peer to the query
-    let (res_peer_id, _) = peer_manager.assign_peer_to_query(query_id).unwrap();
+    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
     assert_eq!(res_peer_id, peer_id);
 
     // Call the report_peer function on the peer manager
@@ -176,14 +178,14 @@ fn more_peers_needed() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Add a peer to the peer manager
-    let (peer1, _peer_id1) = create_mock_peer(config.blacklist_timeout, false);
+    let (peer1, _peer_id1) = create_mock_peer(config.blacklist_timeout, false, None);
     peer_manager.add_peer(peer1);
 
     // assert more peers are needed
     assert!(peer_manager.more_peers_needed());
 
     // Add another peer to the peer manager
-    let (peer2, _peer_id2) = create_mock_peer(config.blacklist_timeout, false);
+    let (peer2, _peer_id2) = create_mock_peer(config.blacklist_timeout, false, None);
     peer_manager.add_peer(peer2);
 
     // assert no more peers are needed
@@ -197,7 +199,7 @@ fn timed_out_peer_not_assignable_to_queries() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer
-    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true);
+    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true, None);
     peer.expect_is_blocked().times(1).return_const(true);
 
     // Add the mock peer to the peer manager
@@ -220,7 +222,8 @@ fn wrap_around_in_peer_assignment() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer
-    let (mut peer1, peer_id1) = create_mock_peer(config.blacklist_timeout, true);
+    let (mut peer1, peer_id1) =
+        create_mock_peer(config.blacklist_timeout, true, Some(ConnectionId::new_unchecked(0)));
     peer1.expect_is_blocked().times(..2).return_const(true);
 
     // Add the mock peer to the peer manager
@@ -230,9 +233,9 @@ fn wrap_around_in_peer_assignment() {
     peer_manager.report_peer(peer_id1, ReputationModifier::Bad {}).unwrap();
 
     // Create a mock peer
-    let (mut peer2, peer_id2) = create_mock_peer(config.blacklist_timeout, false);
+    let (mut peer2, peer_id2) =
+        create_mock_peer(config.blacklist_timeout, false, Some(ConnectionId::new_unchecked(0)));
     peer2.expect_is_blocked().times(2).return_const(false);
-    peer2.expect_multiaddr().times(4).return_const(Multiaddr::empty());
 
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer2);
@@ -242,13 +245,14 @@ fn wrap_around_in_peer_assignment() {
 
     // Assign peer to the query - since we don't know what is the order of the peers in the HashMap,
     // we need to assign twice to make sure we wrap around
-    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some((peer_id, _)) if peer_id == peer_id2);
-    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some((peer_id, _)) if peer_id == peer_id2);
+    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some(peer_id) if peer_id == peer_id2);
+    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some(peer_id) if peer_id == peer_id2);
 }
 
 fn create_mock_peer(
     blacklist_timeout_duration: Duration,
     call_update_reputaion: bool,
+    connection_id: Option<ConnectionId>,
 ) -> (MockPeerTrait, PeerId) {
     let peer_id = PeerId::random();
     let mut peer = MockPeerTrait::new();
@@ -267,6 +271,7 @@ fn create_mock_peer(
             .return_once(|_| ())
             .in_sequence(&mut mockall_seq);
     }
+    peer.expect_connection_id().return_const(connection_id);
 
     (peer, peer_id)
 }
@@ -278,11 +283,11 @@ fn block_and_allow_inbound_connection() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer - blocked
-    let (mut peer1, peer_id1) = create_mock_peer(config.blacklist_timeout, false);
+    let (mut peer1, peer_id1) = create_mock_peer(config.blacklist_timeout, false, None);
     peer1.expect_is_blocked().times(..2).return_const(true);
 
     // Create a mock peer - not blocked
-    let (mut peer2, peer_id2) = create_mock_peer(config.blacklist_timeout, false);
+    let (mut peer2, peer_id2) = create_mock_peer(config.blacklist_timeout, false, None);
     peer2.expect_is_blocked().times(..2).return_const(false);
 
     // Add the mock peers to the peer manager
@@ -308,4 +313,76 @@ fn block_and_allow_inbound_connection() {
     );
     // ConnectionHandler doesn't implement Debug so we have to assert the result like that.
     assert!(res.is_ok());
+}
+
+#[test]
+fn assign_non_connected_peer_raises_dial_event() {
+    // Create a new peer manager
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
+
+    // Create a mock peer
+    let (mut peer, _) = create_mock_peer(config.blacklist_timeout, false, None);
+    peer.expect_is_blocked().times(1).return_const(false);
+    peer.expect_multiaddr().return_const(Multiaddr::empty());
+
+    // Add the mock peer to the peer manager
+    peer_manager.add_peer(peer);
+
+    // Create a query
+    let query_id = QueryId(1);
+
+    // Assign peer to the query
+    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
+
+    // check events
+    for event in peer_manager.pending_events {
+        assert_matches!(event, ToSwarm::Dial {opts} if opts.get_peer_id() == Some(res_peer_id));
+    }
+}
+
+#[tokio::test]
+async fn flow_test_assign_non_connected_peer() {
+    // Create a new peer manager
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
+
+    // Create a mock peer
+    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, false, None);
+    peer.expect_is_blocked().times(1).return_const(false);
+    peer.expect_multiaddr().return_const(Multiaddr::empty());
+    peer.expect_set_connection_id().times(1).return_const(());
+
+    // Add the mock peer to the peer manager
+    peer_manager.add_peer(peer);
+
+    // Create a query
+    let query_id = QueryId(1);
+
+    // Assign peer to the query
+    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
+    assert_eq!(res_peer_id, peer_id);
+
+    // Expect dial event
+    assert_matches!(poll_fn(|cx| peer_manager.poll(cx)).await, ToSwarm::Dial{opts} if opts.get_peer_id() == Some(peer_id));
+
+    // Send ConnectionEstablished event from swarm
+    peer_manager.on_swarm_event(libp2p::swarm::FromSwarm::ConnectionEstablished(
+        ConnectionEstablished {
+            peer_id,
+            connection_id: ConnectionId::new_unchecked(0),
+            endpoint: &libp2p::core::ConnectedPoint::Dialer {
+                address: Multiaddr::empty(),
+                role_override: libp2p::core::Endpoint::Dialer,
+            },
+            failed_addresses: &[],
+            other_established: 0,
+        },
+    ));
+
+    // Expect NotifyStreamedBytes event
+    assert_matches!(
+        poll_fn(|cx| peer_manager.poll(cx)).await,
+        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(_))
+    );
 }

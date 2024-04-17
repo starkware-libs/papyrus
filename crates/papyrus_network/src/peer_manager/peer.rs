@@ -1,6 +1,7 @@
 // using chrono time and not std since std does not have the ability for std::time::Instance to
 // represent the maximum time of the system.
 use chrono::{DateTime, Duration, Utc};
+use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 #[cfg(test)]
 use mockall::automock;
@@ -19,6 +20,11 @@ pub trait PeerTrait {
     fn set_timeout_duration(&mut self, duration: Duration);
 
     fn is_blocked(&self) -> bool;
+
+    // TODO: add support for multiple connections for a peer
+    fn connection_id(&self) -> Option<ConnectionId>;
+
+    fn set_connection_id(&mut self, connection_id: Option<ConnectionId>);
 }
 
 #[derive(Clone)]
@@ -27,12 +33,19 @@ pub struct Peer {
     multiaddr: Multiaddr,
     timed_out_until: Option<DateTime<Utc>>,
     timeout_duration: Option<Duration>,
+    connection_id: Option<ConnectionId>,
 }
 
 #[allow(dead_code)]
 impl Peer {
     pub fn new(peer_id: PeerId, multiaddr: Multiaddr) -> Self {
-        Self { peer_id, multiaddr, timeout_duration: None, timed_out_until: None }
+        Self {
+            peer_id,
+            multiaddr,
+            timeout_duration: None,
+            timed_out_until: None,
+            connection_id: None,
+        }
     }
 }
 
@@ -64,5 +77,13 @@ impl PeerTrait for Peer {
         } else {
             false
         }
+    }
+
+    fn connection_id(&self) -> Option<ConnectionId> {
+        self.connection_id
+    }
+
+    fn set_connection_id(&mut self, connection_id: Option<ConnectionId>) {
+        self.connection_id = connection_id;
     }
 }

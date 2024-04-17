@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use chrono::Duration;
-use libp2p::{Multiaddr, PeerId};
+use libp2p::swarm::dial_opts::DialOpts;
+use libp2p::swarm::ToSwarm;
+use libp2p::PeerId;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
@@ -21,13 +23,15 @@ pub enum ReputationModifier {
     Bad,
 }
 
-pub struct PeerManager<P> {
+pub struct PeerManager<P: PeerTrait + 'static> {
     peers: HashMap<PeerId, P>,
     // TODO: consider implementing a cleanup mechanism to not store all queries forever
     query_to_peer_map: HashMap<QueryId, PeerId>,
     config: PeerManagerConfig,
     last_peer_index: usize,
-    pending_events: Vec<Event>,
+    pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
+    peer_pending_dial_with_events:
+        HashMap<PeerId, Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>>,
 }
 
 #[derive(Clone)]
@@ -65,6 +69,7 @@ where
             config,
             last_peer_index: 0,
             pending_events: Vec::new(),
+            peer_pending_dial_with_events: HashMap::new(),
         }
     }
 
@@ -78,7 +83,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<(PeerId, Multiaddr)> {
+    pub fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
@@ -97,14 +102,25 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same query
             self.query_to_peer_map.insert(query_id, *peer_id);
-            self.pending_events.push(Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(
-                    query_id,
-                    *peer_id,
-                    peer.multiaddr(),
-                ),
+            let event = ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, *peer_id),
             ));
-            (*peer_id, peer.multiaddr())
+            if peer.connection_id().is_none() {
+                // In case we have a race condition where the connection is closed after we added to
+                // the pending list, the reciever will get an error and will need to ask for
+                // re-assignment
+                if let Some(events) = self.peer_pending_dial_with_events.get_mut(peer_id) {
+                    events.push(event);
+                } else {
+                    self.peer_pending_dial_with_events.insert(*peer_id, vec![event]);
+                }
+                self.pending_events.push(ToSwarm::Dial {
+                    opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
+                });
+            } else {
+                self.pending_events.push(event);
+            }
+            *peer_id
         })
     }
 
