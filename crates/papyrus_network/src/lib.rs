@@ -34,6 +34,7 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 
+// TODO: add peer manager config to the network config
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct NetworkConfig {
     pub tcp_port: u16,

@@ -31,14 +31,10 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
+use crate::main_behaviour::mixed_behaviour;
 use crate::protobuf_messages::protobuf;
-use crate::streamed_bytes::behaviour::{
-    Event as StreamedBytesEvent,
-    ExternalEvent,
-    PeerNotConnected,
-    SessionIdNotFoundError,
-};
-use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
+use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
+use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
 use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
 
 #[derive(Default)]
@@ -110,8 +106,11 @@ impl MockSwarm {
                 )
                 .encode(&mut data_bytes)
                 .expect("failed to convert data to bytes");
-            self.pending_events.push(Event::Behaviour(StreamedBytesEvent::External(
-                ExternalEvent::ReceivedData { data: data_bytes, outbound_session_id },
+            self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
+                mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
+                    data: data_bytes,
+                    outbound_session_id,
+                }),
             )));
         }
     }
@@ -171,6 +170,10 @@ impl SwarmTrait for MockSwarm {
             sender.send(()).unwrap();
         }
         Ok(())
+    }
+
+    fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
+        unimplemented!()
     }
 }
 
@@ -312,13 +315,13 @@ async fn process_incoming_query() {
     }
     .encode(&mut query_bytes)
     .unwrap();
-    mock_swarm.pending_events.push(Event::Behaviour(StreamedBytesEvent::External(
-        ExternalEvent::NewInboundSession {
+    mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
+        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
             protocol_name: crate::Protocol::SignedBlockHeader.into(),
-        },
+        }),
     )));
 
     // Create a future that will return when Fin is sent with the data sent on the swarm.
@@ -417,13 +420,13 @@ async fn close_inbound_session() {
     let mut mock_swarm = MockSwarm::default();
     let inbound_session_id = InboundSessionId { value: 0 };
     let _fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
-    mock_swarm.pending_events.push(Event::Behaviour(StreamedBytesEvent::External(
-        ExternalEvent::NewInboundSession {
+    mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
+        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
             protocol_name: crate::Protocol::SignedBlockHeader.into(),
-        },
+        }),
     )));
 
     // Initiate swarm notifier to notify upon session closed

@@ -17,16 +17,19 @@ pub struct MixedBehaviour {
     pub streamed_bytes: streamed_bytes::Behaviour,
 }
 
+#[derive(Debug)]
 pub enum Event {
     ExternalEvent(ExternalEvent),
     #[allow(dead_code)]
     InternalEvent(InternalEvent),
 }
 
+#[derive(Debug)]
 pub enum ExternalEvent {
     StreamedBytes(streamed_bytes::behaviour::ExternalEvent),
 }
 
+#[derive(Debug)]
 pub enum InternalEvent {
     NoOp,
     NotifyKad(KadFromOtherBehaviourEvent),
