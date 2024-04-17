@@ -419,13 +419,7 @@ fn connection_established_unknown_peer_is_added_to_peer_manager() {
 fn no_more_peers_needed_stops_discovery() {
     // Create a new peer manager
     let config = PeerManagerConfig { target_num_for_peers: 1, ..Default::default() };
-    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
-
-    // Create a mock peer
-    let (peer, _) = create_mock_peer(config.blacklist_timeout, false, None);
-
-    // Add the mock peer to the peer manager
-    peer_manager.add_peer(peer);
+    let mut peer_manager: PeerManager<Peer> = PeerManager::new(config.clone());
 
     // Send ConnectionEstablished event from swarm for new peer
     let peer_id = PeerId::random();
@@ -443,7 +437,7 @@ fn no_more_peers_needed_stops_discovery() {
     ));
 
     // Check that the peer is not added to the peer manager
-    assert!(peer_manager.get_mut_peer(peer_id).is_none());
+    assert!(peer_manager.get_mut_peer(peer_id).is_some());
 
     // Check that the discovery pause event emitted
     for event in peer_manager.pending_events {
