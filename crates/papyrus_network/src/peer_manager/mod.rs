@@ -7,9 +7,9 @@ use libp2p::PeerId;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
-use crate::db_executor::QueryId;
 use crate::main_behaviour::mixed_behaviour;
 use crate::streamed_bytes;
+use crate::streamed_bytes::OutboundSessionId;
 
 pub(crate) mod behaviour_impl;
 pub(crate) mod peer;
@@ -26,7 +26,7 @@ pub enum ReputationModifier {
 pub struct PeerManager<P: PeerTrait + 'static> {
     peers: HashMap<PeerId, P>,
     // TODO: consider implementing a cleanup mechanism to not store all queries forever
-    query_to_peer_map: HashMap<QueryId, PeerId>,
+    session_to_peer_map: HashMap<OutboundSessionId, PeerId>,
     config: PeerManagerConfig,
     last_peer_index: usize,
     pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
@@ -44,8 +44,8 @@ pub struct PeerManagerConfig {
 pub(crate) enum PeerManagerError {
     #[error("No such peer: {0}")]
     NoSuchPeer(PeerId),
-    #[error("No such query: {0}")]
-    NoSuchQuery(QueryId),
+    #[error("No such session: {0}")]
+    NoSuchSession(OutboundSessionId),
     #[error("Peer is blocked: {0}")]
     PeerIsBlocked(PeerId),
 }
@@ -65,7 +65,7 @@ where
         let peers = HashMap::new();
         Self {
             peers,
-            query_to_peer_map: HashMap::new(),
+            session_to_peer_map: HashMap::new(),
             config,
             last_peer_index: 0,
             pending_events: Vec::new(),
@@ -83,7 +83,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    fn assign_peer_to_query(&mut self, query_id: QueryId) -> Option<PeerId> {
+    fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
@@ -100,10 +100,13 @@ where
             });
         self.last_peer_index = (self.last_peer_index + 1) % self.peers.len();
         peer.map(|(peer_id, peer)| {
-            // TODO: consider not allowing reassignment of the same query
-            self.query_to_peer_map.insert(query_id, *peer_id);
+            // TODO: consider not allowing reassignment of the same session
+            self.session_to_peer_map.insert(outbound_session_id, *peer_id);
             let event = ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, *peer_id),
+                streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned(
+                    outbound_session_id,
+                    *peer_id,
+                ),
             ));
             if peer.connection_id().is_none() {
                 // In case we have a race condition where the connection is closed after we added to
@@ -137,12 +140,12 @@ where
         }
     }
 
-    fn report_query(
+    fn report_session(
         &mut self,
-        query_id: QueryId,
+        outbound_session_id: OutboundSessionId,
         reason: ReputationModifier,
     ) -> Result<(), PeerManagerError> {
-        if let Some(peer_id) = self.query_to_peer_map.get(&query_id) {
+        if let Some(peer_id) = self.session_to_peer_map.get(&outbound_session_id) {
             if let Some(peer) = self.peers.get_mut(peer_id) {
                 peer.update_reputation(reason);
                 Ok(())
@@ -150,7 +153,7 @@ where
                 Err(PeerManagerError::NoSuchPeer(*peer_id))
             }
         } else {
-            Err(PeerManagerError::NoSuchQuery(query_id))
+            Err(PeerManagerError::NoSuchSession(outbound_session_id))
         }
     }
 
