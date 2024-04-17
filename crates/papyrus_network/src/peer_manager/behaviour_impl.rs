@@ -87,19 +87,17 @@ where
                 if res.is_err() {
                     error!("Dial failure of an unknow peer. peer id: {}", peer_id)
                 }
-                // Re-assign a peer to the query so that a QueryAssgined Event will be emitted.
+                // Re-assign a peer to the session so that a SessionAssgined Event will be emitted.
                 // TODO: test this case
-                let queries_to_assign = self
-                    .query_to_peer_map
-                    .iter()
-                    .filter_map(
-                        |(query_id, p_id)| {
-                            if *p_id == peer_id { Some(*query_id) } else { None }
-                        },
-                    )
-                    .collect::<Vec<_>>();
-                for query_id in queries_to_assign {
-                    self.assign_peer_to_query(query_id);
+                let queries_to_assign =
+                    self.session_to_peer_map
+                        .iter()
+                        .filter_map(|(outbound_session_id, p_id)| {
+                            if *p_id == peer_id { Some(*outbound_session_id) } else { None }
+                        })
+                        .collect::<Vec<_>>();
+                for outbound_session_id in queries_to_assign {
+                    self.assign_peer_to_session(outbound_session_id);
                 }
             }
             libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {

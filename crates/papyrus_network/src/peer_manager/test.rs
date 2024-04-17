@@ -10,9 +10,9 @@ use mockall::predicate::eq;
 use tokio::time::sleep;
 
 use super::behaviour_impl::Event;
-use crate::db_executor::QueryId;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
+use crate::streamed_bytes::OutboundSessionId;
 use crate::{discovery, streamed_bytes};
 
 #[test]
@@ -27,14 +27,14 @@ fn peer_assignment_round_robin() {
     peer_manager.add_peer(peer2.clone());
 
     // Create three queries
-    let query1 = QueryId(1);
-    let query2 = QueryId(2);
-    let query3 = QueryId(3);
+    let session1 = OutboundSessionId { value: 1 };
+    let session2 = OutboundSessionId { value: 2 };
+    let session3 = OutboundSessionId { value: 3 };
 
     // Assign peers to the queries in a round-robin fashion
-    let res1 = peer_manager.assign_peer_to_query(query1);
-    let res2 = peer_manager.assign_peer_to_query(query2);
-    let res3 = peer_manager.assign_peer_to_query(query3);
+    let res1 = peer_manager.assign_peer_to_session(session1);
+    let res2 = peer_manager.assign_peer_to_session(session2);
+    let res3 = peer_manager.assign_peer_to_session(session3);
 
     // Verify that the peers are assigned in a round-robin fashion
     let is_peer1_first: bool;
@@ -55,24 +55,27 @@ fn peer_assignment_round_robin() {
     // check assignment events
     for event in peer_manager.pending_events {
         let ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-            streamed_bytes::behaviour::FromOtherBehaviour::QueryAssigned(query_id, peer_id),
+            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned(
+                outbound_session_id,
+                peer_id,
+            ),
         )) = event
         else {
             continue;
         };
         if is_peer1_first {
-            match query_id {
-                QueryId(1) => assert_eq!(peer_id, peer1.peer_id()),
-                QueryId(2) => assert_eq!(peer_id, peer2.peer_id()),
-                QueryId(3) => assert_eq!(peer_id, peer1.peer_id()),
-                _ => panic!("Unexpected query_id: {:?}", query_id),
+            match outbound_session_id {
+                OutboundSessionId { value: 1 } => assert_eq!(peer_id, peer1.peer_id()),
+                OutboundSessionId { value: 2 } => assert_eq!(peer_id, peer2.peer_id()),
+                OutboundSessionId { value: 3 } => assert_eq!(peer_id, peer1.peer_id()),
+                _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
         } else {
-            match query_id {
-                QueryId(1) => assert_eq!(peer_id, peer2.peer_id()),
-                QueryId(2) => assert_eq!(peer_id, peer1.peer_id()),
-                QueryId(3) => assert_eq!(peer_id, peer2.peer_id()),
-                _ => panic!("Unexpected query_id: {:?}", query_id),
+            match outbound_session_id {
+                OutboundSessionId { value: 1 } => assert_eq!(peer_id, peer2.peer_id()),
+                OutboundSessionId { value: 2 } => assert_eq!(peer_id, peer1.peer_id()),
+                OutboundSessionId { value: 3 } => assert_eq!(peer_id, peer2.peer_id()),
+                _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
         }
     }
@@ -83,11 +86,11 @@ fn peer_assignment_no_peers() {
     // Create a new peer manager
     let mut peer_manager: PeerManager<Peer> = PeerManager::new(PeerManagerConfig::default());
 
-    // Create a query
-    let query = QueryId(1);
+    // Create a session
+    let session = OutboundSessionId { value: 1 };
 
-    // Assign a peer to the query
-    assert_matches!(peer_manager.assign_peer_to_query(query), None);
+    // Assign a peer to the session
+    assert_matches!(peer_manager.assign_peer_to_session(session), None);
 }
 
 #[test]
@@ -132,7 +135,7 @@ fn report_peer_on_unknown_peer_id() {
 }
 
 #[test]
-fn report_query_calls_update_reputation() {
+fn report_session_calls_update_reputation() {
     // Create a new peer manager
     let config = PeerManagerConfig::default();
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
@@ -145,30 +148,30 @@ fn report_query_calls_update_reputation() {
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
-    // Assign peer to the query
-    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
+    // Assign peer to the session
+    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
     assert_eq!(res_peer_id, peer_id);
 
     // Call the report_peer function on the peer manager
-    peer_manager.report_query(query_id, ReputationModifier::Bad {}).unwrap();
+    peer_manager.report_session(outbound_session_id, ReputationModifier::Bad {}).unwrap();
     peer_manager.get_mut_peer(peer_id).unwrap().checkpoint();
 }
 
 #[test]
-fn report_query_on_unknown_query_id() {
+fn report_session_on_unknown_session_id() {
     // Create a new peer manager
     let mut peer_manager: PeerManager<MockPeerTrait> =
         PeerManager::new(PeerManagerConfig::default());
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
     peer_manager
-        .report_query(query_id, ReputationModifier::Bad {})
-        .expect_err("report_query on unknown query_id should return an error");
+        .report_session(outbound_session_id, ReputationModifier::Bad {})
+        .expect_err("report_session on unknown outbound_session_id should return an error");
 }
 
 #[test]
@@ -208,11 +211,11 @@ fn timed_out_peer_not_assignable_to_queries() {
     // Report the peer as bad
     peer_manager.report_peer(peer_id, ReputationModifier::Bad {}).unwrap();
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
-    // Assign peer to the query
-    assert_matches!(peer_manager.assign_peer_to_query(query_id), None);
+    // Assign peer to the session
+    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
 }
 
 #[test]
@@ -240,13 +243,13 @@ fn wrap_around_in_peer_assignment() {
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer2);
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
-    // Assign peer to the query - since we don't know what is the order of the peers in the HashMap,
-    // we need to assign twice to make sure we wrap around
-    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some(peer_id) if peer_id == peer_id2);
-    assert_matches!(peer_manager.assign_peer_to_query(query_id), Some(peer_id) if peer_id == peer_id2);
+    // Assign peer to the session - since we don't know what is the order of the peers in the
+    // HashMap, we need to assign twice to make sure we wrap around
+    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), Some(peer_id) if peer_id == peer_id2);
+    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), Some(peer_id) if peer_id == peer_id2);
 }
 
 fn create_mock_peer(
@@ -329,11 +332,11 @@ fn assign_non_connected_peer_raises_dial_event() {
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
-    // Assign peer to the query
-    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
+    // Assign peer to the session
+    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
 
     // check events
     for event in peer_manager.pending_events {
@@ -356,11 +359,11 @@ async fn flow_test_assign_non_connected_peer() {
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);
 
-    // Create a query
-    let query_id = QueryId(1);
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
-    // Assign peer to the query
-    let res_peer_id = peer_manager.assign_peer_to_query(query_id).unwrap();
+    // Assign peer to the session
+    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
     assert_eq!(res_peer_id, peer_id);
 
     // Expect dial event

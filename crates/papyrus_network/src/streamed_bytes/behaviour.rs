@@ -31,7 +31,6 @@ use super::handler::{
     SessionError as HandlerSessionError,
 };
 use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use crate::db_executor::QueryId;
 use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
 
 #[derive(thiserror::Error, Debug)]
@@ -96,7 +95,7 @@ pub type Event = GenericEvent<SessionError>;
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum FromOtherBehaviour {
-    QueryAssigned(QueryId, PeerId),
+    SessionAssigned(OutboundSessionId, PeerId),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -340,7 +339,7 @@ impl BridgedBehaviour for Behaviour {
     fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
         if let mixed_behaviour::InternalEvent::NotifyStreamedBytes(internal_event) = event {
             match internal_event {
-                FromOtherBehaviour::QueryAssigned(..) => {}
+                FromOtherBehaviour::SessionAssigned(..) => {}
             }
         }
     }
