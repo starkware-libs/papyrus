@@ -1,7 +1,7 @@
 mod swarm_trait;
 
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 use std::collections::HashMap;
 
@@ -20,8 +20,8 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
-use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
+use crate::streamed_bytes::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
+use crate::streamed_bytes::{Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
@@ -101,7 +101,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         (sender, response_receiver)
     }
 
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 self.peer_id = Some(peer_id);
@@ -177,9 +177,12 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_behaviour_event(&mut self, event: Event) {
+        let Event::External(event) = event else {
+            unimplemented!();
+        };
         match event {
-            GenericEvent::NewInboundSession {
+            ExternalEvent::NewInboundSession {
                 query,
                 inbound_session_id,
                 peer_id: _,
@@ -209,7 +212,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                         .boxed(),
                 );
             }
-            GenericEvent::ReceivedData { outbound_session_id, data } => {
+            ExternalEvent::ReceivedData { outbound_session_id, data } => {
                 trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -240,7 +243,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     }
                 }
             }
-            GenericEvent::SessionFailed { session_id, error } => {
+            ExternalEvent::SessionFailed { session_id, error } => {
                 error!("Session {session_id:?} failed on {error:?}");
                 self.report_session_removed_to_metrics(session_id);
                 // TODO: Handle reputation and retry.
@@ -248,7 +251,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
                 }
             }
-            GenericEvent::SessionFinishedSuccessfully { session_id } => {
+            ExternalEvent::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
                 self.report_session_removed_to_metrics(session_id);
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {

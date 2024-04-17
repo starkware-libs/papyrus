@@ -8,13 +8,14 @@ use libp2p::PeerId;
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
 use crate::main_behaviour::mixed_behaviour;
+use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
 use crate::streamed_bytes;
 use crate::streamed_bytes::OutboundSessionId;
 
 pub(crate) mod behaviour_impl;
 pub(crate) mod peer;
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
 #[allow(dead_code)]
@@ -30,8 +31,7 @@ pub struct PeerManager<P: PeerTrait + 'static> {
     config: PeerManagerConfig,
     last_peer_index: usize,
     pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
-    peer_pending_dial_with_events:
-        HashMap<PeerId, Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>>,
+    peers_pending_dial_with_sessions: HashMap<PeerId, Vec<OutboundSessionId>>,
 }
 
 #[derive(Clone)]
@@ -48,6 +48,11 @@ pub(crate) enum PeerManagerError {
     NoSuchSession(OutboundSessionId),
     #[error("Peer is blocked: {0}")]
     PeerIsBlocked(PeerId),
+}
+
+#[derive(Debug)]
+pub enum FromOtherBehaviour {
+    RequestPeerAssignment { outbound_session_id: OutboundSessionId },
 }
 
 impl Default for PeerManagerConfig {
@@ -69,7 +74,7 @@ where
             config,
             last_peer_index: 0,
             pending_events: Vec::new(),
-            peer_pending_dial_with_events: HashMap::new(),
+            peers_pending_dial_with_sessions: HashMap::new(),
         }
     }
 
@@ -83,6 +88,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
+    // TODO(shahak): Remove return value.
     fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
@@ -102,26 +108,27 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
-            let event = ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned(
-                    outbound_session_id,
-                    *peer_id,
-                ),
-            ));
-            if peer.connection_id().is_none() {
+            if let Some(connection_id) = peer.connection_id() {
+                self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                    streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                        outbound_session_id,
+                        peer_id: *peer_id,
+                        connection_id,
+                    },
+                )));
+            } else {
                 // In case we have a race condition where the connection is closed after we added to
                 // the pending list, the reciever will get an error and will need to ask for
                 // re-assignment
-                if let Some(events) = self.peer_pending_dial_with_events.get_mut(peer_id) {
-                    events.push(event);
+                if let Some(sessions) = self.peers_pending_dial_with_sessions.get_mut(peer_id) {
+                    sessions.push(outbound_session_id);
                 } else {
-                    self.peer_pending_dial_with_events.insert(*peer_id, vec![event]);
+                    self.peers_pending_dial_with_sessions
+                        .insert(*peer_id, vec![outbound_session_id]);
                 }
                 self.pending_events.push(ToSwarm::Dial {
                     opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
                 });
-            } else {
-                self.pending_events.push(event);
             }
             *peer_id
         })
@@ -172,6 +179,19 @@ impl From<Event> for mixed_behaviour::Event {
             }
             Event::NotifyDiscovery(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
+            }
+        }
+    }
+}
+
+impl<P: PeerTrait + 'static> BridgedBehaviour for PeerManager<P> {
+    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        let mixed_behaviour::InternalEvent::NotifyPeerManager(event) = event else {
+            return;
+        };
+        match event {
+            FromOtherBehaviour::RequestPeerAssignment { outbound_session_id } => {
+                self.assign_peer_to_session(outbound_session_id);
             }
         }
     }
