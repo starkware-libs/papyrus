@@ -9,10 +9,9 @@ use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
-use libp2p::identity::PublicKey;
 use libp2p::kad::store::MemoryStore;
-use libp2p::swarm::{behaviour, DialError, SwarmEvent};
-use libp2p::{identify, kad, PeerId, Swarm};
+use libp2p::swarm::{DialError, SwarmEvent};
+use libp2p::{identify, kad, Multiaddr, PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
@@ -22,9 +21,9 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
-use crate::main_behaviour::mixed_behaviour;
+use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
 use crate::peer_manager::PeerManagerConfig;
-use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
+use crate::streamed_bytes::behaviour::SessionError;
 use crate::streamed_bytes::{
     self,
     Config,
@@ -197,7 +196,44 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_behaviour_event(&mut self, event: mixed_behaviour::Event) {
+        match event {
+            mixed_behaviour::Event::ExternalEvent(external_event) => {
+                self.handle_behaviour_external_event(external_event);
+            }
+            mixed_behaviour::Event::InternalEvent(internal_event) => {
+                self.handle_behaviour_internal_event(internal_event);
+            }
+        }
+    }
+
+    fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
+        match event {
+            mixed_behaviour::ExternalEvent::StreamedBytes(event) => {
+                self.handle_stream_bytes_behaviour_event(event);
+            }
+        }
+    }
+
+    fn handle_behaviour_internal_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        match event {
+            mixed_behaviour::InternalEvent::NoOp => {}
+            mixed_behaviour::InternalEvent::NotifyKad(_) => {
+                self.swarm.behaviour_mut().kademlia.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
+                self.swarm.behaviour_mut().discovery.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
+                self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyPeerManager(_) => {
+                self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(event)
+            }
+        }
+    }
+
+    fn handle_stream_bytes_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
         match event {
             GenericEvent::NewInboundSession {
                 query,
@@ -393,13 +429,17 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
+        // TODO: get config details from network manager config
+        // TODO: consider extraction this to a function of mixed_behaviour module
+        // TODO: change kadimilia protocol name
         let behaviour = |key| {
             let local_peer_id = PeerId::from_public_key(&key);
             mixed_behaviour::MixedBehaviour {
                 peer_manager: peer_manager::PeerManager::new(PeerManagerConfig::default()),
-                discovery: discovery::Behaviour::new(),
+                // TODO: add real bootstrap peer
+                discovery: discovery::Behaviour::new(PeerId::random(), Multiaddr::empty()),
                 identify: identify::Behaviour::new(identify::Config::new(
-                    format!("/staknet/identify/0.1.0-rc.0"),
+                    "/staknet/identify/0.1.0-rc.0".to_string(),
                     key,
                 )),
                 kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),

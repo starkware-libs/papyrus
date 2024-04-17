@@ -5,6 +5,7 @@ use crate::discovery;
 use crate::main_behaviour::mixed_behaviour;
 use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
 
+#[derive(Debug)]
 pub enum KadFromOtherBehaviourEvent {
     RequestKadQuery(PeerId),
     FoundListenAddresses { peer_id: PeerId, listen_addresses: Vec<Multiaddr> },
