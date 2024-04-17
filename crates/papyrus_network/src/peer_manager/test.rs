@@ -1,4 +1,4 @@
-use core::time;
+use core::{panic, time};
 
 use assert_matches::assert_matches;
 use chrono::Duration;
@@ -13,7 +13,7 @@ use super::behaviour_impl::Event;
 use crate::db_executor::QueryId;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
-use crate::streamed_bytes;
+use crate::{discovery, streamed_bytes};
 
 #[test]
 fn peer_assignment_round_robin() {
@@ -413,4 +413,46 @@ fn connection_established_unknown_peer_is_added_to_peer_manager() {
     let res_peer_id = peer_manager.get_mut_peer(peer_id).unwrap();
     assert!(res_peer_id.peer_id() == peer_id);
     assert!(res_peer_id.multiaddr() == address);
+}
+
+#[test]
+fn no_more_peers_needed_stops_discovery() {
+    // Create a new peer manager
+    let config = PeerManagerConfig { target_num_for_peers: 1, ..Default::default() };
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
+
+    // Create a mock peer
+    let (peer, _) = create_mock_peer(config.blacklist_timeout, false, None);
+
+    // Add the mock peer to the peer manager
+    peer_manager.add_peer(peer);
+
+    // Send ConnectionEstablished event from swarm for new peer
+    let peer_id = PeerId::random();
+    peer_manager.on_swarm_event(libp2p::swarm::FromSwarm::ConnectionEstablished(
+        ConnectionEstablished {
+            peer_id,
+            connection_id: ConnectionId::new_unchecked(0),
+            endpoint: &libp2p::core::ConnectedPoint::Dialer {
+                address: Multiaddr::empty(),
+                role_override: libp2p::core::Endpoint::Dialer,
+            },
+            failed_addresses: &[],
+            other_established: 0,
+        },
+    ));
+
+    // Check that the peer is not added to the peer manager
+    assert!(peer_manager.get_mut_peer(peer_id).is_none());
+
+    // Check that the discovery pause event emitted
+    for event in peer_manager.pending_events {
+        if let ToSwarm::GenerateEvent(Event::NotifyDiscovery(
+            discovery::FromOtherBehaviourEvent::PauseDiscovery,
+        )) = event
+        {
+            return;
+        }
+    }
+    panic!("Discovery pause event not emitted");
 }

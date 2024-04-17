@@ -28,10 +28,11 @@ pub struct Behaviour {
     wakers: Vec<Waker>,
 }
 
-#[allow(dead_code)]
+#[derive(Debug)]
 pub enum FromOtherBehaviourEvent {
     KadQueryFinished,
     PauseDiscovery,
+    #[allow(dead_code)]
     ResumeDiscovery,
 }
 
