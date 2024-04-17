@@ -89,9 +89,14 @@ impl NetworkBehaviour for Behaviour {
 }
 
 impl Behaviour {
-    #[allow(dead_code)]
     pub fn new() -> Self {
         Self { is_paused: false, is_query_running: false, wakers: Vec::new() }
+    }
+}
+
+impl Default for Behaviour {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
