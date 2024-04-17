@@ -255,7 +255,7 @@ fn create_mock_peer(
     connection_id: Option<ConnectionId>,
 ) -> (MockPeerTrait, PeerId) {
     let peer_id = PeerId::random();
-    let mut peer = MockPeerTrait::new();
+    let mut peer = MockPeerTrait::default();
     let mut mockall_seq = mockall::Sequence::new();
 
     peer.expect_peer_id().return_const(peer_id);
@@ -385,4 +385,32 @@ async fn flow_test_assign_non_connected_peer() {
         poll_fn(|cx| peer_manager.poll(cx)).await,
         ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(_))
     );
+}
+
+#[test]
+fn connection_established_unknown_peer_is_added_to_peer_manager() {
+    // Create a new peer manager
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<Peer> = PeerManager::new(config.clone());
+
+    // Send ConnectionEstablished event from swarm
+    let peer_id = PeerId::random();
+    let address = Multiaddr::empty().with_p2p(peer_id).unwrap();
+    peer_manager.on_swarm_event(libp2p::swarm::FromSwarm::ConnectionEstablished(
+        ConnectionEstablished {
+            peer_id,
+            connection_id: ConnectionId::new_unchecked(0),
+            endpoint: &libp2p::core::ConnectedPoint::Dialer {
+                address: address.clone(),
+                role_override: libp2p::core::Endpoint::Dialer,
+            },
+            failed_addresses: &[],
+            other_established: 0,
+        },
+    ));
+
+    // Check that the peer is added to the peer manager
+    let res_peer_id = peer_manager.get_mut_peer(peer_id).unwrap();
+    assert!(res_peer_id.peer_id() == peer_id);
+    assert!(res_peer_id.multiaddr() == address);
 }
