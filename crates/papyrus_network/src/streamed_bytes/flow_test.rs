@@ -8,7 +8,7 @@ use futures::StreamExt;
 use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
-use super::behaviour::{Behaviour, Event};
+use super::behaviour::{Behaviour, Event, ExternalEvent};
 use super::messages::with_length_prefix;
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
@@ -116,12 +116,12 @@ fn check_new_inbound_session_event_and_return_id(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::NewInboundSession {
+    let Event::External(ExternalEvent::NewInboundSession {
         query,
         inbound_session_id,
         peer_id: outbound_peer_id,
         protocol_name,
-    } = event
+    }) = event
     else {
         panic!("Got unexpected event {:?} when expecting NewInboundSession", event);
     };
@@ -139,7 +139,7 @@ fn check_received_data_event(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::ReceivedData { outbound_session_id, data } = event else {
+    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data }) = event else {
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
     let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
@@ -154,10 +154,10 @@ fn check_outbound_session_finished_event(
     swarm_event: SwarmEventAlias<Behaviour>,
     outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
-    let SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
+    let SwarmEvent::Behaviour(Event::External(ExternalEvent::SessionFinishedSuccessfully {
         session_id: SessionId::OutboundSessionId(outbound_session_id),
         ..
-    }) = swarm_event
+    })) = swarm_event
     else {
         return None;
     };
