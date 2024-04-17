@@ -365,6 +365,7 @@ impl NetworkManager {
             idle_connection_timeout,
             header_buffer_size,
             peer,
+            peer_manager_config: _,
         } = config;
 
         let listen_addresses = vec![

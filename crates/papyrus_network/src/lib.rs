@@ -13,6 +13,7 @@ pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
+
 use std::collections::{BTreeMap, HashMap};
 use std::pin::Pin;
 use std::str::FromStr;
@@ -26,8 +27,14 @@ use futures::Stream;
 use lazy_static::lazy_static;
 use libp2p::{PeerId, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
-use papyrus_config::dumping::{ser_optional_sub_config, ser_param, SerializeConfig};
+use papyrus_config::dumping::{
+    append_sub_config_name,
+    ser_optional_sub_config,
+    ser_param,
+    SerializeConfig,
+};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use peer_manager::PeerManagerConfig;
 use prost::{EncodeError, Message};
 use protobuf_messages::protobuf;
 use serde::{Deserialize, Serialize};
@@ -44,6 +51,7 @@ pub struct NetworkConfig {
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
     pub peer: Option<PeerAddressConfig>,
+    pub peer_manager_config: PeerManagerConfig,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -245,6 +253,10 @@ impl SerializeConfig for NetworkConfig {
             ),
         ]);
         config.extend(ser_optional_sub_config(&self.peer, "peer"));
+        config.extend(append_sub_config_name(
+            &self.peer_manager_config.dump(),
+            "peer_manager_config",
+        ));
         config
     }
 }
@@ -258,6 +270,7 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
             peer: None,
+            peer_manager_config: PeerManagerConfig::default(),
         }
     }
 }

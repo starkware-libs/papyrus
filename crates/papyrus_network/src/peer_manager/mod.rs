@@ -1,7 +1,11 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use std::time::Duration;
 
-use chrono::Duration;
 use libp2p::{Multiaddr, PeerId};
+use papyrus_config::converters::deserialize_seconds_to_duration;
+use papyrus_config::dumping::{ser_param, SerializeConfig};
+use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use serde::{Deserialize, Serialize};
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
@@ -30,9 +34,10 @@ pub struct PeerManager<P> {
     pending_events: Vec<Event>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct PeerManagerConfig {
     target_num_for_peers: usize,
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     blacklist_timeout: Duration,
 }
 
@@ -49,6 +54,25 @@ pub(crate) enum PeerManagerError {
 impl Default for PeerManagerConfig {
     fn default() -> Self {
         Self { target_num_for_peers: 100, blacklist_timeout: Duration::max_value() }
+    }
+}
+
+impl SerializeConfig for PeerManagerConfig {
+    fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
+        BTreeMap::from_iter([
+            ser_param(
+                "target_num_for_peers",
+                &self.target_num_for_peers,
+                "The amount of peers the node will try to discover.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "blacklist_timeout",
+                &self.blacklist_timeout.as_secs(),
+                "Amount of time we blacklist a reported peer from connecting to it.",
+                ParamPrivacyInput::Public,
+            ),
+        ])
     }
 }
 

@@ -1,6 +1,5 @@
-// using chrono time and not std since std does not have the ability for std::time::Instance to
-// represent the maximum time of the system.
-use chrono::{DateTime, Duration, Utc};
+use std::time::{Duration, Instant};
+
 use libp2p::{Multiaddr, PeerId};
 #[cfg(test)]
 use mockall::automock;
@@ -25,7 +24,7 @@ pub trait PeerTrait {
 pub struct Peer {
     peer_id: PeerId,
     multiaddr: Multiaddr,
-    timed_out_until: Option<DateTime<Utc>>,
+    timed_out_until: Option<Instant>,
     timeout_duration: Option<Duration>,
 }
 
@@ -40,7 +39,7 @@ impl PeerTrait for Peer {
     fn update_reputation(&mut self, _reason: ReputationModifier) {
         if let Some(timeout_duration) = self.timeout_duration {
             self.timed_out_until =
-                Utc::now().checked_add_signed(timeout_duration).or(Some(DateTime::<Utc>::MAX_UTC));
+                Utc::now().checked_add_signed(timeout_duration).or(Some(Instant::MAX_UTC));
             return;
         }
         debug!("Timeout duration not set for peer: {:?}", self.peer_id);
