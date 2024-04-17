@@ -1,3 +1,5 @@
+// TODO(shahak): Use start_query in all tests instead of send_query
+
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -19,7 +21,7 @@ use libp2p::{Multiaddr, PeerId};
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
 use super::super::messages::with_length_prefix;
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use super::{Behaviour, Event, SessionError};
+use super::{Behaviour, Event, ExternalEvent, SessionError};
 use crate::test_utils::dummy_data;
 
 impl Unpin for Behaviour {}
@@ -175,12 +177,12 @@ async fn validate_new_inbound_session_event(
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(Event::NewInboundSession {
+        ToSwarm::GenerateEvent(Event::External(ExternalEvent::NewInboundSession {
             query: event_query,
             inbound_session_id: event_inbound_session_id,
             peer_id: event_peer_id,
             protocol_name,
-        }) if event_query == *query
+        })) if event_query == *query
             && event_inbound_session_id == inbound_session_id
             && event_peer_id == *peer_id
             && protocol_name == PROTOCOL_NAME.clone()
@@ -195,9 +197,9 @@ async fn validate_received_data_event(
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(Event::ReceivedData {
+        ToSwarm::GenerateEvent(Event::External(ExternalEvent::ReceivedData {
             data: event_data, outbound_session_id: event_outbound_session_id
-        }) if event_data == *data && event_outbound_session_id == outbound_session_id
+        })) if event_data == *data && event_outbound_session_id == outbound_session_id
     );
 }
 
@@ -266,9 +268,9 @@ async fn validate_session_finished_successfully_event(
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(Event::SessionFinishedSuccessfully {
+        ToSwarm::GenerateEvent(Event::External(ExternalEvent::SessionFinishedSuccessfully {
             session_id: event_session_id
-        }) if event_session_id == session_id
+        })) if event_session_id == session_id
     );
 }
 
@@ -369,15 +371,15 @@ async fn connection_closed() {
     let failed_session_ids = [event1, event2]
         .iter()
         .map(|event| {
-            let ToSwarm::GenerateEvent(Event::SessionFailed {
+            let ToSwarm::GenerateEvent(Event::External(ExternalEvent::SessionFailed {
                 error: SessionError::ConnectionClosed,
                 session_id,
-            }) = event
+            })) = event
             else {
                 panic!(
                     "Event {:?} doesn't match expected event \
-                     ToSwarm::GenerateEvent(Event::SessionFailed {{ error: \
-                     SessionError::ConnectionClosed }}",
+                     ToSwarm::GenerateEvent(Event::External(ExternalEvent::SessionFailed {{ \
+                     error: SessionError::ConnectionClosed }}))",
                     event
                 );
             };
