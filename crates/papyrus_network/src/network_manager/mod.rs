@@ -20,6 +20,7 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
+use crate::main_behaviour::mixed_behaviour;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
 use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
@@ -177,7 +178,42 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_behaviour_event(&mut self, event: mixed_behaviour::Event) {
+        match event {
+            mixed_behaviour::Event::ExternalEvent(external_event) => {
+                self.handle_behaviour_external_event(external_event);
+            }
+            mixed_behaviour::Event::InternalEvent(internal_event) => {
+                self.handle_behaviour_internal_event(internal_event);
+            }
+        }
+    }
+
+    fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
+        match event {
+            mixed_behaviour::ExternalEvent::StreamedBytes(event) => {
+                self.handle_stream_bytes_behaviour_event(event);
+            }
+        }
+    }
+
+    fn handle_behaviour_internal_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        match event {
+            mixed_behaviour::InternalEvent::NoOp => {}
+            mixed_behaviour::InternalEvent::NotifyKad(_) => {
+                self.mixed_behaviour.kademlia.on_other_behaviour_event(internal_event)
+            }
+            mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
+                self.mixed_behaviour.discovery.on_other_behaviour_event(internal_event)
+            }
+            mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
+                self.mixed_behaviour.streamed_bytes.on_other_behaviour_event(internal_event)
+            }
+        }
+        }
+    }
+
+    fn handle_stream_bytes_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
         match event {
             GenericEvent::NewInboundSession {
                 query,
