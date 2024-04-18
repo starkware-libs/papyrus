@@ -6,7 +6,7 @@ use super::{Table, TableType};
 use crate::db::db_test::get_test_env;
 use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, StorageSerdeError};
 use crate::db::table_types::{DbCursor, DbCursorTrait};
-use crate::db::{DbResult, DbWriter, TableHandle, TableIdentifier, RW};
+use crate::db::{DbReader, DbResult, DbWriter, TableHandle, TableIdentifier, RO, RW};
 use crate::serialization::serializers::auto_storage_serde;
 use crate::DbError;
 
@@ -223,11 +223,12 @@ fn table_cursor_test<T: TableType>(
 }
 
 // Constants for random_table_test.
-const MAX_VALUE: u32 = 20;
-const MAIN_KEY_MAX_VALUE: u32 = 5;
-const SUB_KEY_MAX_VALUE: u32 = 5;
+// Use 300 as the maximum value to make the values spread over more than one byte but small enough to make collisions.
+const MAX_VALUE: u32 = 300;
+const MAIN_KEY_MAX_VALUE: u32 = 300;
+const SUB_KEY_MAX_VALUE: u32 = 300;
 // Number of iterations to run the test.
-const ITERS: usize = 500;
+const ITERS: usize = 1000;
 // Number of get calls to make in each iteration.
 const GET_CALLS: usize = 10;
 // Number of cursor test iterations to make in each main iteration.
