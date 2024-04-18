@@ -9,8 +9,10 @@ use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
-use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::{PeerId, Swarm};
+use libp2p::identity::PublicKey;
+use libp2p::kad::store::MemoryStore;
+use libp2p::swarm::{behaviour, DialError, SwarmEvent};
+use libp2p::{identify, kad, PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
@@ -20,9 +22,27 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
+use crate::main_behaviour::mixed_behaviour;
+use crate::peer_manager::PeerManagerConfig;
 use crate::streamed_bytes::behaviour::{Behaviour, SessionError};
-use crate::streamed_bytes::{Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
+use crate::streamed_bytes::{
+    self,
+    Config,
+    GenericEvent,
+    InboundSessionId,
+    OutboundSessionId,
+    SessionId,
+};
+use crate::{
+    discovery,
+    peer_manager,
+    DataType,
+    NetworkConfig,
+    PeerAddressConfig,
+    Protocol,
+    Query,
+    ResponseReceivers,
+};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -101,7 +121,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         (sender, response_receiver)
     }
 
-    fn handle_swarm_event(&mut self, event: SwarmEvent<GenericEvent<SessionError>>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 self.peer_id = Some(peer_id);
@@ -354,7 +374,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 }
 
-pub type NetworkManager = GenericNetworkManager<BlockHeaderDBExecutor, Swarm<Behaviour>>;
+pub type NetworkManager =
+    GenericNetworkManager<BlockHeaderDBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
 
 impl NetworkManager {
     pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
@@ -372,17 +393,26 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
-        let swarm = build_swarm(
-            listen_addresses,
-            idle_connection_timeout,
-            Behaviour::new(Config {
-                session_timeout,
-                supported_inbound_protocols: vec![
-                    Protocol::SignedBlockHeader.into(),
-                    Protocol::StateDiff.into(),
-                ],
-            }),
-        );
+        let behaviour = |key| {
+            let local_peer_id = PeerId::from_public_key(&key);
+            mixed_behaviour::MixedBehaviour {
+                peer_manager: peer_manager::PeerManager::new(PeerManagerConfig::default()),
+                discovery: discovery::Behaviour::new(),
+                identify: identify::Behaviour::new(identify::Config::new(
+                    format!("/staknet/identify/0.1.0-rc.0"),
+                    key,
+                )),
+                kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),
+                streamed_bytes: streamed_bytes::Behaviour::new(Config {
+                    session_timeout,
+                    supported_inbound_protocols: vec![
+                        Protocol::SignedBlockHeader.into(),
+                        Protocol::StateDiff.into(),
+                    ],
+                }),
+            }
+        };
+        let swarm = build_swarm(listen_addresses, idle_connection_timeout, behaviour);
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size, peer)
