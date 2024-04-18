@@ -4,9 +4,21 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
+use assert_matches::assert_matches;
 use futures::future::pending;
 use futures::{FutureExt, Stream, StreamExt};
-use libp2p::swarm::{NetworkBehaviour, ToSwarm};
+use libp2p::core::{ConnectedPoint, Endpoint};
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::{
+    ConnectionClosed,
+    ConnectionId,
+    DialError,
+    DialFailure,
+    FromSwarm,
+    NetworkBehaviour,
+    ToSwarm,
+};
+use libp2p::{Multiaddr, PeerId};
 use tokio::select;
 use tokio::sync::Mutex;
 use tokio::time::timeout;
@@ -19,9 +31,6 @@ use crate::test_utils::next_on_mutex_stream;
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 const SLEEP_DURATION: Duration = Duration::from_millis(10);
-
-// In case we have a bug when we return pending and then return an event.
-const TIMES_TO_CHECK_FOR_PENDING_EVENT: usize = 5;
 
 impl Unpin for Behaviour {}
 
@@ -36,73 +45,197 @@ impl Stream for Behaviour {
     }
 }
 
-#[tokio::test]
-async fn discovery_outputs_single_query_on_start() {
-    let mut behaviour = Behaviour::new();
+// In case we have a bug when we return pending and then return an event.
+const TIMES_TO_CHECK_FOR_PENDING_EVENT: usize = 5;
 
-    timeout(TIMEOUT, behaviour.next()).await.unwrap();
-
+fn assert_no_event(behaviour: &mut Behaviour) {
     for _ in 0..TIMES_TO_CHECK_FOR_PENDING_EVENT {
         assert!(behaviour.next().now_or_never().is_none());
     }
+}
+
+#[tokio::test]
+async fn discovery_outputs_dial_request_on_start_without_query() {
+    let bootstrap_peer_id = PeerId::random();
+    let bootstrap_peer_address = Multiaddr::empty();
+
+    let mut behaviour = Behaviour::new(bootstrap_peer_id, bootstrap_peer_address);
+
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::Dial{opts} if opts.get_peer_id() == Some(bootstrap_peer_id)
+    );
+
+    assert_no_event(&mut behaviour);
+}
+
+#[tokio::test]
+async fn discovery_redials_on_dial_failure() {
+    let bootstrap_peer_id = PeerId::random();
+    let bootstrap_peer_address = Multiaddr::empty();
+
+    let mut behaviour = Behaviour::new(bootstrap_peer_id, bootstrap_peer_address);
+
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::Dial{opts} if opts.get_peer_id() == Some(bootstrap_peer_id)
+    );
+
+    behaviour.on_swarm_event(FromSwarm::DialFailure(DialFailure {
+        peer_id: Some(bootstrap_peer_id),
+        error: &DialError::Aborted,
+        connection_id: ConnectionId::new_unchecked(0),
+    }));
+
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::Dial{opts} if opts.get_peer_id() == Some(bootstrap_peer_id)
+    );
+}
+
+#[tokio::test]
+async fn discovery_redials_when_all_connections_closed() {
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
+
+    // Consume the initial query event.
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
+
+    behaviour.on_swarm_event(FromSwarm::ConnectionClosed(ConnectionClosed {
+        peer_id: behaviour.bootstrap_peer_id(),
+        connection_id: ConnectionId::new_unchecked(0),
+        endpoint: &ConnectedPoint::Dialer {
+            address: behaviour.bootstrap_peer_address().clone(),
+            role_override: Endpoint::Dialer,
+        },
+        remaining_established: 0,
+    }));
+
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::Dial{opts} if opts.get_peer_id() == Some(behaviour.bootstrap_peer_id())
+    );
+}
+
+#[tokio::test]
+async fn discovery_doesnt_redial_when_one_connection_closes() {
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
+
+    // Consume the initial query event.
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
+
+    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
+        peer_id: behaviour.bootstrap_peer_id(),
+        connection_id: ConnectionId::new_unchecked(1),
+        endpoint: &ConnectedPoint::Dialer {
+            address: behaviour.bootstrap_peer_address().clone(),
+            role_override: Endpoint::Dialer,
+        },
+        failed_addresses: &[],
+        other_established: 1,
+    }));
+
+    behaviour.on_swarm_event(FromSwarm::ConnectionClosed(ConnectionClosed {
+        peer_id: behaviour.bootstrap_peer_id(),
+        connection_id: ConnectionId::new_unchecked(0),
+        endpoint: &ConnectedPoint::Dialer {
+            address: behaviour.bootstrap_peer_address().clone(),
+            role_override: Endpoint::Dialer,
+        },
+        remaining_established: 1,
+    }));
+
+    assert_no_event(&mut behaviour);
+}
+
+async fn create_behaviour_and_connect_to_bootstrap_node() -> Behaviour {
+    let bootstrap_peer_id = PeerId::random();
+    let bootstrap_peer_address = Multiaddr::empty();
+
+    let mut behaviour = Behaviour::new(bootstrap_peer_id, bootstrap_peer_address.clone());
+
+    // Consume the dial event.
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
+
+    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
+        peer_id: bootstrap_peer_id,
+        connection_id: ConnectionId::new_unchecked(0),
+        endpoint: &ConnectedPoint::Dialer {
+            address: bootstrap_peer_address,
+            role_override: Endpoint::Dialer,
+        },
+        failed_addresses: &[],
+        other_established: 0,
+    }));
+
+    behaviour
+}
+
+#[tokio::test]
+async fn discovery_outputs_single_query_after_connecting() {
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
+
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
+
+    assert_no_event(&mut behaviour);
 }
 
 #[tokio::test]
 async fn discovery_doesnt_output_queries_while_paused() {
-    let mut behaviour = Behaviour::new();
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::PauseDiscovery,
     ));
-    for _ in 0..TIMES_TO_CHECK_FOR_PENDING_EVENT {
-        assert!(behaviour.next().now_or_never().is_none());
-    }
+    assert_no_event(&mut behaviour);
 
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::ResumeDiscovery,
     ));
-    timeout(TIMEOUT, behaviour.next()).await.unwrap();
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
 }
 
 #[tokio::test]
 async fn discovery_outputs_single_query_on_query_finished() {
-    let mut behaviour = Behaviour::new();
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     // Consume the initial query event.
-    behaviour.next().await;
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
 
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::KadQueryFinished,
     ));
-    timeout(TIMEOUT, behaviour.next()).await.unwrap();
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
 }
 
 #[tokio::test]
 async fn discovery_doesnt_output_queries_if_query_finished_while_paused() {
-    let mut behaviour = Behaviour::new();
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     // Consume the initial query event.
-    behaviour.next().await;
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
 
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::PauseDiscovery,
     ));
-    for _ in 0..TIMES_TO_CHECK_FOR_PENDING_EVENT {
-        assert!(behaviour.next().now_or_never().is_none());
-    }
+    assert_no_event(&mut behaviour);
 
     // Simulate that the query has finished.
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::KadQueryFinished,
     ));
-    for _ in 0..TIMES_TO_CHECK_FOR_PENDING_EVENT {
-        assert!(behaviour.next().now_or_never().is_none());
-    }
+    assert_no_event(&mut behaviour);
 }
 
 #[tokio::test]
 async fn discovery_awakes_on_resume() {
-    let mut behaviour = Behaviour::new();
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
         FromOtherBehaviourEvent::PauseDiscovery,
@@ -128,10 +261,10 @@ async fn discovery_awakes_on_resume() {
 
 #[tokio::test]
 async fn discovery_awakes_on_query_finished() {
-    let mut behaviour = Behaviour::new();
+    let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     // Consume the initial query event.
-    behaviour.next().await;
+    timeout(TIMEOUT, behaviour.next()).await.unwrap();
 
     let mutex = Mutex::new(behaviour);
 
