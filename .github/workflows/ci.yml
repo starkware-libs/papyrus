@@ -224,6 +224,8 @@ jobs:
           verbose: true
           fail_ci_if_error: true
           version: "v0.1.15"
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   check-starknet_api-dependency:
     runs-on: ubuntu-latest
