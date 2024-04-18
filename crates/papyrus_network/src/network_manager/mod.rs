@@ -11,7 +11,7 @@ use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::{identify, kad, Multiaddr, PeerId, Swarm};
+use libp2p::{identify, kad, multiaddr, Multiaddr, PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
@@ -32,16 +32,7 @@ use crate::streamed_bytes::{
     OutboundSessionId,
     SessionId,
 };
-use crate::{
-    discovery,
-    peer_manager,
-    DataType,
-    NetworkConfig,
-    PeerAddressConfig,
-    Protocol,
-    Query,
-    ResponseReceivers,
-};
+use crate::{discovery, peer_manager, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -59,7 +50,6 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
-    peer: Option<PeerAddressConfig>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     peer_id: Option<PeerId>,
     // Fields for metrics
@@ -69,12 +59,6 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
 
 impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
     pub async fn run(mut self) -> Result<(), NetworkError> {
-        if let Some(peer) = self.peer.clone() {
-            debug!("Starting network manager connected to peer: {peer:?}");
-            self.swarm.dial(peer)?;
-        } else {
-            debug!("Starting network manager not connected to any peer.");
-        }
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
@@ -91,7 +75,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
-        peer: Option<PeerAddressConfig>,
     ) -> Self {
         gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
         Self {
@@ -101,7 +84,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
-            peer,
             outbound_session_id_to_protocol: HashMap::new(),
             peer_id: None,
             num_active_inbound_sessions: 0,
@@ -222,7 +204,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 self.swarm.behaviour_mut().kademlia.on_other_behaviour_event(event)
             }
             mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
-                self.swarm.behaviour_mut().discovery.on_other_behaviour_event(event)
+                if let Some(discovery) = self.swarm.behaviour_mut().discovery.as_mut() {
+                    discovery.on_other_behaviour_event(event);
+                }
             }
             mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
                 self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(event)
@@ -426,7 +410,7 @@ impl NetworkManager {
             session_timeout,
             idle_connection_timeout,
             header_buffer_size,
-            peer,
+            bootstrap_peer,
         } = config;
 
         let listen_addresses = vec![
@@ -441,8 +425,20 @@ impl NetworkManager {
             let local_peer_id = PeerId::from_public_key(&key);
             mixed_behaviour::MixedBehaviour {
                 peer_manager: peer_manager::PeerManager::new(PeerManagerConfig::default()),
-                // TODO: add real bootstrap peer
-                discovery: discovery::Behaviour::new(PeerId::random(), Multiaddr::empty()),
+                discovery: bootstrap_peer
+                    .as_ref()
+                    .map(|bootstrap_peer| {
+                        discovery::Behaviour::new(
+                            bootstrap_peer.peer_id,
+                            format!("/ip4/{}", bootstrap_peer.ip)
+                                .parse::<Multiaddr>()
+                                .unwrap_or_else(|_| {
+                                    panic!("Wrong ip4 address format {}", bootstrap_peer.ip)
+                                })
+                                .with(multiaddr::Protocol::Tcp(bootstrap_peer.tcp_port)),
+                        )
+                    })
+                    .into(),
                 identify: identify::Behaviour::new(identify::Config::new(
                     "/staknet/identify/0.1.0-rc.0".to_string(),
                     key,
@@ -460,7 +456,7 @@ impl NetworkManager {
         let swarm = build_swarm(listen_addresses, idle_connection_timeout, behaviour);
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
-        Self::generic_new(swarm, db_executor, header_buffer_size, peer)
+        Self::generic_new(swarm, db_executor, header_buffer_size)
     }
 
     pub fn get_own_peer_id(&self) -> String {

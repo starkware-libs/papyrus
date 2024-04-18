@@ -86,7 +86,9 @@ impl NetworkBehaviour for MainBehaviour {
                         self.mixed_behaviour.kademlia.on_other_behaviour_event(internal_event)
                     }
                     mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
-                        self.mixed_behaviour.discovery.on_other_behaviour_event(internal_event)
+                        if let Some(discovery) = self.mixed_behaviour.discovery.as_mut() {
+                            discovery.on_other_behaviour_event(internal_event);
+                        }
                     }
                     mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
                         self.mixed_behaviour.streamed_bytes.on_other_behaviour_event(internal_event)

@@ -44,7 +44,8 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
-    pub peer: Option<PeerAddressConfig>,
+    /// If None, the node won't discover other peers but will still be discoverable by other peers.
+    pub bootstrap_peer: Option<PeerAddressConfig>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -245,7 +246,7 @@ impl SerializeConfig for NetworkConfig {
                 ParamPrivacyInput::Public,
             ),
         ]);
-        config.extend(ser_optional_sub_config(&self.peer, "peer"));
+        config.extend(ser_optional_sub_config(&self.bootstrap_peer, "bootstrap_peer"));
         config
     }
 }
@@ -258,7 +259,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
-            peer: None,
+            bootstrap_peer: None,
         }
     }
 }
