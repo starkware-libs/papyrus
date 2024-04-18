@@ -223,7 +223,8 @@ fn table_cursor_test<T: TableType>(
 }
 
 // Constants for random_table_test.
-// Use 300 as the maximum value to make the values spread over more than one byte but small enough to make collisions.
+// Use 300 as the maximum value to make the values spread over more than one byte but small enough
+// to make collisions.
 const MAX_VALUE: u32 = 300;
 const MAIN_KEY_MAX_VALUE: u32 = 300;
 const SUB_KEY_MAX_VALUE: u32 = 300;
