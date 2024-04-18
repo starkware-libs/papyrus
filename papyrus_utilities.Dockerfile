@@ -21,7 +21,7 @@ RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release
 
 # Build storage_benchmark.
 RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage \
-    --features "clap papyrus_common statistical" --bin storage_benchmark
+    --features "clap statistical" --bin storage_benchmark
 
 
 # Starting a new stage so that the final image will contain only the executables.
@@ -44,9 +44,9 @@ COPY --from=utilities_builder /app/target/x86_64-unknown-linux-musl/release/stor
 ENV PATH="/app/target/release:${PATH}"
 
 ENTRYPOINT echo -e \
-"There is no default executable for this image. Run an executable using its name or path to it.\n\
-The available executables are:\n\
- - papyrus_load_test, performs a stress test on a node RPC gateway.\n\
- - dump_declared_classes, dumps the declared_classes table from the storage to a file.\n\
- - storage_benchmark, performs a benchmark on the storage.\n\
-For example, in a docker runtime: docker run --entrypoint papyrus_load_test <image>"
+    "There is no default executable for this image. Run an executable using its name or path to it.\n\
+    The available executables are:\n\
+    - papyrus_load_test, performs a stress test on a node RPC gateway.\n\
+    - dump_declared_classes, dumps the declared_classes table from the storage to a file.\n\
+    - storage_benchmark, performs a benchmark on the storage.\n\
+    For example, in a docker runtime: docker run --entrypoint papyrus_load_test <image>"

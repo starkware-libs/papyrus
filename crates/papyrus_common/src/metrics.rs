@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 /// The central marker is the first block number that doesn't exist yet.
 pub const PAPYRUS_CENTRAL_BLOCK_MARKER: &str = "papyrus_central_block_marker";
 
@@ -30,3 +32,8 @@ pub const PAPYRUS_NUM_ACTIVE_INBOUND_SESSIONS: &str = "papyrus_num_active_inboun
 
 /// The number of active sessions this peer has in which it requests data.
 pub const PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS: &str = "papyrus_num_active_outbound_sessions";
+
+// TODO: consider making this value non static and add a way to change this while the app is
+// running. e.g via a monitoring endpoint.
+/// Global variable set by the main config to enable collecting profiling metrics.
+pub static COLLECT_PROFILING_METRICS: OnceLock<bool> = OnceLock::new();

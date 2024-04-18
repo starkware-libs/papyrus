@@ -1,12 +1,22 @@
 use metrics_exporter_prometheus::PrometheusBuilder;
+use papyrus_common::metrics::COLLECT_PROFILING_METRICS;
 use papyrus_proc_macros::latency_histogram;
 use prometheus_parse::Value::Untyped;
 use test_utils::prometheus_is_contained;
 
 #[test]
 fn latency_histogram_test() {
-    #[latency_histogram("foo_histogram")]
+    COLLECT_PROFILING_METRICS.set(false).unwrap();
+
+    #[latency_histogram("foo_histogram", false)]
     fn foo() -> usize {
+        #[allow(clippy::let_and_return)]
+        let start_function_time = 1000;
+        start_function_time
+    }
+
+    #[latency_histogram("bar_histogram", true)]
+    fn bar() -> usize {
         #[allow(clippy::let_and_return)]
         let start_function_time = 1000;
         start_function_time
@@ -14,6 +24,8 @@ fn latency_histogram_test() {
 
     let handle = PrometheusBuilder::new().install_recorder().unwrap();
 
+    assert!(handle.render().is_empty());
+    assert_eq!(bar(), 1000);
     assert!(handle.render().is_empty());
     assert_eq!(foo(), 1000);
     assert_eq!(
