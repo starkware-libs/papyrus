@@ -1,17 +1,18 @@
 use std::task::Poll;
 
-use libp2p::swarm::{dummy, DialFailure, NetworkBehaviour, ToSwarm};
+use libp2p::swarm::behaviour::ConnectionEstablished;
+use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour, ToSwarm};
 use libp2p::Multiaddr;
 use tracing::error;
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
-use crate::streamed_bytes;
+use crate::{discovery, streamed_bytes};
 
 #[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
 pub enum Event {
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
+    NotifyDiscovery(discovery::FromOtherBehaviourEvent),
 }
 
 impl<P: 'static> NetworkBehaviour for PeerManager<P>
@@ -86,6 +87,79 @@ where
                 if res.is_err() {
                     error!("Dial failure of an unknow peer. peer id: {}", peer_id)
                 }
+                // Re-assign a peer to the session so that a SessionAssgined Event will be emitted.
+                // TODO: test this case
+                let queries_to_assign =
+                    self.session_to_peer_map
+                        .iter()
+                        .filter_map(|(outbound_session_id, p_id)| {
+                            if *p_id == peer_id { Some(*outbound_session_id) } else { None }
+                        })
+                        .collect::<Vec<_>>();
+                for outbound_session_id in queries_to_assign {
+                    self.assign_peer_to_session(outbound_session_id);
+                }
+            }
+            libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {
+                peer_id,
+                connection_id,
+                endpoint,
+                ..
+            }) => {
+                if let Some(sessions) = self.peers_pending_dial_with_sessions.remove(&peer_id) {
+                    self.pending_events.extend(sessions.iter().map(|outbound_session_id| {
+                        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                                outbound_session_id: *outbound_session_id,
+                                peer_id,
+                                connection_id,
+                            },
+                        ))
+                    }));
+                    self.peers
+                        .get_mut(&peer_id)
+                        .expect(
+                            "in case we are waiting for a connection established event we assum \
+                             the peer is known to the peer manager",
+                        )
+                        .set_connection_id(Some(connection_id));
+                } else if self.peers.get(&peer_id).is_none() {
+                    let mut peer = P::new(peer_id, endpoint.get_remote_address().clone());
+                    peer.set_connection_id(Some(connection_id));
+                    self.add_peer(P::new(peer_id, endpoint.get_remote_address().clone()));
+                    if !self.more_peers_needed() {
+                        // TODO: consider how and in which cases we resume discovery
+                        self.pending_events.push(libp2p::swarm::ToSwarm::GenerateEvent(
+                            Event::NotifyDiscovery(
+                                discovery::FromOtherBehaviourEvent::PauseDiscovery,
+                            ),
+                        ))
+                    }
+                }
+            }
+            libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed {
+                peer_id,
+                connection_id,
+                ..
+            }) => {
+                if let Some(peer) = self.peers.get_mut(&peer_id) {
+                    if let Some(known_connection_id) = peer.connection_id() {
+                        if known_connection_id == connection_id {
+                            peer.set_connection_id(None);
+                        } else {
+                            error!(
+                                "Connection closed event for a peer with a different connection \
+                                 id. known connection id: {}, emitted connection id: {}",
+                                known_connection_id, connection_id
+                            );
+                            return;
+                        }
+                    } else {
+                        error!("Connection closed event for a peer without a connection id");
+                        return;
+                    }
+                    peer.set_connection_id(None);
+                }
             }
             _ => {}
         }
@@ -96,9 +170,6 @@ where
         _cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<libp2p::swarm::ToSwarm<Self::ToSwarm, libp2p::swarm::THandlerInEvent<Self>>>
     {
-        self.pending_events
-            .pop()
-            .map(|event| Poll::Ready(ToSwarm::GenerateEvent(event)))
-            .unwrap_or(Poll::Pending)
+        self.pending_events.pop().map(Poll::Ready).unwrap_or(Poll::Pending)
     }
 }

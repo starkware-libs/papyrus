@@ -24,23 +24,17 @@ pub enum Event {
 }
 
 pub enum ExternalEvent {
-    StreamedBytes(streamed_bytes::behaviour::Event),
+    StreamedBytes(streamed_bytes::behaviour::ExternalEvent),
 }
 
 pub enum InternalEvent {
     NoOp,
     NotifyKad(KadFromOtherBehaviourEvent),
     NotifyDiscovery(discovery::FromOtherBehaviourEvent),
-    #[allow(dead_code)]
+    NotifyPeerManager(peer_manager::FromOtherBehaviour),
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
 }
 
 pub trait BridgedBehaviour {
     fn on_other_behaviour_event(&mut self, event: InternalEvent);
-}
-
-impl From<streamed_bytes::behaviour::Event> for Event {
-    fn from(event: streamed_bytes::behaviour::Event) -> Self {
-        Self::ExternalEvent(ExternalEvent::StreamedBytes(event))
-    }
 }
