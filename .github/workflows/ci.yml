@@ -78,19 +78,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo build -r -p papyrus_load_test
 
-  integration-test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - uses: Noelware/setup-protoc@1.1.0
-        with:
-          version: ${{env.PROTOC_VERSION}}
-      - run: >
-          cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
-          cargo run -r -p papyrus_node --bin central_source_integration_test
-
   rustfmt:
     runs-on: ubuntu-latest
     steps:

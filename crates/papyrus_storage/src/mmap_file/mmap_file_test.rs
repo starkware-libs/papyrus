@@ -136,8 +136,13 @@ fn grow_file() {
     let file_path = dir.path().to_path_buf().join("test_grow_file");
     let mut offset = 0;
     {
-        let file =
-            OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(file_path.clone())
+            .unwrap();
         // file_size = 0, offset = 0
         assert_eq!(file.metadata().unwrap().len(), 0);
 
@@ -174,8 +179,13 @@ fn grow_file() {
         assert_eq!(offset, 4 * serialization_size);
     }
 
-    let file =
-        OpenOptions::new().read(true).write(true).create(true).open(file_path.clone()).unwrap();
+    let file = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(file_path.clone())
+        .unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
     let _ = open_file::<NoVersionValueWrapper<Vec<u8>>>(config.clone(), file_path, offset).unwrap();
     assert_eq!(file.metadata().unwrap().len(), 4 * config.growth_step as u64);
