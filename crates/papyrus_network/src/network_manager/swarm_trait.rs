@@ -1,5 +1,4 @@
 use futures::stream::Stream;
-use libp2p::multiaddr::Protocol as LibP2pProtocol;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
@@ -7,7 +6,7 @@ use libp2p::{Multiaddr, PeerId, Swarm};
 use crate::main_behaviour::mixed_behaviour;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
-use crate::{PeerAddressConfig, Protocol};
+use crate::Protocol;
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
@@ -25,7 +24,7 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
         protocol: Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected>;
 
-    fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError>;
+    fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError>;
 
     fn num_connected_peers(&self) -> usize;
 
@@ -55,13 +54,8 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         self.behaviour_mut().streamed_bytes.send_query(query, peer_id, protocol.into())
     }
 
-    fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError> {
-        let address = format!("/ip4/{}", peer.ip)
-            .parse::<Multiaddr>()
-            .expect("string to multiaddr failed")
-            .with(LibP2pProtocol::Tcp(peer.tcp_port));
-
-        self.dial(DialOpts::peer_id(peer.peer_id).addresses(vec![address]).build())
+    fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError> {
+        self.dial(DialOpts::from(peer_multiaddr))
     }
 
     fn num_connected_peers(&self) -> usize {

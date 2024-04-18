@@ -35,7 +35,7 @@ use crate::main_behaviour::mixed_behaviour;
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 #[derive(Default)]
 struct MockSwarm {
@@ -156,7 +156,7 @@ impl SwarmTrait for MockSwarm {
         Ok(outbound_session_id)
     }
 
-    fn dial(&mut self, _peer: PeerAddressConfig) -> Result<(), libp2p::swarm::DialError> {
+    fn dial(&mut self, _peer: Multiaddr) -> Result<(), libp2p::swarm::DialError> {
         Ok(())
     }
     fn num_connected_peers(&self) -> usize {
@@ -239,7 +239,7 @@ async fn register_subscriber_and_use_channels() {
         mock_swarm,
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id, ..Default::default() }),
+        Some(create_test_multiaddr_from_peer_id(peer_id)),
     );
     // define query
     let query_limit = 5;
@@ -357,7 +357,7 @@ async fn sync_subscriber_query_before_established_connection() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
+        Some(create_test_multiaddr_from_peer_id(PeerId::random())),
     );
     // define query
     let query_limit = 5;
@@ -483,4 +483,8 @@ fn get_test_connection_established_event(mock_peer_id: PeerId) -> Event {
         concurrent_dial_errors: None,
         established_in: Duration::from_secs(0),
     }
+}
+
+fn create_test_multiaddr_from_peer_id(peer_id: PeerId) -> Multiaddr {
+    Multiaddr::empty().with_p2p(peer_id).unwrap()
 }
