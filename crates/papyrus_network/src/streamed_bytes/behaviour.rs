@@ -23,6 +23,7 @@ use libp2p::swarm::{
     ToSwarm,
 };
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
+use tracing::error;
 
 use super::handler::{
     Handler,
@@ -32,6 +33,7 @@ use super::handler::{
 };
 use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
+use crate::peer_manager;
 
 #[derive(thiserror::Error, Debug)]
 pub enum SessionError {
@@ -90,7 +92,18 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
     }
 }
 
-pub type Event = GenericEvent<SessionError>;
+pub type ExternalEvent = GenericEvent<SessionError>;
+
+#[derive(Debug)]
+pub enum ToOtherBehaviour {
+    NotifyPeerManager(peer_manager::FromOtherBehaviour),
+}
+
+#[derive(Debug)]
+pub enum Event {
+    External(ExternalEvent),
+    ToOtherBehaviour(ToOtherBehaviour),
+}
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -113,12 +126,14 @@ pub struct PeerNotConnected;
 pub struct Behaviour {
     config: Config,
     pending_events: VecDeque<ToSwarm<Event, RequestFromBehaviourEvent>>,
+    // TODO(shahak) Remove this once we remove send_query.
     connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
     dropped_sessions: HashSet<SessionId>,
     wakers_waiting_for_event: Vec<Waker>,
+    outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, StreamProtocol)>,
 }
 
 impl Behaviour {
@@ -132,11 +147,13 @@ impl Behaviour {
             next_inbound_session_id: Arc::new(Default::default()),
             dropped_sessions: Default::default(),
             wakers_waiting_for_event: Default::default(),
+            outbound_sessions_pending_peer_assignment: Default::default(),
         }
     }
 
     /// Send query to the given peer and start a new outbound session with it. Return the id of the
     /// new session.
+    // TODO(shahak) Remove this function once Network manager uses start_query.
     pub fn send_query(
         &mut self,
         query: Bytes,
@@ -163,6 +180,27 @@ impl Behaviour {
         });
 
         Ok(outbound_session_id)
+    }
+
+    /// Assign some peer and start a query. Return the id of the new session.
+    pub fn start_query(
+        &mut self,
+        query: Bytes,
+        protocol_name: StreamProtocol,
+    ) -> OutboundSessionId {
+        let outbound_session_id = self.next_outbound_session_id;
+        self.next_outbound_session_id.value += 1;
+
+        self.outbound_sessions_pending_peer_assignment
+            .insert(outbound_session_id, (query, protocol_name));
+
+        self.add_event_to_queue(ToSwarm::GenerateEvent(Event::ToOtherBehaviour(
+            ToOtherBehaviour::NotifyPeerManager(
+                peer_manager::FromOtherBehaviour::RequestPeerAssignment { outbound_session_id },
+            ),
+        )));
+
+        outbound_session_id
     }
 
     /// Send a data message to an open inbound session.
@@ -276,10 +314,12 @@ impl NetworkBehaviour for Behaviour {
                     },
                 );
                 for session_id in session_ids {
-                    self.add_event_to_queue(ToSwarm::GenerateEvent(Event::SessionFailed {
-                        session_id,
-                        error: SessionError::ConnectionClosed,
-                    }));
+                    self.add_event_to_queue(ToSwarm::GenerateEvent(Event::External(
+                        ExternalEvent::SessionFailed {
+                            session_id,
+                            error: SessionError::ConnectionClosed,
+                        },
+                    )));
                 }
             }
             _ => {}
@@ -297,26 +337,28 @@ impl NetworkBehaviour for Behaviour {
                 let converted_event = event.into();
                 let mut is_event_muted = false;
                 match converted_event {
-                    Event::NewInboundSession { inbound_session_id, .. } => {
+                    ExternalEvent::NewInboundSession { inbound_session_id, .. } => {
                         self.session_id_to_peer_id_and_connection_id
                             .insert(inbound_session_id.into(), (peer_id, connection_id));
                     }
-                    Event::SessionFailed { session_id, .. }
-                    | Event::SessionFinishedSuccessfully { session_id, .. } => {
+                    ExternalEvent::SessionFailed { session_id, .. }
+                    | ExternalEvent::SessionFinishedSuccessfully { session_id, .. } => {
                         self.session_id_to_peer_id_and_connection_id.remove(&session_id);
                         let is_dropped = self.dropped_sessions.remove(&session_id);
                         if is_dropped {
                             is_event_muted = true;
                         }
                     }
-                    Event::ReceivedData { outbound_session_id, .. } => {
+                    ExternalEvent::ReceivedData { outbound_session_id, .. } => {
                         if self.dropped_sessions.contains(&outbound_session_id.into()) {
                             is_event_muted = true;
                         }
                     }
                 }
                 if !is_event_muted {
-                    self.add_event_to_queue(ToSwarm::GenerateEvent(converted_event));
+                    self.add_event_to_queue(ToSwarm::GenerateEvent(Event::External(
+                        converted_event,
+                    )));
                 }
             }
             RequestToBehaviourEvent::NotifySessionDropped { session_id } => {
@@ -339,11 +381,47 @@ impl NetworkBehaviour for Behaviour {
 }
 
 impl BridgedBehaviour for Behaviour {
-    // TODO: do something with the event. For now, we just ignore it.
     fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        if let mixed_behaviour::InternalEvent::NotifyStreamedBytes(internal_event) = event {
-            match internal_event {
-                FromOtherBehaviour::SessionAssigned { .. } => {}
+        let mixed_behaviour::InternalEvent::NotifyStreamedBytes(event) = event else {
+            return;
+        };
+        match event {
+            FromOtherBehaviour::SessionAssigned { outbound_session_id, peer_id, connection_id } => {
+                self.session_id_to_peer_id_and_connection_id
+                    .insert(outbound_session_id.into(), (peer_id, connection_id));
+
+                let Some((query, protocol_name)) =
+                    self.outbound_sessions_pending_peer_assignment.remove(&outbound_session_id)
+                else {
+                    error!(
+                        "Outbound session assigned peer but it isn't in \
+                         outbound_sessions_pending_peer_assignment. Not running query."
+                    );
+                    return;
+                };
+
+                self.add_event_to_queue(ToSwarm::NotifyHandler {
+                    peer_id,
+                    handler: NotifyHandler::One(connection_id),
+                    event: RequestFromBehaviourEvent::CreateOutboundSession {
+                        query,
+                        outbound_session_id,
+                        protocol_name,
+                    },
+                });
+            }
+        }
+    }
+}
+
+impl From<Event> for mixed_behaviour::Event {
+    fn from(event: Event) -> Self {
+        match event {
+            Event::External(external_event) => {
+                Self::ExternalEvent(mixed_behaviour::ExternalEvent::StreamedBytes(external_event))
+            }
+            Event::ToOtherBehaviour(ToOtherBehaviour::NotifyPeerManager(event)) => {
+                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyPeerManager(event))
             }
         }
     }

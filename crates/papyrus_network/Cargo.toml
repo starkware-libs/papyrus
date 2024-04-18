@@ -6,11 +6,6 @@ repository.workspace = true
 license-file.workspace = true
 
 [[bin]]
-name = "p2p_integration_endpoint"
-required-features = ["clap"]
-path = "src/bin/p2p_integration_endpoint.rs"
-
-[[bin]]
 name = "streamed_bytes_benchmark"
 required-features = ["clap"]
 path = "src/bin/streamed_bytes_benchmark.rs"

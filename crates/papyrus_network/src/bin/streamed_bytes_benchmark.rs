@@ -6,7 +6,7 @@ use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, StreamProtocol, Swarm};
 use papyrus_network::bin_utils::{build_swarm, dial};
-use papyrus_network::streamed_bytes::behaviour::{Behaviour, Event, SessionError};
+use papyrus_network::streamed_bytes::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
 use papyrus_network::streamed_bytes::messages::with_length_prefix;
 use papyrus_network::streamed_bytes::{
     Bytes,
@@ -264,7 +264,10 @@ async fn main() {
                     &args,
                 );
             }
-            SwarmEvent::Behaviour(Event::NewInboundSession { inbound_session_id, .. }) => {
+            SwarmEvent::Behaviour(Event::External(ExternalEvent::NewInboundSession {
+                inbound_session_id,
+                ..
+            })) => {
                 inbound_session_to_messages.insert(
                     inbound_session_id,
                     preprepared_messages
@@ -279,12 +282,17 @@ async fn main() {
                     );
                 }
             }
-            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
-                session_id: SessionId::OutboundSessionId(outbound_session_id),
-            }) => {
+            SwarmEvent::Behaviour(Event::External(
+                ExternalEvent::SessionFinishedSuccessfully {
+                    session_id: SessionId::OutboundSessionId(outbound_session_id),
+                },
+            )) => {
                 outbound_session_measurements[&outbound_session_id].print();
             }
-            SwarmEvent::Behaviour(Event::ReceivedData { outbound_session_id, data }) => {
+            SwarmEvent::Behaviour(Event::External(ExternalEvent::ReceivedData {
+                outbound_session_id,
+                data,
+            })) => {
                 if data[0] != CONST_BYTE {
                     outbound_session_measurements
                         .get_mut(&outbound_session_id)
@@ -295,25 +303,27 @@ async fn main() {
             SwarmEvent::OutgoingConnectionError { .. } => {
                 dial_if_requested(&mut swarm, &args);
             }
-            SwarmEvent::Behaviour(Event::SessionFailed {
+            SwarmEvent::Behaviour(Event::External(ExternalEvent::SessionFailed {
                 session_id,
                 error: SessionError::ConnectionClosed,
-            }) => {
+            })) => {
                 println!(
                     "Session {:?} failed on ConnectionClosed. Try to increase \
                      idle_connection_timeout",
                     session_id
                 );
             }
-            SwarmEvent::Behaviour(Event::SessionFailed {
+            SwarmEvent::Behaviour(Event::External(ExternalEvent::SessionFailed {
                 session_id,
                 error: SessionError::IOError(io_error),
-            }) => {
+            })) => {
                 println!("Session {:?} failed on {}", session_id, io_error.kind());
             }
-            SwarmEvent::Behaviour(Event::SessionFinishedSuccessfully {
-                session_id: SessionId::InboundSessionId(_),
-            })
+            SwarmEvent::Behaviour(Event::External(
+                ExternalEvent::SessionFinishedSuccessfully {
+                    session_id: SessionId::InboundSessionId(_),
+                },
+            ))
             | SwarmEvent::NewListenAddr { .. }
             | SwarmEvent::IncomingConnection { .. }
             | SwarmEvent::ConnectionClosed { .. } => {}

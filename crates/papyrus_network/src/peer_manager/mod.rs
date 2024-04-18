@@ -51,7 +51,6 @@ pub(crate) enum PeerManagerError {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum FromOtherBehaviour {
     RequestPeerAssignment { outbound_session_id: OutboundSessionId },
 }
