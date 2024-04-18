@@ -87,5 +87,21 @@ jobs:
       - run: >
           cargo test -r --test '*' -- --include-ignored --skip test_gw_integration_testnet;
           cargo run -r -p papyrus_node --bin central_source_integration_test --features="futures-util tokio-stream"
-
+     
+# TODO(dvir): make this run only if the path 'crates/papyrus_storage/db/**' (same path as in the CI)  was changed on the 
+# last day and increase the number of repetitions.
+ random-table-test:
+    runs-on: ubuntu-latest
+    on:
+      paths:
+          - crates/papyrus_storage/db/**
+    # repeat this job 100 times.
+    strategy:
+      matrix:
+        repeat: ${{ split(range(1, 100), ',') }}  # generates a sequence from 1 to 100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -r -- --include-ignored common_prefix_compare_with_simple_table_random_test
 

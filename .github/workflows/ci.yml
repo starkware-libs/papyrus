@@ -240,14 +240,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -f papyrus_utilities.Dockerfile .
-  
-  # TODO(dvir): consider running this in the nightly with more iterations only if the db module has changed in the last day.
+    
   random-table-test:
     runs-on: ubuntu-latest
     on:
       paths:
           - crates/papyrus_storage/db/**
-    # repeat this job 32 times
+    # repeat this job 32 times.
+    # this is a random test for part of the code that may cause a corrupted database, so we run this test multiple times.
     strategy:
       matrix:
         repeat: ${{ split(range(1, 32), ',') }}  # generates a sequence from 1 to 32
