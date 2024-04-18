@@ -4,11 +4,12 @@ use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
 
+use crate::main_behaviour::mixed_behaviour;
 use crate::streamed_bytes::behaviour::{Behaviour, PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
 use crate::{PeerAddressConfig, Protocol};
 
-pub type Event = SwarmEvent<<Behaviour as NetworkBehaviour>::ToSwarm>;
+pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
 pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     fn send_length_prefixed_data(
@@ -34,13 +35,13 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     ) -> Result<(), SessionIdNotFoundError>;
 }
 
-impl SwarmTrait for Swarm<Behaviour> {
+impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
     fn send_length_prefixed_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().send_length_prefixed_data(data, inbound_session_id)
+        self.behaviour_mut().streamed_bytes.send_length_prefixed_data(data, inbound_session_id)
     }
 
     fn send_query(
@@ -49,7 +50,7 @@ impl SwarmTrait for Swarm<Behaviour> {
         peer_id: PeerId,
         protocol: Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        self.behaviour_mut().send_query(query, peer_id, protocol.into())
+        self.behaviour_mut().streamed_bytes.send_query(query, peer_id, protocol.into())
     }
 
     fn dial(&mut self, peer: PeerAddressConfig) -> Result<(), DialError> {
@@ -68,6 +69,6 @@ impl SwarmTrait for Swarm<Behaviour> {
         &mut self,
         session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().close_inbound_session(session_id)
+        self.behaviour_mut().streamed_bytes.close_inbound_session(session_id)
     }
 }
