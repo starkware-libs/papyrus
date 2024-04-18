@@ -5,8 +5,9 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
 ## Instructions
 
 1. **Run a Docker**
+   Please refer to the main [README](../../../../README.adoc#running-papyrus-with-docker) for instructions.
 
-   Please refer to the main [README](../../README.md#running-papyrus-with-docker) for instructions.
+   Note: use a released Docker image
 
 3. **View Running Docker Containers**
 
@@ -32,7 +33,7 @@ This tool allows you to dump the entire `declared_classes` table from Papyrus st
 6. **Run the Tool**
 
    ```bash
-   target/release/dump_declared_classes --start_block <block_number> --end_block <block_number> --chain_id <SN_MAIN/SN_GOERLI> [--file_path file_path]
+   target/release/dump_declared_classes --start_block <block_number> --end_block <block_number> --chain_id <SN_MAIN/SN_SEPOLIA> [--file_path file_path]
    ```
 
    The default value for file_path is `dump_declared_classes.json`.
