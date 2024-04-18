@@ -32,6 +32,8 @@ pub enum InternalEvent {
     NotifyKad(KadFromOtherBehaviourEvent),
     NotifyDiscovery(discovery::FromOtherBehaviourEvent),
     #[allow(dead_code)]
+    NotifyPeerManager(peer_manager::FromOtherBehaviour),
+    #[allow(dead_code)]
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
 }
 
