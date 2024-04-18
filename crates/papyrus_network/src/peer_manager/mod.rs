@@ -66,7 +66,7 @@ impl<P> PeerManager<P>
 where
     P: PeerTrait,
 {
-    fn new(config: PeerManagerConfig) -> Self {
+    pub(crate) fn new(config: PeerManagerConfig) -> Self {
         let peers = HashMap::new();
         Self {
             peers,
