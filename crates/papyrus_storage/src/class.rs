@@ -155,7 +155,7 @@ impl<'env, Mode: TransactionKind> ClassStorageReader for StorageTxn<'env, Mode> 
 }
 
 impl<'env> ClassStorageWriter for StorageTxn<'env, RW> {
-    #[latency_histogram("storage_append_classes_latency_seconds")]
+    #[latency_histogram("storage_append_classes_latency_seconds", false)]
     fn append_classes(
         self,
         block_number: BlockNumber,

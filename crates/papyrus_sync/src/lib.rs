@@ -383,7 +383,7 @@ impl<
         }
     }
 
-    #[latency_histogram("sync_store_block_latency_seconds")]
+    #[latency_histogram("sync_store_block_latency_seconds", false)]
     #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
     fn store_block(
         &mut self,
@@ -424,7 +424,7 @@ impl<
         Ok(())
     }
 
-    #[latency_histogram("sync_store_state_diff_latency_seconds")]
+    #[latency_histogram("sync_store_state_diff_latency_seconds", false)]
     #[instrument(skip(self, state_diff, deployed_contract_class_definitions), level = "debug", err)]
     fn store_state_diff(
         &mut self,
@@ -471,7 +471,7 @@ impl<
         Ok(())
     }
 
-    #[latency_histogram("sync_store_compiled_class_latency_seconds")]
+    #[latency_histogram("sync_store_compiled_class_latency_seconds", false)]
     #[instrument(skip(self, compiled_class), level = "debug", err)]
     fn store_compiled_class(
         &mut self,

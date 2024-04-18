@@ -427,7 +427,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
 }
 
 impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
-    #[latency_histogram("storage_append_thin_state_diff_latency_seconds")]
+    #[latency_histogram("storage_append_thin_state_diff_latency_seconds", false)]
     fn append_state_diff(
         self,
         block_number: BlockNumber,
