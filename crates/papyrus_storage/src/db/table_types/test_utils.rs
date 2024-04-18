@@ -1,46 +1,86 @@
 use super::{Table, TableType};
+use crate::db::db_test::get_test_env;
 use crate::db::serialization::{NoVersionValueWrapper, StorageSerde, StorageSerdeError};
 use crate::db::table_types::{DbCursor, DbCursorTrait};
-use crate::db::{DbReader, DbWriter, TableHandle, TableIdentifier, RO};
+use crate::db::{DbResult, DbWriter, TableHandle, TableIdentifier, RW};
 use crate::serialization::serializers::auto_storage_serde;
 
-type TableKey = (u32, u32);
-type TableValue = NoVersionValueWrapper<u32>;
+pub(crate) type TableKey = (u32, u32);
+pub(crate) type TableValue = NoVersionValueWrapper<u32>;
 
 auto_storage_serde! {
     (u32, u32);
 }
 
+// A generic test for all table types.
+#[allow(clippy::type_complexity)]
 pub(crate) fn table_test<T: TableType>(
+    create_table: fn(
+        &mut DbWriter,
+        &'static str,
+    ) -> DbResult<TableIdentifier<TableKey, TableValue, T>>,
+) where
+    for<'env> TableHandle<'env, TableKey, TableValue, T>:
+        Table<'env, Key = TableKey, Value = TableValue, TableVariant = T>,
+    for<'txn> DbCursor<'txn, RW, TableKey, TableValue, T>:
+        DbCursorTrait<Key = TableKey, Value = TableValue>,
+{
+    let ((_reader, mut writer), _temp_dir) = get_test_env();
+
+    let get_test_table = create_table(&mut writer, "get_test").unwrap();
+    get_test(get_test_table, &mut writer);
+
+    let insert_test_table = create_table(&mut writer, "insert_test").unwrap();
+    insert_test(insert_test_table, &mut writer);
+
+    let upsert_test_table = create_table(&mut writer, "upsert_test").unwrap();
+    upsert_test(upsert_test_table, &mut writer);
+
+    let delete_test_table = create_table(&mut writer, "delete_test").unwrap();
+    delete_test(delete_test_table, &mut writer);
+
+    let cursor_test_table = create_table(&mut writer, "cursor_test").unwrap();
+    table_cursor_test(cursor_test_table, &mut writer);
+}
+
+fn get_test<T: TableType>(table_id: TableIdentifier<TableKey, TableValue, T>, writer: &mut DbWriter)
+where
+    for<'env> TableHandle<'env, TableKey, TableValue, T>:
+        Table<'env, Key = TableKey, Value = TableValue>,
+{
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
+
+    // Read does not exist value.
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), None);
+
+    // Insert and read a value.
+    table.insert(&txn, &(1, 1), &11).unwrap();
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
+}
+
+fn insert_test<T: TableType>(
     table_id: TableIdentifier<TableKey, TableValue, T>,
-    reader: &DbReader,
     writer: &mut DbWriter,
 ) where
     for<'env> TableHandle<'env, TableKey, TableValue, T>:
         Table<'env, Key = TableKey, Value = TableValue>,
 {
-    let rtxn = reader.begin_ro_txn().unwrap();
-    let table = rtxn.open_table(&table_id).unwrap();
-
-    // Read does not exist value.
-    let rtxn = reader.begin_ro_txn().unwrap();
-    assert_eq!(table.get(&rtxn, &(1, 1)).unwrap(), None);
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
 
     // Insert values.
-    let wtxn = writer.begin_rw_txn().unwrap();
-    table.insert(&wtxn, &(1, 2), &12).unwrap();
-    table.insert(&wtxn, &(2, 1), &21).unwrap();
-    table.insert(&wtxn, &(1, 1), &11).unwrap();
-    wtxn.commit().unwrap();
-    let rtxn = reader.begin_ro_txn().unwrap();
-    assert_eq!(table.get(&rtxn, &(1, 2)).unwrap(), Some(12));
-    assert_eq!(table.get(&rtxn, &(2, 1)).unwrap(), Some(21));
-    assert_eq!(table.get(&rtxn, &(1, 1)).unwrap(), Some(11));
+    table.insert(&txn, &(1, 2), &12).unwrap();
+    table.insert(&txn, &(2, 1), &21).unwrap();
+    table.insert(&txn, &(1, 1), &11).unwrap();
+
+    assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
+    assert_eq!(table.get(&txn, &(2, 1)).unwrap(), Some(21));
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
 
     // Insert duplicate key.
-    let wtxn = writer.begin_rw_txn().unwrap();
     assert_eq!(
-        table.insert(&wtxn, &(1, 1), &0).expect_err("Expected KeyAlreadyExistsError").to_string(),
+        table.insert(&txn, &(1, 1), &0).expect_err("Expected KeyAlreadyExistsError").to_string(),
         format!(
             "Key '{key:?}' already exists in table '{table_name}'. Error when tried to insert \
              value '0'",
@@ -48,38 +88,60 @@ pub(crate) fn table_test<T: TableType>(
             table_name = table_id.name
         ),
     );
-    drop(wtxn);
 
-    // Upsert a values.
-    let wtxn = writer.begin_rw_txn().unwrap();
-    // (1,1) was already inserted, so this is an update.
-    table.upsert(&wtxn, &(1, 1), &0).unwrap();
-    // (3,3) was not inserted, so this is an insert.
-    table.upsert(&wtxn, &(3, 3), &33).unwrap();
-    wtxn.commit().unwrap();
-    let rtxn = reader.begin_ro_txn().unwrap();
-    assert_eq!(table.get(&rtxn, &(1, 1)).unwrap(), Some(0));
-    assert_eq!(table.get(&rtxn, &(3, 3)).unwrap(), Some(33));
-
-    // Delete values.
-    let wtxn = writer.begin_rw_txn().unwrap();
-    table.delete(&wtxn, &(1, 1)).unwrap();
-    // Delete non-existent value.
-    table.delete(&wtxn, &(4, 4)).unwrap();
-    wtxn.commit().unwrap();
-    let rtxn = reader.begin_ro_txn().unwrap();
-    assert_eq!(table.get(&rtxn, &(1, 1)).unwrap(), None);
-    assert_eq!(table.get(&rtxn, &(4, 4)).unwrap(), None);
+    // Check the final database.
+    assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
+    assert_eq!(table.get(&txn, &(2, 1)).unwrap(), Some(21));
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
 }
 
-pub(crate) fn table_cursor_test<T: TableType>(
+fn upsert_test<T: TableType>(
     table_id: TableIdentifier<TableKey, TableValue, T>,
-    reader: &DbReader,
+    writer: &mut DbWriter,
+) where
+    for<'env> TableHandle<'env, TableKey, TableValue, T>:
+        Table<'env, Key = TableKey, Value = TableValue>,
+{
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
+
+    // Upsert not existing key.
+    table.upsert(&txn, &(1, 1), &11).unwrap();
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
+
+    // (1,1) was already inserted, so this is an update.
+    table.upsert(&txn, &(1, 1), &0).unwrap();
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
+}
+
+fn delete_test<T: TableType>(
+    table_id: TableIdentifier<TableKey, TableValue, T>,
+    writer: &mut DbWriter,
+) where
+    for<'env> TableHandle<'env, TableKey, TableValue, T>:
+        Table<'env, Key = TableKey, Value = TableValue>,
+{
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
+
+    table.insert(&txn, &(1, 1), &11).unwrap();
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(11));
+
+    table.delete(&txn, &(1, 1)).unwrap();
+    // Delete non-existent value.
+    table.delete(&txn, &(2, 2)).unwrap();
+
+    assert_eq!(table.get(&txn, &(1, 1)).unwrap(), None);
+    assert_eq!(table.get(&txn, &(2, 2)).unwrap(), None);
+}
+
+fn table_cursor_test<T: TableType>(
+    table_id: TableIdentifier<TableKey, TableValue, T>,
     writer: &mut DbWriter,
 ) where
     for<'env> TableHandle<'env, TableKey, TableValue, T>:
         Table<'env, Key = TableKey, Value = TableValue, TableVariant = T>,
-    for<'txn> DbCursor<'txn, RO, TableKey, TableValue, T>:
+    for<'txn> DbCursor<'txn, RW, TableKey, TableValue, T>:
         DbCursorTrait<Key = TableKey, Value = TableValue>,
 {
     const VALUES: [((u32, u32), u32); 9] = [
@@ -106,19 +168,16 @@ pub(crate) fn table_cursor_test<T: TableType>(
         ((3, 3), 4),
     ];
 
-    let rtxn = reader.begin_ro_txn().unwrap();
-    let table = rtxn.open_table(&table_id).unwrap();
+    let txn = writer.begin_rw_txn().unwrap();
+    let table = txn.open_table(&table_id).unwrap();
 
     // Insert the values to the table.
-    let wtxn = writer.begin_rw_txn().unwrap();
     for (k, v) in &VALUES {
-        table.insert(&wtxn, k, v).unwrap();
+        table.insert(&txn, k, v).unwrap();
     }
-    wtxn.commit().unwrap();
 
     // Test lower_bound().
-    let rtxn = reader.begin_ro_txn().unwrap();
-    let mut cursor = table.cursor(&rtxn).unwrap();
+    let mut cursor = table.cursor(&txn).unwrap();
     let current = cursor.lower_bound(&(0, 0)).unwrap();
     assert_eq!(current, Some(((1, 1), 7)));
     let current = cursor.lower_bound(&(2, 2)).unwrap();
@@ -129,8 +188,7 @@ pub(crate) fn table_cursor_test<T: TableType>(
     assert_eq!(current, None);
 
     // Iterate using next().
-    let rtxn = reader.begin_ro_txn().unwrap();
-    let mut cursor = table.cursor(&rtxn).unwrap();
+    let mut cursor = table.cursor(&txn).unwrap();
     let mut current = cursor.lower_bound(&(0, 0)).unwrap();
     for kv_pair in SORTED_VALUES {
         assert_eq!(current, Some(kv_pair));
@@ -143,8 +201,7 @@ pub(crate) fn table_cursor_test<T: TableType>(
     assert_eq!(current, None);
 
     // Iterate using prev().
-    let rtxn = reader.begin_ro_txn().unwrap();
-    let mut cursor = table.cursor(&rtxn).unwrap();
+    let mut cursor = table.cursor(&txn).unwrap();
     let mut current = cursor.lower_bound(&(4, 4)).unwrap();
     assert_eq!(current, None);
     for kv_pair in SORTED_VALUES.iter().rev().cloned() {
