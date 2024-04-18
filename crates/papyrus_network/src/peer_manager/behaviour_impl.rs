@@ -1,7 +1,7 @@
 use std::task::Poll;
 
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour};
+use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour, ToSwarm};
 use libp2p::Multiaddr;
 use tracing::error;
 
@@ -106,8 +106,16 @@ where
                 endpoint,
                 ..
             }) => {
-                if let Some(events) = self.peer_pending_dial_with_events.remove(&peer_id) {
-                    self.pending_events.extend(events);
+                if let Some(sessions) = self.peers_pending_dial_with_sessions.remove(&peer_id) {
+                    self.pending_events.extend(sessions.iter().map(|outbound_session_id| {
+                        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                                outbound_session_id: *outbound_session_id,
+                                peer_id,
+                                connection_id,
+                            },
+                        ))
+                    }));
                     self.peers
                         .get_mut(&peer_id)
                         .expect(
