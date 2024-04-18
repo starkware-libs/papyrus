@@ -9,8 +9,9 @@ use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
+use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::{PeerId, Swarm};
+use libp2p::{identify, kad, Multiaddr, PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
@@ -20,9 +21,27 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
-use crate::streamed_bytes::behaviour::{Behaviour, Event, ExternalEvent};
-use crate::streamed_bytes::{Config, InboundSessionId, OutboundSessionId, SessionId};
-use crate::{DataType, NetworkConfig, PeerAddressConfig, Protocol, Query, ResponseReceivers};
+use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
+use crate::peer_manager::PeerManagerConfig;
+use crate::streamed_bytes::behaviour::SessionError;
+use crate::streamed_bytes::{
+    self,
+    Config,
+    GenericEvent,
+    InboundSessionId,
+    OutboundSessionId,
+    SessionId,
+};
+use crate::{
+    discovery,
+    peer_manager,
+    DataType,
+    NetworkConfig,
+    PeerAddressConfig,
+    Protocol,
+    Query,
+    ResponseReceivers,
+};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -101,7 +120,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         (sender, response_receiver)
     }
 
-    fn handle_swarm_event(&mut self, event: SwarmEvent<Event>) {
+    fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 self.peer_id = Some(peer_id);
@@ -177,12 +196,46 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         };
     }
 
-    fn handle_behaviour_event(&mut self, event: Event) {
-        let Event::External(event) = event else {
-            unimplemented!();
-        };
+    fn handle_behaviour_event(&mut self, event: mixed_behaviour::Event) {
         match event {
-            ExternalEvent::NewInboundSession {
+            mixed_behaviour::Event::ExternalEvent(external_event) => {
+                self.handle_behaviour_external_event(external_event);
+            }
+            mixed_behaviour::Event::InternalEvent(internal_event) => {
+                self.handle_behaviour_internal_event(internal_event);
+            }
+        }
+    }
+
+    fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
+        match event {
+            mixed_behaviour::ExternalEvent::StreamedBytes(event) => {
+                self.handle_stream_bytes_behaviour_event(event);
+            }
+        }
+    }
+
+    fn handle_behaviour_internal_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        match event {
+            mixed_behaviour::InternalEvent::NoOp => {}
+            mixed_behaviour::InternalEvent::NotifyKad(_) => {
+                self.swarm.behaviour_mut().kademlia.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
+                self.swarm.behaviour_mut().discovery.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
+                self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(event)
+            }
+            mixed_behaviour::InternalEvent::NotifyPeerManager(_) => {
+                self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(event)
+            }
+        }
+    }
+
+    fn handle_stream_bytes_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+        match event {
+            streamed_bytes::behaviour::ExternalEvent::NewInboundSession {
                 query,
                 inbound_session_id,
                 peer_id: _,
@@ -212,7 +265,10 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                         .boxed(),
                 );
             }
-            ExternalEvent::ReceivedData { outbound_session_id, data } => {
+            streamed_bytes::behaviour::ExternalEvent::ReceivedData {
+                outbound_session_id,
+                data,
+            } => {
                 trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -243,7 +299,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     }
                 }
             }
-            ExternalEvent::SessionFailed { session_id, error } => {
+            streamed_bytes::behaviour::ExternalEvent::SessionFailed { session_id, error } => {
                 error!("Session {session_id:?} failed on {error:?}");
                 self.report_session_removed_to_metrics(session_id);
                 // TODO: Handle reputation and retry.
@@ -251,7 +307,9 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
                 }
             }
-            ExternalEvent::SessionFinishedSuccessfully { session_id } => {
+            streamed_bytes::behaviour::ExternalEvent::SessionFinishedSuccessfully {
+                session_id,
+            } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
                 self.report_session_removed_to_metrics(session_id);
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
@@ -357,7 +415,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 }
 
-pub type NetworkManager = GenericNetworkManager<BlockHeaderDBExecutor, Swarm<Behaviour>>;
+pub type NetworkManager =
+    GenericNetworkManager<BlockHeaderDBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
 
 impl NetworkManager {
     pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
@@ -375,17 +434,30 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
-        let swarm = build_swarm(
-            listen_addresses,
-            idle_connection_timeout,
-            Behaviour::new(Config {
-                session_timeout,
-                supported_inbound_protocols: vec![
-                    Protocol::SignedBlockHeader.into(),
-                    Protocol::StateDiff.into(),
-                ],
-            }),
-        );
+        // TODO: get config details from network manager config
+        // TODO: consider extraction this to a function of mixed_behaviour module
+        // TODO: change kadimilia protocol name
+        let behaviour = |key| {
+            let local_peer_id = PeerId::from_public_key(&key);
+            mixed_behaviour::MixedBehaviour {
+                peer_manager: peer_manager::PeerManager::new(PeerManagerConfig::default()),
+                // TODO: add real bootstrap peer
+                discovery: discovery::Behaviour::new(PeerId::random(), Multiaddr::empty()),
+                identify: identify::Behaviour::new(identify::Config::new(
+                    "/staknet/identify/0.1.0-rc.0".to_string(),
+                    key,
+                )),
+                kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),
+                streamed_bytes: streamed_bytes::Behaviour::new(Config {
+                    session_timeout,
+                    supported_inbound_protocols: vec![
+                        Protocol::SignedBlockHeader.into(),
+                        Protocol::StateDiff.into(),
+                    ],
+                }),
+            }
+        };
+        let swarm = build_swarm(listen_addresses, idle_connection_timeout, behaviour);
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size, peer)

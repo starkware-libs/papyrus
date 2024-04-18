@@ -224,14 +224,15 @@ fn dial_if_requested(swarm: &mut Swarm<Behaviour>, args: &Args) {
 async fn main() {
     let args = Args::parse();
 
-    let config = Config {
-        session_timeout: Duration::from_secs(3600),
-        supported_inbound_protocols: vec![PROTOCOL_NAME],
-    };
     let mut swarm = build_swarm(
         vec![args.listen_address.clone()],
         Duration::from_secs(args.idle_connection_timeout),
-        Behaviour::new(config),
+        |_| {
+            Behaviour::new(Config {
+                session_timeout: Duration::from_secs(3600),
+                supported_inbound_protocols: vec![PROTOCOL_NAME],
+            })
+        },
     );
 
     let mut outbound_session_measurements = HashMap::new();
