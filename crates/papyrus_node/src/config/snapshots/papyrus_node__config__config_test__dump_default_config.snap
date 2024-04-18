@@ -114,6 +114,16 @@ expression: dumped_default_config
     "value": true,
     "privacy": "TemporaryValue"
   },
+  "network.bootstrap_peer_multiaddr": {
+    "description": "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+    "value": "",
+    "privacy": "Public"
+  },
+  "network.bootstrap_peer_multiaddr.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
   "network.header_buffer_size": {
     "description": "Size of the buffer for headers read from the storage.",
     "value": {
@@ -127,16 +137,6 @@ expression: dumped_default_config
       "$serde_json::private::Number": "10"
     },
     "privacy": "Public"
-  },
-  "network.peer_multiaddr": {
-    "description": "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
-    "value": "",
-    "privacy": "Public"
-  },
-  "network.peer_multiaddr.#is_none": {
-    "description": "Flag for an optional field",
-    "value": true,
-    "privacy": "TemporaryValue"
   },
   "network.quic_port": {
     "description": "The port that the node listens on for incoming quic connections.",

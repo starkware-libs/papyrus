@@ -239,7 +239,6 @@ async fn register_subscriber_and_use_channels() {
         mock_swarm,
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(create_test_multiaddr_from_peer_id(peer_id)),
     );
     // define query
     let query_limit = 5;
@@ -328,7 +327,7 @@ async fn process_incoming_query() {
     let get_data_fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
 
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
 
     select! {
         inbound_session_data = get_data_fut => {
@@ -357,7 +356,6 @@ async fn sync_subscriber_query_before_established_connection() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(create_test_multiaddr_from_peer_id(PeerId::random())),
     );
     // define query
     let query_limit = 5;
@@ -435,7 +433,7 @@ async fn close_inbound_session() {
 
     // Create network manager and run it
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = inbound_session_closed_receiver => {}
@@ -452,7 +450,6 @@ async fn return_fin_to_subscriber_unit_test() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        None,
     );
     // register subscriber
     let (_, response_receivers) =
@@ -483,8 +480,4 @@ fn get_test_connection_established_event(mock_peer_id: PeerId) -> Event {
         concurrent_dial_errors: None,
         established_in: Duration::from_secs(0),
     }
-}
-
-fn create_test_multiaddr_from_peer_id(peer_id: PeerId) -> Multiaddr {
-    Multiaddr::empty().with_p2p(peer_id).unwrap()
 }
