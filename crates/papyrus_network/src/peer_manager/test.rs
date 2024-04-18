@@ -55,26 +55,45 @@ fn peer_assignment_round_robin() {
     // check assignment events
     for event in peer_manager.pending_events {
         let ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned(
+            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
                 outbound_session_id,
                 peer_id,
-            ),
+                connection_id,
+            },
         )) = event
         else {
             continue;
         };
         if is_peer1_first {
             match outbound_session_id {
-                OutboundSessionId { value: 1 } => assert_eq!(peer_id, peer1.peer_id()),
-                OutboundSessionId { value: 2 } => assert_eq!(peer_id, peer2.peer_id()),
-                OutboundSessionId { value: 3 } => assert_eq!(peer_id, peer1.peer_id()),
+                OutboundSessionId { value: 1 } => {
+                    assert_eq!(peer_id, peer1.peer_id());
+                    assert_eq!(connection_id, peer1.connection_id().unwrap())
+                }
+                OutboundSessionId { value: 2 } => {
+                    assert_eq!(peer_id, peer2.peer_id());
+                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                }
+                OutboundSessionId { value: 3 } => {
+                    assert_eq!(peer_id, peer1.peer_id());
+                    assert_eq!(connection_id, peer1.connection_id().unwrap());
+                }
                 _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
         } else {
             match outbound_session_id {
-                OutboundSessionId { value: 1 } => assert_eq!(peer_id, peer2.peer_id()),
-                OutboundSessionId { value: 2 } => assert_eq!(peer_id, peer1.peer_id()),
-                OutboundSessionId { value: 3 } => assert_eq!(peer_id, peer2.peer_id()),
+                OutboundSessionId { value: 1 } => {
+                    assert_eq!(peer_id, peer2.peer_id());
+                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                }
+                OutboundSessionId { value: 2 } => {
+                    assert_eq!(peer_id, peer1.peer_id());
+                    assert_eq!(connection_id, peer1.connection_id().unwrap());
+                }
+                OutboundSessionId { value: 3 } => {
+                    assert_eq!(peer_id, peer2.peer_id());
+                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                }
                 _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
         }

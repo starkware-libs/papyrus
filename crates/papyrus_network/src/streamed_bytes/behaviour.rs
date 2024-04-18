@@ -95,7 +95,11 @@ pub type Event = GenericEvent<SessionError>;
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub enum FromOtherBehaviour {
-    SessionAssigned(OutboundSessionId, PeerId),
+    SessionAssigned {
+        outbound_session_id: OutboundSessionId,
+        peer_id: PeerId,
+        connection_id: ConnectionId,
+    },
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -339,7 +343,7 @@ impl BridgedBehaviour for Behaviour {
     fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
         if let mixed_behaviour::InternalEvent::NotifyStreamedBytes(internal_event) = event {
             match internal_event {
-                FromOtherBehaviour::SessionAssigned(..) => {}
+                FromOtherBehaviour::SessionAssigned { .. } => {}
             }
         }
     }

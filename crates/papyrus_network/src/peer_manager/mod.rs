@@ -31,8 +31,7 @@ pub struct PeerManager<P: PeerTrait + 'static> {
     config: PeerManagerConfig,
     last_peer_index: usize,
     pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
-    peer_pending_dial_with_events:
-        HashMap<PeerId, Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>>,
+    peers_pending_dial_with_sessions: HashMap<PeerId, Vec<OutboundSessionId>>,
 }
 
 #[derive(Clone)]
@@ -76,7 +75,7 @@ where
             config,
             last_peer_index: 0,
             pending_events: Vec::new(),
-            peer_pending_dial_with_events: HashMap::new(),
+            peers_pending_dial_with_sessions: HashMap::new(),
         }
     }
 
@@ -110,26 +109,27 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
-            let event = ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-                streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned(
-                    outbound_session_id,
-                    *peer_id,
-                ),
-            ));
-            if peer.connection_id().is_none() {
+            if let Some(connection_id) = peer.connection_id() {
+                self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                    streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                        outbound_session_id,
+                        peer_id: *peer_id,
+                        connection_id,
+                    },
+                )));
+            } else {
                 // In case we have a race condition where the connection is closed after we added to
                 // the pending list, the reciever will get an error and will need to ask for
                 // re-assignment
-                if let Some(events) = self.peer_pending_dial_with_events.get_mut(peer_id) {
-                    events.push(event);
+                if let Some(sessions) = self.peers_pending_dial_with_sessions.get_mut(peer_id) {
+                    sessions.push(outbound_session_id);
                 } else {
-                    self.peer_pending_dial_with_events.insert(*peer_id, vec![event]);
+                    self.peers_pending_dial_with_sessions
+                        .insert(*peer_id, vec![outbound_session_id]);
                 }
                 self.pending_events.push(ToSwarm::Dial {
                     opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
                 });
-            } else {
-                self.pending_events.push(event);
             }
             *peer_id
         })
