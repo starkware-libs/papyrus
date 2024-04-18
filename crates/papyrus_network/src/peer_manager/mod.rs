@@ -8,6 +8,7 @@ use libp2p::PeerId;
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
 use crate::main_behaviour::mixed_behaviour;
+use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
 use crate::streamed_bytes;
 use crate::streamed_bytes::OutboundSessionId;
 
@@ -50,6 +51,12 @@ pub(crate) enum PeerManagerError {
     PeerIsBlocked(PeerId),
 }
 
+#[derive(Debug)]
+#[allow(dead_code)]
+pub enum FromOtherBehaviour {
+    RequestPeerAssignment { outbound_session_id: OutboundSessionId },
+}
+
 impl Default for PeerManagerConfig {
     fn default() -> Self {
         Self { target_num_for_peers: 100, blacklist_timeout: Duration::max_value() }
@@ -83,6 +90,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
+    // TODO(shahak): Remove return value and use FromOtherBehaviour in tests.
     fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
@@ -172,6 +180,19 @@ impl From<Event> for mixed_behaviour::Event {
             }
             Event::NotifyDiscovery(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
+            }
+        }
+    }
+}
+
+impl<P: PeerTrait + 'static> BridgedBehaviour for PeerManager<P> {
+    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
+        let mixed_behaviour::InternalEvent::NotifyPeerManager(event) = event else {
+            return;
+        };
+        match event {
+            FromOtherBehaviour::RequestPeerAssignment { outbound_session_id } => {
+                self.assign_peer_to_session(outbound_session_id);
             }
         }
     }

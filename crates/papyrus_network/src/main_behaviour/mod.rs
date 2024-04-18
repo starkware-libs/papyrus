@@ -91,6 +91,9 @@ impl NetworkBehaviour for MainBehaviour {
                     mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
                         self.mixed_behaviour.streamed_bytes.on_other_behaviour_event(internal_event)
                     }
+                    mixed_behaviour::InternalEvent::NotifyPeerManager(_) => {
+                        self.mixed_behaviour.peer_manager.on_other_behaviour_event(internal_event)
+                    }
                 }
                 Poll::Pending
             }
