@@ -52,7 +52,6 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     sync_subscriber_channels: Option<SubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
-    peer_id: Option<PeerId>,
     // Fields for metrics
     num_active_inbound_sessions: usize,
     num_active_outbound_sessions: usize,
@@ -86,7 +85,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
-            peer_id: None,
             num_active_inbound_sessions: 0,
             num_active_outbound_sessions: 0,
         }
@@ -106,7 +104,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                self.peer_id = Some(peer_id);
                 debug!("Connected to peer id: {peer_id:?}");
                 gauge!(
                     papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS,
@@ -332,52 +329,26 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
 
     fn handle_sync_subscriber_query(&mut self, query: Query) {
         let data_type = query.data_type;
-        if let Some(peer_id) = self.peer_id {
-            let protocol = data_type.into();
-            let mut query_bytes = vec![];
-            query.encode(&mut query_bytes).expect("failed to encode query");
-            match self.swarm.send_query(query_bytes, peer_id, protocol) {
-                Ok(outbound_session_id) => {
-                    debug!(
-                        "Sent query to peer. peer_id: {peer_id:?}, outbound_session_id: \
-                         {outbound_session_id:?}"
-                    );
-                    self.num_active_outbound_sessions += 1;
-                    gauge!(
-                        papyrus_metrics::PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS,
-                        self.num_active_outbound_sessions as f64
-                    );
-                    self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
-                }
-                Err(e) => {
-                    info!(
-                        "Failed to send query to peer. Peer not connected error: {e:?} Returning \
-                         empty response to sync subscriber."
-                    );
-                    self.return_fin_to_subscriber(data_type);
-                }
-            }
-        } else {
-            self.return_fin_to_subscriber(data_type);
-        }
-    }
-
-    fn return_fin_to_subscriber(&mut self, data_type: DataType) {
         let protocol = data_type.into();
-        let mut data_bytes = vec![];
-        Data::Fin(data_type).encode_without_length_prefix(&mut data_bytes).unwrap_or_else(|_| {
-            panic!(
-                "Failed to encode Data::Fin for data_type: {data_type:?}, Buffer has insufficient \
-                 capacity to encode fin"
-            )
-        });
-        let (_, response_senders) = self
-            .sync_subscriber_channels
-            .as_mut()
-            .expect("Can't handle subscriber query before registering a subscriber");
-        response_senders
-            .try_send(protocol, data_bytes)
-            .expect("Encountered unknown protocol while sending fin");
+        let mut query_bytes = vec![];
+        query.encode(&mut query_bytes).expect("failed to encode query");
+        match self.swarm.send_query(query_bytes, PeerId::random(), protocol) {
+            Ok(outbound_session_id) => {
+                debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");
+                self.num_active_outbound_sessions += 1;
+                gauge!(
+                    papyrus_metrics::PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS,
+                    self.num_active_outbound_sessions as f64
+                );
+                self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
+            }
+            Err(e) => {
+                info!(
+                    "Failed to send query to peer. Peer not connected error: {e:?} Returning \
+                     empty response to sync subscriber."
+                );
+            }
+        }
     }
 
     fn report_session_removed_to_metrics(&mut self, session_id: SessionId) {

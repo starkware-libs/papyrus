@@ -443,31 +443,6 @@ async fn close_inbound_session() {
     }
 }
 
-#[tokio::test]
-async fn return_fin_to_subscriber_unit_test() {
-    // network manager to register subscriber
-    let mut network_manager = GenericNetworkManager::generic_new(
-        MockSwarm::default(),
-        MockDBExecutor::default(),
-        HEADER_BUFFER_SIZE,
-    );
-    // register subscriber
-    let (_, response_receivers) =
-        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
-
-    // get a fin through the subscriber channel
-    network_manager.return_fin_to_subscriber(DataType::SignedBlockHeader);
-
-    // check that the subscriber received the fin
-    let mut signed_block_header_stream = response_receivers.signed_headers_receiver.unwrap();
-
-    tokio::select! {
-        Some(data) = signed_block_header_stream.next() => {assert!(data.is_none())},
-        _ = sleep(Duration::from_secs(5)) => {
-            panic!("Test timed out");
-        }
-    }
-}
 fn get_test_connection_established_event(mock_peer_id: PeerId) -> Event {
     Event::ConnectionEstablished {
         peer_id: mock_peer_id,
