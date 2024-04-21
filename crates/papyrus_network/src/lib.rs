@@ -75,6 +75,7 @@ impl From<DataType> for Protocol {
     }
 }
 
+/// This struct represents a query that can be sent to a peer.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Query {
     pub start_block: BlockNumber,
@@ -140,11 +141,16 @@ pub enum BlockHashOrNumber {
 pub type SignedBlockHeaderStream = Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>;
 pub type StateDiffStream = Pin<Box<dyn Stream<Item = Option<ThinStateDiff>> + Send>>;
 
+/// This struct represents the receiver end of the response streams for a network subscriber.
+/// It is created by the network manager and passed to the subscriber when calling
+/// register_subscriber.
 pub struct ResponseReceivers {
     pub signed_headers_receiver: Option<SignedBlockHeaderStream>,
     pub state_diffs_receiver: Option<StateDiffStream>,
 }
 
+/// This is a part of the exposed API of the network manager.
+/// This is meant to represent the different underlying p2p protocols the network manager supports.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
 pub enum Protocol {
     SignedBlockHeader,
