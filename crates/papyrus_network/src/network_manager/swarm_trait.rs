@@ -45,13 +45,14 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         self.behaviour_mut().streamed_bytes.send_length_prefixed_data(data, inbound_session_id)
     }
 
+    // TODO: change this function signature
     fn send_query(
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
         protocol: Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        self.behaviour_mut().streamed_bytes.send_query(query, peer_id, protocol.into())
+        Ok(self.behaviour_mut().streamed_bytes.start_query(query, protocol.into()))
     }
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError> {
