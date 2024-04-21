@@ -154,6 +154,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                      {local_addr:?}, send back addr: {send_back_addr:?}, error: {error:?}"
                 );
             }
+            SwarmEvent::Dialing { .. } | SwarmEvent::NewExternalAddrCandidate { .. } => {}
             _ => {
                 panic!("Unexpected event {event:?}");
             }
