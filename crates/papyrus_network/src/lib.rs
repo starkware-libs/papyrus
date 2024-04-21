@@ -43,7 +43,7 @@ pub struct NetworkConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
-    pub peer_multiaddr: Option<Multiaddr>,
+    pub bootstrap_peer_multiaddr: Option<Multiaddr>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Clone, Copy, Display)]
@@ -236,9 +236,9 @@ impl SerializeConfig for NetworkConfig {
             ),
         ]);
         config.extend(ser_optional_param(
-            &self.peer_multiaddr,
+            &self.bootstrap_peer_multiaddr,
             Multiaddr::empty(),
-            "peer_multiaddr",
+            "bootstrap_peer_multiaddr",
             "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
             ParamPrivacyInput::Public,
         ));
@@ -254,7 +254,7 @@ impl Default for NetworkConfig {
             session_timeout: Duration::from_secs(10),
             idle_connection_timeout: Duration::from_secs(10),
             header_buffer_size: 100000,
-            peer_multiaddr: None,
+            bootstrap_peer_multiaddr: None,
         }
     }
 }

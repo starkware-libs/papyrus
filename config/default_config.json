@@ -104,6 +104,16 @@
     "privacy": "TemporaryValue",
     "value": true
   },
+  "network.bootstrap_peer_multiaddr": {
+    "description": "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
+    "privacy": "Public",
+    "value": ""
+  },
+  "network.bootstrap_peer_multiaddr.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
   "network.header_buffer_size": {
     "description": "Size of the buffer for headers read from the storage.",
     "privacy": "Public",
@@ -113,16 +123,6 @@
     "description": "Amount of time in seconds that a connection with no active sessions will stay alive.",
     "privacy": "Public",
     "value": 10
-  },
-  "network.peer_multiaddr": {
-    "description": "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
-    "privacy": "Public",
-    "value": ""
-  },
-  "network.peer_multiaddr.#is_none": {
-    "description": "Flag for an optional field",
-    "privacy": "TemporaryValue",
-    "value": true
   },
   "network.quic_port": {
     "description": "The port that the node listens on for incoming quic connections.",
