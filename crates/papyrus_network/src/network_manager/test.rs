@@ -35,7 +35,7 @@ use crate::main_behaviour::mixed_behaviour;
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, PeerAddressConfig, Query};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 #[derive(Default)]
 struct MockSwarm {
@@ -156,7 +156,7 @@ impl SwarmTrait for MockSwarm {
         Ok(outbound_session_id)
     }
 
-    fn dial(&mut self, _peer: PeerAddressConfig) -> Result<(), libp2p::swarm::DialError> {
+    fn dial(&mut self, _peer: Multiaddr) -> Result<(), libp2p::swarm::DialError> {
         Ok(())
     }
     fn num_connected_peers(&self) -> usize {
@@ -239,7 +239,6 @@ async fn register_subscriber_and_use_channels() {
         mock_swarm,
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id, ..Default::default() }),
     );
     // define query
     let query_limit = 5;
@@ -328,7 +327,7 @@ async fn process_incoming_query() {
     let get_data_fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
 
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
 
     select! {
         inbound_session_data = get_data_fut => {
@@ -357,7 +356,6 @@ async fn sync_subscriber_query_before_established_connection() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        Some(PeerAddressConfig { peer_id: PeerId::random(), ..Default::default() }),
     );
     // define query
     let query_limit = 5;
@@ -435,7 +433,7 @@ async fn close_inbound_session() {
 
     // Create network manager and run it
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE, None);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = inbound_session_closed_receiver => {}
@@ -452,7 +450,6 @@ async fn return_fin_to_subscriber_unit_test() {
         MockSwarm::default(),
         MockDBExecutor::default(),
         HEADER_BUFFER_SIZE,
-        None,
     );
     // register subscriber
     let (_, response_receivers) =

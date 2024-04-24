@@ -193,7 +193,7 @@ fn get_cli_params() -> CliParams {
                 .short('c')
                 .long("chain_id")
                 .required(true)
-                .help("The chain id SN_MAIN/SN_GOERLI for example"),
+                .help("The chain id SN_MAIN/SN_SEPOLIA for example"),
         )
         .get_matches();
 
