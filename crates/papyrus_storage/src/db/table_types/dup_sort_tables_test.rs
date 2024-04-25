@@ -12,7 +12,6 @@ fn common_prefix_table() {
 #[ignore]
 #[test]
 fn common_prefix_compare_with_simple_table_random() {
-    println!("START");
     let ((reader, mut writer), _temp_dir) = get_test_env();
     let simple_table = writer.create_simple_table("simple_table").unwrap();
     let common_prefix_table = writer.create_common_prefix_table("common_prefix_table").unwrap();
