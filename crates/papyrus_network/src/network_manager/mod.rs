@@ -226,7 +226,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 peer_id: _,
                 protocol_name,
             } => {
-                trace!(
+                info!(
                     "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
                 );
                 self.num_active_inbound_sessions += 1;
