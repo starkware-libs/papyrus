@@ -1,5 +1,6 @@
 use std::cmp::min;
 use std::pin::Pin;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_stream::stream;
@@ -7,11 +8,11 @@ use futures::channel::mpsc::Sender;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{SinkExt, Stream, StreamExt};
-use papyrus_network::{DataType, Direction, Query};
+use papyrus_network::{DataType, Direction, Query, QueryId, SubscriberAction};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
-use tracing::{debug, info};
+use tracing::{debug, info, Subscriber};
 
 use crate::{P2PSyncError, STEP};
 
@@ -47,11 +48,12 @@ pub(crate) trait DataStreamFactory {
 
     fn create_stream(
         mut data_receiver: Pin<Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>>,
-        mut query_sender: Sender<Query>,
+        mut action_sender: Sender<SubscriberAction>,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: usize,
         stop_sync_at_block_number: Option<BlockNumber>,
+        next_query_id: Arc<Mutex<QueryId>>,
     ) -> BoxStream<'static, Result<Box<dyn BlockData>, P2PSyncError>> {
         stream! {
             let mut current_block_number = Self::get_start_block_number(&storage_reader)?;
@@ -82,14 +84,26 @@ pub(crate) trait DataStreamFactory {
                     current_block_number.0,
                     end_block_number,
                 );
-                query_sender
-                    .send(Query {
+                let current_query_id = {
+                    let mut next_query_id_guard = next_query_id.lock().expect("failed locking next query id");
+                    let query_id = (*next_query_id_guard).clone();
+                    *next_query_id_guard = QueryId(query_id.0 + 1);
+                    // explicitly unlock the mutex - for readability
+                    drop(next_query_id_guard);
+                    query_id
+                };
+                let action = SubscriberAction::StartQuery(
+                    current_query_id,
+                    Query {
                         start_block: current_block_number,
                         direction: Direction::Forward,
                         limit,
                         step: STEP,
                         data_type: Self::DATA_TYPE,
-                    })
+                    }
+                );
+                action_sender
+                    .send(action)
                     .await?;
 
                 while current_block_number.0 < end_block_number {

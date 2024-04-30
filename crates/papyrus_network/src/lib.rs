@@ -75,6 +75,20 @@ impl From<DataType> for Protocol {
     }
 }
 
+/// This struct represents the different actions that the subscriber can ask the network manager to
+/// do.
+#[derive(Debug, PartialEq, Eq)]
+pub enum SubscriberAction {
+    StartQuery(QueryId, Query),
+    StopQuery(QueryId),
+    ReportPeer(QueryId),
+}
+
+/// This struct represents a query id that is used to identify a query.
+/// It is the means of communication between the network manager and the subscriber.
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub struct QueryId(pub u64);
+
 /// This struct represents a query that can be sent to a peer.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct Query {

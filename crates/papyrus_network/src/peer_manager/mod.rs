@@ -153,7 +153,7 @@ where
         }
     }
 
-    fn report_session(
+    pub(crate) fn report_session(
         &mut self,
         outbound_session_id: OutboundSessionId,
         reason: ReputationModifier,

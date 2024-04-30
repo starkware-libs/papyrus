@@ -23,7 +23,7 @@ use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
-use crate::peer_manager::PeerManagerConfig;
+use crate::peer_manager::{PeerManagerConfig, ReputationModifier};
 use crate::streamed_bytes::behaviour::SessionError;
 use crate::streamed_bytes::{
     self,
@@ -33,10 +33,20 @@ use crate::streamed_bytes::{
     OutboundSessionId,
     SessionId,
 };
-use crate::{discovery, peer_manager, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
+use crate::{
+    discovery,
+    peer_manager,
+    DataType,
+    NetworkConfig,
+    Protocol,
+    Query,
+    QueryId as ExternalQueryId,
+    ResponseReceivers,
+    SubscriberAction,
+};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
-type SubscriberChannels = (Receiver<Query>, Router);
+type SubscriberChannels = (Receiver<SubscriberAction>, Router);
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -52,6 +62,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     sync_subscriber_channels: Option<SubscriberChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
+    active_external_query_id_to_outbound_session_id: HashMap<ExternalQueryId, OutboundSessionId>,
     // Fields for metrics
     num_active_inbound_sessions: usize,
     num_active_outbound_sessions: usize,
@@ -65,8 +76,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
                 Some(res) = self.sync_subscriber_channels.as_mut()
-                .map(|(query_receiver, _)| query_receiver.next().boxed())
-                .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res),
+                .map(|(action_receiver, _)| action_receiver.next().boxed())
+                .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_action(res),
             }
         }
     }
@@ -85,6 +96,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             sync_subscriber_channels: None,
             query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
+            active_external_query_id_to_outbound_session_id: HashMap::new(),
             num_active_inbound_sessions: 0,
             num_active_outbound_sessions: 0,
         }
@@ -93,11 +105,11 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     pub fn register_subscriber(
         &mut self,
         protocols: Vec<Protocol>,
-    ) -> (Sender<Query>, ResponseReceivers) {
-        let (sender, query_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
+    ) -> (Sender<SubscriberAction>, ResponseReceivers) {
+        let (sender, action_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
         let mut router = Router::new(protocols, self.header_buffer_size);
         let response_receiver = ResponseReceivers::new(router.get_recievers());
-        self.sync_subscriber_channels = Some((query_receiver, router));
+        self.sync_subscriber_channels = Some((action_receiver, router));
         (sender, response_receiver)
     }
 
@@ -330,7 +342,40 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
     }
 
-    fn handle_sync_subscriber_query(&mut self, query: Query) {
+    fn handle_sync_subscriber_action(&mut self, action: SubscriberAction) {
+        match action {
+            SubscriberAction::StartQuery(external_query_id, query) => {
+                self.handle_start_query(external_query_id, query);
+            }
+            // TODO: split this into two branches and provide a fitting reason for each.
+            SubscriberAction::StopQuery(external_query_id)
+            | SubscriberAction::ReportPeer(external_query_id) => {
+                self.handle_query_close(external_query_id, Some(ReputationModifier::Bad));
+            }
+        }
+    }
+
+    fn handle_query_close(
+        &mut self,
+        external_query_id: ExternalQueryId,
+        reasone: Option<ReputationModifier>,
+    ) {
+        if let Some(outbound_session_id) =
+            self.active_external_query_id_to_outbound_session_id.remove(&external_query_id)
+        {
+            self.swarm.close_outbound_session(outbound_session_id).unwrap_or_else(|e| {
+                error!(
+                    "Failed to close session after stopping query. Session id: \
+                     {outbound_session_id:?} not found error: {e:?}"
+                )
+            });
+            if let Some(reasone) = reasone {
+                self.swarm.report_session(outbound_session_id, reasone)
+            }
+        }
+    }
+
+    fn handle_start_query(&mut self, query_id: ExternalQueryId, query: Query) {
         let data_type = query.data_type;
         let protocol = data_type.into();
         let mut query_bytes = vec![];
@@ -344,6 +389,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     self.num_active_outbound_sessions as f64
                 );
                 self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
+                self.active_external_query_id_to_outbound_session_id
+                    .insert(query_id, outbound_session_id);
             }
             Err(e) => {
                 info!(

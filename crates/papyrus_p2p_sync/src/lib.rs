@@ -9,13 +9,14 @@ mod stream_factory;
 mod test_utils;
 
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::channel::mpsc::{SendError, Sender};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::{DataType, Query, ResponseReceivers};
+use papyrus_network::{DataType, Query, QueryId, ResponseReceivers, SubscriberAction};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
@@ -139,8 +140,9 @@ pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    query_sender: Sender<Query>,
+    action_sender: Sender<SubscriberAction>,
     response_receivers: ResponseReceivers,
+    next_query_id: Arc<Mutex<QueryId>>,
 }
 
 impl P2PSync {
@@ -148,10 +150,17 @@ impl P2PSync {
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
+        action_sender: Sender<SubscriberAction>,
         response_receivers: ResponseReceivers,
     ) -> Self {
-        Self { config, storage_reader, storage_writer, query_sender, response_receivers }
+        Self {
+            config,
+            storage_reader,
+            storage_writer,
+            action_sender,
+            response_receivers,
+            next_query_id: Arc::new(Mutex::new(QueryId(0))),
+        }
     }
 
     #[instrument(skip(self), level = "debug", err)]
@@ -160,22 +169,24 @@ impl P2PSync {
             self.response_receivers
                 .signed_headers_receiver
                 .expect("p2p sync needs a signed headers receiver"),
-            self.query_sender.clone(),
+            self.action_sender.clone(),
             self.storage_reader.clone(),
             self.config.wait_period_for_new_data,
             self.config.num_headers_per_query,
             self.config.stop_sync_at_block_number,
+            self.next_query_id.clone(),
         );
 
         let state_diff_stream = StateDiffStreamFactory::create_stream(
             self.response_receivers
                 .state_diffs_receiver
                 .expect("p2p sync needs a state diffs receiver"),
-            self.query_sender,
+            self.action_sender,
             self.storage_reader,
             self.config.wait_period_for_new_data,
             self.config.num_block_state_diffs_per_query,
             self.config.stop_sync_at_block_number,
+            self.next_query_id.clone(),
         );
 
         let mut data_stream = header_stream.merge(state_diff_stream);

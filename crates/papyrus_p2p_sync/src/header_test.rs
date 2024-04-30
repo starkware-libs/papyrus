@@ -66,9 +66,9 @@ async fn signed_headers_basic_flow() {
 
                 tokio::time::sleep(SLEEP_DURATION_TO_LET_SYNC_ADVANCE).await;
 
-                // Check responses were written to the storage. This way we make sure that the sync
-                // writes to the storage each response it receives before all query responses were
-                // sent.
+                // Check responses were written to the storage. This way we make sure that the
+sync                 // writes to the storage each response it receives before all query
+responses were                 // sent.
                 let block_number = BlockNumber(i.try_into().unwrap());
                 let txn = storage_reader.begin_ro_txn().unwrap();
                 assert_eq!(block_number.unchecked_next(), txn.get_header_marker().unwrap());
@@ -97,15 +97,15 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
     const NUM_ACTUAL_RESPONSES: u8 = 2;
     assert!(usize::from(NUM_ACTUAL_RESPONSES) < HEADER_QUERY_LENGTH);
 
-    let (p2p_sync, _storage_reader, query_receiver, mut signed_headers_sender, _state_diffs_sender) =
-        setup();
+    let (p2p_sync, _storage_reader, query_receiver, mut signed_headers_sender,
+_state_diffs_sender) =         setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
 
     let mut query_receiver = query_receiver
         .filter(|query| ready(matches!(query.data_type, DataType::SignedBlockHeader)));
 
-    // Create a future that will receive a query, send partial responses and receive the next query.
-    let parse_queries_future = async move {
+    // Create a future that will receive a query, send partial responses and receive the next
+query.     let parse_queries_future = async move {
         let _query = query_receiver.next().await.unwrap();
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {

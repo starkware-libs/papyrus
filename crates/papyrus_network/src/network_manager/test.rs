@@ -175,6 +175,21 @@ impl SwarmTrait for MockSwarm {
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
         unimplemented!()
     }
+
+    fn close_outbound_session(
+        &mut self,
+        session_id: OutboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        unimplemented!()
+    }
+
+    fn report_session(
+        &mut self,
+        session_id: OutboundSessionId,
+        reasone: crate::peer_manager::ReputationModifier,
+    ) {
+        unimplemented!()
+    }
 }
 
 #[derive(Default)]

@@ -19,7 +19,14 @@ use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_network::network_manager::NetworkError;
-use papyrus_network::{network_manager, NetworkConfig, Protocol, Query, ResponseReceivers};
+use papyrus_network::{
+    network_manager,
+    NetworkConfig,
+    Protocol,
+    Query,
+    ResponseReceivers,
+    SubscriberAction,
+};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
@@ -141,7 +148,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             (sync_fut.boxed(), pending().boxed())
         }
         (None, Some(p2p_sync_config)) => {
-            let (query_sender, response_receivers) = maybe_query_sender_and_response_receivers
+            let (action_sender, response_receivers) = maybe_query_sender_and_response_receivers
                 .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
@@ -149,7 +156,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
                     p2p_sync_config,
                     storage_reader.clone(),
                     storage_writer,
-                    query_sender,
+                    action_sender,
                     response_receivers,
                 )
                 .boxed(),
@@ -223,14 +230,14 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         p2p_sync_config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
+        action_sender: Sender<SubscriberAction>,
         response_receivers: ResponseReceivers,
     ) -> Result<(), P2PSyncError> {
         let sync = P2PSync::new(
             p2p_sync_config,
             storage_reader,
             storage_writer,
-            query_sender,
+            action_sender,
             response_receivers,
         );
         sync.run().await
@@ -239,7 +246,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
 type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
-    Option<(Sender<Query>, ResponseReceivers)>,
+    Option<(Sender<SubscriberAction>, ResponseReceivers)>,
     String,
 );
 
@@ -248,9 +255,9 @@ fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> 
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     let own_peer_id = network_manager.get_own_peer_id();
-    let (query_sender, response_receivers) =
+    let (action_sender, response_receivers) =
         network_manager.register_subscriber(vec![Protocol::SignedBlockHeader, Protocol::StateDiff]);
-    (network_manager.run().boxed(), Some((query_sender, response_receivers)), own_peer_id)
+    (network_manager.run().boxed(), Some((action_sender, response_receivers)), own_peer_id)
 }
 
 // TODO(yair): add dynamic level filtering.

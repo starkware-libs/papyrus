@@ -4,8 +4,9 @@ use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
 
 use crate::main_behaviour::mixed_behaviour;
+use crate::peer_manager::ReputationModifier;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
+use crate::streamed_bytes::{InboundSessionId, OutboundSessionId, SessionId};
 use crate::Protocol;
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
@@ -33,7 +34,14 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
         session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError>;
 
+    fn close_outbound_session(
+        &mut self,
+        session_id: OutboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError>;
+
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour;
+
+    fn report_session(&mut self, session_id: OutboundSessionId, reasone: ReputationModifier);
 }
 
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
@@ -69,7 +77,20 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         self.behaviour_mut().streamed_bytes.close_inbound_session(session_id)
     }
 
+    fn close_outbound_session(
+        &mut self,
+        session_id: OutboundSessionId,
+    ) -> Result<(), SessionIdNotFoundError> {
+        self.behaviour_mut()
+            .streamed_bytes
+            .drop_session(crate::streamed_bytes::SessionId::OutboundSessionId(session_id))
+    }
+
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
         self.behaviour_mut()
+    }
+
+    fn report_session(&mut self, session_id: OutboundSessionId, reasone: ReputationModifier) {
+        self.behaviour_mut().peer_manager.report_session(session_id, reasone);
     }
 }

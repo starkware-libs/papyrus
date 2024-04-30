@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use futures::future::ready;
 use futures::{FutureExt, SinkExt, StreamExt};
 use indexmap::{indexmap, IndexMap};
-use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
+use papyrus_network::{DataType, Direction, Query, QueryId, SignedBlockHeader, SubscriberAction};
 use papyrus_storage::state::StateStorageReader;
 use rand::RngCore;
 use starknet_api::block::{BlockHeader, BlockNumber};
@@ -98,7 +98,7 @@ async fn state_diff_basic_flow() {
     let (
         p2p_sync,
         storage_reader,
-        query_receiver,
+        action_receiver,
         mut signed_headers_sender,
         mut state_diffs_sender,
     ) = setup();
@@ -111,8 +111,8 @@ async fn state_diff_basic_flow() {
 
     // We don't need to read the header query in order to know which headers to send, and we
     // already validate the header query in a different test.
-    let mut query_receiver =
-        query_receiver.filter(|query| ready(matches!(query.data_type, DataType::StateDiff)));
+    let mut action_receiver =
+        action_receiver.filter(|action| ready(matches!(action, SubscriberAction::StartQuery(query_id, query) if query.data_type == DataType::StateDiff)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -120,7 +120,7 @@ async fn state_diff_basic_flow() {
         tokio::time::sleep(SLEEP_DURATION_TO_LET_SYNC_ADVANCE).await;
 
         // Check that before we send headers there is no state diff query.
-        assert!(query_receiver.next().now_or_never().is_none());
+        assert!(action_receiver.next().now_or_never().is_none());
 
         // Send headers for entire query.
         for (i, ((block_hash, block_signature), state_diff)) in
@@ -140,6 +140,7 @@ async fn state_diff_basic_flow() {
                 .await
                 .unwrap();
         }
+        let mut expected_query_id = block_hashes_and_signatures.len() as u64;
         for (start_block_number, num_blocks) in [
             (0u64, STATE_DIFF_QUERY_LENGTH),
             (
@@ -148,16 +149,19 @@ async fn state_diff_basic_flow() {
             ),
         ] {
             // Get a state diff query and validate it
-            let query = query_receiver.next().await.unwrap();
+            let action = action_receiver.next().await.unwrap();
             assert_eq!(
-                query,
-                Query {
-                    start_block: BlockNumber(start_block_number),
-                    direction: Direction::Forward,
-                    limit: num_blocks,
-                    step: 1,
-                    data_type: DataType::StateDiff,
-                }
+                action,
+                SubscriberAction::StartQuery(
+                    QueryId(expected_query_id),
+                    Query {
+                        start_block: BlockNumber(start_block_number),
+                        direction: Direction::Forward,
+                        limit: num_blocks,
+                        step: 1,
+                        data_type: DataType::StateDiff,
+                    }
+                )
             );
 
             for block_number in
@@ -187,6 +191,7 @@ async fn state_diff_basic_flow() {
                 assert_eq!(state_diff, *expected_state_diff);
             }
             state_diffs_sender.send(None).await.unwrap();
+            expected_query_id += 1;
         }
     };
 
@@ -207,7 +212,7 @@ async fn validate_state_diff_fails(
     let (
         p2p_sync,
         storage_reader,
-        query_receiver,
+        action_receiver,
         mut signed_headers_sender,
         mut state_diffs_sender,
     ) = setup();
@@ -216,8 +221,10 @@ async fn validate_state_diff_fails(
 
     // We don't need to read the header query in order to know which headers to send, and we
     // already validate the header query in a different test.
-    let mut query_receiver =
-        query_receiver.filter(|query| ready(matches!(query.data_type, DataType::StateDiff)));
+    let mut action_receiver =
+        action_receiver.filter(|action| ready(matches!(
+            action,
+            SubscriberAction::StartQuery(query_id, query) if query.data_type == DataType::StateDiff)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -236,16 +243,19 @@ async fn validate_state_diff_fails(
             .unwrap();
 
         // Get a state diff query and validate it
-        let query = query_receiver.next().await.unwrap();
-        assert_eq!(
-            query,
-            Query {
-                start_block: BlockNumber(0),
-                direction: Direction::Forward,
-                limit: 1,
-                step: 1,
-                data_type: DataType::StateDiff,
-            }
+        let action = action_receiver.next().await.unwrap();
+        assert_matches!(
+            action,
+            SubscriberAction::StartQuery(
+                ..,
+                Query {
+                    start_block: BlockNumber(0),
+                    direction: Direction::Forward,
+                    limit: 1,
+                    step: 1,
+                    data_type: DataType::StateDiff,
+                }
+            )
         );
 
         // Send state diffs.

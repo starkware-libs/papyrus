@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
 use lazy_static::lazy_static;
-use papyrus_network::{Query, ResponseReceivers, SignedBlockHeader};
+use papyrus_network::{Query, ResponseReceivers, SignedBlockHeader, SubscriberAction};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
@@ -35,12 +35,12 @@ lazy_static! {
 pub fn setup() -> (
     P2PSync,
     StorageReader,
-    Receiver<Query>,
+    Receiver<SubscriberAction>,
     Sender<Option<SignedBlockHeader>>,
     Sender<Option<ThinStateDiff>>,
 ) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
-    let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (action_sender, action_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (signed_headers_sender, signed_headers_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
     let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
@@ -48,13 +48,13 @@ pub fn setup() -> (
         *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
-        query_sender,
+        action_sender,
         ResponseReceivers {
             signed_headers_receiver: Some(signed_headers_receiver.boxed()),
             state_diffs_receiver: Some(state_diffs_receiver.boxed()),
         },
     );
-    (p2p_sync, storage_reader, query_receiver, signed_headers_sender, state_diffs_sender)
+    (p2p_sync, storage_reader, action_receiver, signed_headers_sender, state_diffs_sender)
 }
 
 pub fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSignature)> {
