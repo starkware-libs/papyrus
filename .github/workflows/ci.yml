@@ -240,3 +240,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - run: DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -f papyrus_utilities.Dockerfile .
+
+  random-table-test:
+    runs-on: ubuntu-latest
+    steps:
+      # run this job only if the path 'crates/papyrus_storage/src/db/**' is changed, because it takes around 2 minutes.
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            target_directory:
+              - 'crates/papyrus_storage/src/db/**'
+
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # repeat this job 32 times. this is a random test for part of the code that may cause a corrupted database.
+      - run: for run in {1..32}; do cargo test -r -p papyrus_storage -- --include-ignored common_prefix_compare_with_simple_table_random; done
+        if: steps.changes.outputs.target_directory == 'true'
+
