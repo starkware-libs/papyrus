@@ -46,6 +46,32 @@
 //! assert_eq!(header, Some(BlockHeader::default()));
 //! # Ok::<(), papyrus_storage::StorageError>(())
 //! ```
+//! # Storage Version
+//!
+//! Attempting to open an existing database using a crate version with a mismatching storage version
+//! will result in an error.
+//!
+//! The storage version is composed of two components: [`STORAGE_VERSION_STATE`] for the state and
+//! [`STORAGE_VERSION_BLOCKS`] for blocks. Each version consists of a major and a minor version. A
+//! higher major version indicates that a re-sync is necessary, while a higher minor version
+//! indicates a change that is migratable.
+//!
+//! When a storage is opened with [`StorageScope::StateOnly`], only the state version must match.
+//! For storage opened with [`StorageScope::FullArchive`], both versions must match the crate's
+//! versions.
+//!
+//! Incompatibility occurs when the code and the database have differing major versions. However,
+//! if the code has the same major version but a higher minor version compared to the database, it
+//! will still function properly. When opened, a storage migration will be performed (which may take
+//! some time), and the database's minor version will be updated.
+//!
+//! Example cases:
+//! - Code: {major: 0, minor: 0}, Database: {major: 1, minor: 0} will fail due to major version
+//!   inequality.
+//! - Code: {major: 0, minor: 0}, Database: {major: 0, minor: 1} will fail due to the smaller code's
+//!   minor version.
+//! - Code: {major: 0, minor: 1}, Database: {major: 0, minor: 0} will succeed since the major
+//!   versions match and the code's minor version is higher.
 //!
 //! [`Starknet`]: https://starknet.io/
 //! [`libmdbx`]: https://docs.rs/libmdbx/latest/libmdbx/
@@ -135,17 +161,10 @@ use crate::state::data::IndexedDeprecatedContractClass;
 pub use crate::utils::update_storage_metrics;
 use crate::version::{VersionStorageReader, VersionStorageWriter};
 
-// TODO(dvir): add detailed explanation with examples about the storage versions, especially the
-// major and minor differences.
-
+// For more details on the storage version, see the module documentation.
 /// The current version of the storage state code.
-/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
-/// required.
 pub const STORAGE_VERSION_STATE: Version = Version { major: 1, minor: 1 };
 /// The current version of the storage blocks code.
-/// Major change requires a re-sync, minor change means a versioned value changed an re-sync is not
-/// required.
-/// This version is only checked for storages that store transactions (StorageScope::FullArchive).
 pub const STORAGE_VERSION_BLOCKS: Version = Version { major: 2, minor: 0 };
 
 /// Opens a storage and returns a [`StorageReader`] and a [`StorageWriter`].
