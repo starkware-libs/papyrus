@@ -150,8 +150,12 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                      {local_addr:?}, send back addr: {send_back_addr:?}, error: {error:?}"
                 );
             }
-            SwarmEvent::NewListenAddr { .. }
-            | SwarmEvent::IncomingConnection { .. }
+            SwarmEvent::NewListenAddr { address, .. } => {
+                // TODO(shahak): Once we support nodes behind a NAT, fix this to only add external
+                // addresses.
+                self.swarm.add_external_address(address);
+            }
+            SwarmEvent::IncomingConnection { .. }
             | SwarmEvent::Dialing { .. }
             | SwarmEvent::NewExternalAddrCandidate { .. } => {}
             _ => {
