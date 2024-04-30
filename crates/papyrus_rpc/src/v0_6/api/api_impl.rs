@@ -262,8 +262,6 @@ impl JsonRpcServer for JsonRpcServerImpl {
         let status = get_block_status(&txn, block_number)?;
         let header =
             GeneralBlockHeader::BlockHeader(get_block_header_by_number(&txn, block_number)?.into());
-        // TODO(dvir): consider create a vector of (transaction, transaction_index) first and get
-        // the transaction hashes by the index.
         let transactions = get_block_txs_by_number(&txn, block_number)?;
         let transaction_hashes = get_block_tx_hashes_by_number(&txn, block_number)?;
         let transactions_with_hash = transactions
