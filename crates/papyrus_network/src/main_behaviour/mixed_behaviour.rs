@@ -21,7 +21,6 @@ pub struct MixedBehaviour {
 #[derive(Debug)]
 pub enum Event {
     ExternalEvent(ExternalEvent),
-    #[allow(dead_code)]
     InternalEvent(InternalEvent),
 }
 
