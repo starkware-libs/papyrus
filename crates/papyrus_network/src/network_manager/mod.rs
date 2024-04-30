@@ -9,10 +9,8 @@ use futures::channel::mpsc::{Receiver, Sender};
 use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
-use libp2p::core::multiaddr::Protocol as Libp2pProtocol;
-use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::{DialError, SwarmEvent};
-use libp2p::{identify, kad, Multiaddr, PeerId, Swarm};
+use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
@@ -23,17 +21,8 @@ use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
 use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
-use crate::peer_manager::PeerManagerConfig;
-use crate::streamed_bytes::behaviour::SessionError;
-use crate::streamed_bytes::{
-    self,
-    Config,
-    GenericEvent,
-    InboundSessionId,
-    OutboundSessionId,
-    SessionId,
-};
-use crate::{discovery, peer_manager, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
+use crate::streamed_bytes::{self, InboundSessionId, OutboundSessionId, SessionId};
+use crate::{DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<Query>, Router);
@@ -218,7 +207,10 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
     }
 
-    fn handle_stream_bytes_behaviour_event(&mut self, event: GenericEvent<SessionError>) {
+    fn handle_stream_bytes_behaviour_event(
+        &mut self,
+        event: streamed_bytes::behaviour::ExternalEvent,
+    ) {
         match event {
             streamed_bytes::behaviour::ExternalEvent::NewInboundSession {
                 query,
@@ -393,38 +385,19 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
-        // TODO: get config details from network manager config
-        // TODO: consider extraction this to a function of mixed_behaviour module
-        // TODO: change kadimilia protocol name
-        let behaviour = |key| {
-            let local_peer_id = PeerId::from_public_key(&key);
-            mixed_behaviour::MixedBehaviour {
-                peer_manager: peer_manager::PeerManager::new(PeerManagerConfig::default()),
-                discovery: bootstrap_peer_multiaddr
-                    .as_ref()
-                    .map(|bootstrap_peer_multiaddr| {
-                        discovery::Behaviour::new(
-                            get_peer_id_from_multiaddr(bootstrap_peer_multiaddr)
-                                .expect("bootstrap_peer_multiaddr doesn't have a peer id"),
-                            bootstrap_peer_multiaddr.clone(),
-                        )
-                    })
-                    .into(),
-                identify: identify::Behaviour::new(identify::Config::new(
-                    "/staknet/identify/0.1.0-rc.0".to_string(),
-                    key,
-                )),
-                kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),
-                streamed_bytes: streamed_bytes::Behaviour::new(Config {
+        let swarm = build_swarm(listen_addresses, idle_connection_timeout, |key| {
+            mixed_behaviour::MixedBehaviour::new(
+                key,
+                bootstrap_peer_multiaddr.clone(),
+                streamed_bytes::Config {
                     session_timeout,
                     supported_inbound_protocols: vec![
                         Protocol::SignedBlockHeader.into(),
                         Protocol::StateDiff.into(),
                     ],
-                }),
-            }
-        };
-        let swarm = build_swarm(listen_addresses, idle_connection_timeout, behaviour);
+                },
+            )
+        });
 
         let db_executor = BlockHeaderDBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size)
@@ -433,14 +406,4 @@ impl NetworkManager {
     pub fn get_own_peer_id(&self) -> String {
         self.swarm.local_peer_id().to_string()
     }
-}
-
-// TODO(shahak): Open a github issue in libp2p to add this functionality.
-fn get_peer_id_from_multiaddr(address: &Multiaddr) -> Option<PeerId> {
-    for protocol in address.iter() {
-        if let Libp2pProtocol::P2p(peer_id) = protocol {
-            return Some(peer_id);
-        }
-    }
-    None
 }

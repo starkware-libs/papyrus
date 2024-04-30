@@ -64,7 +64,7 @@ pub enum GenericEvent<SessionError> {
     },
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Config {
     pub session_timeout: Duration,
     // If we put multiple versions of the same protocol, they should be inserted sorted where the
