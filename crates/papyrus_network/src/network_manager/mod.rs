@@ -113,7 +113,6 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                     self.swarm.num_connected_peers() as f64
                 );
             }
-            SwarmEvent::NewListenAddr { .. } | SwarmEvent::IncomingConnection { .. } => {}
             SwarmEvent::ConnectionClosed { peer_id, cause, .. } => {
                 match cause {
                     Some(connection_error) => {
@@ -154,6 +153,10 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                      {local_addr:?}, send back addr: {send_back_addr:?}, error: {error:?}"
                 );
             }
+            SwarmEvent::NewListenAddr { .. }
+            | SwarmEvent::IncomingConnection { .. }
+            | SwarmEvent::Dialing { .. }
+            | SwarmEvent::NewExternalAddrCandidate { .. } => {}
             _ => {
                 panic!("Unexpected event {event:?}");
             }
