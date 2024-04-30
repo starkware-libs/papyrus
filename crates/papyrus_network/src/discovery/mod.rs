@@ -42,11 +42,9 @@ pub struct Behaviour {
 pub enum FromOtherBehaviourEvent {
     KadQueryFinished,
     PauseDiscovery,
-    #[allow(dead_code)]
     ResumeDiscovery,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct ToOtherBehaviourEvent(KadFromOtherBehaviourEvent);
 
@@ -157,7 +155,6 @@ impl NetworkBehaviour for Behaviour {
 }
 
 impl Behaviour {
-    #[allow(dead_code)]
     // TODO(shahak): Add support to discovery from multiple bootstrap nodes.
     // TODO(shahak): Add support to multiple addresses for bootstrap node.
     pub fn new(bootstrap_peer_id: PeerId, bootstrap_peer_address: Multiaddr) -> Self {
