@@ -4,6 +4,7 @@ use chrono::Duration;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::ToSwarm;
 use libp2p::PeerId;
+use tracing::info;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
@@ -109,6 +110,10 @@ where
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
             if let Some(connection_id) = peer.connection_id() {
+                info!(
+                    "Session {:?} assigned to peer {:?} with connection id: {:?}",
+                    outbound_session_id, peer_id, connection_id
+                );
                 self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
                     streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
                         outbound_session_id,
@@ -126,6 +131,7 @@ where
                     self.peers_pending_dial_with_sessions
                         .insert(*peer_id, vec![outbound_session_id]);
                 }
+                info!("Dialing peer {:?} with multiaddr {:?}", peer_id, peer.multiaddr());
                 self.pending_events.push(ToSwarm::Dial {
                     opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
                 });
