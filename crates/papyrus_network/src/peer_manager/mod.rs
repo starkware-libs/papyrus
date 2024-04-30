@@ -18,7 +18,6 @@ pub(crate) mod peer;
 mod test;
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
-#[allow(dead_code)]
 pub enum ReputationModifier {
     // TODO: Implement this enum
     Bad,

@@ -113,7 +113,6 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         Ok(())
     }
 
-    #[allow(dead_code)]
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
         let bin_key = key.serialize()?;
         txn.txn.del(&self.database, bin_key, None)?;

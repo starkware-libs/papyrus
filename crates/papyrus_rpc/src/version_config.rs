@@ -13,10 +13,7 @@ pub const VERSION_PATTERN: &str = "[Vv][0-9]+_[0-9]+(_[0-9]+)?";
 /// Deprecated -> method not exposed.
 #[derive(Clone, Copy, Debug)]
 pub enum VersionState {
-    // TODO: nevo - remove the dead_code attribute once other versions are implemented - hides
-    // "Supported" and "Deprecated" not constructed error
     Supported,
-    #[allow(dead_code)]
     Deprecated,
 }
 

@@ -196,7 +196,6 @@ pub struct StateReader<'env, Mode: TransactionKind> {
     file_handlers: &'env FileHandlers<Mode>,
 }
 
-#[allow(dead_code)]
 impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     /// Creates a new state reader from a storage transaction.
     ///
