@@ -1,5 +1,7 @@
 #[cfg(test)]
 mod discovery_test;
+#[cfg(test)]
+mod flow_test;
 pub mod identify_impl;
 pub mod kad_impl;
 
