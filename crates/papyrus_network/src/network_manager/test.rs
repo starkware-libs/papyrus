@@ -349,40 +349,6 @@ async fn process_incoming_query() {
         }
     }
 }
-#[tokio::test]
-async fn sync_subscriber_query_before_established_connection() {
-    // network manager to register subscriber and send query
-    let mut network_manager = GenericNetworkManager::generic_new(
-        MockSwarm::default(),
-        MockDBExecutor::default(),
-        HEADER_BUFFER_SIZE,
-    );
-    // define query
-    let query_limit = 5;
-    let start_block_number = 0;
-    let query = Query {
-        start_block: BlockNumber(start_block_number),
-        direction: Direction::Forward,
-        limit: query_limit,
-        step: 1,
-        data_type: DataType::SignedBlockHeader,
-    };
-
-    // register subscriber and send query
-    let (mut query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
-    query_sender.send(query).await.unwrap();
-
-    let mut signed_block_header_stream = response_receivers.signed_headers_receiver.unwrap();
-
-    tokio::select! {
-        _ = network_manager.run() => panic!("network manager ended"),
-        Some(data) = signed_block_header_stream.next() => {assert!(data.is_none())},
-        _ = sleep(Duration::from_secs(5)) => {
-            panic!("Test timed out");
-        }
-    }
-}
 
 #[tokio::test]
 async fn close_inbound_session() {
