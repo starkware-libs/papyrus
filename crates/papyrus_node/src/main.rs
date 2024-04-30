@@ -49,6 +49,7 @@ const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
 // Duration between updates to the storage metrics (those in the collect_storage_metrics function).
 const STORAGE_METRICS_UPDATE_INTERVAL: Duration = Duration::from_secs(10);
 
+// COMMENT
 #[cfg(feature = "rpc")]
 async fn create_rpc_server_future(
     config: &NodeConfig,
