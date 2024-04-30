@@ -79,6 +79,7 @@ where
     }
 
     fn add_peer(&mut self, mut peer: P) {
+        info!("Found new peer {:?}", peer.peer_id());
         peer.set_timeout_duration(self.config.blacklist_timeout);
         self.peers.insert(peer.peer_id(), peer);
     }
@@ -144,6 +145,8 @@ where
         peer_id: PeerId,
         reason: ReputationModifier,
     ) -> Result<(), PeerManagerError> {
+        // TODO(shahak): Add time blacklisted to log.
+        info!("Peer {:?} misbehaved. Blacklisting it for some time", peer_id);
         if let Some(peer) = self.peers.get_mut(&peer_id) {
             peer.update_reputation(reason);
             Ok(())
