@@ -257,8 +257,8 @@ impl Default for NetworkConfig {
         Self {
             tcp_port: 10000,
             quic_port: 10001,
-            session_timeout: Duration::from_secs(10),
-            idle_connection_timeout: Duration::from_secs(10),
+            session_timeout: Duration::from_secs(120),
+            idle_connection_timeout: Duration::from_secs(120),
             header_buffer_size: 100000,
             bootstrap_peer_multiaddr: None,
         }
