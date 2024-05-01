@@ -24,7 +24,8 @@ use tokio::sync::Mutex;
 use tokio::time::timeout;
 use void::Void;
 
-use super::{Behaviour, FromOtherBehaviourEvent, RequestKadQuery};
+use super::kad_impl::KadFromOtherBehaviourEvent;
+use super::{Behaviour, FromOtherBehaviourEvent, ToOtherBehaviourEvent};
 use crate::main_behaviour::mixed_behaviour;
 use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
 use crate::test_utils::next_on_mutex_stream;
@@ -35,7 +36,7 @@ const SLEEP_DURATION: Duration = Duration::from_millis(10);
 impl Unpin for Behaviour {}
 
 impl Stream for Behaviour {
-    type Item = ToSwarm<RequestKadQuery, Void>;
+    type Item = ToSwarm<ToOtherBehaviourEvent, Void>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::into_inner(self).poll(cx) {
@@ -164,12 +165,25 @@ async fn create_behaviour_and_connect_to_bootstrap_node() -> Behaviour {
         peer_id: bootstrap_peer_id,
         connection_id: ConnectionId::new_unchecked(0),
         endpoint: &ConnectedPoint::Dialer {
-            address: bootstrap_peer_address,
+            address: bootstrap_peer_address.clone(),
             role_override: Endpoint::Dialer,
         },
         failed_addresses: &[],
         other_established: 0,
     }));
+
+    // Consume the event to add the bootstrap node to kademlia.
+    // TODO(shahak): Consider extracting the validation to a separate test.
+    let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
+            KadFromOtherBehaviourEvent::FoundListenAddresses {
+                peer_id,
+                listen_addresses,
+            }
+        )) if peer_id == bootstrap_peer_id && listen_addresses == vec![bootstrap_peer_address]
+    );
 
     behaviour
 }
@@ -179,7 +193,12 @@ async fn discovery_outputs_single_query_after_connecting() {
     let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
-    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
+            _peer_id
+        )))
+    );
 
     assert_no_event(&mut behaviour);
 }
@@ -197,7 +216,12 @@ async fn discovery_doesnt_output_queries_while_paused() {
         FromOtherBehaviourEvent::ResumeDiscovery,
     ));
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
-    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
+            _peer_id
+        )))
+    );
 }
 
 #[tokio::test]
@@ -211,7 +235,12 @@ async fn discovery_outputs_single_query_on_query_finished() {
         FromOtherBehaviourEvent::KadQueryFinished,
     ));
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
-    assert_matches!(event, ToSwarm::GenerateEvent(RequestKadQuery(_peer_id)));
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
+            _peer_id
+        )))
+    );
 }
 
 #[tokio::test]

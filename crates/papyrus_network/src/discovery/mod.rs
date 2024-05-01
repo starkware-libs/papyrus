@@ -34,6 +34,7 @@ pub struct Behaviour {
     bootstrap_peer_id: PeerId,
     is_dialing_to_bootstrap_peer: bool,
     is_connected_to_bootstrap_peer: bool,
+    is_bootstrap_in_kad_routing_table: bool,
     wakers: Vec<Waker>,
 }
 
@@ -45,11 +46,11 @@ pub enum FromOtherBehaviourEvent {
 }
 
 #[derive(Debug)]
-pub struct RequestKadQuery(PeerId);
+pub struct ToOtherBehaviourEvent(KadFromOtherBehaviourEvent);
 
 impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = dummy::ConnectionHandler;
-    type ToSwarm = RequestKadQuery;
+    type ToSwarm = ToOtherBehaviourEvent;
 
     fn handle_established_inbound_connection(
         &mut self,
@@ -131,10 +132,21 @@ impl NetworkBehaviour for Behaviour {
         if !self.is_connected_to_bootstrap_peer {
             return Poll::Pending;
         }
+        if !self.is_bootstrap_in_kad_routing_table {
+            self.is_bootstrap_in_kad_routing_table = true;
+            return Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
+                KadFromOtherBehaviourEvent::FoundListenAddresses {
+                    peer_id: self.bootstrap_peer_id,
+                    listen_addresses: vec![self.bootstrap_peer_address.clone()],
+                },
+            )));
+        }
 
         if !self.is_paused && !self.is_query_running {
             self.is_query_running = true;
-            Poll::Ready(ToSwarm::GenerateEvent(RequestKadQuery(PeerId::random())))
+            Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
+                KadFromOtherBehaviourEvent::RequestKadQuery(libp2p::identity::PeerId::random()),
+            )))
         } else {
             self.wakers.push(cx.waker().clone());
             Poll::Pending
@@ -153,6 +165,7 @@ impl Behaviour {
             bootstrap_peer_address,
             is_dialing_to_bootstrap_peer: false,
             is_connected_to_bootstrap_peer: false,
+            is_bootstrap_in_kad_routing_table: false,
             wakers: Vec::new(),
         }
     }
@@ -168,11 +181,9 @@ impl Behaviour {
     }
 }
 
-impl From<RequestKadQuery> for mixed_behaviour::Event {
-    fn from(event: RequestKadQuery) -> Self {
-        mixed_behaviour::Event::InternalEvent(mixed_behaviour::InternalEvent::NotifyKad(
-            KadFromOtherBehaviourEvent::RequestKadQuery(event.0),
-        ))
+impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
+    fn from(event: ToOtherBehaviourEvent) -> Self {
+        mixed_behaviour::Event::InternalEvent(mixed_behaviour::InternalEvent::NotifyKad(event.0))
     }
 }
 
