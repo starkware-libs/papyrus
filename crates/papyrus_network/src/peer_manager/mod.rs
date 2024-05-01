@@ -108,7 +108,9 @@ where
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
-            if let Some(connection_id) = peer.connection_id() {
+            let peer_connection_ids = peer.connection_ids();
+            if !peer_connection_ids.is_empty() {
+                let connection_id = peer_connection_ids[0];
                 info!(
                     "Session {:?} assigned to peer {:?} with connection id: {:?}",
                     outbound_session_id, peer_id, connection_id
