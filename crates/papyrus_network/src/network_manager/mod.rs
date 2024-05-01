@@ -11,7 +11,7 @@ use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
 use libp2p::core::multiaddr::Protocol as Libp2pProtocol;
 use libp2p::kad::store::MemoryStore;
-use libp2p::swarm::{DialError, SwarmEvent};
+use libp2p::swarm::SwarmEvent;
 use libp2p::{identify, kad, Multiaddr, PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
@@ -125,16 +125,10 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             SwarmEvent::Behaviour(event) => {
                 self.handle_behaviour_event(event);
             }
-            SwarmEvent::OutgoingConnectionError {
-                connection_id,
-                peer_id,
-                error: DialError::WrongPeerId { obtained, endpoint },
-            } => {
-                // TODO: change panic to error log level once we have a way to handle this.
-                panic!(
-                    "Outgoing connection error - Wrong Peer ID. connection id: {connection_id:?}, \
-                     requested peer id: {peer_id:?}, obtained peer id: {obtained:?}, endpoint: \
-                     {endpoint:?}"
+            SwarmEvent::OutgoingConnectionError { connection_id, peer_id, error } => {
+                error!(
+                    "Outgoing connection error. connection id: {connection_id:?}, requested peer \
+                     id: {peer_id:?}, error: {error:?}"
                 );
             }
             SwarmEvent::IncomingConnectionError {
