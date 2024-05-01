@@ -130,10 +130,10 @@ where
                             "in case we are waiting for a connection established event we assum \
                              the peer is known to the peer manager",
                         )
-                        .set_connection_id(Some(connection_id));
+                        .add_connection_id(connection_id);
                 } else if !self.peers.contains_key(&peer_id) {
                     let mut peer = P::new(peer_id, endpoint.get_remote_address().clone());
-                    peer.set_connection_id(Some(connection_id));
+                    peer.add_connection_id(connection_id);
                     self.add_peer(peer);
                     if !self.more_peers_needed() {
                         // TODO: consider how and in which cases we resume discovery
@@ -151,22 +151,16 @@ where
                 ..
             }) => {
                 if let Some(peer) = self.peers.get_mut(&peer_id) {
-                    if let Some(known_connection_id) = peer.connection_id() {
-                        if known_connection_id == connection_id {
-                            peer.set_connection_id(None);
-                        } else {
-                            error!(
-                                "Connection closed event for a peer with a different connection \
-                                 id. known connection id: {}, emitted connection id: {}",
-                                known_connection_id, connection_id
-                            );
-                            return;
-                        }
+                    let known_connection_ids = peer.connection_ids();
+                    if known_connection_ids.contains(&connection_id) {
+                        peer.remove_connection_id(connection_id);
                     } else {
-                        error!("Connection closed event for a peer without a connection id");
-                        return;
+                        error!(
+                            "Connection closed event for a peer with a different connection id. \
+                             known connection ids: {:?}, emitted connection id: {}",
+                            known_connection_ids, connection_id
+                        );
                     }
-                    peer.set_connection_id(None);
                 }
             }
             _ => {}
