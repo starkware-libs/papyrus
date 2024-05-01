@@ -224,8 +224,6 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 ))
             },
             |txn, block_number| {
-                // TODO(dvir): consider create a vector of (transaction, transaction_index) first
-                // and get the transaction hashes by the index.
                 let transactions = get_block_txs_by_number(txn, block_number)?;
                 let transaction_hashes = get_block_tx_hashes_by_number(txn, block_number)?;
                 Ok(Transactions::Full(
@@ -277,8 +275,6 @@ impl JsonRpcServer for JsonRpcServerImpl {
                 ))
             },
             |txn, block_number| {
-                // TODO(dvir): consider create a vector of (transaction, transaction_index) first
-                // and get the transaction hashes by the index.
                 let transactions = get_block_txs_by_number(txn, block_number)?;
                 let transaction_hashes = get_block_tx_hashes_by_number(txn, block_number)?;
                 Ok(Transactions::FullWithReceipts(
