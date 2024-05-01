@@ -31,7 +31,7 @@ pub fn main() {
     // Open storage to execute the queries.
     println!("Opening storage");
     let db_config = DbConfig {
-        path_prefix: cli_params.db_file_path.into(),
+        path_prefix: cli_params.db_path.into(),
         chain_id: ChainId(cli_params.chain_id),
         ..Default::default()
     };
@@ -160,7 +160,7 @@ struct Entry {
 
 struct CliParams {
     queries_file_path: String,
-    db_file_path: String,
+    db_path: String,
     output_file_path: String,
     chain_id: String,
 }
@@ -175,11 +175,11 @@ fn get_cli_params() -> CliParams {
                 .help("The path to a file with the queries"),
         )
         .arg(
-            Arg::new("db_file_path")
+            Arg::new("db_path")
                 .short('d')
-                .long("db_file_path")
+                .long("db_path")
                 .required(true)
-                .help("The path to the database file"),
+                .help("The path to the database"),
         )
         .arg(
             Arg::new("output_file_path")
@@ -201,8 +201,7 @@ fn get_cli_params() -> CliParams {
         .get_one::<String>("queries_file_path")
         .expect("Missing queries_file_path")
         .to_string();
-    let db_file_path =
-        matches.get_one::<String>("db_file_path").expect("Missing db_file_path").to_string();
+    let db_path = matches.get_one::<String>("db_path").expect("Missing db_path").to_string();
     let output_file_path = matches
         .get_one::<String>("output_file_path")
         .expect("Missing output_file_path")
@@ -210,5 +209,5 @@ fn get_cli_params() -> CliParams {
     let chain_id =
         matches.get_one::<String>("chain_id").expect("Missing parse chain_id").to_string();
 
-    CliParams { queries_file_path, db_file_path, output_file_path, chain_id }
+    CliParams { queries_file_path, db_path, output_file_path, chain_id }
 }
