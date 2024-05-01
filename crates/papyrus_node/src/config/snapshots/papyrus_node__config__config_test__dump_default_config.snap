@@ -134,7 +134,7 @@ expression: dumped_default_config
   "network.idle_connection_timeout": {
     "description": "Amount of time in seconds that a connection with no active sessions will stay alive.",
     "value": {
-      "$serde_json::private::Number": "10"
+      "$serde_json::private::Number": "120"
     },
     "privacy": "Public"
   },
@@ -148,7 +148,7 @@ expression: dumped_default_config
   "network.session_timeout": {
     "description": "Maximal time in seconds that each session can take before failing on timeout.",
     "value": {
-      "$serde_json::private::Number": "10"
+      "$serde_json::private::Number": "120"
     },
     "privacy": "Public"
   },
