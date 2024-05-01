@@ -175,6 +175,8 @@ impl SwarmTrait for MockSwarm {
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
         unimplemented!()
     }
+
+    fn add_external_address(&mut self, _address: Multiaddr) {}
 }
 
 #[derive(Default)]

@@ -34,6 +34,8 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     ) -> Result<(), SessionIdNotFoundError>;
 
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour;
+
+    fn add_external_address(&mut self, address: Multiaddr);
 }
 
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
@@ -71,5 +73,9 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
 
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
         self.behaviour_mut()
+    }
+
+    fn add_external_address(&mut self, address: Multiaddr) {
+        self.add_external_address(address);
     }
 }
