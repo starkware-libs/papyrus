@@ -1,9 +1,9 @@
 use std::task::Poll;
 
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{dummy, ConnectionClosed, DialFailure, NetworkBehaviour, ToSwarm};
+use libp2p::swarm::{dummy, ConnectionClosed, DialError, DialFailure, NetworkBehaviour, ToSwarm};
 use libp2p::Multiaddr;
-use tracing::error;
+use tracing::{debug, error};
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
@@ -80,9 +80,17 @@ where
         match event {
             libp2p::swarm::FromSwarm::DialFailure(DialFailure {
                 peer_id: Some(peer_id),
-                error: _,
+                error,
                 connection_id: _,
             }) => {
+                debug!("Dial failure for peer: {}, error: {}", peer_id, error);
+                if let DialError::DialPeerConditionFalse(_) = error {
+                    debug!(
+                        "There is another active connection or a dial attempt in progress, not \
+                         doing anything"
+                    );
+                    return;
+                }
                 let res = self.report_peer(peer_id, super::ReputationModifier::Bad);
                 if res.is_err() {
                     error!("Dial failure of an unknow peer. peer id: {}", peer_id)
