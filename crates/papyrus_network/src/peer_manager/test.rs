@@ -10,6 +10,7 @@ use mockall::predicate::eq;
 use tokio::time::sleep;
 
 use super::behaviour_impl::Event;
+use crate::discovery::kad_impl::KadFromOtherBehaviourEvent;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
 use crate::streamed_bytes::OutboundSessionId;
@@ -134,7 +135,7 @@ fn peer_assignment_no_peers() {
 }
 
 #[test]
-fn report_peer_calls_update_reputation() {
+fn report_peer_calls_update_reputation_and_notifies_kad() {
     // Create a new peer manager
     let config = PeerManagerConfig::default();
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
@@ -148,6 +149,15 @@ fn report_peer_calls_update_reputation() {
     // Call the report_peer function on the peer manager
     peer_manager.report_peer(peer_id, ReputationModifier::Bad {}).unwrap();
     peer_manager.get_mut_peer(peer_id).unwrap().checkpoint();
+
+    // Validate that we have an event to notify Kademlia
+    assert_eq!(peer_manager.pending_events.len(), 1);
+    assert_matches!(
+        peer_manager.pending_events.first().unwrap(),
+        ToSwarm::GenerateEvent(Event::NotifyKad(
+            KadFromOtherBehaviourEvent::RequestRemovePeer(event_peer_id)
+        )) if peer_id == *event_peer_id
+    );
 }
 
 #[tokio::test]

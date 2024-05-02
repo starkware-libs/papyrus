@@ -8,6 +8,7 @@ use crate::{discovery, mixed_behaviour};
 pub enum KadFromOtherBehaviourEvent {
     RequestKadQuery(PeerId),
     FoundListenAddresses { peer_id: PeerId, listen_addresses: Vec<Multiaddr> },
+    RequestRemovePeer(PeerId),
 }
 
 impl From<kad::Event> for mixed_behaviour::Event {
@@ -45,6 +46,9 @@ impl<TStore: kad::store::RecordStore + Send + 'static> BridgedBehaviour for kad:
                 for address in listen_addresses {
                     self.add_address(&peer_id, address);
                 }
+            }
+            KadFromOtherBehaviourEvent::RequestRemovePeer(peer_id) => {
+                self.remove_peer(&peer_id);
             }
         }
     }

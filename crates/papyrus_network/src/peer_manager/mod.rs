@@ -8,6 +8,7 @@ use tracing::info;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
+use crate::discovery::kad_impl::KadFromOtherBehaviourEvent;
 use crate::mixed_behaviour::BridgedBehaviour;
 use crate::streamed_bytes::OutboundSessionId;
 use crate::{mixed_behaviour, streamed_bytes};
@@ -149,8 +150,10 @@ where
         peer_id: PeerId,
         reason: ReputationModifier,
     ) -> Result<(), PeerManagerError> {
-        // TODO(shahak): Add time blacklisted to log.
         info!("Peer {:?} reported as misbehaving.", peer_id);
+        self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyKad(
+            KadFromOtherBehaviourEvent::RequestRemovePeer(peer_id),
+        )));
         if let Some(peer) = self.peers.get_mut(&peer_id) {
             peer.update_reputation(reason);
             Ok(())
@@ -191,6 +194,9 @@ impl From<Event> for mixed_behaviour::Event {
             }
             Event::NotifyDiscovery(event) => {
                 Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
+            }
+            Event::NotifyKad(event) => {
+                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyKad(event))
             }
         }
     }
