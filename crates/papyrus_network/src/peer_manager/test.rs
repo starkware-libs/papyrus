@@ -103,13 +103,34 @@ fn peer_assignment_round_robin() {
 #[test]
 fn peer_assignment_no_peers() {
     // Create a new peer manager
-    let mut peer_manager: PeerManager<Peer> = PeerManager::new(PeerManagerConfig::default());
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a session
-    let session = OutboundSessionId { value: 1 };
+    let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign a peer to the session
-    assert_matches!(peer_manager.assign_peer_to_session(session), None);
+    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+
+    // Now the peer manager finds a new peer and can assign the session.
+    let connection_id = ConnectionId::new_unchecked(0);
+    let (mut peer, peer_id) =
+        create_mock_peer(config.blacklist_timeout, false, Some(connection_id));
+    peer.expect_is_blocked().times(1).return_const(false);
+    peer_manager.add_peer(peer);
+    assert_eq!(peer_manager.pending_events.len(), 1);
+    assert_matches!(
+        peer_manager.pending_events.first().unwrap(),
+        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                outbound_session_id: event_outbound_session_id,
+                peer_id: event_peer_id,
+                connection_id: event_connection_id,
+            }
+        )) if outbound_session_id == *event_outbound_session_id &&
+            peer_id == *event_peer_id &&
+            connection_id == *event_connection_id
+    );
 }
 
 #[test]

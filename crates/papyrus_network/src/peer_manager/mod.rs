@@ -32,6 +32,7 @@ pub struct PeerManager<P: PeerTrait + 'static> {
     last_peer_index: usize,
     pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
     peers_pending_dial_with_sessions: HashMap<PeerId, Vec<OutboundSessionId>>,
+    sessions_received_when_no_peers: Vec<OutboundSessionId>,
 }
 
 #[derive(Clone)]
@@ -75,6 +76,7 @@ where
             last_peer_index: 0,
             pending_events: Vec::new(),
             peers_pending_dial_with_sessions: HashMap::new(),
+            sessions_received_when_no_peers: Vec::new(),
         }
     }
 
@@ -82,6 +84,9 @@ where
         info!("Peer Manager found new peer {:?}", peer.peer_id());
         peer.set_timeout_duration(self.config.blacklist_timeout);
         self.peers.insert(peer.peer_id(), peer);
+        for outbound_session_id in std::mem::take(&mut self.sessions_received_when_no_peers) {
+            self.assign_peer_to_session(outbound_session_id);
+        }
     }
 
     #[cfg(test)]
@@ -94,7 +99,7 @@ where
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
-            // TODO: how to handle this case with events? should we send an event for this?
+            self.sessions_received_when_no_peers.push(outbound_session_id);
             return None;
         }
         let peer = self
