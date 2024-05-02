@@ -26,8 +26,8 @@ use void::Void;
 
 use super::kad_impl::KadFromOtherBehaviourEvent;
 use super::{Behaviour, FromOtherBehaviourEvent, ToOtherBehaviourEvent};
-use crate::main_behaviour::mixed_behaviour;
-use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
+use crate::mixed_behaviour;
+use crate::mixed_behaviour::BridgedBehaviour;
 use crate::test_utils::next_on_mutex_stream;
 
 const TIMEOUT: Duration = Duration::from_secs(1);

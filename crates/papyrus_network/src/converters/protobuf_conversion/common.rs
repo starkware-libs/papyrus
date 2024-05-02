@@ -6,6 +6,7 @@ use crate::protobuf_messages::protobuf::{self};
 use crate::{BlockHashOrNumber, Direction, InternalQuery, Query};
 
 #[cfg(test)]
+#[allow(dead_code)]
 pub const PATRICIA_HEIGHT: u32 = 251;
 
 impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
@@ -134,6 +135,7 @@ pub(super) fn l1_data_availability_mode_to_enum_int(value: L1DataAvailabilityMod
 }
 
 #[cfg(test)]
+#[allow(dead_code)]
 pub(crate) trait TestInstance {
     fn test_instance() -> Self;
 }

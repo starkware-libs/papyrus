@@ -6,7 +6,7 @@ pub mod bin_utils;
 mod converters;
 mod db_executor;
 mod discovery;
-pub mod main_behaviour;
+pub mod mixed_behaviour;
 pub mod network_manager;
 mod peer_manager;
 pub mod protobuf_messages;

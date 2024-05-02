@@ -31,11 +31,10 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::main_behaviour::mixed_behaviour;
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
+use crate::{mixed_behaviour, BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 #[derive(Default)]
 struct MockSwarm {

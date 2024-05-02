@@ -25,8 +25,8 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use crate::main_behaviour::mixed_behaviour;
-use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
+use crate::mixed_behaviour;
+use crate::mixed_behaviour::BridgedBehaviour;
 
 pub struct Behaviour {
     is_paused: bool,

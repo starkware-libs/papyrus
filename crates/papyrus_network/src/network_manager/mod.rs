@@ -20,7 +20,7 @@ use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
-use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
+use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::streamed_bytes::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::{DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 

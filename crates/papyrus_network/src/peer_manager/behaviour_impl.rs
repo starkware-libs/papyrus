@@ -131,7 +131,7 @@ where
                              the peer is known to the peer manager",
                         )
                         .set_connection_id(Some(connection_id));
-                } else if self.peers.get(&peer_id).is_none() {
+                } else if !self.peers.contains_key(&peer_id) {
                     let mut peer = P::new(peer_id, endpoint.get_remote_address().clone());
                     peer.set_connection_id(Some(connection_id));
                     self.add_peer(peer);
