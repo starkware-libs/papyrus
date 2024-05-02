@@ -5,12 +5,15 @@ use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
 use futures::StreamExt;
-use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
+use libp2p::swarm::{ConnectionId, NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
-use super::behaviour::{Behaviour, Event, ExternalEvent};
+use super::behaviour::{Behaviour, Event, ExternalEvent, FromOtherBehaviour, ToOtherBehaviour};
 use super::messages::with_length_prefix;
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
+use crate::main_behaviour::mixed_behaviour;
+use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
+use crate::peer_manager;
 use crate::test_utils::{create_fully_connected_swarms_stream, StreamHashMap};
 
 const NUM_PEERS: usize = 3;
@@ -59,21 +62,32 @@ fn perform_action_on_swarms<BehaviourTrait: NetworkBehaviour>(
     }
 }
 
-fn send_query_and_update_map(
+fn start_query_and_update_map(
     outbound_swarm: &mut Swarm<Behaviour>,
     inbound_peer_id: PeerId,
     outbound_session_id_to_peer_id: &mut HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) {
     let outbound_peer_id = *outbound_swarm.local_peer_id();
-    let outbound_session_id = outbound_swarm
-        .behaviour_mut()
-        .send_query(
-            get_bytes_from_query_indices(outbound_peer_id, inbound_peer_id),
-            inbound_peer_id,
-            PROTOCOL_NAME,
-        )
-        .unwrap();
+    let outbound_session_id = outbound_swarm.behaviour_mut().start_query(
+        get_bytes_from_query_indices(outbound_peer_id, inbound_peer_id),
+        PROTOCOL_NAME,
+    );
     outbound_session_id_to_peer_id.insert((outbound_peer_id, outbound_session_id), inbound_peer_id);
+}
+
+fn assign_peer_to_outbound_session(
+    outbound_swarm: &mut Swarm<Behaviour>,
+    inbound_peer_id: PeerId,
+    outbound_session_id: OutboundSessionId,
+    connection_id: ConnectionId,
+) {
+    outbound_swarm.behaviour_mut().on_other_behaviour_event(
+        mixed_behaviour::InternalEvent::NotifyStreamedBytes(FromOtherBehaviour::SessionAssigned {
+            outbound_session_id,
+            peer_id: inbound_peer_id,
+            connection_id,
+        }),
+    );
 }
 
 fn send_data(
@@ -107,6 +121,25 @@ fn close_inbound_session(
         .behaviour_mut()
         .close_inbound_session(inbound_session_ids[&(inbound_peer_id, outbound_peer_id)])
         .unwrap();
+}
+
+fn check_request_peer_assignment_event_and_return_session_id(
+    outbound_peer_id: PeerId,
+    swarm_event: SwarmEventAlias<Behaviour>,
+    outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
+) -> Option<(PeerId, OutboundSessionId)> {
+    let SwarmEvent::Behaviour(event) = swarm_event else {
+        return None;
+    };
+    let Event::ToOtherBehaviour(ToOtherBehaviour::NotifyPeerManager(
+        peer_manager::FromOtherBehaviour::RequestPeerAssignment { outbound_session_id },
+    )) = event
+    else {
+        panic!("Got unexpected event {:?} when expecting RequestPeerAssignment", event);
+    };
+    let assigned_peer_id =
+        *outbound_session_id_to_peer_id.get(&(outbound_peer_id, outbound_session_id)).unwrap();
+    Some((assigned_peer_id, outbound_session_id))
 }
 
 fn check_new_inbound_session_event_and_return_id(
@@ -181,13 +214,14 @@ fn get_bytes_from_data_indices(peer_id1: PeerId, peer_id2: PeerId, message_index
 
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
-    let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::new(Config {
-            session_timeout: Duration::from_secs(5),
-            supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
+    let (mut swarms_stream, connection_ids) =
+        create_fully_connected_swarms_stream(NUM_PEERS, || {
+            Behaviour::new(Config {
+                session_timeout: Duration::from_secs(5),
+                supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
+            })
         })
-    })
-    .await;
+        .await;
 
     let peer_ids = swarms_stream.keys().copied().collect::<Vec<_>>();
 
@@ -196,10 +230,39 @@ async fn everyone_sends_to_everyone() {
         &mut swarms_stream,
         &peer_ids,
         &mut |outbound_swarm, inbound_peer_id| {
-            send_query_and_update_map(
+            start_query_and_update_map(
                 outbound_swarm,
                 inbound_peer_id,
                 &mut outbound_session_id_to_peer_id,
+            )
+        },
+    );
+
+    let peers_to_outbound_session_id = collect_events_from_swarms(
+        &mut swarms_stream,
+        |peer_id, event| {
+            check_request_peer_assignment_event_and_return_session_id(
+                peer_id,
+                event,
+                &outbound_session_id_to_peer_id,
+            )
+        },
+        true,
+    )
+    .await;
+    perform_action_on_swarms(
+        &mut swarms_stream,
+        &peer_ids,
+        &mut |outbound_swarm, inbound_peer_id| {
+            let outbound_peer_id = *outbound_swarm.local_peer_id();
+            let outbound_session_id =
+                *peers_to_outbound_session_id.get(&(outbound_peer_id, inbound_peer_id)).unwrap();
+            let connection_id = *connection_ids.get(&(outbound_peer_id, inbound_peer_id)).unwrap();
+            assign_peer_to_outbound_session(
+                outbound_swarm,
+                inbound_peer_id,
+                outbound_session_id,
+                connection_id,
             )
         },
     );
