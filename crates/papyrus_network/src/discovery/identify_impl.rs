@@ -3,6 +3,8 @@ use libp2p::identify;
 use super::kad_impl::KadFromOtherBehaviourEvent;
 use crate::main_behaviour::mixed_behaviour;
 
+pub const IDENTIFY_PROTOCOL_VERSION: &str = "/staknet/identify/0.1.0-rc.0";
+
 impl From<identify::Event> for mixed_behaviour::Event {
     fn from(event: identify::Event) -> Self {
         match event {
