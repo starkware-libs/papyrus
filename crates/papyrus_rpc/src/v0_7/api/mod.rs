@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 use std::io::Read;
 
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use flate2::bufread::GzDecoder;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::proc_macros::rpc;
@@ -252,6 +253,14 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
     ) -> RpcResult<Vec<TransactionTraceWithHash>>;
+
+    /// Returns the compiled contract class associated with the given class hash.
+    #[method(name = "getCompiledContractClass")]
+    fn get_compiled_contract_class(
+        &self,
+        block_id: BlockId,
+        class_hash: ClassHash,
+    ) -> RpcResult<CasmContractClass>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
