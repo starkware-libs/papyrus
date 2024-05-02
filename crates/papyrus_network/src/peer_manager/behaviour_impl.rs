@@ -134,7 +134,7 @@ where
                 } else if self.peers.get(&peer_id).is_none() {
                     let mut peer = P::new(peer_id, endpoint.get_remote_address().clone());
                     peer.set_connection_id(Some(connection_id));
-                    self.add_peer(P::new(peer_id, endpoint.get_remote_address().clone()));
+                    self.add_peer(peer);
                     if !self.more_peers_needed() {
                         // TODO: consider how and in which cases we resume discovery
                         self.pending_events.push(libp2p::swarm::ToSwarm::GenerateEvent(
