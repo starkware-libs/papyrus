@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -17,6 +18,7 @@ use papyrus_execution::{
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
+use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
@@ -1428,6 +1430,16 @@ impl JsonRpcServer for JsonRpcServerImpl {
             // Internal error during the execution.
             Err(err) => Err(internal_server_error(err)),
         }
+    }
+
+    #[instrument(skip(self), level = "debug", err)]
+    fn get_compiled_contract_class(&self, class_hash: ClassHash) -> RpcResult<CasmContractClass> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let casm = storage_txn
+            .get_casm(&class_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
+        Ok(casm)
     }
 }
 

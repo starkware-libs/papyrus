@@ -6,6 +6,7 @@ use std::ops::Index;
 
 use assert_matches::assert_matches;
 use async_trait::async_trait;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use indexmap::{indexmap, IndexMap};
 use itertools::Itertools;
 use jsonrpsee::core::Error;
@@ -19,6 +20,7 @@ use papyrus_storage::base_layer::BaseLayerStorageWriter;
 use papyrus_storage::body::events::EventIndex;
 use papyrus_storage::body::{BodyStorageWriter, TransactionIndex};
 use papyrus_storage::class::ClassStorageWriter;
+use papyrus_storage::compiled_class::CasmStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -3556,6 +3558,34 @@ async fn get_deprecated_class_state_mutability() {
     let res_as_value = serde_json::to_value(res).unwrap();
     let entry = res_as_value["abi"][0].as_object().unwrap();
     assert_eq!(entry.get("stateMutability").unwrap().as_str().unwrap(), "view");
+}
+
+#[tokio::test]
+async fn get_compiled_contract_class() {
+    let method_name = "starknet_V0_7_getCompiledContractClass";
+    let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
+        JsonRpcServerImpl,
+    >(None, None, None, None, None);
+    let class_hash = ClassHash(stark_felt!("0x1"));
+    let casm_contract_class = CasmContractClass::get_test_instance(&mut get_rng());
+    println!("{:#?}", casm_contract_class);
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_casm(&class_hash, &casm_contract_class)
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let res = module.call::<_, CasmContractClass>(method_name, [class_hash]).await.unwrap();
+    assert_eq!(res, casm_contract_class);
+
+    // Ask for an invalid class hash.
+    let err = module
+        .call::<_, CasmContractClass>(method_name, [ClassHash(stark_felt!("0x2"))])
+        .await
+        .unwrap_err();
+    assert_matches!(err, Error::Call(err) if err == CLASS_HASH_NOT_FOUND.into());
 }
 
 #[async_trait]
