@@ -1,15 +1,16 @@
 mod get_stream;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
 use std::time::Duration;
 
-use futures::future::Future;
+use futures::future::{Either, Future};
 use futures::pin_mut;
 use futures::stream::Stream as StreamTrait;
-use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
+use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
+use libp2p::swarm::{ConnectionId, NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{PeerId, Stream, StreamProtocol};
 use libp2p_swarm_test::SwarmExt;
 use tokio::sync::Mutex;
@@ -60,11 +61,11 @@ impl crate::sqmr::handler::Handler {
 }
 
 /// Create num_swarms swarms and connect each pair of swarms. Return them as a combined stream of
-/// events.
+/// events. Also return all the connection ids of the created connections
 pub(crate) async fn create_fully_connected_swarms_stream<TBehaviour: NetworkBehaviour + Send>(
     num_swarms: usize,
     behaviour_gen: impl Fn() -> TBehaviour,
-) -> StreamHashMap<PeerId, Swarm<TBehaviour>>
+) -> (StreamHashMap<PeerId, Swarm<TBehaviour>>, HashMap<(PeerId, PeerId), ConnectionId>)
 where
     <TBehaviour as NetworkBehaviour>::ToSwarm: Debug,
 {
@@ -75,15 +76,77 @@ where
         swarm.listen().with_memory_addr_external().await;
     }
 
+    let mut connection_ids = HashMap::new();
+
     for i in 0..(swarms.len() - 1) {
         let (swarms1, swarms2) = swarms.split_at_mut(i + 1);
         let swarm1 = &mut swarms1[i];
+        let peer_id1 = *swarm1.local_peer_id();
         for swarm2 in swarms2 {
-            swarm1.connect(swarm2).await;
+            let (connection_id1, connection_id2) = connect_swarms(swarm1, swarm2).await;
+            let peer_id2 = *swarm2.local_peer_id();
+            connection_ids.insert((peer_id1, peer_id2), connection_id1);
+            connection_ids.insert((peer_id2, peer_id1), connection_id2);
         }
     }
 
-    StreamHashMap::new(swarms.into_iter().map(|swarm| (*swarm.local_peer_id(), swarm)).collect())
+    (
+        StreamHashMap::new(
+            swarms.into_iter().map(|swarm| (*swarm.local_peer_id(), swarm)).collect(),
+        ),
+        connection_ids,
+    )
+}
+
+// Copied from SwarmExt::connect, but this function returns the connection id.
+/// Connect two swarms and return the connection id that each swarm gave to this connection.
+async fn connect_swarms<TBehaviour: NetworkBehaviour + Send>(
+    swarm1: &mut Swarm<TBehaviour>,
+    swarm2: &mut Swarm<TBehaviour>,
+) -> (ConnectionId, ConnectionId)
+where
+    <TBehaviour as NetworkBehaviour>::ToSwarm: Debug,
+{
+    let external_addresses = swarm2.external_addresses().cloned().collect();
+
+    let dial_opts = DialOpts::peer_id(*swarm2.local_peer_id())
+        .addresses(external_addresses)
+        .condition(PeerCondition::Always)
+        .build();
+
+    swarm1.dial(dial_opts).unwrap();
+
+    let mut dialer_connection_id = None;
+    let mut listener_connection_id = None;
+
+    loop {
+        match futures::future::select(swarm1.next_swarm_event(), swarm2.next_swarm_event()).await {
+            Either::Left((SwarmEvent::ConnectionEstablished { connection_id, .. }, _)) => {
+                dialer_connection_id = Some(connection_id);
+            }
+            Either::Right((SwarmEvent::ConnectionEstablished { connection_id, .. }, _)) => {
+                listener_connection_id = Some(connection_id);
+            }
+            Either::Left((swarm2, _)) => {
+                tracing::debug!(
+                    dialer=?swarm2,
+                    "Ignoring event from dialer"
+                );
+            }
+            Either::Right((swarm2, _)) => {
+                tracing::debug!(
+                    listener=?swarm2,
+                    "Ignoring event from listener"
+                );
+            }
+        }
+
+        if let Some((dialer_connection_id, listener_connection_id)) =
+            dialer_connection_id.zip(listener_connection_id)
+        {
+            return (dialer_connection_id, listener_connection_id);
+        }
+    }
 }
 
 // I tried making this generic on the async function we run, but it caused a lot of lifetime

@@ -9,9 +9,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 use std::time::Duration;
 
-use defaultmap::DefaultHashMap;
 use libp2p::core::Endpoint;
-use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{
     ConnectionClosed,
     ConnectionDenied,
@@ -110,8 +108,6 @@ pub struct PeerNotConnected;
 pub struct Behaviour {
     config: Config,
     pending_events: VecDeque<ToSwarm<Event, RequestFromBehaviourEvent>>,
-    // TODO(shahak) Remove this once we remove send_query.
-    connection_ids_map: DefaultHashMap<PeerId, HashSet<ConnectionId>>,
     session_id_to_peer_id_and_connection_id: HashMap<SessionId, (PeerId, ConnectionId)>,
     next_outbound_session_id: OutboundSessionId,
     next_inbound_session_id: Arc<AtomicUsize>,
@@ -126,7 +122,6 @@ impl Behaviour {
         Self {
             config,
             pending_events: Default::default(),
-            connection_ids_map: Default::default(),
             session_id_to_peer_id_and_connection_id: Default::default(),
             next_outbound_session_id: Default::default(),
             next_inbound_session_id: Arc::new(Default::default()),
@@ -135,37 +130,6 @@ impl Behaviour {
             outbound_sessions_pending_peer_assignment: Default::default(),
             supported_inbound_protocols: Default::default(),
         }
-    }
-
-    /// Send query to the given peer and start a new outbound session with it. Return the id of the
-    /// new session.
-    // TODO(shahak) Remove this function once Network manager uses start_query.
-    pub fn send_query(
-        &mut self,
-        query: Bytes,
-        peer_id: PeerId,
-        protocol_name: StreamProtocol,
-    ) -> Result<OutboundSessionId, PeerNotConnected> {
-        let connection_id =
-            *self.connection_ids_map.get(peer_id).iter().next().ok_or(PeerNotConnected)?;
-
-        let outbound_session_id = self.next_outbound_session_id;
-        self.next_outbound_session_id.value += 1;
-
-        self.session_id_to_peer_id_and_connection_id
-            .insert(outbound_session_id.into(), (peer_id, connection_id));
-
-        self.add_event_to_queue(ToSwarm::NotifyHandler {
-            peer_id,
-            handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::CreateOutboundSession {
-                query,
-                outbound_session_id,
-                protocol_name,
-            },
-        });
-
-        Ok(outbound_session_id)
     }
 
     /// Assign some peer and start a query. Return the id of the new session.
@@ -292,36 +256,25 @@ impl NetworkBehaviour for Behaviour {
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_>) {
-        match event {
-            FromSwarm::ConnectionEstablished(ConnectionEstablished {
-                peer_id,
-                connection_id,
-                ..
-            }) => {
-                self.connection_ids_map.get_mut(peer_id).insert(connection_id);
-            }
-            FromSwarm::ConnectionClosed(ConnectionClosed { peer_id, connection_id, .. }) => {
-                let mut session_ids = Vec::new();
-                self.session_id_to_peer_id_and_connection_id.retain(
-                    |session_id, (session_peer_id, session_connection_id)| {
-                        if peer_id == *session_peer_id && connection_id == *session_connection_id {
-                            session_ids.push(*session_id);
-                            false
-                        } else {
-                            true
-                        }
-                    },
-                );
-                for session_id in session_ids {
-                    self.add_event_to_queue(ToSwarm::GenerateEvent(Event::External(
-                        ExternalEvent::SessionFailed {
-                            session_id,
-                            error: SessionError::ConnectionClosed,
-                        },
-                    )));
+        let FromSwarm::ConnectionClosed(ConnectionClosed { peer_id, connection_id, .. }) = event
+        else {
+            return;
+        };
+        let mut session_ids = Vec::new();
+        self.session_id_to_peer_id_and_connection_id.retain(
+            |session_id, (session_peer_id, session_connection_id)| {
+                if peer_id == *session_peer_id && connection_id == *session_connection_id {
+                    session_ids.push(*session_id);
+                    false
+                } else {
+                    true
                 }
-            }
-            _ => {}
+            },
+        );
+        for session_id in session_ids {
+            self.add_event_to_queue(ToSwarm::GenerateEvent(Event::External(
+                ExternalEvent::SessionFailed { session_id, error: SessionError::ConnectionClosed },
+            )));
         }
     }
 

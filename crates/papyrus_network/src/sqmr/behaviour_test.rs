@@ -1,5 +1,3 @@
-// TODO(shahak): Use start_query in all tests instead of send_query
-
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -7,14 +5,15 @@ use assert_matches::assert_matches;
 use futures::{FutureExt, Stream, StreamExt};
 use lazy_static::lazy_static;
 use libp2p::core::{ConnectedPoint, Endpoint};
-use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{ConnectionClosed, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm};
 use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use super::{Behaviour, Event, ExternalEvent, SessionError};
+use super::{Behaviour, Event, ExternalEvent, SessionError, ToOtherBehaviourEvent};
+use crate::mixed_behaviour::BridgedBehaviour;
 use crate::test_utils::dummy_data;
+use crate::{mixed_behaviour, peer_manager};
 
 impl Unpin for Behaviour {}
 
@@ -34,37 +33,19 @@ lazy_static! {
     static ref PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/");
 }
 
-fn simulate_connection_established(behaviour: &mut Behaviour, peer_id: PeerId) {
-    let connection_id = ConnectionId::new_unchecked(0);
-    let address = Multiaddr::empty();
-    let role_override = Endpoint::Dialer;
-    let _handler = behaviour
-        .handle_established_outbound_connection(connection_id, peer_id, &address, role_override)
-        .unwrap();
-    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
-        peer_id,
-        connection_id,
-        endpoint: &ConnectedPoint::Dialer { address, role_override },
-        failed_addresses: &[],
-        other_established: 0,
-    }));
-}
-
-fn simulate_listener_connection(behaviour: &mut Behaviour, peer_id: PeerId) {
-    let connection_id = ConnectionId::new_unchecked(0);
-    let address = Multiaddr::empty();
-    let local_addr = Multiaddr::empty();
-    let role_override = Endpoint::Listener;
-    let _handler = behaviour
-        .handle_established_outbound_connection(connection_id, peer_id, &address, role_override)
-        .unwrap();
-    behaviour.on_swarm_event(FromSwarm::ConnectionEstablished(ConnectionEstablished {
-        peer_id,
-        connection_id,
-        endpoint: &ConnectedPoint::Listener { send_back_addr: address, local_addr },
-        failed_addresses: &[],
-        other_established: 0,
-    }));
+fn simulate_peer_assigned(
+    behaviour: &mut Behaviour,
+    peer_id: PeerId,
+    outbound_session_id: OutboundSessionId,
+) {
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+        peer_manager::ToOtherBehaviourEvent::SessionAssigned {
+            outbound_session_id,
+            peer_id,
+            // TODO(shahak): Add test with multiple connections
+            connection_id: ConnectionId::new_unchecked(0),
+        },
+    ));
 }
 
 fn simulate_new_inbound_session(
@@ -75,6 +56,7 @@ fn simulate_new_inbound_session(
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
+        // This is the same connection_id from simulate_peer_assigned
         ConnectionId::new_unchecked(0),
         RequestToBehaviourEvent::GenerateEvent(GenericEvent::NewInboundSession {
             query,
@@ -93,6 +75,7 @@ fn simulate_received_response(
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
+        // This is the same connection_id from simulate_peer_assigned
         ConnectionId::new_unchecked(0),
         RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedResponse {
             response,
@@ -109,6 +92,7 @@ fn simulate_session_finished_successfully(
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
+        // This is the same connection_id from simulate_peer_assigned
         ConnectionId::new_unchecked(0),
         RequestToBehaviourEvent::GenerateEvent(GenericEvent::SessionFinishedSuccessfully {
             session_id,
@@ -117,7 +101,7 @@ fn simulate_session_finished_successfully(
 }
 
 fn simulate_connection_closed(behaviour: &mut Behaviour, peer_id: PeerId) {
-    // This is the same connection_id from simulate_connection_established
+    // This is the same connection_id from simulate_peer_assigned
     let connection_id = ConnectionId::new_unchecked(0);
     behaviour.on_swarm_event(FromSwarm::ConnectionClosed(ConnectionClosed {
         peer_id,
@@ -137,6 +121,20 @@ fn simulate_session_dropped(behaviour: &mut Behaviour, peer_id: PeerId, session_
         peer_id,
         ConnectionId::new_unchecked(0),
         RequestToBehaviourEvent::NotifySessionDropped { session_id },
+    );
+}
+
+async fn validate_request_peer_assignment_event(
+    behaviour: &mut Behaviour,
+    outbound_session_id: OutboundSessionId,
+) {
+    let event = behaviour.next().await.unwrap();
+    assert_matches!(
+        event,
+        ToSwarm::GenerateEvent(Event::ToOtherBehaviourEvent(ToOtherBehaviourEvent::RequestPeerAssignment {
+                outbound_session_id: event_outbound_session_id
+            },
+        )) if outbound_session_id == event_outbound_session_id
     );
 }
 
@@ -280,8 +278,6 @@ async fn process_inbound_session() {
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
 
-    simulate_listener_connection(&mut behaviour, peer_id);
-
     simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
     validate_new_inbound_session_event(&mut behaviour, &peer_id, inbound_session_id, &QUERY).await;
     validate_no_events(&mut behaviour);
@@ -319,9 +315,11 @@ async fn create_and_process_outbound_session() {
 
     let peer_id = PeerId::random();
 
-    simulate_connection_established(&mut behaviour, peer_id);
-    let outbound_session_id =
-        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
+    let outbound_session_id = behaviour.start_query(QUERY.clone(), PROTOCOL_NAME.clone());
+
+    validate_request_peer_assignment_event(&mut behaviour, outbound_session_id).await;
+    validate_no_events(&mut behaviour);
+    simulate_peer_assigned(&mut behaviour, peer_id, outbound_session_id);
 
     validate_create_outbound_session_event(&mut behaviour, &peer_id, &QUERY, &outbound_session_id)
         .await;
@@ -351,17 +349,17 @@ async fn connection_closed() {
 
     let peer_id = PeerId::random();
 
-    simulate_connection_established(&mut behaviour, peer_id);
-
-    let outbound_session_id =
-        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
-
+    // Add an outbound session on the connection.
+    let outbound_session_id = behaviour.start_query(QUERY.clone(), PROTOCOL_NAME.clone());
+    // Consume the event to request peer assignment.
+    behaviour.next().await.unwrap();
+    simulate_peer_assigned(&mut behaviour, peer_id, outbound_session_id);
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
+    // Add an inbound session on the connection.
     let inbound_session_id = InboundSessionId::default();
     simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
-
     // Consume the event to notify the user about the new inbound session.
     behaviour.next().await.unwrap();
 
@@ -399,11 +397,10 @@ async fn drop_outbound_session() {
 
     let peer_id = PeerId::random();
 
-    simulate_connection_established(&mut behaviour, peer_id);
-
-    let outbound_session_id =
-        behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap();
-
+    let outbound_session_id = behaviour.start_query(QUERY.clone(), PROTOCOL_NAME.clone());
+    // Consume the event to request peer assignment.
+    behaviour.next().await.unwrap();
+    simulate_peer_assigned(&mut behaviour, peer_id, outbound_session_id);
     // Consume the event to create an outbound session.
     behaviour.next().await.unwrap();
 
@@ -432,8 +429,6 @@ async fn drop_inbound_session() {
 
     let peer_id = PeerId::random();
     let inbound_session_id = InboundSessionId::default();
-
-    simulate_listener_connection(&mut behaviour, peer_id);
 
     simulate_new_inbound_session(&mut behaviour, peer_id, inbound_session_id, QUERY.clone());
 
@@ -465,13 +460,4 @@ fn send_response_non_existing_session_fails() {
     for response in dummy_data() {
         behaviour.send_response(response, InboundSessionId::default()).unwrap_err();
     }
-}
-
-#[test]
-fn send_query_peer_not_connected_fails() {
-    let mut behaviour = Behaviour::new(Config::get_test_config());
-
-    let peer_id = PeerId::random();
-
-    behaviour.send_query(QUERY.clone(), peer_id, PROTOCOL_NAME.clone()).unwrap_err();
 }

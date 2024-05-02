@@ -8,16 +8,10 @@ license-file.workspace = true
 [features]
 testing = []
 
-[[bin]]
-name = "streamed_bytes_benchmark"
-required-features = ["clap"]
-path = "src/bin/streamed_bytes_benchmark.rs"
-
 [dependencies]
 async-stream.workspace = true
 bytes.workspace = true
 chrono.workspace = true
-defaultmap.workspace = true
 derive_more.workspace = true
 futures.workspace = true
 lazy_static.workspace = true
@@ -51,6 +45,7 @@ clap = { workspace = true, optional = true, features = ["derive"] }
 [dev-dependencies]
 assert_matches.workspace = true
 deadqueue = { workspace = true, features = ["unlimited"] }
+defaultmap.workspace = true
 libp2p-swarm-test.workspace = true
 mockall.workspace = true
 pretty_assertions.workspace = true
