@@ -7,12 +7,14 @@ use tracing::{debug, error};
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
+use crate::discovery::kad_impl::KadFromOtherBehaviourEvent;
 use crate::{discovery, streamed_bytes};
 
 #[derive(Debug)]
 pub enum Event {
     NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
     NotifyDiscovery(discovery::FromOtherBehaviourEvent),
+    NotifyKad(KadFromOtherBehaviourEvent),
 }
 
 impl<P: 'static> NetworkBehaviour for PeerManager<P>
@@ -93,7 +95,7 @@ where
                 }
                 let res = self.report_peer(peer_id, super::ReputationModifier::Bad);
                 if res.is_err() {
-                    error!("Dial failure of an unknow peer. peer id: {}", peer_id)
+                    error!("Dial failure of an unknown peer. peer id: {}", peer_id)
                 }
                 // Re-assign a peer to the session so that a SessionAssgined Event will be emitted.
                 // TODO: test this case
