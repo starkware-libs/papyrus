@@ -20,6 +20,7 @@ const Configuration = {
     rules: {
         'scope-enum': [2, 'always', [
             'base_layer',
+            'ci',
             'common',
             'config',
             'execution',
