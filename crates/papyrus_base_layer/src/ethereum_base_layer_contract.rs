@@ -49,7 +49,7 @@ impl SerializeConfig for EthereumBaseLayerConfig {
                 "node_url",
                 SerializationType::String,
                 "Ethereum node URL. A schema to match to Infura node: https://mainnet.infura.io/v3/<your_api_key>, but any other node can be used.",
-                ParamPrivacyInput::Private,
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "starknet_contract_address",

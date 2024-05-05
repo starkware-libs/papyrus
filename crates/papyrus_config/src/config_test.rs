@@ -302,13 +302,13 @@ impl SerializeConfig for CustomConfig {
                 "param_path",
                 &self.param_path,
                 "This is param_path.",
-                ParamPrivacyInput::Public,
+                ParamPrivacyInput::Private,
             ),
             ser_generated_param(
                 "seed",
                 SerializationType::Number,
                 "A dummy seed with generated default = 0.",
-                ParamPrivacyInput::Public,
+                ParamPrivacyInput::Private,
             ),
         ])
     }
@@ -457,7 +457,7 @@ fn deeply_nested_optionals() {
                 "level0_value",
                 &self.level0_value,
                 "This is level0_value.",
-                ParamPrivacyInput::Public,
+                ParamPrivacyInput::Private,
             )]);
             res.extend(ser_optional_sub_config(&self.level1, "level1"));
             res

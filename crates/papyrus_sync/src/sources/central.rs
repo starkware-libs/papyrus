@@ -91,7 +91,7 @@ impl SerializeConfig for CentralSourceConfig {
                 "http_headers",
                 &serialize_optional_map(&self.http_headers),
                 "'k1:v1 k2:v2 ...' headers for SN-client.",
-                ParamPrivacyInput::Private,
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "max_state_updates_to_download",

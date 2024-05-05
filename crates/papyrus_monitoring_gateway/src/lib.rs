@@ -91,7 +91,7 @@ impl SerializeConfig for MonitoringGatewayConfig {
                 "present_full_config_secret",
                 SerializationType::String,
                 "A secret for presenting the full general config.",
-                ParamPrivacyInput::Private,
+                ParamPrivacyInput::Public,
             ),
             ser_param(
                 "starknet_url",
