@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714658860148,
+  "lastUpdate": 1714898416843,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Benchmark": [
@@ -36,6 +36,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 16
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "committer": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "distinct": true,
+          "id": "6f8acb6f7f100874b52d8c2c87a5ff4012c9113b",
+          "message": "ss",
+          "timestamp": "2024-05-05T11:20:22+03:00",
+          "tree_id": "05e40ee67cda890607b0239e8f3598f37bf739c7",
+          "url": "https://github.com/starkware-libs/papyrus/commit/6f8acb6f7f100874b52d8c2c87a5ff4012c9113b"
+        },
+        "date": 1714898416385,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 27
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 16
+          },
+          {
+            "name": "get_storage_at",
+            "value": 35
           }
         ]
       }
