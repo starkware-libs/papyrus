@@ -1,7 +1,9 @@
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 use clap::{Arg, Command};
+use futures::future::join_all;
 use papyrus_common::transaction_hash::{
     get_transaction_hash,
     MAINNET_TRANSACTION_HASH_WITH_VERSION,
@@ -16,11 +18,13 @@ use strum::IntoEnumIterator;
 
 const DEFAULT_TRANSACTION_HASH_PATH: &str =
     "crates/papyrus_common/resources/transaction_hash_new.json";
+const MAX_CONCURRENT_SPAWNS: u64 = 100;
 struct CliParams {
     node_url: String,
     iteration_increments: u64,
     file_path: String,
     deprecated: bool,
+    concurrent_spawns: u64,
 }
 
 /// The start_block and end_block arguments are mandatory and define the block range to dump,
@@ -50,6 +54,13 @@ fn get_cli_params() -> CliParams {
                 .help("The iteration increments used to query the node."),
         )
         .arg(
+            Arg::new("concurrent_spawns")
+                .short('s')
+                .long("concurrent_spawns")
+                .default_value(MAX_CONCURRENT_SPAWNS.to_string())
+                .help("The maximum number of concurrent spawns."),
+        )
+        .arg(
             Arg::new("deprecated")
                 .short('d')
                 .long("deprecated")
@@ -67,12 +78,23 @@ fn get_cli_params() -> CliParams {
         .expect("Failed parsing iteration_increments")
         .parse::<u64>()
         .expect("Failed parsing iteration_increments");
+    let _concurrent_spawns = matches
+        .get_one::<String>("concurrent_spawns")
+        .expect("Failed parsing concurrent_spawns")
+        .parse::<u64>()
+        .expect("Failed parsing concurrent_spawns");
     let deprecated = matches
         .get_one::<String>("deprecated")
         .expect("Failed parsing deprecated")
         .parse::<bool>()
         .expect("Failed parsing deprecated");
-    CliParams { node_url, iteration_increments, file_path, deprecated }
+    CliParams {
+        node_url,
+        iteration_increments,
+        file_path,
+        deprecated,
+        concurrent_spawns: _concurrent_spawns,
+    }
 }
 
 // Define a tuple struct to hold transaction type and version
@@ -105,53 +127,93 @@ fn get_all_transaction_types() -> HashSet<TransactionInfo> {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Starting Starknet transaction hash dump.");
 
-    let CliParams { node_url, iteration_increments, file_path, deprecated } = get_cli_params();
+    let CliParams { node_url, iteration_increments, file_path, deprecated, concurrent_spawns } =
+        get_cli_params();
     let file = std::fs::File::create(file_path)?;
     let mut writer = std::io::BufWriter::new(&file);
 
-    let mut transaction_types = get_all_transaction_types();
-    let mut acumulated_transactions = vec![];
-
+    let transaction_types = Arc::new(Mutex::new(get_all_transaction_types()));
+    let acumulated_transactions = Arc::new(Mutex::new(vec![]));
     let client = reqwest::Client::new();
+    let block_number_response = get_current_block_number_via_rpc(&client, node_url.clone()).await?;
     let mut block_number: u64 = if deprecated {
-        MAINNET_TRANSACTION_HASH_WITH_VERSION.0
+        min(block_number_response, MAINNET_TRANSACTION_HASH_WITH_VERSION.0)
     } else {
-        get_current_block_number_via_rpc(&client, node_url.clone()).await?
+        block_number_response
     };
 
-    while block_number > 0 && !transaction_types.is_empty() {
-        println!("Processing block number: {}", block_number);
-        let block_transactions =
-            get_block_transactions_via_rpc(&client, node_url.clone(), block_number).await?;
+    while block_number > 0
+        && !transaction_types.lock().expect("Couldn't lock transaction types").is_empty()
+    {
+        let mut handles: Vec<tokio::task::JoinHandle<()>> = vec![];
+        let mut handles_counter = concurrent_spawns;
 
-        // For each transaction in the block, check if it's a unique transaction type and version
-        // and add it to the acumulated_transactions
-        for transaction in block_transactions.iter().cloned() {
-            let transaction_info = parse_transaction_info_from_value(&transaction);
-            if transaction_types.remove(&transaction_info) {
-                let unique_transaction = construct_transaction_from_value(
-                    transaction.clone(),
-                    &transaction_info.transaction_type,
-                    &transaction_info.transaction_version,
-                )?;
-                let transaction_hash = transaction["transaction_hash"]
-                    .as_str()
-                    .expect("Couldn't parse 'transaction_hash' from json transaction")
-                    .to_string();
+        while block_number > 0
+            && !transaction_types.lock().expect("Couldn't lock transaction types").is_empty()
+            && handles_counter > 0
+        {
+            println!("Processing block number: {}", block_number);
+            let transaction_types_clone = Arc::clone(&transaction_types);
+            let acumulated_transactions_clone = Arc::clone(&acumulated_transactions);
+            let client_ref = client.clone();
+            let node_url_ref = node_url.clone();
+            let current_block_number = block_number;
 
-                let transaction_map = create_map_of_transaction(
-                    &unique_transaction,
-                    block_number,
-                    transaction_hash,
-                    deprecated,
-                );
-                acumulated_transactions.push(transaction_map);
-            }
+            let handle = tokio::spawn(async move {
+                let block_transactions = get_block_transactions_via_rpc(
+                    &client_ref,
+                    node_url_ref.clone(),
+                    current_block_number,
+                )
+                .await
+                .unwrap_or_else(|_| {
+                    println!(
+                        "Failed to get block transactions for block number: {}",
+                        current_block_number
+                    );
+                    vec![]
+                });
+
+                // For each transaction in the block, check if it's a unique transaction type and
+                // version and add it to the acumulated_transactions
+                for transaction in block_transactions.iter().cloned() {
+                    let transaction_info = parse_transaction_info_from_value(&transaction);
+                    let mut transaction_types_handle =
+                        transaction_types_clone.lock().expect("Couldn't lock transaction types");
+                    if transaction_types_handle.remove(&transaction_info) {
+                        let unique_transaction = construct_transaction_from_value(
+                            transaction.clone(),
+                            &transaction_info.transaction_type,
+                            &transaction_info.transaction_version,
+                        )
+                        .expect("Couldn't construct transaction from value");
+                        let transaction_hash = transaction["transaction_hash"]
+                            .as_str()
+                            .expect("Couldn't parse 'transaction_hash' from json transaction")
+                            .to_string();
+
+                        let transaction_map = create_map_of_transaction(
+                            &unique_transaction,
+                            block_number,
+                            transaction_hash,
+                            deprecated,
+                        );
+                        acumulated_transactions_clone
+                            .lock()
+                            .expect("Couldn't lock acumulated transactions")
+                            .push(transaction_map);
+                    }
+                }
+            });
+            // Decrement the block number by the iteration_increments
+            block_number -= min(iteration_increments, block_number);
+            handles.push(handle);
+            handles_counter -= 1;
         }
-
-        // Decrement the block number by the iteration_increments
-        block_number -= min(iteration_increments, block_number);
+        // Wait for all the spawned tasks to finish
+        join_all(handles).await;
     }
+
     to_writer_pretty(&mut writer, &acumulated_transactions)?;
     println!("Transaction hash dump completed.");
     Ok(())
