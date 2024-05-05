@@ -8,10 +8,9 @@ use tracing::info;
 
 use self::behaviour_impl::Event;
 use self::peer::PeerTrait;
-use crate::main_behaviour::mixed_behaviour;
-use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
-use crate::streamed_bytes;
+use crate::mixed_behaviour::BridgedBehaviour;
 use crate::streamed_bytes::OutboundSessionId;
+use crate::{mixed_behaviour, streamed_bytes};
 
 pub(crate) mod behaviour_impl;
 pub(crate) mod peer;

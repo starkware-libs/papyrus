@@ -470,7 +470,7 @@ async fn state_update_with_empty_storage_diff() {
     .unwrap();
     let mut state_update = StateUpdate::default();
     let empty_storage_diff = indexmap!(ContractAddress::default() => vec![]);
-    state_update.state_diff.storage_diffs = empty_storage_diff.clone();
+    state_update.state_diff.storage_diffs.clone_from(&empty_storage_diff);
 
     let mock =
         mock("GET", &format!("/feeder_gateway/get_state_update?{BLOCK_NUMBER_QUERY}=123456")[..])

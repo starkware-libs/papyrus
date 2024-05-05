@@ -11,8 +11,8 @@ use libp2p::{identify, kad, Multiaddr, Swarm};
 use libp2p_swarm_test::SwarmExt;
 
 use super::Behaviour;
-use crate::main_behaviour::mixed_behaviour;
-use crate::main_behaviour::mixed_behaviour::{BridgedBehaviour, MixedBehaviour};
+use crate::mixed_behaviour;
+use crate::mixed_behaviour::{BridgedBehaviour, MixedBehaviour};
 use crate::test_utils::StreamHashMap;
 
 #[derive(NetworkBehaviour)]

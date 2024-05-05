@@ -32,7 +32,7 @@ use super::handler::{
     SessionError as HandlerSessionError,
 };
 use super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
-use crate::main_behaviour::mixed_behaviour::{self, BridgedBehaviour};
+use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::peer_manager;
 
 #[derive(thiserror::Error, Debug)]

@@ -1,9 +1,8 @@
 use libp2p::{kad, Multiaddr, PeerId};
 use tracing::error;
 
-use crate::discovery;
-use crate::main_behaviour::mixed_behaviour;
-use crate::main_behaviour::mixed_behaviour::BridgedBehaviour;
+use crate::mixed_behaviour::BridgedBehaviour;
+use crate::{discovery, mixed_behaviour};
 
 #[derive(Debug)]
 pub enum KadFromOtherBehaviourEvent {
