@@ -5992,6 +5992,7 @@ dependencies = [
  "lazy_static",
  "libmdbx",
  "metrics-exporter-prometheus",
+ "once_cell",
  "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
