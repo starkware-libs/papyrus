@@ -244,15 +244,18 @@ jobs:
   random-table-test:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       # run this job only if the path 'crates/papyrus_storage/src/db/**' is changed, because it takes around 2 minutes.
       - uses: dorny/paths-filter@v3
         id: changes
         with:
+          # The 'base' and 'ref' parameters are set to be able to run the job in a 'merge_group' event. in a 'pull_request' event 
+          # those parameters are ignored.
+          base: ${{ github.event.merge_group.base_ref}}
+          ref: ${{ github.event.merge_group.head_ref }}
           filters: |
             target_directory:
               - 'crates/papyrus_storage/src/db/**'
-
-      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       # repeat this job 32 times. this is a random test for part of the code that may cause a corrupted database.
