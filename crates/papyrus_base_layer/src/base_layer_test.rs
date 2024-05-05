@@ -59,8 +59,7 @@ fn get_test_ethereum_node() -> (TestEthereumNodeHandle, EthereumContractAddress)
 // Note: the test requires ganache-cli installed, otherwise it is ignored.
 async fn latest_proved_block_ethereum() {
     let (node_handle, starknet_contract_address) = get_test_ethereum_node();
-    let config =
-        EthereumBaseLayerConfig { node_url: node_handle.0.endpoint(), starknet_contract_address };
+    let config = EthereumBaseLayerConfig::new(node_handle.0.endpoint(), starknet_contract_address);
     let contract = EthereumBaseLayerContract::new(config).unwrap();
 
     let first_sn_state_update = (BlockNumber(100), BlockHash(stark_felt!("0x100")));

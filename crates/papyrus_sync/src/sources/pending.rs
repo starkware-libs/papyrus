@@ -59,7 +59,7 @@ impl PendingSource {
     ) -> Result<PendingSource, ClientCreationError> {
         let starknet_client = StarknetFeederGatewayClient::new(
             &config.url,
-            config.http_headers,
+            config.get_http_headers(),
             node_version,
             config.retry_config,
         )?;

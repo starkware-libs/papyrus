@@ -75,7 +75,7 @@ fn load_http_headers() {
         ("NAME_1".to_string(), "VALUE_1".to_string()),
         ("NAME_2".to_string(), "VALUE_2".to_string()),
     ]);
-    assert_eq!(config.central.http_headers.unwrap(), target_http_headers);
+    assert_eq!(config.central.get_http_headers().unwrap(), target_http_headers);
 }
 
 // insta doesn't work well with features, so if the output between two features are different we

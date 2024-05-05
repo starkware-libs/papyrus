@@ -122,6 +122,11 @@ impl SerializeConfig for CentralSourceConfig {
             .collect()
     }
 }
+impl CentralSourceConfig {
+    pub fn get_http_headers(&self) -> Option<HashMap<String, String>> {
+        self.http_headers.clone()
+    }
+}
 
 pub struct GenericCentralSource<TStarknetClient: StarknetReader + Send + Sync> {
     pub concurrent_requests: usize,

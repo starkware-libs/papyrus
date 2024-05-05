@@ -38,7 +38,7 @@ pub enum EthereumBaseLayerError {
 #[derive(Debug, Deserialize, Serialize, Clone, PartialEq)]
 pub struct EthereumBaseLayerConfig {
     // TODO(yair): consider using types.
-    pub node_url: String,
+    node_url: String,
     pub starknet_contract_address: String,
 }
 
@@ -67,6 +67,11 @@ impl Default for EthereumBaseLayerConfig {
             node_url: "https://mainnet.infura.io/v3/<your_api_key>".to_string(),
             starknet_contract_address: "0xc662c410C0ECf747543f5bA90660f6ABeBD9C8c4".to_string(),
         }
+    }
+}
+impl EthereumBaseLayerConfig {
+    pub fn new(node_url: String, starknet_contract_address: String) -> Self {
+        Self { node_url, starknet_contract_address }
     }
 }
 

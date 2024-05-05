@@ -43,7 +43,7 @@ pub struct MonitoringGatewayConfig {
     pub metric_labels: Option<HashMap<String, String>>,
     #[validate(length(min = 1))]
     #[serde(default = "random_secret")]
-    pub present_full_config_secret: String,
+    present_full_config_secret: String,
     pub starknet_url: String,
 }
 
