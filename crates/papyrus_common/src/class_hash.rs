@@ -68,7 +68,7 @@ pub fn calculate_class_hash(class: &ContractClass) -> ClassHash {
 }
 
 /// Calculates the hash of a deprecated contract class.
-/// Note: This function modifies the contract class in place.
+/// Note: This function modifies the contract class in place for backwards compatibility.
 // Based on Pathfinder code (the starknet.io doc is incorrect).
 pub fn calculate_deprecated_class_hash(
     class: &mut DeprecatedContractClass,
@@ -163,7 +163,7 @@ fn builtins_hash(
 fn deprecated_program_hash(
     class: &mut DeprecatedContractClass,
 ) -> Result<StarkFelt, DeprecatedClassHashCalculationError> {
-    preprocess_program(&mut class.program)?;
+    fix_old_version_program(&mut class.program)?;
     let pythonic_class_serializtion = pythonic_serialize(class)?;
     let class_keccak =
         sha3::Keccak256::default().chain_update(pythonic_class_serializtion.as_bytes()).finalize();
@@ -197,7 +197,7 @@ fn bytecode_hash(
     Ok(pedersen_hash_array(bytecode_as_felts.as_slice()))
 }
 
-fn preprocess_program(
+fn fix_old_version_program(
     program: &mut DeprecatedContractClassProgram,
 ) -> Result<(), DeprecatedClassHashCalculationError> {
     program.debug_info = serde_json::Value::Null;
@@ -255,7 +255,8 @@ fn add_extra_space_to_cairo_named_tuples(json: &mut serde_json::Value) {
     }
 }
 
-// Python code masks with (2**250 - 1) which starts 0x03 and is followed by 31 0xff in be.
+// TODO(yair): Figure out why exactly this function is needed.
+// Python code masks with (2**250 - 1) which starts 0x03 and is followed by 31 0xff in big endian.
 // Truncation is needed not to overflow the field element.
 fn truncated_keccak(mut plain: [u8; 32]) -> StarkFelt {
     plain[0] &= 0x03;
