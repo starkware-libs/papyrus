@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714898416843,
+  "lastUpdate": 1714899874791,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Benchmark": [
@@ -72,6 +72,42 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 35
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "committer": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "distinct": true,
+          "id": "440f9b10914e4aa586cab50c844837385e3a70b9",
+          "message": "remove ssh",
+          "timestamp": "2024-05-05T12:03:03+03:00",
+          "tree_id": "0c520430c8020dd62c95ad43291481454afd6a66",
+          "url": "https://github.com/starkware-libs/papyrus/commit/440f9b10914e4aa586cab50c844837385e3a70b9"
+        },
+        "date": 1714899874402,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 20
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 23
+          },
+          {
+            "name": "get_storage_at",
+            "value": 25
           }
         ]
       }
