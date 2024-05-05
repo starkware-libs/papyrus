@@ -102,7 +102,7 @@ impl Times {
         };
         results.push(Entry {
             name: "get_class_hash_at".to_string(),
-            units: "Microseconds".to_string(),
+            unit: "Microseconds".to_string(),
             value: get_class_hash_at_median as usize,
         });
 
@@ -113,7 +113,7 @@ impl Times {
         };
         results.push(Entry {
             name: "get_nonce_at".to_string(),
-            units: "Microseconds".to_string(),
+            unit: "Microseconds".to_string(),
             value: get_nonce_at_median as usize,
         });
 
@@ -125,7 +125,7 @@ impl Times {
 
         results.push(Entry {
             name: "get_storage_at".to_string(),
-            units: "Microseconds".to_string(),
+            unit: "Microseconds".to_string(),
             value: get_storage_at_median as usize,
         });
 
@@ -154,7 +154,7 @@ impl Times {
 #[derive(Debug, Clone, Default, Serialize)]
 struct Entry {
     name: String,
-    units: String,
+    unit: String,
     value: usize,
 }
 

@@ -39,7 +39,7 @@ async fn main() -> anyhow::Result<()> {
     // [
     //     {
     //         "name": <request name>,
-    //         "units": "Milliseconds",
+    //         "unit": "Milliseconds",
     //         "value": <request median time>,
     //     },
     // ]
@@ -54,7 +54,7 @@ async fn main() -> anyhow::Result<()> {
                 raw_data.minimum_time,
                 raw_data.maximum_time,
             );
-            performance.push(Entry { name, units: "Milliseconds".to_string(), value: median });
+            performance.push(Entry { name, unit: "Milliseconds".to_string(), value: median });
         }
         serde_json::to_writer(file, &performance)?
     }
@@ -65,6 +65,6 @@ async fn main() -> anyhow::Result<()> {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Entry {
     name: String,
-    units: String, // "Milliseconds"
+    unit: String, // "Milliseconds"
     value: usize,
 }
