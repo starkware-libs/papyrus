@@ -1,0 +1,60 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, eran/ci/benchmark-tests]
+
+jobs:
+  storage-benchmark:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "write"
+      id-token: "write"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # - name: Set a unique run identifier
+      #   run: echo "UNIQE_ID=${{ github.run_number }}-${{ github.run_attempt }}" >> $GITHUB_ENV
+
+      - id: "auth"
+        name: "Authenticate to Google Cloud"
+        uses: "google-github-actions/auth@v1"
+        with:
+          credentials_json: "${{ secrets.GOOGLE_CI_SA_CREDENTIALS }}"
+
+      - id: "get-credentials"
+        name: Get GKE credentials
+        uses: "google-github-actions/get-gke-credentials@v1"
+        with:
+          cluster_name: "${{ secrets.GKE_CI_CLUSTER_NAME }}"
+          location: "${{ secrets.GKE_CI_CLUSTER_REGION }}"
+
+      - name: Run load test
+        run: sh -c "deployments/storage-benchmark/run_benchmark.bash 5m"
+
+      - name: Download previous benchmark data
+        uses: actions/cache@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark
+
+      # Run `github-action-benchmark` action
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: "Papyrus storage benchmark"
+          # What benchmark tool the output.txt came from
+          tool: 'customSmallerIsBetter'
+          # Where the output from the benchmark tool is stored
+          output-file-path: output.txt
+
+      # Push to gh-pages branch
+      - name: Push benchmark result
+        run: |
+          git switch gh-pages
+          git push https://github.com/starkware-libs/papyrus.git gh-pages:gh-pages --no-verify
+          git checkout -
+
