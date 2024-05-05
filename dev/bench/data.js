@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1714929957145,
+  "lastUpdate": 1714930147781,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Papyrus storage benchmark": [
@@ -155,6 +155,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 16,
+            "unit": "Microseconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "committer": {
+            "email": "eran@starkware.co",
+            "name": "eranreshef-starkware",
+            "username": "eranreshef-starkware"
+          },
+          "distinct": true,
+          "id": "a5d77d64be2d41a4850eb5b7eef3c6fbb96861fc",
+          "message": "add a new ci category to commitlint",
+          "timestamp": "2024-05-05T20:27:25+03:00",
+          "tree_id": "8bcd6d8db7542e8bd7e88d558a88add076a6486c",
+          "url": "https://github.com/starkware-libs/papyrus/commit/a5d77d64be2d41a4850eb5b7eef3c6fbb96861fc"
+        },
+        "date": 1714930146873,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 14,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 14,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_storage_at",
+            "value": 25,
             "unit": "Microseconds"
           }
         ]
