@@ -54,12 +54,11 @@ fn deprecated_class_hash_with_missing_fields() {
     assert_eq!(calculated_class_hash, expected_class_hash);
 }
 
+// this property is leaned on and the default implementation of serde_json works like
+// this. serde_json has a feature called "preserve_order" which could get enabled by
+// accident, and it would destroy the ability to compute_class_hash.
 #[test]
 fn serde_json_value_sorts_maps() {
-    // this property is leaned on and the default implementation of serde_json works like
-    // this. serde_json has a feature called "preserve_order" which could get enabled by
-    // accident, and it would destroy the ability to compute_class_hash.
-
     let input = r#"{"foo": 1, "bar": 2}"#;
     let parsed = serde_json::from_str::<serde_json::Value>(input).unwrap();
     let output = serde_json::to_string(&parsed).unwrap();
@@ -69,6 +68,7 @@ fn serde_json_value_sorts_maps() {
 
 #[test]
 fn deprecated_class_serialization_for_hashing() {
+    // A class with unsorted abi entries and hints to check that the serialization is sorted.
     let deprecated_class = starknet_api::deprecated_contract_class::ContractClass {
         abi: Some(vec![
             starknet_api::deprecated_contract_class::ContractClassAbiEntry::Constructor(
