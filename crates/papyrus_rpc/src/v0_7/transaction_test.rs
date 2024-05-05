@@ -45,28 +45,29 @@ use super::{
 };
 
 lazy_static::lazy_static! {
-    // A transaction from GOERLI with tx hash 0x7c9660754689dee9c6de773f1c4c9d94269ed678e7199298a9e1a19cda415ab.
+    // A transaction from MAINNET with tx hash 0x439e12f67962c353182d72b4af12c3f11eaba4b36e552aebcdcd6db66971bdb.
     static ref L1_HANDLER_TX: L1HandlerTransaction = L1HandlerTransaction {
         version: TransactionVersion::ZERO,
-        nonce: Nonce(stark_felt!("0xc01b3")),
+        nonce: Nonce(stark_felt!("0x18e94d")),
         contract_address: contract_address!(
-            "0x55350a859da02cb244c8c09f29bc38047cef93d38b72033a0e8be03d24c5756"
+            "0x73314940630fd6dcda0d772d4c972c4e0a9946bef9dabf4ef84eda8ef542b82"
         ),
         entry_point_selector: EntryPointSelector(stark_felt!(
-            "0x3fa70707d0e831418fb142ca8fb7483611b84e89c0c42bf1fc2a7a5c40890ad"
+            "0x1b64b1b3b690b43b9b514fb81377518f4039cd3e4f4914d8a6bdf01d679fb19"
         )),
         calldata: calldata![
-            stark_felt!("0x18e4a8e2badb5f5950758f46f8108e2c5d357b07"),
-            stark_felt!("0x10ae809a95d34dd22538e6c30bec2e11"),
-            stark_felt!("0x8eacfcd7b4046547e3cbe5ff4f08c1f9"),
-            stark_felt!("0x99c3dd"),
+            stark_felt!("0xae0ee0a63a2ce6baeeffe56e7714fb4efe48d419"),
+            stark_felt!("0x455448"),
+            stark_felt!("0xc27947400e26e534e677afc2e9b2ec1bab14fc89"),
+            stark_felt!("0x4af4754baf89f1b8b449215a8ea7ce558824a33a5393eaa3829658549f2bfa2"),
+            stark_felt!("0x9184e72a000"),
             stark_felt!("0x0")
         ],
     };
 }
 
 // The msg hash of the L1Handler transaction.
-const MSG_HASH: &str = "0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2";
+const MSG_HASH: &str = "0x99b2a7830e1c860734b308d90bb05b0e09ecda0a2b243ecddb12c50bdebaa3a9";
 
 auto_impl_get_test_instance! {
     pub enum DeployAccountTransaction {
@@ -267,7 +268,7 @@ fn l1handler_msg_hash() {
 #[test]
 fn l1handler_msg_hash_serde() {
     let ser = serde_json::to_string(MSG_HASH).unwrap();
-    assert_eq!(ser, "\"0xd667cda2d870b8146c115cc4e93d701b3e34313686e5925ddc421576a1c8bbd2\"");
+    assert_eq!(ser, "\"0x99b2a7830e1c860734b308d90bb05b0e09ecda0a2b243ecddb12c50bdebaa3a9\"");
     let des = serde_json::from_str::<L1L2MsgHash>(&ser).unwrap();
     let expected_hash = L1_HANDLER_TX.calc_msg_hash();
     assert_eq!(des, expected_hash);
