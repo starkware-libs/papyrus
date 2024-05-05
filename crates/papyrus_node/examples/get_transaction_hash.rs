@@ -1,7 +1,9 @@
 use std::cmp::min;
 use std::collections::{BTreeMap, HashSet};
+use std::sync::{Arc, Mutex};
 
 use clap::{Arg, Command};
+use futures::future::join_all;
 use papyrus_common::transaction_hash::{
     get_transaction_hash,
     MAINNET_TRANSACTION_HASH_WITH_VERSION,
@@ -109,49 +111,79 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::create(file_path)?;
     let mut writer = std::io::BufWriter::new(&file);
 
-    let mut transaction_types = get_all_transaction_types();
-    let mut acumulated_transactions = vec![];
-
+    let transaction_types = Arc::new(Mutex::new(get_all_transaction_types()));
+    let acumulated_transactions = Arc::new(Mutex::new(vec![]));
     let client = reqwest::Client::new();
     let mut block_number: u64 = if deprecated {
         MAINNET_TRANSACTION_HASH_WITH_VERSION.0
     } else {
         get_current_block_number_via_rpc(&client, node_url.clone()).await?
     };
+    let mut handles = vec![];
 
-    while block_number > 0 && !transaction_types.is_empty() {
+    while block_number > 0
+        && !transaction_types.lock().expect("Couldn't lock transaction types").is_empty()
+    {
         println!("Processing block number: {}", block_number);
-        let block_transactions =
-            get_block_transactions_via_rpc(&client, node_url.clone(), block_number).await?;
+        let transaction_types_clone = Arc::clone(&transaction_types);
+        let acumulated_transactions_clone = Arc::clone(&acumulated_transactions);
+        let client_ref = client.clone();
+        let node_url_ref = node_url.clone();
+        let current_block_number = block_number;
 
-        // For each transaction in the block, check if it's a unique transaction type and version
-        // and add it to the acumulated_transactions
-        for transaction in block_transactions.iter().cloned() {
-            let transaction_info = parse_transaction_info_from_value(&transaction);
-            if transaction_types.remove(&transaction_info) {
-                let unique_transaction = construct_transaction_from_value(
-                    transaction.clone(),
-                    &transaction_info.transaction_type,
-                    &transaction_info.transaction_version,
-                )?;
-                let transaction_hash = transaction["transaction_hash"]
-                    .as_str()
-                    .expect("Couldn't parse 'transaction_hash' from json transaction")
-                    .to_string();
-
-                let transaction_map = create_map_of_transaction(
-                    &unique_transaction,
-                    block_number,
-                    transaction_hash,
-                    deprecated,
+        let handle = tokio::spawn(async move {
+            let block_transactions = get_block_transactions_via_rpc(
+                &client_ref,
+                node_url_ref.clone(),
+                current_block_number,
+            )
+            .await
+            .unwrap_or_else(|_| {
+                println!(
+                    "Failed to get block transactions for block number: {}",
+                    current_block_number
                 );
-                acumulated_transactions.push(transaction_map);
-            }
-        }
+                vec![]
+            });
 
+            // For each transaction in the block, check if it's a unique transaction type and
+            // version and add it to the acumulated_transactions
+            for transaction in block_transactions.iter().cloned() {
+                let transaction_info = parse_transaction_info_from_value(&transaction);
+                let mut transaction_types_handle =
+                    transaction_types_clone.lock().expect("Couldn't lock transaction types");
+                if transaction_types_handle.remove(&transaction_info) {
+                    let unique_transaction = construct_transaction_from_value(
+                        transaction.clone(),
+                        &transaction_info.transaction_type,
+                        &transaction_info.transaction_version,
+                    )
+                    .expect("Couldn't construct transaction from value");
+                    let transaction_hash = transaction["transaction_hash"]
+                        .as_str()
+                        .expect("Couldn't parse 'transaction_hash' from json transaction")
+                        .to_string();
+
+                    let transaction_map = create_map_of_transaction(
+                        &unique_transaction,
+                        block_number,
+                        transaction_hash,
+                        deprecated,
+                    );
+                    acumulated_transactions_clone
+                        .lock()
+                        .expect("Couldn't lock acumulated transactions")
+                        .push(transaction_map);
+                }
+            }
+        });
         // Decrement the block number by the iteration_increments
         block_number -= min(iteration_increments, block_number);
+        handles.push(handle);
     }
+    // Wait for all the spawned tasks to finish
+    join_all(handles).await;
+
     to_writer_pretty(&mut writer, &acumulated_transactions)?;
     println!("Transaction hash dump completed.");
     Ok(())
