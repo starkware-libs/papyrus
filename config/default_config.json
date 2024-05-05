@@ -304,6 +304,11 @@
     "privacy": "Public",
     "value": 1000
   },
+  "sync.chain_id": {
+    "description": "The chain ID of the Starknet chain.",
+    "pointer_target": "chain_id",
+    "privacy": "Public"
+  },
   "sync.recoverable_error_sleep_duration": {
     "description": "Waiting time in seconds before restarting synchronization after a recoverable error.",
     "privacy": "Public",

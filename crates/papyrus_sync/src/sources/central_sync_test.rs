@@ -15,7 +15,7 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, SequencerPublicKey};
+use starknet_api::core::{ChainId, ClassHash, SequencerPublicKey};
 use starknet_api::crypto::PublicKey;
 use starknet_api::hash::StarkFelt;
 use starknet_api::stark_felt;
@@ -95,6 +95,7 @@ fn get_test_sync_config(verify_blocks: bool) -> SyncConfig {
         blocks_max_stream_size: STREAM_SIZE,
         state_updates_max_stream_size: STREAM_SIZE,
         verify_blocks,
+        chain_id: ChainId("test_chain".to_string()),
     }
 }
 
@@ -672,7 +673,8 @@ async fn sequencer_pub_key_management() {
 
     let ((reader, writer), _temp_dir) = get_test_storage();
     let config = get_test_sync_config(true);
-    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock, config);
+    let sync_future =
+        run_sync(reader.clone(), writer, central_mock, base_layer_mock, config.clone());
 
     let sync_result =
         tokio::time::timeout(config.block_propagation_sleep_duration * 4, sync_future)
