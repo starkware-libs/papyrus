@@ -85,7 +85,7 @@ jobs:
       - run: npm install -g ganache@7.4.3
 
       - run: |
-          cargo test -r
+          cargo test --workspace -r
         env:
           SEED: 0
 
@@ -249,7 +249,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: changes
         with:
-          # The 'base' and 'ref' parameters are set to be able to run the job in a 'merge_group' event. in a 'pull_request' event 
+          # The 'base' and 'ref' parameters are set to be able to run the job in a 'merge_group' event. in a 'pull_request' event
           # those parameters are ignored.
           base: ${{ github.event.merge_group.base_ref}}
           ref: ${{ github.event.merge_group.head_ref }}
