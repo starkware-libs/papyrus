@@ -18,12 +18,18 @@ fn validate_block_hash_util(file_name: &str, version: BlockHashVersion) {
         calculate_block_hash_by_version(&block.header, version, &chain_id).unwrap();
     assert_eq!(calculated_hash, block.header.block_hash);
 
-    let calculated_transaction_commitment =
-        calculate_transaction_commitment_by_version(&block.body, &version).unwrap();
+    let calculated_transaction_commitment = calculate_transaction_commitment_by_version(
+        &block.body.transactions,
+        &block.body.transaction_hashes,
+        &version,
+    )
+    .unwrap();
     assert_eq!(calculated_transaction_commitment, block.header.transaction_commitment.unwrap());
 
-    let calculated_event_commitment =
-        calculate_event_commitment_by_version(&block.body.transaction_outputs, &version);
+    let calculated_event_commitment = calculate_event_commitment_by_version(
+        block.body.transaction_outputs.iter().flat_map(|output| output.events()),
+        &version,
+    );
     assert_eq!(calculated_event_commitment, block.header.event_commitment.unwrap());
 }
 

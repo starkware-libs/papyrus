@@ -106,7 +106,7 @@ async fn run_sync(
     central: impl CentralSourceTrait + Send + Sync + 'static,
     base_layer: impl BaseLayerSourceTrait + Send + Sync,
     config: SyncConfig,
-) -> StateSyncResult {
+) -> StateSyncResult<()> {
     // Mock to the pending source that always returns the default pending data.
     let mut pending_source = MockPendingSourceTrait::new();
     pending_source.expect_get_pending_data().returning(|| Ok(PendingData::default()));

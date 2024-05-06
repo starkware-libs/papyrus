@@ -152,6 +152,18 @@ pub enum CentralError {
     StorageError(#[from] StorageError),
     #[error("Wrong type of contract class")]
     BadContractClassType,
+    #[error("Block signature verification failed.")]
+    BlockSignatureVerificationFailed,
+    #[error("Block header validation failed.")]
+    HeaderValidationFailed,
+    #[error("Block body validation failed.")]
+    BodyValidationFailed,
+    #[error("State diff validation failed.")]
+    StateDiffValidationFailed,
+    #[error("Class validation failed.")]
+    ClassValidationFailed,
+    #[error("Deprecated class validation failed.")]
+    DeprecatedClassValidationFailed,
 }
 
 #[cfg_attr(test, automock)]

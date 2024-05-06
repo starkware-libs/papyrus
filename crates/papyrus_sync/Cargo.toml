@@ -16,6 +16,7 @@ futures.workspace = true
 hex.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
+lazy_static.workspace = true
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lru.workspace = true
 metrics.workspace = true

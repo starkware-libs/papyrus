@@ -7,6 +7,9 @@ mod sync_test;
 
 mod pending_sync;
 pub mod sources;
+pub mod verification;
+#[cfg(test)]
+mod verification_test;
 
 use std::cmp::min;
 use std::collections::BTreeMap;
@@ -34,13 +37,14 @@ use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use sources::base_layer::BaseLayerSourceError;
-use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, CompiledClassHash, SequencerPublicKey};
+use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature, StarknetVersion};
+use starknet_api::core::{ChainId, ClassHash, CompiledClassHash, SequencerPublicKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::state::{StateDiff, ThinStateDiff};
+use starknet_api::state::{DeclaredClasses, DeprecatedDeclaredClasses, StateDiff, ThinStateDiff};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument, trace, warn};
+use verification::Verifier;
 
 use crate::pending_sync::sync_pending_data;
 use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
@@ -126,7 +130,7 @@ impl Default for SyncConfig {
             recoverable_error_sleep_duration: Duration::from_secs(3),
             blocks_max_stream_size: 1000,
             state_updates_max_stream_size: 1000,
-            verify_blocks: true,
+            verify_blocks: false,
             chain_id: ChainId("SN_MAIN".to_owned()),
         }
     }
@@ -151,7 +155,7 @@ pub struct GenericStateSync<
     sequencer_pub_key: Option<SequencerPublicKey>,
 }
 
-pub type StateSyncResult = Result<(), StateSyncError>;
+pub type StateSyncResult<T> = Result<T, StateSyncError>;
 
 // TODO: Sort alphabetically.
 #[derive(thiserror::Error, Debug)]
@@ -188,6 +192,8 @@ pub enum StateSyncError {
     },
     #[error("Sequencer public key changed from {old:?} to {new:?}.")]
     SequencerPubKeyChanged { old: SequencerPublicKey, new: SequencerPublicKey },
+    #[error(transparent)]
+    VerificationError(#[from] verification::VerificationError),
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -202,7 +208,9 @@ pub enum SyncEvent {
     StateDiffAvailable {
         block_number: BlockNumber,
         block_hash: BlockHash,
-        state_diff: StateDiff,
+        thin_state_diff: ThinStateDiff,
+        classes: DeclaredClasses,
+        deprecated_classes: DeprecatedDeclaredClasses,
         // TODO(anatg): Remove once there are no more deployed contracts with undeclared classes.
         // Class definitions of deployed contracts with classes that were not declared in this
         // state diff.
@@ -226,7 +234,7 @@ impl<
     TBaseLayerSource: BaseLayerSourceTrait + Sync + Send,
 > GenericStateSync<TCentralSource, TPendingSource, TBaseLayerSource>
 {
-    pub async fn run(&mut self) -> StateSyncResult {
+    pub async fn run(&mut self) -> StateSyncResult<()> {
         info!("State sync started.");
         loop {
             match self.sync_while_ok().await {
@@ -261,13 +269,14 @@ impl<
                 | StateSyncError::BaseLayerSourceError(_)
                 | StateSyncError::ParentBlockHashMismatch { .. }
                 | StateSyncError::BaseLayerHashMismatch { .. }
-                | StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. } => true,
+                | StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. }
+                | StateSyncError::VerificationError { .. } => true,
                 StateSyncError::SequencerPubKeyChanged { .. } => false,
             }
         }
     }
 
-    async fn track_sequencer_public_key_changes(&mut self) -> StateSyncResult {
+    async fn track_sequencer_public_key_changes(&mut self) -> StateSyncResult<()> {
         let sequencer_pub_key = self.central_source.get_sequencer_pub_key().await?;
         match self.sequencer_pub_key {
             // First time setting the sequencer public key.
@@ -296,7 +305,7 @@ impl<
     //  1. If needed, revert blocks from the end of the chain.
     //  2. Create infinite block and state diff streams to fetch data from the central source.
     //  3. Fetch data from the streams with unblocking wait while there is no new data.
-    async fn sync_while_ok(&mut self) -> StateSyncResult {
+    async fn sync_while_ok(&mut self) -> StateSyncResult<()> {
         if self.config.verify_blocks {
             self.track_sequencer_public_key_changes().await?;
         }
@@ -363,7 +372,13 @@ impl<
     }
 
     // Tries to store the incoming data.
-    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
+    async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult<()> {
+        let sync_event = if self.config.verify_blocks {
+            // TODO(yair): check if needs to be inside spawn_blocking.
+            self.verify_sync_event(sync_event)?
+        } else {
+            sync_event
+        };
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block, signature } => {
                 self.store_block(block_number, block, &signature)
@@ -371,12 +386,16 @@ impl<
             SyncEvent::StateDiffAvailable {
                 block_number,
                 block_hash,
-                state_diff,
+                thin_state_diff,
+                classes,
+                deprecated_classes,
                 deployed_contract_class_definitions,
             } => self.store_state_diff(
                 block_number,
                 block_hash,
-                state_diff,
+                thin_state_diff,
+                classes,
+                deprecated_classes,
                 deployed_contract_class_definitions,
             ),
             SyncEvent::CompiledClassAvailable {
@@ -391,6 +410,164 @@ impl<
         }
     }
 
+    fn verify_sync_event(&self, sync_event: SyncEvent) -> StateSyncResult<SyncEvent> {
+        // TODO(yair): support all versions.
+        // The versions of the Starknet nodes that are verifiable.
+        let sn_versions_to_verify: [StarknetVersion; 2] =
+            [StarknetVersion("0.13.1".to_owned()), StarknetVersion("0.13.1.1".to_owned())];
+
+        match sync_event {
+            SyncEvent::BlockAvailable { block_number, block, signature } => {
+                if !sn_versions_to_verify.contains(&block.header.starknet_version) {
+                    return Ok(SyncEvent::BlockAvailable { block_number, block, signature });
+                }
+                if !verification::CentralSourceVerifier::verify_signature(
+                    &block.header.block_hash,
+                    &block
+                        .header
+                        .state_diff_commitment
+                        .expect("Should have state diff commitment."),
+                    &signature,
+                    &self.sequencer_pub_key.expect("Should have sequencer public key."),
+                )? {
+                    warn!(
+                        "Block signature verification failed for block {} with hash {}",
+                        block_number, block.header.block_hash
+                    );
+                    return Err(StateSyncError::CentralSourceError(
+                        CentralError::BlockSignatureVerificationFailed,
+                    ));
+                }
+                if !verification::CentralSourceVerifier::validate_header(
+                    &block.header,
+                    &self.config.chain_id,
+                )? {
+                    warn!(
+                        "Block header validation failed for block {} with hash {}",
+                        block_number, block.header.block_hash
+                    );
+                    return Err(StateSyncError::CentralSourceError(
+                        CentralError::HeaderValidationFailed,
+                    ));
+                }
+                if !verification::CentralSourceVerifier::validate_body(
+                    &block_number,
+                    &self.config.chain_id,
+                    &block.body.transactions,
+                    block.body.transaction_outputs.iter().flat_map(|tx_output| tx_output.events()),
+                    &block.body.transaction_hashes,
+                    // TODO(yair): return an error instead of default.
+                    &block.header.transaction_commitment.unwrap_or_default(),
+                    &block.header.event_commitment.unwrap_or_default(),
+                )? {
+                    {
+                        warn!(
+                            "Block body validation failed for block {} with hash {}",
+                            block_number, block.header.block_hash
+                        );
+                        return Err(StateSyncError::CentralSourceError(
+                            CentralError::BodyValidationFailed,
+                        ));
+                    }
+                }
+                Ok(SyncEvent::BlockAvailable { block_number, block, signature })
+            }
+            SyncEvent::StateDiffAvailable {
+                block_number,
+                block_hash,
+                thin_state_diff,
+                classes,
+                mut deprecated_classes,
+                mut deployed_contract_class_definitions,
+            } => {
+                let sn_version = self.reader.begin_ro_txn()?.get_starknet_version(block_number)?;
+                match sn_version {
+                    None => {
+                        return Ok(SyncEvent::StateDiffAvailable {
+                            block_number,
+                            block_hash,
+                            thin_state_diff,
+                            classes,
+                            deprecated_classes,
+                            deployed_contract_class_definitions,
+                        });
+                    }
+                    Some(sn_version) => {
+                        if !sn_versions_to_verify.contains(&sn_version) {
+                            return Ok(SyncEvent::StateDiffAvailable {
+                                block_number,
+                                block_hash,
+                                thin_state_diff,
+                                classes,
+                                deprecated_classes,
+                                deployed_contract_class_definitions,
+                            });
+                        }
+                    }
+                };
+                let expected_state_diff_commitment = self
+                    .reader
+                    .begin_ro_txn()?
+                    .get_block_header(block_number)?
+                    .expect("Block header should exist.")
+                    .state_diff_commitment
+                    .expect("State diff commitment should exist.");
+                if !verification::CentralSourceVerifier::validate_state_diff(
+                    &thin_state_diff,
+                    &expected_state_diff_commitment,
+                )? {
+                    warn!(
+                        "State diff validation failed for block {} with hash {}",
+                        block_number, block_hash
+                    );
+                    return Err(StateSyncError::CentralSourceError(
+                        CentralError::StateDiffValidationFailed,
+                    ));
+                }
+
+                // TODO(yair): parralelize the classes verification.
+                for (class_hash, class) in &classes {
+                    if !verification::CentralSourceVerifier::validate_class(class, class_hash)? {
+                        warn!(
+                            "Class validation failed for block {} with hash {}, class {}",
+                            block_number, block_hash, class_hash
+                        );
+                        return Err(StateSyncError::CentralSourceError(
+                            CentralError::ClassValidationFailed,
+                        ));
+                    }
+                }
+                for (class_hash, deprecated_class) in deprecated_classes
+                    .iter_mut()
+                    .chain(deployed_contract_class_definitions.iter_mut())
+                {
+                    if !verification::CentralSourceVerifier::validate_deprecated_class(
+                        deprecated_class,
+                        class_hash,
+                    )? {
+                        warn!(
+                            "Deprecated class validation failed for block {} with hash {}, class \
+                             {}",
+                            block_number, block_hash, class_hash
+                        );
+                        return Err(StateSyncError::CentralSourceError(
+                            CentralError::DeprecatedClassValidationFailed,
+                        ));
+                    }
+                }
+                Ok(SyncEvent::StateDiffAvailable {
+                    block_number,
+                    block_hash,
+                    thin_state_diff,
+                    classes,
+                    deprecated_classes,
+                    deployed_contract_class_definitions,
+                })
+            }
+            _ => Ok(sync_event),
+        }
+    }
+
     #[latency_histogram("sync_store_block_latency_seconds", false)]
     #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
     fn store_block(
@@ -398,7 +575,7 @@ impl<
         block_number: BlockNumber,
         block: Block,
         signature: &BlockSignature,
-    ) -> StateSyncResult {
+    ) -> StateSyncResult<()> {
         // Assuming the central source is trusted, detect reverts by comparing the incoming block's
         // parent hash to the current hash.
         self.verify_parent_block_hash(block_number, &block)?;
@@ -433,22 +610,32 @@ impl<
     }
 
     #[latency_histogram("sync_store_state_diff_latency_seconds", false)]
-    #[instrument(skip(self, state_diff, deployed_contract_class_definitions), level = "debug", err)]
+    #[instrument(
+        skip(
+            self,
+            thin_state_diff,
+            classes,
+            deprecated_classes,
+            deployed_contract_class_definitions
+        ),
+        level = "debug",
+        err
+    )]
     fn store_state_diff(
         &mut self,
         block_number: BlockNumber,
         block_hash: BlockHash,
-        state_diff: StateDiff,
+        thin_state_diff: ThinStateDiff,
+        classes: DeclaredClasses,
+        deprecated_classes: DeprecatedDeclaredClasses,
         deployed_contract_class_definitions: IndexMap<ClassHash, DeprecatedContractClass>,
-    ) -> StateSyncResult {
-        // TODO(dan): verifications - verify state diff against stored header.
+    ) -> StateSyncResult<()> {
         debug!("Storing state diff.");
-        trace!("StateDiff data: {state_diff:#?}");
+        trace!(
+            "StateDiff data: {thin_state_diff:#?}, classes: {classes:#?}, deprecated_classes: \
+             {deprecated_classes:#?}"
+        );
 
-        // TODO(shahak): split the state diff stream to 2 separate streams for blocks and for
-        // classes.
-        let (thin_state_diff, classes, deprecated_classes) =
-            ThinStateDiff::from_state_diff(state_diff);
         self.writer
             .begin_rw_txn()?
             .append_state_diff(block_number, thin_state_diff)?
@@ -486,7 +673,7 @@ impl<
         class_hash: ClassHash,
         compiled_class_hash: CompiledClassHash,
         compiled_class: CasmContractClass,
-    ) -> StateSyncResult {
+    ) -> StateSyncResult<()> {
         let txn = self.writer.begin_rw_txn()?;
         // TODO: verifications - verify casm corresponds to a class on storage.
         match txn.append_casm(&class_hash, &compiled_class) {
@@ -520,7 +707,7 @@ impl<
         &mut self,
         block_number: BlockNumber,
         block_hash: BlockHash,
-    ) -> StateSyncResult {
+    ) -> StateSyncResult<()> {
         let txn = self.writer.begin_rw_txn()?;
         // Missing header can be because of a base layer reorg, the matching header may be reverted.
         let expected_hash = txn
@@ -551,7 +738,7 @@ impl<
         &self,
         block_number: BlockNumber,
         block: &Block,
-    ) -> StateSyncResult {
+    ) -> StateSyncResult<()> {
         let prev_block_number = match block_number.prev() {
             None => return Ok(()),
             Some(bn) => bn,
@@ -607,7 +794,7 @@ impl<
     // Deletes the block data from the storage.
     #[allow(clippy::expect_fun_call)]
     #[instrument(skip(self), level = "debug", err)]
-    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult {
+    fn revert_block(&mut self, block_number: BlockNumber) -> StateSyncResult<()> {
         debug!("Reverting block.");
 
         let mut txn = self.writer.begin_rw_txn()?;
@@ -740,10 +927,16 @@ fn stream_new_state_diffs<TCentralSource: CentralSourceTrait + Sync + Send>(
                     deployed_contract_class_definitions,
                 ) = maybe_state_diff?;
                 sort_state_diff(&mut state_diff);
+                // TODO(shahak): split the state diff stream to 2 separate streams for blocks and for
+                // classes.
+                let (thin_state_diff, classes, deprecated_classes) =
+                    starknet_api::state::ThinStateDiff::from_state_diff(state_diff.clone());
                 yield SyncEvent::StateDiffAvailable {
                     block_number,
                     block_hash,
-                    state_diff,
+                    thin_state_diff,
+                    classes,
+                    deprecated_classes,
                     deployed_contract_class_definitions,
                 };
             }

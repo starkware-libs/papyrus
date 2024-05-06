@@ -6180,6 +6180,7 @@ dependencies = [
  "hex",
  "indexmap 2.1.0",
  "itertools 0.10.5",
+ "lazy_static",
  "libmdbx",
  "lru 0.12.1",
  "metrics",
