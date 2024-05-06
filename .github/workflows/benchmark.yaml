@@ -16,9 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # - name: Set a unique run identifier
-      #   run: echo "UNIQE_ID=${{ github.run_number }}-${{ github.run_attempt }}" >> $GITHUB_ENV
-
       - id: "auth"
         name: "Authenticate to Google Cloud"
         uses: "google-github-actions/auth@v1"
