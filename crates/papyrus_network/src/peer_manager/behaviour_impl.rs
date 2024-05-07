@@ -1,5 +1,6 @@
-use std::task::Poll;
+use std::task::{ready, Poll};
 
+use futures::{pin_mut, Future};
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{dummy, ConnectionClosed, DialError, DialFailure, NetworkBehaviour, ToSwarm};
 use libp2p::Multiaddr;
@@ -169,9 +170,20 @@ where
 
     fn poll(
         &mut self,
-        _cx: &mut std::task::Context<'_>,
+        cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<libp2p::swarm::ToSwarm<Self::ToSwarm, libp2p::swarm::THandlerInEvent<Self>>>
     {
+        if let Some(event) = self.pending_events.pop() {
+            return Poll::Ready(event);
+        }
+        if let Some(sleep_future) = &mut self.sleep_waiting_for_unblocked_peer {
+            pin_mut!(sleep_future);
+            ready!(sleep_future.poll(cx));
+            for outbound_session_id in std::mem::take(&mut self.sessions_received_when_no_peers) {
+                self.assign_peer_to_session(outbound_session_id);
+            }
+        }
+        self.sleep_waiting_for_unblocked_peer = None;
         self.pending_events.pop().map(Poll::Ready).unwrap_or(Poll::Pending)
     }
 }
