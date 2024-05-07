@@ -1,6 +1,5 @@
-// using chrono time and not std since std does not have the ability for std::time::Instance to
-// represent the maximum time of the system.
-use chrono::{DateTime, Duration, Utc};
+use std::time::{Duration, Instant};
+
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 #[cfg(test)]
@@ -23,6 +22,9 @@ pub trait PeerTrait {
 
     fn is_blocked(&self) -> bool;
 
+    /// Returns Instant::now if not blocked.
+    fn blocked_until(&self) -> Instant;
+
     // TODO: add support for multiple connections for a peer
     fn connection_id(&self) -> Option<ConnectionId>;
 
@@ -33,7 +35,7 @@ pub trait PeerTrait {
 pub struct Peer {
     peer_id: PeerId,
     multiaddr: Multiaddr,
-    timed_out_until: Option<DateTime<Utc>>,
+    timed_out_until: Option<Instant>,
     timeout_duration: Option<Duration>,
     connection_id: Option<ConnectionId>,
 }
@@ -51,11 +53,10 @@ impl PeerTrait for Peer {
 
     fn update_reputation(&mut self, _reason: ReputationModifier) {
         if let Some(timeout_duration) = self.timeout_duration {
-            self.timed_out_until =
-                Utc::now().checked_add_signed(timeout_duration).or(Some(DateTime::<Utc>::MAX_UTC));
-            return;
+            self.timed_out_until = Some(Instant::now() + timeout_duration);
+        } else {
+            debug!("Timeout duration not set for peer: {:?}", self.peer_id);
         }
-        debug!("Timeout duration not set for peer: {:?}", self.peer_id);
     }
 
     fn peer_id(&self) -> PeerId {
@@ -72,10 +73,14 @@ impl PeerTrait for Peer {
 
     fn is_blocked(&self) -> bool {
         if let Some(timed_out_until) = self.timed_out_until {
-            timed_out_until > Utc::now()
+            timed_out_until > Instant::now()
         } else {
             false
         }
+    }
+
+    fn blocked_until(&self) -> Instant {
+        self.timed_out_until.unwrap_or_else(|| Instant::now())
     }
 
     fn connection_id(&self) -> Option<ConnectionId> {
