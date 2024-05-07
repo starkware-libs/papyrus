@@ -61,5 +61,6 @@ mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 rand.workspace = true
+tokio = { workspace = true, features = ["full", "sync", "test-util"] }
 tokio-stream.workspace = true
 void.workspace = true

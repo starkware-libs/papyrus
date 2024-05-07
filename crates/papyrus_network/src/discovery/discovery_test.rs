@@ -25,7 +25,7 @@ use tokio::time::timeout;
 use void::Void;
 
 use super::kad_impl::KadFromOtherBehaviourEvent;
-use super::{Behaviour, FromOtherBehaviourEvent, ToOtherBehaviourEvent};
+use super::{Behaviour, FromOtherBehaviourEvent, ToOtherBehaviourEvent, DIAL_SLEEP};
 use crate::mixed_behaviour;
 use crate::mixed_behaviour::BridgedBehaviour;
 use crate::test_utils::next_on_mutex_stream;
@@ -90,6 +90,13 @@ async fn discovery_redials_on_dial_failure() {
         connection_id: ConnectionId::new_unchecked(0),
     }));
 
+    // Check that there are no events until we sleep for enough time.
+    tokio::time::pause();
+    assert_no_event(&mut behaviour);
+
+    // Sleep and check for event.
+    tokio::time::advance(DIAL_SLEEP).await;
+    tokio::time::resume();
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
         event,
