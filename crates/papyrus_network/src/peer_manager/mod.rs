@@ -1,6 +1,8 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
-use chrono::Duration;
+use futures::future::BoxFuture;
+use futures::FutureExt;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::ToSwarm;
 use libp2p::PeerId;
@@ -30,9 +32,11 @@ pub struct PeerManager<P: PeerTrait + 'static> {
     session_to_peer_map: HashMap<OutboundSessionId, PeerId>,
     config: PeerManagerConfig,
     last_peer_index: usize,
+    // TODO(shahak): Change to VecDeque and awake when item is added.
     pending_events: Vec<ToSwarm<ToOtherBehaviourEvent, libp2p::swarm::THandlerInEvent<Self>>>,
     peers_pending_dial_with_sessions: HashMap<PeerId, Vec<OutboundSessionId>>,
     sessions_received_when_no_peers: Vec<OutboundSessionId>,
+    sleep_waiting_for_unblocked_peer: Option<BoxFuture<'static, ()>>,
 }
 
 #[derive(Clone)]
@@ -53,7 +57,11 @@ pub(crate) enum PeerManagerError {
 
 impl Default for PeerManagerConfig {
     fn default() -> Self {
-        Self { target_num_for_peers: 100, blacklist_timeout: Duration::max_value() }
+        Self {
+            target_num_for_peers: 100,
+            // 1 year.
+            blacklist_timeout: Duration::from_secs(3600 * 24 * 365),
+        }
     }
 }
 
@@ -72,6 +80,7 @@ where
             pending_events: Vec::new(),
             peers_pending_dial_with_sessions: HashMap::new(),
             sessions_received_when_no_peers: Vec::new(),
+            sleep_waiting_for_unblocked_peer: None,
         }
     }
 
@@ -79,6 +88,8 @@ where
         info!("Peer Manager found new peer {:?}", peer.peer_id());
         peer.set_timeout_duration(self.config.blacklist_timeout);
         self.peers.insert(peer.peer_id(), peer);
+        // The new peer is unblocked so we don't need to wait for unblocked peer.
+        self.sleep_waiting_for_unblocked_peer = None;
         for outbound_session_id in std::mem::take(&mut self.sessions_received_when_no_peers) {
             self.assign_peer_to_session(outbound_session_id);
         }
@@ -90,10 +101,12 @@ where
     }
 
     // TODO(shahak): Remove return value and use events in tests.
+    // TODO(shahak): Split this function for readability.
     fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
+            info!("No peers. Waiting for a new peer to be connected for {outbound_session_id:?}");
             self.sessions_received_when_no_peers.push(outbound_session_id);
             return None;
         }
@@ -106,6 +119,23 @@ where
                 self.peers.iter().take(self.last_peer_index).find(|(_, peer)| !peer.is_blocked())
             });
         self.last_peer_index = (self.last_peer_index + 1) % self.peers.len();
+        if peer.is_none() {
+            info!(
+                "No unblocked peers. Waiting for a new peer to be connected or for a peer to \
+                 become unblocked for {outbound_session_id:?}"
+            );
+            self.sessions_received_when_no_peers.push(outbound_session_id);
+            // Find the peer closest to becoming unblocked.
+            let sleep_deadline = self
+                .peers
+                .values()
+                .map(|peer| peer.blocked_until())
+                .min()
+                .expect("min should not return None on a non-empty iterator");
+            self.sleep_waiting_for_unblocked_peer =
+                Some(tokio::time::sleep_until(sleep_deadline.into()).boxed());
+            return None;
+        }
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
