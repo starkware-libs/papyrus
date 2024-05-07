@@ -1,19 +1,37 @@
 use core::{panic, time};
+use std::pin::Pin;
+use std::task::{Context, Poll};
+use std::time::{Duration, Instant};
 
 use assert_matches::assert_matches;
-use chrono::Duration;
-use futures::future::poll_fn;
+use futures::future::{pending, poll_fn};
+use futures::{FutureExt, Stream, StreamExt};
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::{ConnectionId, NetworkBehaviour, ToSwarm};
 use libp2p::{Multiaddr, PeerId};
 use mockall::predicate::eq;
+use tokio::select;
 use tokio::time::sleep;
+use void::Void;
 
 use super::behaviour_impl::Event;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
 use crate::streamed_bytes::OutboundSessionId;
 use crate::{discovery, streamed_bytes};
+
+impl<P: PeerTrait> Unpin for PeerManager<P> {}
+
+impl<P: PeerTrait> Stream for PeerManager<P> {
+    type Item = ToSwarm<Event, Void>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        match Pin::into_inner(self).poll(cx) {
+            Poll::Pending => Poll::Pending,
+            Poll::Ready(event) => Poll::Ready(Some(event)),
+        }
+    }
+}
 
 #[test]
 fn peer_assignment_round_robin() {
@@ -100,8 +118,8 @@ fn peer_assignment_round_robin() {
     }
 }
 
-#[test]
-fn peer_assignment_no_peers() {
+#[tokio::test]
+async fn peer_assignment_no_peers() {
     // Create a new peer manager
     let config = PeerManagerConfig::default();
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
@@ -111,6 +129,7 @@ fn peer_assignment_no_peers() {
 
     // Assign a peer to the session
     assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+    assert!(peer_manager.next().now_or_never().is_none());
 
     // Now the peer manager finds a new peer and can assign the session.
     let connection_id = ConnectionId::new_unchecked(0);
@@ -118,19 +137,71 @@ fn peer_assignment_no_peers() {
         create_mock_peer(config.blacklist_timeout, false, Some(connection_id));
     peer.expect_is_blocked().times(1).return_const(false);
     peer_manager.add_peer(peer);
-    assert_eq!(peer_manager.pending_events.len(), 1);
     assert_matches!(
-        peer_manager.pending_events.first().unwrap(),
+        peer_manager.next().await.unwrap(),
         ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
             streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
                 outbound_session_id: event_outbound_session_id,
                 peer_id: event_peer_id,
                 connection_id: event_connection_id,
             }
-        )) if outbound_session_id == *event_outbound_session_id &&
-            peer_id == *event_peer_id &&
-            connection_id == *event_connection_id
+        )) if outbound_session_id == event_outbound_session_id &&
+            peer_id == event_peer_id &&
+            connection_id == event_connection_id
     );
+    assert!(peer_manager.next().now_or_never().is_none());
+}
+
+#[tokio::test]
+async fn peer_assignment_no_unblocked_peers() {
+    const BLOCKED_UNTIL: Duration = Duration::from_secs(5);
+    const TIMEOUT: Duration = Duration::from_secs(1);
+    // Create a new peer manager
+    let config = PeerManagerConfig::default();
+    let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
+
+    // Create a session
+    let outbound_session_id = OutboundSessionId { value: 1 };
+
+    // Create a peer
+    let connection_id = ConnectionId::new_unchecked(0);
+    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true, Some(connection_id));
+    peer.expect_is_blocked().times(1).return_const(true);
+    peer.expect_is_blocked().times(1).return_const(false);
+    peer.expect_blocked_until().times(1).returning(|| Instant::now() + BLOCKED_UNTIL);
+
+    peer_manager.add_peer(peer);
+    peer_manager.report_peer(peer_id, ReputationModifier::Bad {}).unwrap();
+
+    // Assign a peer to the session
+    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+    assert!(peer_manager.next().now_or_never().is_none());
+
+    // After BLOCKED_UNTIL has passed, the peer manager can assign the session.
+    tokio::time::pause();
+    select! {
+        _ = async {
+            tokio::time::advance(BLOCKED_UNTIL).await;
+            tokio::time::resume();
+            tokio::time::timeout(TIMEOUT, pending::<()>()).await.unwrap();
+        } => {}
+        event_opt = peer_manager.next() => {
+            let event = event_opt.unwrap();
+            assert_matches!(
+                event,
+                ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                    streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                        outbound_session_id: event_outbound_session_id,
+                        peer_id: event_peer_id,
+                        connection_id: event_connection_id,
+                    }
+                )) if outbound_session_id == event_outbound_session_id &&
+                    peer_id == event_peer_id &&
+                    connection_id == event_connection_id
+            );
+        }
+    }
+    assert!(peer_manager.next().now_or_never().is_none());
 }
 
 #[test]
@@ -154,7 +225,7 @@ fn report_peer_calls_update_reputation() {
 async fn peer_block_realeased_after_timeout() {
     const DURATION_IN_MILLIS: u64 = 50;
     let mut peer = Peer::new(PeerId::random(), Multiaddr::empty());
-    peer.set_timeout_duration(Duration::milliseconds(DURATION_IN_MILLIS as i64));
+    peer.set_timeout_duration(Duration::from_millis(DURATION_IN_MILLIS));
     peer.update_reputation(ReputationModifier::Bad {});
     assert!(peer.is_blocked());
     sleep(time::Duration::from_millis(DURATION_IN_MILLIS)).await;
@@ -235,8 +306,8 @@ fn more_peers_needed() {
     assert!(!peer_manager.more_peers_needed());
 }
 
-#[test]
-fn timed_out_peer_not_assignable_to_queries() {
+#[tokio::test]
+async fn timed_out_peer_not_assignable_to_queries() {
     // Create a new peer manager
     let config = PeerManagerConfig::default();
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
@@ -244,6 +315,7 @@ fn timed_out_peer_not_assignable_to_queries() {
     // Create a mock peer
     let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, true, None);
     peer.expect_is_blocked().times(1).return_const(true);
+    peer.expect_blocked_until().times(1).returning(|| Instant::now() + Duration::from_secs(1));
 
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);
