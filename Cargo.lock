@@ -5829,6 +5829,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_block_builder"
+version = "0.4.0-dev.2"
+dependencies = [
+ "papyrus_storage",
+ "pretty_assertions",
+ "starknet_api",
+ "test_utils",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "papyrus_common"
 version = "0.4.0-dev.2"
 dependencies = [
