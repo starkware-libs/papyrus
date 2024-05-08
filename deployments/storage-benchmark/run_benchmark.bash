@@ -13,6 +13,7 @@ DURRATION_TIMEOUT=$1
 kubectl --namespace "$NS" apply -f "$PVC_FILE" --wait=true
 
 # create a configmap with the actions to run
+kubectl --namespace "$NS" create configmap queries --from-file "$BASE_PATH/queries.txt" --dry-run=client --output yaml >"$CM_FILE"
 kubectl --namespace "$NS" apply -f "$CM_FILE"
 
 # create the storage-benchmark deployment
