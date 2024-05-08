@@ -54,6 +54,7 @@ create_storage_serde_test!(StarkHash);
 create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);
+create_storage_serde_test!(BlockNumber);
 
 #[test]
 fn block_number_endianness() {
