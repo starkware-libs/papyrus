@@ -52,7 +52,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use validator::ValidationError;
 use validators::ParsedValidationErrors;
-
+// Comment.
 pub(crate) const IS_NONE_MARK: &str = "#is_none";
 
 /// A nested path of a configuration parameter.
