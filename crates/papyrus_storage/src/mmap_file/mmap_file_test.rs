@@ -3,6 +3,7 @@ use std::sync::Arc;
 use pretty_assertions::assert_eq;
 use rand::Rng;
 use tempfile::tempdir;
+use test_utils::get_rng;
 use tokio::sync::{Barrier, RwLock};
 
 use super::*;
@@ -271,4 +272,31 @@ fn reader_when_writer_is_out_of_scope() {
     assert_eq!(res, data);
 
     dir.close().unwrap();
+}
+
+#[test]
+fn storage_serde_test_location_in_file() {
+    // Checks serialization and serialization of the max value of LocationInFile.
+    let item = LocationInFile { offset: (1 << 48) - 1, len: (1 << 32) - 1 };
+    let mut buf = Vec::new();
+    item.serialize_into(&mut buf).unwrap();
+    let res = LocationInFile::deserialize_from(&mut buf.as_slice()).unwrap();
+    assert_eq!(res, item);
+
+    let item = LocationInFile::get_test_instance(&mut get_rng());
+    let mut buf = Vec::new();
+    item.serialize_into(&mut buf).unwrap();
+    let res = LocationInFile::deserialize_from(&mut buf.as_slice()).unwrap();
+    assert_eq!(res, item);
+}
+
+#[test]
+fn location_in_file_serialization_order() {
+    let location_1 = LocationInFile { offset: 1, len: 1 };
+    let location_256 = LocationInFile { offset: 256, len: 1 };
+    let mut serialized_1 = Vec::new();
+    location_1.serialize_into(&mut serialized_1).unwrap();
+    let mut serialized_256 = Vec::new();
+    location_256.serialize_into(&mut serialized_256).unwrap();
+    assert!(serialized_256 > serialized_1);
 }
