@@ -29,3 +29,4 @@ fn block_proposer() {
 }
 
 // TODO: add test for non-existing block.
+// TODO: add test for sending info and dropping the sender before receiving.
