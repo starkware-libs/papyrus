@@ -43,8 +43,6 @@ pub enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the given protocol.")]
     RemoteDoesntSupportProtocol,
-    #[error("In an inbound session, remote peer sent data after sending the query.")]
-    OtherOutboundPeerSentData,
     // If there's a connection with a single session and it was closed because of another reason,
     // we might get ConnectionClosed instead of that reason because the swarm automatically closes
     // a connection that has no sessions. If this is a problem, set the swarm's
@@ -64,13 +62,13 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
             } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
             GenericEvent::ReceivedData { outbound_session_id, data } => {
                 Self::ReceivedData { outbound_session_id, data }
-            }
+            },
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::Timeout { session_timeout },
             } => {
                 Self::SessionFailed { session_id, error: SessionError::Timeout { session_timeout } }
-            }
+            },
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::IOError(error),
@@ -80,11 +78,7 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
                 error: HandlerSessionError::RemoteDoesntSupportProtocol,
             } => {
                 Self::SessionFailed { session_id, error: SessionError::RemoteDoesntSupportProtocol }
-            }
-            GenericEvent::SessionFailed {
-                session_id,
-                error: HandlerSessionError::OtherOutboundPeerSentData,
-            } => Self::SessionFailed { session_id, error: SessionError::OtherOutboundPeerSentData },
+            },
             GenericEvent::SessionFinishedSuccessfully { session_id } => {
                 Self::SessionFinishedSuccessfully { session_id }
             }
