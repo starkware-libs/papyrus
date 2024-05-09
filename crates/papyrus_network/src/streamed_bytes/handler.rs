@@ -67,9 +67,6 @@ pub enum SessionError {
     IOError(#[from] io::Error),
     #[error("Remote peer doesn't support the given protocol.")]
     RemoteDoesntSupportProtocol,
-    // TODO(shahak) erase this.
-    #[error("In an inbound session, remote peer sent data after sending the query.")]
-    OtherOutboundPeerSentData,
 }
 
 type HandlerEvent<H> = ConnectionHandlerEvent<
