@@ -62,13 +62,13 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
             } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
             GenericEvent::ReceivedData { outbound_session_id, data } => {
                 Self::ReceivedData { outbound_session_id, data }
-            },
+            }
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::Timeout { session_timeout },
             } => {
                 Self::SessionFailed { session_id, error: SessionError::Timeout { session_timeout } }
-            },
+            }
             GenericEvent::SessionFailed {
                 session_id,
                 error: HandlerSessionError::IOError(error),
@@ -78,7 +78,7 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
                 error: HandlerSessionError::RemoteDoesntSupportProtocol,
             } => {
                 Self::SessionFailed { session_id, error: SessionError::RemoteDoesntSupportProtocol }
-            },
+            }
             GenericEvent::SessionFinishedSuccessfully { session_id } => {
                 Self::SessionFinishedSuccessfully { session_id }
             }
