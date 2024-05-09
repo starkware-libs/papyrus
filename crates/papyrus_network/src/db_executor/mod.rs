@@ -182,10 +182,10 @@ impl DBExecutorError {
     }
 }
 
-/// Db executor is a stream of queries. Each result is marks the end of a query fulfillment.
+/// Db executor trait is a stream of queries. Each result is marks the end of a query fulfillment.
 /// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
 /// The stream is never exhausted, and it is the responsibility of the user to poll it.
-pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
+pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
     // TODO: add writer functionality
     fn register_query(
         &mut self,
@@ -196,19 +196,19 @@ pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
 }
 
 // TODO: currently this executor returns only block headers and signatures.
-pub struct BlockHeaderDBExecutor {
+pub struct DBExecutor {
     next_query_id: usize,
     storage_reader: StorageReader,
     query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
-impl BlockHeaderDBExecutor {
+impl DBExecutor {
     pub fn new(storage_reader: StorageReader) -> Self {
         Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
     }
 }
 
-impl DBExecutor for BlockHeaderDBExecutor {
+impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
         query: InternalQuery,
@@ -266,7 +266,7 @@ impl DBExecutor for BlockHeaderDBExecutor {
     }
 }
 
-impl Stream for BlockHeaderDBExecutor {
+impl Stream for DBExecutor {
     type Item = Result<QueryId, DBExecutorError>;
 
     fn poll_next(
