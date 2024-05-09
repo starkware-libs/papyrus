@@ -5,8 +5,11 @@ mod flow_test;
 pub mod identify_impl;
 pub mod kad_impl;
 
-use std::task::{Context, Poll, Waker};
+use std::task::{ready, Context, Poll, Waker};
+use std::time::Duration;
 
+use futures::future::BoxFuture;
+use futures::{pin_mut, Future, FutureExt};
 use kad_impl::KadFromOtherBehaviourEvent;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
@@ -28,6 +31,9 @@ use libp2p::{Multiaddr, PeerId};
 use crate::mixed_behaviour;
 use crate::mixed_behaviour::BridgedBehaviour;
 
+// TODO(shahak): Consider adding to config.
+const DIAL_SLEEP: Duration = Duration::from_secs(5);
+
 pub struct Behaviour {
     is_paused: bool,
     // TODO(shahak): Consider running several queries in parallel
@@ -35,6 +41,8 @@ pub struct Behaviour {
     bootstrap_peer_address: Multiaddr,
     bootstrap_peer_id: PeerId,
     is_dialing_to_bootstrap_peer: bool,
+    // This needs to be boxed to allow polling it from a &mut.
+    sleep_future_for_dialing_bootstrap_peer: Option<BoxFuture<'static, ()>>,
     is_connected_to_bootstrap_peer: bool,
     is_bootstrap_in_kad_routing_table: bool,
     wakers: Vec<Waker>,
@@ -80,6 +88,12 @@ impl NetworkBehaviour for Behaviour {
                 if peer_id == self.bootstrap_peer_id =>
             {
                 self.is_dialing_to_bootstrap_peer = false;
+                // For the case that the reason for failure is consistent (e.g the bootstrap peer
+                // is down), we sleep before redialing
+                // TODO(shahak): Consider increasing the time after each failure, the same way we
+                // do in starknet client.
+                self.sleep_future_for_dialing_bootstrap_peer =
+                    Some(tokio::time::sleep(DIAL_SLEEP).boxed());
             }
             FromSwarm::ConnectionEstablished(ConnectionEstablished { peer_id, .. })
                 if peer_id == self.bootstrap_peer_id =>
@@ -118,7 +132,12 @@ impl NetworkBehaviour for Behaviour {
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
         if !self.is_dialing_to_bootstrap_peer && !self.is_connected_to_bootstrap_peer {
+            if let Some(sleep_future) = &mut self.sleep_future_for_dialing_bootstrap_peer {
+                pin_mut!(sleep_future);
+                ready!(sleep_future.poll(cx));
+            }
             self.is_dialing_to_bootstrap_peer = true;
+            self.sleep_future_for_dialing_bootstrap_peer = None;
             return Poll::Ready(ToSwarm::Dial {
                 opts: DialOpts::peer_id(self.bootstrap_peer_id)
                     .addresses(vec![self.bootstrap_peer_address.clone()])
@@ -166,6 +185,7 @@ impl Behaviour {
             bootstrap_peer_id,
             bootstrap_peer_address,
             is_dialing_to_bootstrap_peer: false,
+            sleep_future_for_dialing_bootstrap_peer: None,
             is_connected_to_bootstrap_peer: false,
             is_bootstrap_in_kad_routing_table: false,
             wakers: Vec::new(),
