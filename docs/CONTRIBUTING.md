@@ -49,6 +49,25 @@ Then, you will need to install
   - You'll need Ganache only for the tests of the [papyrus_base_layer](../crates/papyrus_base_layer/) crate.
 - [Protoc](https://grpc.io/docs/protoc-installation)
   - You'll need Protoc only for compiling the [papyrus_network](../crates/papyrus_network/) crate.
+  - Make sure you have version 15 or higher installed. If not:
+    1. Remove your current Protoc installation:
+      ```sh
+      sudo apt remove protoc/protobuf-compiler
+      ```
+    2. Install version 15 or higher (e.g., 25.1):
+      ```sh
+      DIR="$HOME/.local"
+      curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip" -o protoc.zip
+      unzip ./protoc.zip -d $DIR
+      rm ./protoc.zip
+      ```
+      Replace DIR with your preferred installation directory.
+
+    3. Add Protoc to your PATH:
+      ```sh
+      export PATH=$PATH:$DIR/bin
+      ```
+      Don't forget to source your modified `.bashrc` or `.zshrc` file.
 
 ### CI
 Your code will need to pass [CI](../.github/workflows/ci.yml) before it can be merged. This means your code will need to:
