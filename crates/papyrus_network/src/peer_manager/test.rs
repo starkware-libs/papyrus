@@ -1,3 +1,5 @@
+// TODO(shahak): Add tests for multiple connection ids
+
 use core::{panic, time};
 
 use assert_matches::assert_matches;
@@ -68,15 +70,15 @@ fn peer_assignment_round_robin() {
             match outbound_session_id {
                 OutboundSessionId { value: 1 } => {
                     assert_eq!(peer_id, peer1.peer_id());
-                    assert_eq!(connection_id, peer1.connection_id().unwrap())
+                    assert_eq!(connection_id, *peer1.connection_ids().first().unwrap())
                 }
                 OutboundSessionId { value: 2 } => {
                     assert_eq!(peer_id, peer2.peer_id());
-                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                    assert_eq!(connection_id, *peer2.connection_ids().first().unwrap());
                 }
                 OutboundSessionId { value: 3 } => {
                     assert_eq!(peer_id, peer1.peer_id());
-                    assert_eq!(connection_id, peer1.connection_id().unwrap());
+                    assert_eq!(connection_id, *peer1.connection_ids().first().unwrap());
                 }
                 _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
@@ -84,15 +86,15 @@ fn peer_assignment_round_robin() {
             match outbound_session_id {
                 OutboundSessionId { value: 1 } => {
                     assert_eq!(peer_id, peer2.peer_id());
-                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                    assert_eq!(connection_id, *peer2.connection_ids().first().unwrap());
                 }
                 OutboundSessionId { value: 2 } => {
                     assert_eq!(peer_id, peer1.peer_id());
-                    assert_eq!(connection_id, peer1.connection_id().unwrap());
+                    assert_eq!(connection_id, *peer1.connection_ids().first().unwrap());
                 }
                 OutboundSessionId { value: 3 } => {
                     assert_eq!(peer_id, peer2.peer_id());
-                    assert_eq!(connection_id, peer2.connection_id().unwrap());
+                    assert_eq!(connection_id, *peer2.connection_ids().first().unwrap());
                 }
                 _ => panic!("Unexpected outbound_session_id: {:?}", outbound_session_id),
             }
@@ -314,7 +316,7 @@ fn create_mock_peer(
             .return_once(|_| ())
             .in_sequence(&mut mockall_seq);
     }
-    peer.expect_connection_id().return_const(connection_id);
+    peer.expect_connection_ids().return_const(connection_id.map(|x| vec![x]).unwrap_or_default());
 
     (peer, peer_id)
 }
@@ -394,7 +396,7 @@ async fn flow_test_assign_non_connected_peer() {
     let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, false, None);
     peer.expect_is_blocked().times(1).return_const(false);
     peer.expect_multiaddr().return_const(Multiaddr::empty());
-    peer.expect_set_connection_id().times(1).return_const(());
+    peer.expect_add_connection_id().times(1).return_const(());
 
     // Add the mock peer to the peer manager
     peer_manager.add_peer(peer);

@@ -23,10 +23,11 @@ pub trait PeerTrait {
 
     fn is_blocked(&self) -> bool;
 
-    // TODO: add support for multiple connections for a peer
-    fn connection_id(&self) -> Option<ConnectionId>;
+    fn connection_ids(&self) -> &Vec<ConnectionId>;
 
-    fn set_connection_id(&mut self, connection_id: Option<ConnectionId>);
+    fn add_connection_id(&mut self, connection_id: ConnectionId);
+
+    fn remove_connection_id(&mut self, connection_id: ConnectionId);
 }
 
 #[derive(Clone)]
@@ -35,7 +36,7 @@ pub struct Peer {
     multiaddr: Multiaddr,
     timed_out_until: Option<DateTime<Utc>>,
     timeout_duration: Option<Duration>,
-    connection_id: Option<ConnectionId>,
+    connection_ids: Vec<ConnectionId>,
 }
 
 impl PeerTrait for Peer {
@@ -45,7 +46,7 @@ impl PeerTrait for Peer {
             multiaddr,
             timeout_duration: None,
             timed_out_until: None,
-            connection_id: None,
+            connection_ids: Vec::new(),
         }
     }
 
@@ -78,11 +79,15 @@ impl PeerTrait for Peer {
         }
     }
 
-    fn connection_id(&self) -> Option<ConnectionId> {
-        self.connection_id
+    fn connection_ids(&self) -> &Vec<ConnectionId> {
+        &self.connection_ids
     }
 
-    fn set_connection_id(&mut self, connection_id: Option<ConnectionId>) {
-        self.connection_id = connection_id;
+    fn add_connection_id(&mut self, connection_id: ConnectionId) {
+        self.connection_ids.push(connection_id);
+    }
+
+    fn remove_connection_id(&mut self, connection_id: ConnectionId) {
+        self.connection_ids.retain(|&id| id != connection_id);
     }
 }
