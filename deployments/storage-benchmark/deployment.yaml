@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: storage-benchmark
+  name: storage-benchmark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: storage-benchmark
+  template:
+    metadata:
+      labels:
+        app: storage-benchmark
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - image: us.gcr.io/starkware-dev/papyrus-utils:latest
+          imagePullPolicy: Always
+          command:
+            - "storage_benchmark"
+            - "--queries_file_path"
+            - "/app/queries/queries.txt"
+            - "--db_path"
+            - "/app/data/"
+            - "--output_file_path"
+            - "/tmp/results/output.txt"
+            - "--chain_id"
+            - "SN_MAIN"
+          name: storage-benchmark
+          volumeMounts:
+            - mountPath: /app/data
+              name: data
+            - mountPath: /app/queries
+              name: queries
+            - mountPath: /tmp/results
+              name: results
+      containers:
+        - image: ubuntu
+          command:
+            - "sleep"
+            - "3600"
+          name: results-export
+          volumeMounts:
+            - mountPath: /tmp/results
+              name: results
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: data
+        - name: queries
+          configMap:
+            name: queries
+        - name: results
+          emptyDir: {}

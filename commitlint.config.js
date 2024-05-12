@@ -21,6 +21,7 @@ const Configuration = {
         'scope-enum': [2, 'always', [
             'base_layer',
             'block_builder',
+            'ci',
             'common',
             'config',
             'execution',
