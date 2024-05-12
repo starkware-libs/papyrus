@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715176781852,
+  "lastUpdate": 1715516981718,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Papyrus storage benchmark": [
@@ -311,6 +311,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 22,
+            "unit": "Microseconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "104721006+eranreshef-starkware@users.noreply.github.com",
+            "name": "Eran Reshef",
+            "username": "eranreshef-starkware"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "ccb104afa4f0e06d1204728c42c5606e691960a1",
+          "message": "feat(ci): add storage benchmark ci job and github pages (#1962)\n\n* squash a lot of debuging to a single commit\n\n* add a new ci category to commitlint\n\n* comment cleanup\n\n* rename a step\n\n* save queries file as a txt file\n\n* remove dev-branch from triggers list",
+          "timestamp": "2024-05-12T12:22:43Z",
+          "tree_id": "2522eb0840fa4b16da27c5b622531811f1be507d",
+          "url": "https://github.com/starkware-libs/papyrus/commit/ccb104afa4f0e06d1204728c42c5606e691960a1"
+        },
+        "date": 1715516981320,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 13,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 16,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_storage_at",
+            "value": 17,
             "unit": "Microseconds"
           }
         ]
