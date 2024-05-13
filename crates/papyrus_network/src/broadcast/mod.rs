@@ -12,6 +12,8 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
+use crate::mixed_behaviour;
+use crate::mixed_behaviour::BridgedBehaviour;
 // TODO(shahak): move Bytes to a more generic file.
 use crate::streamed_bytes::Bytes;
 
@@ -19,6 +21,7 @@ pub struct Behaviour;
 
 pub type Topic = String;
 
+#[derive(Debug)]
 pub enum ExternalEvent {
     #[allow(dead_code)]
     Received { originated_peer_id: PeerId, message: Bytes, topic: Topic },
@@ -63,14 +66,14 @@ impl NetworkBehaviour for Behaviour {
         _cx: &mut Context<'_>,
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
-        unimplemented!()
+        // TODO(shahak): Implement this.
+        Poll::Pending
     }
 }
 
 impl Behaviour {
-    #[allow(dead_code)]
     pub fn new() -> Self {
-        unimplemented!()
+        Self
     }
 
     #[allow(dead_code)]
@@ -81,5 +84,17 @@ impl Behaviour {
     #[allow(dead_code)]
     pub fn broadcast_message(&mut self, _message: Bytes, _topic: Topic) {
         unimplemented!()
+    }
+}
+
+impl From<ExternalEvent> for mixed_behaviour::Event {
+    fn from(event: ExternalEvent) -> Self {
+        mixed_behaviour::Event::ExternalEvent(mixed_behaviour::ExternalEvent::Broadcast(event))
+    }
+}
+
+impl BridgedBehaviour for Behaviour {
+    fn on_other_behaviour_event(&mut self, _event: &mixed_behaviour::ToOtherBehaviourEvent) {
+        // TODO(shahak): Implement this.
     }
 }

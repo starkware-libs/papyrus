@@ -182,10 +182,14 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             mixed_behaviour::ExternalEvent::StreamedBytes(event) => {
                 self.handle_stream_bytes_behaviour_event(event);
             }
+            mixed_behaviour::ExternalEvent::Broadcast(_event) => {
+                unimplemented!();
+            }
         }
     }
 
     fn handle_to_other_behaviour_event(&mut self, event: mixed_behaviour::ToOtherBehaviourEvent) {
+        // TODO(shahak): Move this logic to mixed_behaviour.
         if let mixed_behaviour::ToOtherBehaviourEvent::NoOp = event {
             return;
         }
@@ -196,6 +200,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
         self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(&event);
         self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(&event);
+        self.swarm.behaviour_mut().broadcast.on_other_behaviour_event(&event);
     }
 
     fn handle_stream_bytes_behaviour_event(

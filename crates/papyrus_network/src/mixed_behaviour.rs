@@ -10,7 +10,7 @@ use libp2p::{identify, kad, Multiaddr, PeerId};
 use crate::discovery::identify_impl::{IdentifyToOtherBehaviourEvent, IDENTIFY_PROTOCOL_VERSION};
 use crate::discovery::kad_impl::KadToOtherBehaviourEvent;
 use crate::peer_manager::PeerManagerConfig;
-use crate::{discovery, peer_manager, streamed_bytes};
+use crate::{broadcast, discovery, peer_manager, streamed_bytes};
 
 // TODO: consider reducing the pulicity of all behaviour to pub(crate)
 #[derive(NetworkBehaviour)]
@@ -22,6 +22,7 @@ pub struct MixedBehaviour {
     // TODO(shahak): Consider using a different store.
     pub kademlia: kad::Behaviour<MemoryStore>,
     pub streamed_bytes: streamed_bytes::Behaviour,
+    pub broadcast: broadcast::Behaviour,
 }
 
 #[derive(Debug)]
@@ -33,6 +34,7 @@ pub enum Event {
 #[derive(Debug)]
 pub enum ExternalEvent {
     StreamedBytes(streamed_bytes::behaviour::ExternalEvent),
+    Broadcast(broadcast::ExternalEvent),
 }
 
 #[derive(Debug)]
@@ -77,6 +79,7 @@ impl MixedBehaviour {
             // TODO: change kademlia protocol name
             kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),
             streamed_bytes: streamed_bytes::Behaviour::new(streamed_bytes_config),
+            broadcast: broadcast::Behaviour::new(),
         }
     }
 }
