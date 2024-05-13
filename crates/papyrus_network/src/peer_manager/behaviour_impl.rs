@@ -124,7 +124,6 @@ where
             libp2p::swarm::FromSwarm::ConnectionEstablished(ConnectionEstablished {
                 peer_id,
                 connection_id,
-                endpoint,
                 ..
             }) => {
                 if let Some(sessions) = self.peers_pending_dial_with_sessions.remove(&peer_id) {
@@ -142,16 +141,14 @@ where
                              the peer is known to the peer manager",
                         )
                         .add_connection_id(connection_id);
-                } else if !self.peers.contains_key(&peer_id) {
-                    let mut peer = P::new(peer_id, endpoint.get_remote_address().clone());
+                } else {
+                    let Some(peer) = self.peers.get_mut(&peer_id) else {
+                        // TODO(shahak): Consider tracking connection ids for peers we don't know
+                        // yet because once a connection is established we'll shortly receive an
+                        // identify message and add this peer.
+                        return;
+                    };
                     peer.add_connection_id(connection_id);
-                    self.add_peer(peer);
-                    if !self.more_peers_needed() {
-                        // TODO: consider how and in which cases we resume discovery
-                        self.pending_events.push(libp2p::swarm::ToSwarm::GenerateEvent(
-                            ToOtherBehaviourEvent::PauseDiscovery,
-                        ))
-                    }
                 }
             }
             libp2p::swarm::FromSwarm::ConnectionClosed(ConnectionClosed {
