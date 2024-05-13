@@ -11,11 +11,10 @@ use libp2p::{Multiaddr, PeerId};
 use mockall::predicate::eq;
 use tokio::time::sleep;
 
-use super::behaviour_impl::Event;
+use super::behaviour_impl::ToOtherBehaviourEvent;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
 use crate::streamed_bytes::OutboundSessionId;
-use crate::{discovery, streamed_bytes};
 
 #[test]
 fn peer_assignment_round_robin() {
@@ -56,13 +55,11 @@ fn peer_assignment_round_robin() {
 
     // check assignment events
     for event in peer_manager.pending_events {
-        let ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
-                outbound_session_id,
-                peer_id,
-                connection_id,
-            },
-        )) = event
+        let ToSwarm::GenerateEvent(ToOtherBehaviourEvent::SessionAssigned {
+            outbound_session_id,
+            peer_id,
+            connection_id,
+        }) = event
         else {
             continue;
         };
@@ -123,13 +120,12 @@ fn peer_assignment_no_peers() {
     assert_eq!(peer_manager.pending_events.len(), 1);
     assert_matches!(
         peer_manager.pending_events.first().unwrap(),
-        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-            streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::SessionAssigned {
                 outbound_session_id: event_outbound_session_id,
                 peer_id: event_peer_id,
                 connection_id: event_connection_id,
             }
-        )) if outbound_session_id == *event_outbound_session_id &&
+        ) if outbound_session_id == *event_outbound_session_id &&
             peer_id == *event_peer_id &&
             connection_id == *event_connection_id
     );
@@ -425,10 +421,10 @@ async fn flow_test_assign_non_connected_peer() {
         },
     ));
 
-    // Expect NotifyStreamedBytes event
+    // Expect SessionAssigned event
     assert_matches!(
         poll_fn(|cx| peer_manager.poll(cx)).await,
-        ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(_))
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::SessionAssigned { .. })
     );
 }
 
@@ -486,10 +482,7 @@ fn no_more_peers_needed_stops_discovery() {
 
     // Check that the discovery pause event emitted
     for event in peer_manager.pending_events {
-        if let ToSwarm::GenerateEvent(Event::NotifyDiscovery(
-            discovery::FromOtherBehaviourEvent::PauseDiscovery,
-        )) = event
-        {
+        if let ToSwarm::GenerateEvent(ToOtherBehaviourEvent::PauseDiscovery) = event {
             return;
         }
     }

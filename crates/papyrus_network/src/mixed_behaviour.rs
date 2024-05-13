@@ -7,8 +7,8 @@ use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{identify, kad, Multiaddr, PeerId};
 
-use crate::discovery::identify_impl::IDENTIFY_PROTOCOL_VERSION;
-use crate::discovery::kad_impl::KadFromOtherBehaviourEvent;
+use crate::discovery::identify_impl::{IdentifyToOtherBehaviourEvent, IDENTIFY_PROTOCOL_VERSION};
+use crate::discovery::kad_impl::KadToOtherBehaviourEvent;
 use crate::peer_manager::PeerManagerConfig;
 use crate::{discovery, peer_manager, streamed_bytes};
 
@@ -27,7 +27,7 @@ pub struct MixedBehaviour {
 #[derive(Debug)]
 pub enum Event {
     ExternalEvent(ExternalEvent),
-    InternalEvent(InternalEvent),
+    ToOtherBehaviourEvent(ToOtherBehaviourEvent),
 }
 
 #[derive(Debug)]
@@ -36,16 +36,17 @@ pub enum ExternalEvent {
 }
 
 #[derive(Debug)]
-pub enum InternalEvent {
+pub enum ToOtherBehaviourEvent {
     NoOp,
-    NotifyKad(KadFromOtherBehaviourEvent),
-    NotifyDiscovery(discovery::FromOtherBehaviourEvent),
-    NotifyPeerManager(peer_manager::FromOtherBehaviour),
-    NotifyStreamedBytes(streamed_bytes::behaviour::FromOtherBehaviour),
+    Identify(IdentifyToOtherBehaviourEvent),
+    Kad(KadToOtherBehaviourEvent),
+    Discovery(discovery::ToOtherBehaviourEvent),
+    PeerManager(peer_manager::ToOtherBehaviourEvent),
+    StreamedBytes(streamed_bytes::ToOtherBehaviourEvent),
 }
 
 pub trait BridgedBehaviour {
-    fn on_other_behaviour_event(&mut self, event: InternalEvent);
+    fn on_other_behaviour_event(&mut self, event: &ToOtherBehaviourEvent);
 }
 
 impl MixedBehaviour {
