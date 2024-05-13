@@ -3,8 +3,9 @@ use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
 
+use crate::broadcast::Topic;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{InboundSessionId, OutboundSessionId};
+use crate::streamed_bytes::{Bytes, InboundSessionId, OutboundSessionId};
 use crate::{mixed_behaviour, Protocol};
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
@@ -35,6 +36,8 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour;
 
     fn add_external_address(&mut self, address: Multiaddr);
+
+    fn broadcast_message(&mut self, message: Bytes, topic: Topic);
 }
 
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
@@ -76,5 +79,9 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
 
     fn add_external_address(&mut self, address: Multiaddr) {
         self.add_external_address(address);
+    }
+
+    fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
+        self.behaviour_mut().broadcast.broadcast_message(message, topic);
     }
 }

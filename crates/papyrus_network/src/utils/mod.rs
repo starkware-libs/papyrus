@@ -34,6 +34,10 @@ impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> StreamHashMap<K, V> {
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         self.map.get_mut(key)
     }
+
+    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.map.insert(key, value)
+    }
 }
 
 impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> Stream for StreamHashMap<K, V> {

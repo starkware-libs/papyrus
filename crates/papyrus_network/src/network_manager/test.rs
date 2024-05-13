@@ -23,6 +23,7 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
+use crate::broadcast::Topic;
 use crate::db_executor::{
     poll_query_execution_set,
     DBExecutor,
@@ -33,7 +34,7 @@ use crate::db_executor::{
 };
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 use crate::{mixed_behaviour, BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 #[derive(Default)]
@@ -176,6 +177,11 @@ impl SwarmTrait for MockSwarm {
     }
 
     fn add_external_address(&mut self, _address: Multiaddr) {}
+
+    fn broadcast_message(&mut self, _message: Bytes, _topic: Topic) {
+        // TODO(shahak): Test broadcast flow and received broadcast message flow.
+        unimplemented!()
+    }
 }
 
 #[derive(Default)]
