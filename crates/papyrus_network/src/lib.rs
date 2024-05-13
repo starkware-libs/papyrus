@@ -3,6 +3,7 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
+mod broadcast;
 mod converters;
 mod db_executor;
 mod discovery;
@@ -13,6 +14,7 @@ pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
+
 use std::collections::{BTreeMap, HashMap};
 use std::pin::Pin;
 use std::time::Duration;
