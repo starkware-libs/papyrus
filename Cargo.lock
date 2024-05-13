@@ -5877,6 +5877,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_consensus"
+version = "0.4.0-dev.2"
+dependencies = [
+ "async-trait",
+ "tokio",
+]
+
+[[package]]
 name = "papyrus_execution"
 version = "0.4.0-dev.2"
 dependencies = [
