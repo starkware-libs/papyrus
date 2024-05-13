@@ -14,6 +14,7 @@ pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
+mod utils;
 
 use std::collections::{BTreeMap, HashMap};
 use std::pin::Pin;
