@@ -12,6 +12,9 @@ use mockall::predicate::eq;
 use tokio::time::sleep;
 
 use super::behaviour_impl::ToOtherBehaviourEvent;
+use crate::discovery::identify_impl::IdentifyToOtherBehaviourEvent;
+use crate::mixed_behaviour;
+use crate::mixed_behaviour::BridgedBehaviour;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
 use crate::sqmr::OutboundSessionId;
@@ -429,24 +432,18 @@ async fn flow_test_assign_non_connected_peer() {
 }
 
 #[test]
-fn connection_established_unknown_peer_is_added_to_peer_manager() {
+fn identify_on_unknown_peer_is_added_to_peer_manager() {
     // Create a new peer manager
     let config = PeerManagerConfig::default();
     let mut peer_manager: PeerManager<Peer> = PeerManager::new(config.clone());
 
-    // Send ConnectionEstablished event from swarm
+    // Send Identify event
     let peer_id = PeerId::random();
     let address = Multiaddr::empty().with_p2p(peer_id).unwrap();
-    peer_manager.on_swarm_event(libp2p::swarm::FromSwarm::ConnectionEstablished(
-        ConnectionEstablished {
+    peer_manager.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::Identify(
+        IdentifyToOtherBehaviourEvent::FoundListenAddresses {
             peer_id,
-            connection_id: ConnectionId::new_unchecked(0),
-            endpoint: &libp2p::core::ConnectedPoint::Dialer {
-                address: address.clone(),
-                role_override: libp2p::core::Endpoint::Dialer,
-            },
-            failed_addresses: &[],
-            other_established: 0,
+            listen_addresses: vec![address.clone()],
         },
     ));
 
@@ -462,18 +459,12 @@ fn no_more_peers_needed_stops_discovery() {
     let config = PeerManagerConfig { target_num_for_peers: 1, ..Default::default() };
     let mut peer_manager: PeerManager<Peer> = PeerManager::new(config.clone());
 
-    // Send ConnectionEstablished event from swarm for new peer
+    // Send Identify event
     let peer_id = PeerId::random();
-    peer_manager.on_swarm_event(libp2p::swarm::FromSwarm::ConnectionEstablished(
-        ConnectionEstablished {
+    peer_manager.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::Identify(
+        IdentifyToOtherBehaviourEvent::FoundListenAddresses {
             peer_id,
-            connection_id: ConnectionId::new_unchecked(0),
-            endpoint: &libp2p::core::ConnectedPoint::Dialer {
-                address: Multiaddr::empty(),
-                role_override: libp2p::core::Endpoint::Dialer,
-            },
-            failed_addresses: &[],
-            other_established: 0,
+            listen_addresses: vec![Multiaddr::empty()],
         },
     ));
 
