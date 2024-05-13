@@ -171,8 +171,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             mixed_behaviour::Event::ExternalEvent(external_event) => {
                 self.handle_behaviour_external_event(external_event);
             }
-            mixed_behaviour::Event::InternalEvent(internal_event) => {
-                self.handle_behaviour_internal_event(internal_event);
+            mixed_behaviour::Event::ToOtherBehaviourEvent(internal_event) => {
+                self.handle_to_other_behaviour_event(internal_event);
             }
         }
     }
@@ -185,24 +185,17 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         }
     }
 
-    fn handle_behaviour_internal_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        match event {
-            mixed_behaviour::InternalEvent::NoOp => {}
-            mixed_behaviour::InternalEvent::NotifyKad(_) => {
-                self.swarm.behaviour_mut().kademlia.on_other_behaviour_event(event)
-            }
-            mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
-                if let Some(discovery) = self.swarm.behaviour_mut().discovery.as_mut() {
-                    discovery.on_other_behaviour_event(event);
-                }
-            }
-            mixed_behaviour::InternalEvent::NotifyStreamedBytes(_) => {
-                self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(event)
-            }
-            mixed_behaviour::InternalEvent::NotifyPeerManager(_) => {
-                self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(event)
-            }
+    fn handle_to_other_behaviour_event(&mut self, event: mixed_behaviour::ToOtherBehaviourEvent) {
+        if let mixed_behaviour::ToOtherBehaviourEvent::NoOp = event {
+            return;
         }
+        self.swarm.behaviour_mut().identify.on_other_behaviour_event(&event);
+        self.swarm.behaviour_mut().kademlia.on_other_behaviour_event(&event);
+        if let Some(discovery) = self.swarm.behaviour_mut().discovery.as_mut() {
+            discovery.on_other_behaviour_event(&event);
+        }
+        self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(&event);
+        self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(&event);
     }
 
     fn handle_stream_bytes_behaviour_event(
