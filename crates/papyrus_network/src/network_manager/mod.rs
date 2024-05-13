@@ -5,7 +5,7 @@ mod test;
 
 use std::collections::HashMap;
 
-use futures::channel::mpsc::{Receiver, Sender};
+use futures::channel::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
 use futures::future::pending;
 use futures::stream::{self, BoxStream, SelectAll};
 use futures::{FutureExt, StreamExt};
@@ -46,6 +46,9 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     broadcasted_messages_senders: HashMap<Topic, Sender<(Bytes, ReportCallback)>>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
+    reported_peer_receiver: UnboundedReceiver<PeerId>,
+    // We keep this just for giving a clone of it for subscribers.
+    reported_peer_sender: UnboundedSender<PeerId>,
     // Fields for metrics
     num_active_inbound_sessions: usize,
     num_active_outbound_sessions: usize,
@@ -62,6 +65,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
                 .map(|(query_receiver, _)| query_receiver.next().boxed())
                 .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res),
                 Some((topic, message)) = self.messages_to_broadcast_receivers.next() => self.broadcast_message(message, topic),
+                Some(peer_id) = self.reported_peer_receiver.next() => self.swarm.report_peer(peer_id),
             }
         }
     }
@@ -72,6 +76,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         header_buffer_size: usize,
     ) -> Self {
         gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
+        let (reported_peer_sender, reported_peer_receiver) = futures::channel::mpsc::unbounded();
         Self {
             swarm,
             db_executor,
@@ -82,6 +87,8 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
             broadcasted_messages_senders: HashMap::new(),
             query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
+            reported_peer_sender,
+            reported_peer_receiver,
             num_active_inbound_sessions: 0,
             num_active_outbound_sessions: 0,
         }
@@ -330,13 +337,19 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
 
     fn handle_broadcast_behaviour_event(&mut self, event: broadcast::ExternalEvent) {
         match event {
-            broadcast::ExternalEvent::Received { originated_peer_id: _peer_id, message, topic } => {
+            broadcast::ExternalEvent::Received { originated_peer_id, message, topic } => {
                 let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic) else {
                     error!("Received a message from a topic we're not subscribed to {topic:?}");
                     return;
                 };
-                // TODO(shahak): Implement the report callback.
-                let send_result = sender.try_send((message, Box::new(|| {})));
+                let reported_peer_sender = self.reported_peer_sender.clone();
+                let send_result = sender.try_send((
+                    message,
+                    Box::new(move || {
+                        // TODO(shahak): Check if we can panic in case of error.
+                        let _ = reported_peer_sender.unbounded_send(originated_peer_id);
+                    }),
+                ));
                 if let Err(e) = send_result {
                     if e.is_disconnected() {
                         panic!("Receiver was dropped. This should never happen.")
