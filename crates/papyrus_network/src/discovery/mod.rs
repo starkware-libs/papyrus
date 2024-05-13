@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use futures::future::BoxFuture;
 use futures::{pin_mut, Future, FutureExt};
-use kad_impl::KadFromOtherBehaviourEvent;
+use kad_impl::KadToOtherBehaviourEvent;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
@@ -28,8 +28,8 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use crate::mixed_behaviour;
 use crate::mixed_behaviour::BridgedBehaviour;
+use crate::{mixed_behaviour, peer_manager};
 
 // TODO(shahak): Consider adding to config.
 const DIAL_SLEEP: Duration = Duration::from_secs(5);
@@ -49,14 +49,10 @@ pub struct Behaviour {
 }
 
 #[derive(Debug)]
-pub enum FromOtherBehaviourEvent {
-    KadQueryFinished,
-    PauseDiscovery,
-    ResumeDiscovery,
+pub enum ToOtherBehaviourEvent {
+    RequestKadQuery(PeerId),
+    FoundListenAddresses { peer_id: PeerId, listen_addresses: Vec<Multiaddr> },
 }
-
-#[derive(Debug)]
-pub struct ToOtherBehaviourEvent(KadFromOtherBehaviourEvent);
 
 impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = dummy::ConnectionHandler;
@@ -155,18 +151,18 @@ impl NetworkBehaviour for Behaviour {
         }
         if !self.is_bootstrap_in_kad_routing_table {
             self.is_bootstrap_in_kad_routing_table = true;
-            return Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
-                KadFromOtherBehaviourEvent::FoundListenAddresses {
+            return Poll::Ready(ToSwarm::GenerateEvent(
+                ToOtherBehaviourEvent::FoundListenAddresses {
                     peer_id: self.bootstrap_peer_id,
                     listen_addresses: vec![self.bootstrap_peer_address.clone()],
                 },
-            )));
+            ));
         }
 
         if !self.is_paused && !self.is_query_running {
             self.is_query_running = true;
-            Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
-                KadFromOtherBehaviourEvent::RequestKadQuery(libp2p::identity::PeerId::random()),
+            Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent::RequestKadQuery(
+                libp2p::identity::PeerId::random(),
             )))
         } else {
             self.wakers.push(cx.waker().clone());
@@ -205,29 +201,35 @@ impl Behaviour {
 
 impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
     fn from(event: ToOtherBehaviourEvent) -> Self {
-        mixed_behaviour::Event::InternalEvent(mixed_behaviour::InternalEvent::NotifyKad(event.0))
+        mixed_behaviour::Event::ToOtherBehaviourEvent(
+            mixed_behaviour::ToOtherBehaviourEvent::Discovery(event),
+        )
     }
 }
 
 impl BridgedBehaviour for Behaviour {
-    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        let mixed_behaviour::InternalEvent::NotifyDiscovery(event) = event else {
-            return;
-        };
+    fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
         match event {
-            FromOtherBehaviourEvent::PauseDiscovery => self.is_paused = true,
-            FromOtherBehaviourEvent::ResumeDiscovery => {
+            mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+                peer_manager::ToOtherBehaviourEvent::PauseDiscovery,
+            ) => self.is_paused = true,
+            mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+                peer_manager::ToOtherBehaviourEvent::ResumeDiscovery,
+            ) => {
                 for waker in self.wakers.drain(..) {
                     waker.wake();
                 }
                 self.is_paused = false;
             }
-            FromOtherBehaviourEvent::KadQueryFinished => {
+            mixed_behaviour::ToOtherBehaviourEvent::Kad(
+                KadToOtherBehaviourEvent::KadQueryFinished,
+            ) => {
                 for waker in self.wakers.drain(..) {
                     waker.wake();
                 }
                 self.is_query_running = false;
             }
+            _ => {}
         }
     }
 }
