@@ -1,0 +1,10 @@
+[package]
+name = "papyrus_consensus"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license.workspace = true
+license-file.workspace = true
+description = "Reach consensus for Starknet"
+
+[dependencies]
