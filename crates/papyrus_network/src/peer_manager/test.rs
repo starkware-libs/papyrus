@@ -52,27 +52,11 @@ fn peer_assignment_round_robin() {
     let session3 = OutboundSessionId { value: 3 };
 
     // Assign peers to the queries in a round-robin fashion
-    let res1 = peer_manager.assign_peer_to_session(session1);
-    let res2 = peer_manager.assign_peer_to_session(session2);
-    let res3 = peer_manager.assign_peer_to_session(session3);
+    peer_manager.assign_peer_to_session(session1);
+    peer_manager.assign_peer_to_session(session2);
+    peer_manager.assign_peer_to_session(session3);
 
-    // Verify that the peers are assigned in a round-robin fashion
-    let is_peer1_first: bool;
-    match res1.unwrap() {
-        peer_id if peer_id == peer1.peer_id() => {
-            is_peer1_first = true;
-            assert_eq!(res2.unwrap(), peer2.peer_id());
-            assert_eq!(res3.unwrap(), peer1.peer_id());
-        }
-        peer_id if peer_id == peer2.peer_id() => {
-            is_peer1_first = false;
-            assert_eq!(res2.unwrap(), peer1.peer_id());
-            assert_eq!(res3.unwrap(), peer2.peer_id());
-        }
-        peer_id => panic!("Unexpected peer_id: {:?}", peer_id),
-    }
-
-    // check assignment events
+    // check assignment events and verify that the peers are assigned in a round-robin fashion
     for event in peer_manager.pending_events {
         let ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
             streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
@@ -84,6 +68,14 @@ fn peer_assignment_round_robin() {
         else {
             continue;
         };
+
+        assert!(
+            peer_id == peer1.peer_id() || peer_id == peer2.peer_id(),
+            "Unexpected peer_id: {:?}",
+            peer_id
+        );
+        let is_peer1_first = peer_id == peer1.peer_id();
+
         if is_peer1_first {
             match outbound_session_id {
                 OutboundSessionId { value: 1 } => {
@@ -130,7 +122,8 @@ async fn peer_assignment_no_peers() {
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign a peer to the session
-    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.sessions_received_when_no_peers.last().unwrap(), outbound_session_id);
     assert!(peer_manager.next().now_or_never().is_none());
 
     // Now the peer manager finds a new peer and can assign the session.
@@ -176,7 +169,8 @@ async fn peer_assignment_no_unblocked_peers() {
     peer_manager.report_peer(peer_id, ReputationModifier::Bad {}).unwrap();
 
     // Assign a peer to the session
-    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.sessions_received_when_no_peers.last().unwrap(), outbound_session_id);
     assert!(peer_manager.next().now_or_never().is_none());
 
     // After BLOCKED_UNTIL has passed, the peer manager can assign the session.
@@ -265,8 +259,8 @@ fn report_session_calls_update_reputation() {
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign peer to the session
-    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
-    assert_eq!(res_peer_id, peer_id);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.session_to_peer_map.get(&outbound_session_id).unwrap(), peer_id);
 
     // Call the report_peer function on the peer manager
     peer_manager.report_session(outbound_session_id, ReputationModifier::Bad {}).unwrap();
@@ -329,7 +323,8 @@ async fn timed_out_peer_not_assignable_to_queries() {
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign peer to the session
-    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), None);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.sessions_received_when_no_peers.last().unwrap(), outbound_session_id);
 }
 
 #[test]
@@ -362,8 +357,11 @@ fn wrap_around_in_peer_assignment() {
 
     // Assign peer to the session - since we don't know what is the order of the peers in the
     // HashMap, we need to assign twice to make sure we wrap around
-    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), Some(peer_id) if peer_id == peer_id2);
-    assert_matches!(peer_manager.assign_peer_to_session(outbound_session_id), Some(peer_id) if peer_id == peer_id2);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.session_to_peer_map.get(&outbound_session_id).unwrap(), peer_id2);
+
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.session_to_peer_map.get(&outbound_session_id).unwrap(), peer_id2);
 }
 
 fn create_mock_peer(
@@ -439,7 +437,7 @@ fn assign_non_connected_peer_raises_dial_event() {
     let mut peer_manager: PeerManager<MockPeerTrait> = PeerManager::new(config.clone());
 
     // Create a mock peer
-    let (mut peer, _) = create_mock_peer(config.blacklist_timeout, false, None);
+    let (mut peer, peer_id) = create_mock_peer(config.blacklist_timeout, false, None);
     peer.expect_is_blocked().times(1).return_const(false);
     peer.expect_multiaddr().return_const(Multiaddr::empty());
 
@@ -450,11 +448,11 @@ fn assign_non_connected_peer_raises_dial_event() {
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign peer to the session
-    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
+    peer_manager.assign_peer_to_session(outbound_session_id);
 
     // check events
     for event in peer_manager.pending_events {
-        assert_matches!(event, ToSwarm::Dial {opts} if opts.get_peer_id() == Some(res_peer_id));
+        assert_matches!(event, ToSwarm::Dial {opts} if opts.get_peer_id() == Some(peer_id));
     }
 }
 
@@ -477,8 +475,8 @@ async fn flow_test_assign_non_connected_peer() {
     let outbound_session_id = OutboundSessionId { value: 1 };
 
     // Assign peer to the session
-    let res_peer_id = peer_manager.assign_peer_to_session(outbound_session_id).unwrap();
-    assert_eq!(res_peer_id, peer_id);
+    peer_manager.assign_peer_to_session(outbound_session_id);
+    assert_eq!(*peer_manager.session_to_peer_map.get(&outbound_session_id).unwrap(), peer_id);
 
     // Expect dial event
     assert_matches!(poll_fn(|cx| peer_manager.poll(cx)).await, ToSwarm::Dial{opts} if opts.get_peer_id() == Some(peer_id));

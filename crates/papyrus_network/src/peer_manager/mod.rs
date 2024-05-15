@@ -104,14 +104,13 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    // TODO(shahak): Remove return value and use FromOtherBehaviour in tests.
-    fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
+    fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
             info!("No peers. Waiting for a new peer to be connected for {outbound_session_id:?}");
             self.sessions_received_when_no_peers.push(outbound_session_id);
-            return None;
+            return;
         }
         let peer = self
             .peers
@@ -137,42 +136,41 @@ where
                 .expect("min should not return None on a non-empty iterator");
             self.sleep_waiting_for_unblocked_peer =
                 Some(tokio::time::sleep_until(sleep_deadline.into()).boxed());
-            return None;
+            return;
         }
-        peer.map(|(peer_id, peer)| {
-            // TODO: consider not allowing reassignment of the same session
-            self.session_to_peer_map.insert(outbound_session_id, *peer_id);
-            let peer_connection_ids = peer.connection_ids();
-            if !peer_connection_ids.is_empty() {
-                let connection_id = peer_connection_ids[0];
-                info!(
-                    "Session {:?} assigned to peer {:?} with connection id: {:?}",
-                    outbound_session_id, peer_id, connection_id
-                );
-                self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-                    streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
-                        outbound_session_id,
-                        peer_id: *peer_id,
-                        connection_id,
-                    },
-                )));
+        let Some((peer_id, peer)) = peer else {
+            return;
+        };
+        // TODO: consider not allowing reassignment of the same session
+        self.session_to_peer_map.insert(outbound_session_id, *peer_id);
+        let peer_connection_ids = peer.connection_ids();
+        if !peer_connection_ids.is_empty() {
+            let connection_id = peer_connection_ids[0];
+            info!(
+                "Session {:?} assigned to peer {:?} with connection id: {:?}",
+                outbound_session_id, peer_id, connection_id
+            );
+            self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
+                streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                    outbound_session_id,
+                    peer_id: *peer_id,
+                    connection_id,
+                },
+            )));
+        } else {
+            // In case we have a race condition where the connection is closed after we added to
+            // the pending list, the receiver will get an error and will need to ask for
+            // re-assignment
+            if let Some(sessions) = self.peers_pending_dial_with_sessions.get_mut(peer_id) {
+                sessions.push(outbound_session_id);
             } else {
-                // In case we have a race condition where the connection is closed after we added to
-                // the pending list, the reciever will get an error and will need to ask for
-                // re-assignment
-                if let Some(sessions) = self.peers_pending_dial_with_sessions.get_mut(peer_id) {
-                    sessions.push(outbound_session_id);
-                } else {
-                    self.peers_pending_dial_with_sessions
-                        .insert(*peer_id, vec![outbound_session_id]);
-                }
-                info!("Dialing peer {:?} with multiaddr {:?}", peer_id, peer.multiaddr());
-                self.pending_events.push(ToSwarm::Dial {
-                    opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
-                });
+                self.peers_pending_dial_with_sessions.insert(*peer_id, vec![outbound_session_id]);
             }
-            *peer_id
-        })
+            info!("Dialing peer {:?} with multiaddr {:?}", peer_id, peer.multiaddr());
+            self.pending_events.push(ToSwarm::Dial {
+                opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
+            });
+        }
     }
 
     fn report_peer(
