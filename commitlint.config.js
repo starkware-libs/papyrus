@@ -24,6 +24,7 @@ const Configuration = {
             'ci',
             'common',
             'config',
+            'consensus',
             'execution',
             'helm',
             'JSON-RPC',
