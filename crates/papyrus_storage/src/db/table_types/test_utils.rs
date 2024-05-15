@@ -143,27 +143,31 @@ fn append_test<T: TableType>(
     table.append(&txn, &(1, 1), &0).unwrap();
     table.append(&txn, &(1, 2), &12).unwrap();
     table.append(&txn, &(2, 0), &20).unwrap();
+    table.append(&txn, &(2, 2), &22).unwrap();
 
     assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
     assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
     assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(20));
+    assert_eq!(table.get(&txn, &(2, 2)).unwrap(), Some(22));
 
     // Override the last key with a smaller value.
-    table.append(&txn, &(2, 0), &0).unwrap();
-    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(0));
+    table.append(&txn, &(2, 2), &0).unwrap();
+    assert_eq!(table.get(&txn, &(2, 2)).unwrap(), Some(0));
 
     // Override the last key with a bigger value.
-    table.append(&txn, &(2, 0), &100).unwrap();
-    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(100));
+    table.append(&txn, &(2, 2), &100).unwrap();
+    assert_eq!(table.get(&txn, &(2, 2)).unwrap(), Some(100));
 
     // Append key that is not the last, should fail.
     assert_matches!(table.append(&txn, &(0, 0), &0), Err(DbError::Append));
     assert_matches!(table.append(&txn, &(1, 3), &0), Err(DbError::Append));
+    assert_matches!(table.append(&txn, &(2, 1), &0), Err(DbError::Append));
 
     // Check the final database.
     assert_eq!(table.get(&txn, &(1, 1)).unwrap(), Some(0));
     assert_eq!(table.get(&txn, &(1, 2)).unwrap(), Some(12));
-    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(100));
+    assert_eq!(table.get(&txn, &(2, 0)).unwrap(), Some(20));
+    assert_eq!(table.get(&txn, &(2, 2)).unwrap(), Some(100));
 }
 
 fn delete_test<T: TableType>(
@@ -333,9 +337,6 @@ pub(crate) fn random_table_test<T0: TableType, T1: TableType>(
             debug!("append: {key:?}, {value:?}");
             let first_res = first_table.append(&wtxn, &key, &value);
             let second_res = second_table.append(&wtxn, &key, &value);
-            if first_res.is_ok() {
-                println!("append");
-            }
             assert!(
                 (first_res.is_ok() && second_res.is_ok())
                     || (matches!(first_res.unwrap_err(), DbError::Append)
