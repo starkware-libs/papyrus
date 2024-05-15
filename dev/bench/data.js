@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715753654546,
+  "lastUpdate": 1715769553755,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Papyrus storage benchmark": [
@@ -389,6 +389,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 23,
+            "unit": "Microseconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "163830216+asmaastarkware@users.noreply.github.com",
+            "name": "asmaa-starkware",
+            "username": "asmaastarkware"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": false,
+          "id": "72895c9547d6850eac36613f7064abbb4a8589e5",
+          "message": "refactor(network): rename BlockHeaderDBExecutor to DBExecutor (#1977)",
+          "timestamp": "2024-05-15T10:32:08Z",
+          "tree_id": "fec559e149d1c5b99557a9da22037dc777da7f6a",
+          "url": "https://github.com/starkware-libs/papyrus/commit/72895c9547d6850eac36613f7064abbb4a8589e5"
+        },
+        "date": 1715769553290,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 12,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 14,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_storage_at",
+            "value": 17,
             "unit": "Microseconds"
           }
         ]
