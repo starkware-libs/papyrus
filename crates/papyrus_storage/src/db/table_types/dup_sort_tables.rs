@@ -353,8 +353,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
 {
     // Append a new value to the given key. The sub key must be bigger than the last sub key for the
     // given main key, otherwise an error will be returned.
+    // In contrast to the append function in the Table trait, this function will return an error if
+    // The sub key is equal to the last sub key of the given main key.
     #[allow(dead_code)]
-    pub(crate) fn append_sub_key(
+    pub(crate) fn append_greater_sub_key(
         &'env self,
         txn: &DbTransaction<'env, RW>,
         key: &K,

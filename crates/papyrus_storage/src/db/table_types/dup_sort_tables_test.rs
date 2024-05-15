@@ -24,18 +24,18 @@ fn common_prefix_compare_with_simple_table_random() {
 }
 
 #[test]
-fn common_prefix_append_sub_key() {
-    append_sub_key_test(DbWriter::create_common_prefix_table);
+fn common_prefix_append_greater_sub_key() {
+    append_greater_sub_key_test(DbWriter::create_common_prefix_table);
 }
 
 #[allow(clippy::type_complexity)]
-fn append_sub_key_test<T: DupSortTableType>(
+fn append_greater_sub_key_test<T>(
     create_table: fn(
         &mut DbWriter,
         &'static str,
     ) -> DbResult<TableIdentifier<TableKey, TableValue, T>>,
 ) where
-    T: DupSortUtils<(u32, u32), NoVersionValueWrapper<u32>>,
+    T: DupSortTableType + DupSortUtils<(u32, u32), NoVersionValueWrapper<u32>>,
 {
     let ((_reader, mut writer), _temp_dir) = get_test_env();
     let table_id = create_table(&mut writer, "table").unwrap();
@@ -43,30 +43,30 @@ fn append_sub_key_test<T: DupSortTableType>(
     let txn = writer.begin_rw_txn().unwrap();
 
     let handle = txn.open_table(&table_id).unwrap();
-    handle.append_sub_key(&txn, &(2, 2), &22).unwrap();
-    handle.append_sub_key(&txn, &(2, 3), &23).unwrap();
-    handle.append_sub_key(&txn, &(1, 1), &11).unwrap();
-    handle.append_sub_key(&txn, &(3, 0), &30).unwrap();
+    handle.append_greater_sub_key(&txn, &(2, 2), &22).unwrap();
+    handle.append_greater_sub_key(&txn, &(2, 3), &23).unwrap();
+    handle.append_greater_sub_key(&txn, &(1, 1), &11).unwrap();
+    handle.append_greater_sub_key(&txn, &(3, 0), &30).unwrap();
 
     // For DupSort tables append with key that already exists should fail. Try append with smaller
     // bigger and equal values.
-    let result = handle.append_sub_key(&txn, &(2, 2), &0);
+    let result = handle.append_greater_sub_key(&txn, &(2, 2), &0);
     assert_matches!(result, Err(DbError::Append));
 
-    let result = handle.append_sub_key(&txn, &(2, 2), &22);
+    let result = handle.append_greater_sub_key(&txn, &(2, 2), &22);
     assert_matches!(result, Err(DbError::Append));
 
-    let result = handle.append_sub_key(&txn, &(2, 2), &100);
+    let result = handle.append_greater_sub_key(&txn, &(2, 2), &100);
     assert_matches!(result, Err(DbError::Append));
 
     // As before, but for the last main key.
-    let result = handle.append_sub_key(&txn, &(3, 0), &0);
+    let result = handle.append_greater_sub_key(&txn, &(3, 0), &0);
     assert_matches!(result, Err(DbError::Append));
 
-    let result = handle.append_sub_key(&txn, &(3, 0), &30);
+    let result = handle.append_greater_sub_key(&txn, &(3, 0), &30);
     assert_matches!(result, Err(DbError::Append));
 
-    let result = handle.append_sub_key(&txn, &(3, 0), &100);
+    let result = handle.append_greater_sub_key(&txn, &(3, 0), &100);
     assert_matches!(result, Err(DbError::Append));
 
     // Check the final database.
