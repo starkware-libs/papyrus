@@ -104,14 +104,13 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    // TODO(shahak): Remove return value and use FromOtherBehaviour in tests.
-    fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
+    fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
         if self.peers.is_empty() {
             info!("No peers. Waiting for a new peer to be connected for {outbound_session_id:?}");
             self.sessions_received_when_no_peers.push(outbound_session_id);
-            return None;
+            return;
         }
         let peer = self
             .peers
@@ -137,9 +136,9 @@ where
                 .expect("min should not return None on a non-empty iterator");
             self.sleep_waiting_for_unblocked_peer =
                 Some(tokio::time::sleep_until(sleep_deadline.into()).boxed());
-            return None;
+            return;
         }
-        peer.map(|(peer_id, peer)| {
+        if let Some((peer_id, peer)) = peer {
             // TODO: consider not allowing reassignment of the same session
             self.session_to_peer_map.insert(outbound_session_id, *peer_id);
             let peer_connection_ids = peer.connection_ids();
@@ -158,7 +157,7 @@ where
                 )));
             } else {
                 // In case we have a race condition where the connection is closed after we added to
-                // the pending list, the reciever will get an error and will need to ask for
+                // the pending list, the receiver will get an error and will need to ask for
                 // re-assignment
                 if let Some(sessions) = self.peers_pending_dial_with_sessions.get_mut(peer_id) {
                     sessions.push(outbound_session_id);
@@ -171,8 +170,7 @@ where
                     opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
                 });
             }
-            *peer_id
-        })
+        }
     }
 
     fn report_peer(
