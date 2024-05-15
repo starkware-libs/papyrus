@@ -25,8 +25,8 @@ use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
 use crate::db_executor::{
     poll_query_execution_set,
-    DBExecutor,
     DBExecutorError,
+    DBExecutorTrait,
     Data,
     FetchBlockDataFromDb,
     QueryId,
@@ -193,8 +193,8 @@ impl Stream for MockDBExecutor {
     }
 }
 
-impl DBExecutor for MockDBExecutor {
-    // TODO(shahak): Consider fixing code duplication with BlockHeaderDBExecutor.
+impl DBExecutorTrait for MockDBExecutor {
+    // TODO(shahak): Consider fixing code duplication with DBExecutor.
     fn register_query(
         &mut self,
         query: InternalQuery,
