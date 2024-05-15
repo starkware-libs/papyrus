@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1715516981718,
+  "lastUpdate": 1715753654546,
   "repoUrl": "https://github.com/starkware-libs/papyrus",
   "entries": {
     "Papyrus storage benchmark": [
@@ -350,6 +350,45 @@ window.BENCHMARK_DATA = {
           {
             "name": "get_storage_at",
             "value": 17,
+            "unit": "Microseconds"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "70578257+ShahakShama@users.noreply.github.com",
+            "name": "ShahakShama",
+            "username": "ShahakShama"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "fab814d2752e907b96c42d6cc5afbde305236f29",
+          "message": "test(network): test discovery doesn't redial after DIAL_SLEEP - epsilon (#1975)",
+          "timestamp": "2024-05-15T06:05:59Z",
+          "tree_id": "49b83bacb039b24e09b36b509d85517d1712b85f",
+          "url": "https://github.com/starkware-libs/papyrus/commit/fab814d2752e907b96c42d6cc5afbde305236f29"
+        },
+        "date": 1715753654039,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "get_class_hash_at",
+            "value": 16,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_nonce_at",
+            "value": 57,
+            "unit": "Microseconds"
+          },
+          {
+            "name": "get_storage_at",
+            "value": 23,
             "unit": "Microseconds"
           }
         ]
