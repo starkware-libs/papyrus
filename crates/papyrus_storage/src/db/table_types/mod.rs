@@ -51,6 +51,7 @@ pub(crate) trait Table<'env> {
 
     // Append a key value pair to the end of the table. The key must be bigger than or equal to
     // the last key in the table; otherwise, an error will be returned.
+    #[allow(dead_code)]
     fn append(
         &'env self,
         txn: &DbTransaction<'env, RW>,
