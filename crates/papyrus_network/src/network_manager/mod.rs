@@ -19,7 +19,7 @@ use tracing::{debug, error, info, trace};
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
 use crate::converters::{Router, RouterError};
-use crate::db_executor::{self, BlockHeaderDBExecutor, DBExecutor, Data, QueryId};
+use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::streamed_bytes::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::{DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
@@ -33,7 +33,7 @@ pub enum NetworkError {
     DialError(#[from] libp2p::swarm::DialError),
 }
 
-pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
+pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> {
     swarm: SwarmT,
     db_executor: DBExecutorT,
     header_buffer_size: usize,
@@ -46,7 +46,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> {
     num_active_outbound_sessions: usize,
 }
 
-impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
+impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
     pub async fn run(mut self) -> Result<(), NetworkError> {
         loop {
             tokio::select! {
@@ -364,8 +364,7 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
     }
 }
 
-pub type NetworkManager =
-    GenericNetworkManager<BlockHeaderDBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
+pub type NetworkManager = GenericNetworkManager<DBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
 
 impl NetworkManager {
     pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
@@ -397,7 +396,7 @@ impl NetworkManager {
             )
         });
 
-        let db_executor = BlockHeaderDBExecutor::new(storage_reader);
+        let db_executor = DBExecutor::new(storage_reader);
         Self::generic_new(swarm, db_executor, header_buffer_size)
     }
 
