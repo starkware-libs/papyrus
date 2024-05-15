@@ -333,9 +333,6 @@ pub(crate) fn random_table_test<T0: TableType, T1: TableType>(
             debug!("append: {key:?}, {value:?}");
             let first_res = first_table.append(&wtxn, &key, &value);
             let second_res = second_table.append(&wtxn, &key, &value);
-            if first_res.is_ok() {
-                println!("append");
-            }
             assert!(
                 (first_res.is_ok() && second_res.is_ok())
                     || (matches!(first_res.unwrap_err(), DbError::Append)
