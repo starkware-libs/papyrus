@@ -365,6 +365,8 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         let main_key = T::get_main_key(key)?;
         let sub_key_and_value = T::get_sub_key_and_value(key, value)?;
 
+        // TODO(dvir): consider first checking if the sub key is last in the sub tree and only then
+        // put it.
         let mut cursor = txn.txn.cursor(&self.database)?;
         cursor.put(&main_key, &sub_key_and_value, WriteFlags::APPEND_DUP).map_err(
             |err| match err {
