@@ -8,3 +8,5 @@ license-file.workspace = true
 description = "Reach consensus for Starknet"
 
 [dependencies]
+async-trait.workspace = true
+tokio = { workspace = true, features = ["sync"] }
