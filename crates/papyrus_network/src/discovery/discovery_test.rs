@@ -73,6 +73,8 @@ async fn discovery_outputs_dial_request_on_start_without_query() {
 
 #[tokio::test]
 async fn discovery_redials_on_dial_failure() {
+    const EPSILON_SLEEP: Duration = Duration::from_millis(10);
+
     let bootstrap_peer_id = PeerId::random();
     let bootstrap_peer_address = Multiaddr::empty();
 
@@ -92,10 +94,11 @@ async fn discovery_redials_on_dial_failure() {
 
     // Check that there are no events until we sleep for enough time.
     tokio::time::pause();
+    tokio::time::advance(DIAL_SLEEP - EPSILON_SLEEP).await;
     assert_no_event(&mut behaviour);
 
     // Sleep and check for event.
-    tokio::time::advance(DIAL_SLEEP).await;
+    tokio::time::advance(EPSILON_SLEEP).await;
     tokio::time::resume();
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
