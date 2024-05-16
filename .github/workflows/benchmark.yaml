@@ -2,8 +2,9 @@ name: Benchmarks
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
+  # TODO: Uncomment and run this automatically when the storage benchmark is fixed.
+  # push:
+    # branches: [main]
 
 jobs:
   storage-benchmark:
