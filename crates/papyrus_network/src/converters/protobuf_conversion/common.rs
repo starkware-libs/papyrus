@@ -8,6 +8,11 @@ use crate::{BlockHashOrNumber, Direction, InternalQuery, Query};
 #[cfg(test)]
 #[allow(dead_code)]
 pub const PATRICIA_HEIGHT: u32 = 251;
+// TODO: move to starknet_api
+pub enum VolitionDomain {
+    L1 = 0,
+    L2 = 1,
+}
 
 impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
     type Error = ProtobufConversionError;
@@ -157,13 +162,6 @@ impl TestInstance for protobuf::Address {
 #[cfg(test)]
 impl TestInstance for protobuf::Patricia {
     fn test_instance() -> Self {
-        Self { height: PATRICIA_HEIGHT, root: Some(protobuf::Hash::test_instance()) }
-    }
-}
-
-#[cfg(test)]
-impl TestInstance for protobuf::Merkle {
-    fn test_instance() -> Self {
         Self { n_leaves: 0, root: Some(protobuf::Hash::test_instance()) }
     }
 }
@@ -181,6 +179,26 @@ impl TestInstance for protobuf::ConsensusSignature {
         Self {
             r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
             s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+        }
+    }
+}
+
+impl TryFrom<protobuf::VolitionDomain> for VolitionDomain {
+    type Error = ProtobufConversionError;
+
+    fn try_from(value: protobuf::VolitionDomain) -> Result<Self, Self::Error> {
+        match value {
+            protobuf::VolitionDomain::L1 => Ok(VolitionDomain::L1),
+            protobuf::VolitionDomain::L2 => Ok(VolitionDomain::L2),
+        }
+    }
+}
+
+impl From<VolitionDomain> for protobuf::VolitionDomain {
+    fn from(value: VolitionDomain) -> Self {
+        match value {
+            VolitionDomain::L1 => Self::L1,
+            VolitionDomain::L2 => Self::L2,
         }
     }
 }
