@@ -132,7 +132,7 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
 // A wrapper struct for Vec<StateDiffsResponse> so that we can implement traits for it.
 pub struct StateDiffsResponseVec(pub Vec<protobuf::StateDiffsResponse>);
 
-const DOMAIN: u32 = 0;
+const DOMAIN: i32 = 0;
 
 impl From<ThinStateDiff> for StateDiffsResponseVec {
     fn from(value: ThinStateDiff) -> Self {

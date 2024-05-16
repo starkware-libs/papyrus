@@ -1,5 +1,5 @@
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::data_availability::L1DataAvailabilityMode;
+use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
@@ -157,13 +157,6 @@ impl TestInstance for protobuf::Address {
 #[cfg(test)]
 impl TestInstance for protobuf::Patricia {
     fn test_instance() -> Self {
-        Self { height: PATRICIA_HEIGHT, root: Some(protobuf::Hash::test_instance()) }
-    }
-}
-
-#[cfg(test)]
-impl TestInstance for protobuf::Merkle {
-    fn test_instance() -> Self {
         Self { n_leaves: 0, root: Some(protobuf::Hash::test_instance()) }
     }
 }
@@ -181,6 +174,26 @@ impl TestInstance for protobuf::ConsensusSignature {
         Self {
             r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
             s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
+        }
+    }
+}
+
+impl TryFrom<protobuf::VolitionDomain> for DataAvailabilityMode {
+    type Error = ProtobufConversionError;
+
+    fn try_from(value: protobuf::VolitionDomain) -> Result<Self, Self::Error> {
+        match value {
+            protobuf::VolitionDomain::L1 => Ok(DataAvailabilityMode::L1),
+            protobuf::VolitionDomain::L2 => Ok(DataAvailabilityMode::L2),
+        }
+    }
+}
+
+impl From<DataAvailabilityMode> for protobuf::VolitionDomain {
+    fn from(value: DataAvailabilityMode) -> Self {
+        match value {
+            DataAvailabilityMode::L1 => Self::L1,
+            DataAvailabilityMode::L2 => Self::L2,
         }
     }
 }

@@ -66,10 +66,9 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .map(SequencerContractAddress)?;
 
         let state_root = value
-            .state
-            .and_then(|state| state.root)
+            .state_root
             .ok_or(ProtobufConversionError::MissingField {
-                field_description: "SignedBlockHeader::state",
+                field_description: "SignedBlockHeader::state_root",
             })?
             .try_into()
             .map(GlobalRoot)?;
@@ -110,6 +109,13 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 ))
             })
             .transpose()?;
+
+        let state_diff_length = value.state_diff_commitment.as_ref().map(|state_diff_commitment| {
+            state_diff_commitment
+                .state_diff_length
+                .try_into()
+                .expect("Failed converting u64 to usize")
+        });
 
         let l1_da_mode = enum_int_to_l1_data_availability_mode(value.l1_data_availability_mode)?;
 
@@ -153,9 +159,6 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             ),
         };
 
-        let state_diff_length =
-            Some(value.state_diff_length.try_into().expect("Failed converting u64 to usize"));
-
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
                 block_hash,
@@ -169,13 +172,13 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 l1_da_mode,
                 // TODO(shahak): fill this.
                 state_diff_commitment: None,
+                state_diff_length,
                 transaction_commitment,
                 event_commitment,
-                state_diff_length,
                 // TODO(shahak): fill this.
-                receipt_commitment: None,
                 n_transactions,
                 n_events,
+                receipt_commitment: None,
                 starknet_version,
             },
             // collect will convert from Vec<Result> to Result<Vec>.
@@ -196,30 +199,26 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
             number: header.block_number.0,
             time: header.timestamp.0,
             sequencer_address: Some(header.sequencer.0.into()),
-            // TODO(shahak): fill this. If the state_diff_length is None make this None.
-            state_diff_commitment: None,
-            state_diff_length: header
-                .state_diff_length
-                // If state_diff_length is None, then state_diff_commitment is also None and the
-                // other peer will know that this node doesn't know about the state diff.
-                .unwrap_or_default()
-                .try_into()
-                .expect("Failed converting u64 to usize"),
-            state: Some(protobuf::Patricia {
-                // TODO(shahak): fill this.
-                height: 0,
-                root: Some(header.state_root.0.into()),
+            state_diff_commitment: Some(protobuf::StateDiffCommitment {
+                state_diff_length: header
+                    .state_diff_length
+                    .unwrap_or(0)
+                    .try_into()
+                    .expect("Converting usize to u64 failed"),
+                // TODO: fill this.
+                root: None,
             }),
+            state_root: Some(header.state_root.0.into()),
             // This will be Some only if both n_transactions and transaction_commitment are Some.
             transactions: header.n_transactions.and_then(|n_transactions| {
-                header.transaction_commitment.map(|transaction_commitment| protobuf::Merkle {
+                header.transaction_commitment.map(|transaction_commitment| protobuf::Patricia {
                     n_leaves: n_transactions.try_into().expect("Converting usize to u64 failed"),
                     root: Some(transaction_commitment.0.into()),
                 })
             }),
             // This will be Some only if both n_events and event_commitment are Some.
             events: header.n_events.and_then(|n_events| {
-                header.event_commitment.map(|event_commitment| protobuf::Merkle {
+                header.event_commitment.map(|event_commitment| protobuf::Patricia {
                     n_leaves: n_events.try_into().expect("Converting usize to u64 failed"),
                     root: Some(event_commitment.0.into()),
                 })
