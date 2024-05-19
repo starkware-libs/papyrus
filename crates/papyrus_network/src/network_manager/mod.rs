@@ -10,6 +10,7 @@ use futures::future::{pending, ready, Ready};
 use futures::sink::With;
 use futures::stream::{self, BoxStream, Map, SelectAll};
 use futures::{FutureExt, SinkExt, StreamExt};
+use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
@@ -22,13 +23,13 @@ use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::broadcast::Topic;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
+use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{broadcast, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
+use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 type SubscriberChannels = (Receiver<(Query, DataType)>, Router);
@@ -48,8 +49,8 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     // Splitting the broadcast receivers from the broadcasted senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
-    messages_to_broadcast_receivers: StreamHashMap<Topic, Receiver<Bytes>>,
-    broadcasted_messages_senders: HashMap<Topic, Sender<(Bytes, ReportCallback)>>,
+    messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
+    broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     reported_peer_receiver: UnboundedReceiver<PeerId>,
@@ -70,13 +71,15 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 Some(res) = self.sync_subscriber_channels.as_mut()
                     .map(|(query_receiver, _)| query_receiver.next().boxed())
                     .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res.0, res.1),
-                Some((topic, message)) = self.messages_to_broadcast_receivers.next() => self.broadcast_message(message, topic),
+                Some((topic_hash, message)) = self.messages_to_broadcast_receivers.next() => {
+                    self.broadcast_message(message, topic_hash);
+                }
                 Some(peer_id) = self.reported_peer_receiver.next() => self.swarm.report_peer(peer_id),
             }
         }
     }
 
-    pub(self) fn generic_new(
+    pub(crate) fn generic_new(
         swarm: SwarmT,
         db_executor: DBExecutorT,
         header_buffer_size: usize,
@@ -117,11 +120,15 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         &mut self,
         topic: Topic,
         buffer_size: usize,
-    ) -> BroadcastSubscriberChannels<T, <T as TryFrom<Bytes>>::Error>
+    ) -> Result<BroadcastSubscriberChannels<T, <T as TryFrom<Bytes>>::Error>, SubscriptionError>
     where
         T: TryFrom<Bytes>,
         Bytes: From<T>,
     {
+        self.swarm.subscribe_to_topic(&topic)?;
+
+        let topic_hash = topic.hash();
+
         let (messages_to_broadcast_sender, messages_to_broadcast_receiver) =
             futures::channel::mpsc::channel(buffer_size);
         let (broadcasted_messages_sender, broadcasted_messages_receiver) =
@@ -129,13 +136,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
 
         let insert_result = self
             .messages_to_broadcast_receivers
-            .insert(topic.clone(), messages_to_broadcast_receiver);
+            .insert(topic_hash.clone(), messages_to_broadcast_receiver);
         if insert_result.is_some() {
             panic!("Topic '{}' has already been registered.", topic);
         }
 
-        let insert_result =
-            self.broadcasted_messages_senders.insert(topic.clone(), broadcasted_messages_sender);
+        let insert_result = self
+            .broadcasted_messages_senders
+            .insert(topic_hash.clone(), broadcasted_messages_sender);
         if insert_result.is_some() {
             panic!("Topic '{}' has already been registered.", topic);
         }
@@ -152,7 +160,10 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         let broadcasted_messages_receiver =
             broadcasted_messages_receiver.map(broadcasted_messages_fn);
 
-        BroadcastSubscriberChannels { messages_to_broadcast_sender, broadcasted_messages_receiver }
+        Ok(BroadcastSubscriberChannels {
+            messages_to_broadcast_sender,
+            broadcasted_messages_receiver,
+        })
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
@@ -247,8 +258,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             mixed_behaviour::ExternalEvent::Sqmr(event) => {
                 self.handle_stream_bytes_behaviour_event(event);
             }
-            mixed_behaviour::ExternalEvent::Broadcast(event) => {
-                self.handle_broadcast_behaviour_event(event);
+            mixed_behaviour::ExternalEvent::GossipSub(event) => {
+                self.handle_gossipsub_behaviour_event(event);
             }
         }
     }
@@ -265,7 +276,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
         self.swarm.behaviour_mut().sqmr.on_other_behaviour_event(&event);
         self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(&event);
-        self.swarm.behaviour_mut().broadcast.on_other_behaviour_event(&event);
+        self.swarm.behaviour_mut().gossipsub.on_other_behaviour_event(&event);
     }
 
     fn handle_stream_bytes_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
@@ -349,11 +360,18 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_broadcast_behaviour_event(&mut self, event: broadcast::ExternalEvent) {
+    fn handle_gossipsub_behaviour_event(&mut self, event: gossipsub_impl::ExternalEvent) {
         match event {
-            broadcast::ExternalEvent::Received { originated_peer_id, message, topic } => {
-                let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic) else {
-                    error!("Received a message from a topic we're not subscribed to: {topic:?}");
+            gossipsub_impl::ExternalEvent::Received {
+                originated_peer_id,
+                message,
+                topic_hash,
+            } => {
+                let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic_hash) else {
+                    error!(
+                        "Received a message from a topic we're not subscribed to with hash \
+                         {topic_hash:?}"
+                    );
                     return;
                 };
                 let reported_peer_sender = self.reported_peer_sender.clone();
@@ -369,8 +387,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                         panic!("Receiver was dropped. This should never happen.")
                     } else if e.is_full() {
                         error!(
-                            "Receiver buffer is full. Dropping broadcasted message for topic: \
-                             {topic:?}."
+                            "Receiver buffer is full. Dropping broadcasted message for topic with \
+                             hash: {topic_hash:?}."
                         );
                     }
                 }
@@ -431,8 +449,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
-        self.swarm.broadcast_message(message, topic);
+    fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash) {
+        self.swarm.broadcast_message(message, topic_hash);
     }
 
     fn report_session_removed_to_metrics(&mut self, session_id: SessionId) {

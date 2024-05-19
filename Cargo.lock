@@ -4674,6 +4674,7 @@ dependencies = [
  "futures",
  "instant",
  "libp2p-core",
+ "libp2p-gossipsub",
  "libp2p-identify",
  "libp2p-identity",
  "libp2p-kad",
