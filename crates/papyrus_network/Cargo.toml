@@ -21,6 +21,7 @@ futures.workspace = true
 indexmap.workspace = true
 lazy_static.workspace = true
 libp2p = { workspace = true, features = [
+    "gossipsub",
     "identify",
     "kad",
     "macros",
