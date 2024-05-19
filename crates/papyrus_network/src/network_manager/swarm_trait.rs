@@ -1,9 +1,11 @@
 use futures::stream::Stream;
+use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
+use tracing::error;
 
-use crate::broadcast::Topic;
+use crate::gossipsub_impl::Topic;
 use crate::peer_manager::ReputationModifier;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, InboundSessionId, OutboundSessionId};
@@ -38,7 +40,9 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
 
     fn add_external_address(&mut self, address: Multiaddr);
 
-    fn broadcast_message(&mut self, message: Bytes, topic: Topic);
+    fn subscribe_to_topic(&mut self, topic: &Topic) -> Result<(), SubscriptionError>;
+
+    fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash);
 
     fn report_peer(&mut self, peer_id: PeerId);
 }
@@ -84,8 +88,20 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         self.add_external_address(address);
     }
 
-    fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
-        self.behaviour_mut().broadcast.broadcast_message(message, topic);
+    fn subscribe_to_topic(&mut self, topic: &Topic) -> Result<(), SubscriptionError> {
+        self.behaviour_mut().gossipsub.subscribe(topic).map(|_| ())
+    }
+
+    fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash) {
+        let result = self.behaviour_mut().gossipsub.publish(topic_hash.clone(), message);
+        if let Err(err) = result {
+            // TODO(shahak): Consider reporting to the subscriber broadcast failures or retrying
+            // upon failure.
+            error!(
+                "Error occured while broadcasting a message to the topic with hash \
+                 {topic_hash:?}: {err:?}"
+            );
+        }
     }
 
     fn report_peer(&mut self, peer_id: PeerId) {
