@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -12,6 +12,7 @@ use futures::future::{poll_fn, FutureExt};
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
+use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 use prost::Message;
@@ -23,7 +24,6 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
-use crate::broadcast::Topic;
 use crate::db_executor::{
     poll_query_execution_set,
     DBExecutorError,
@@ -32,18 +32,11 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
+use crate::gossipsub_impl::{self, Topic};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{
-    broadcast,
-    mixed_behaviour,
-    BlockHashOrNumber,
-    DataType,
-    Direction,
-    InternalQuery,
-    Query,
-};
+use crate::{mixed_behaviour, BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -51,7 +44,8 @@ const TIMEOUT: Duration = Duration::from_secs(1);
 struct MockSwarm {
     pub pending_events: Queue<Event>,
     pub sent_queries: Vec<(InternalQuery, PeerId)>,
-    broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
+    pub subscribed_topics: HashSet<TopicHash>,
+    broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, TopicHash)>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -90,7 +84,7 @@ impl MockSwarm {
         data_receiver.collect()
     }
 
-    pub fn stream_messages_we_broadcasted(&mut self) -> impl Stream<Item = (Bytes, Topic)> {
+    pub fn stream_messages_we_broadcasted(&mut self) -> impl Stream<Item = (Bytes, TopicHash)> {
         let (sender, receiver) = unbounded();
         self.broadcasted_messages_senders.push(sender);
         receiver
@@ -195,9 +189,14 @@ impl SwarmTrait for MockSwarm {
 
     fn add_external_address(&mut self, _address: Multiaddr) {}
 
-    fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
+    fn subscribe_to_topic(&mut self, topic: &Topic) -> Result<(), SubscriptionError> {
+        self.subscribed_topics.insert(topic.hash());
+        Ok(())
+    }
+
+    fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash) {
         for sender in &self.broadcasted_messages_senders {
-            sender.unbounded_send((message.clone(), topic.clone())).unwrap();
+            sender.unbounded_send((message.clone(), topic_hash.clone())).unwrap();
         }
     }
 }
@@ -433,7 +432,7 @@ async fn close_inbound_session() {
 
 #[tokio::test]
 async fn broadcast_message() {
-    let topic = "TOPIC".to_owned();
+    let topic = Topic::new("TOPIC");
     let message = vec![1u8, 2u8, 3u8];
 
     let mut mock_swarm = MockSwarm::default();
@@ -445,6 +444,7 @@ async fn broadcast_message() {
 
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .unwrap()
         .messages_to_broadcast_sender;
     messages_to_broadcast_sender.try_send(message.clone()).unwrap();
 
@@ -453,24 +453,24 @@ async fn broadcast_message() {
         result = tokio::time::timeout(
             TIMEOUT, messages_we_broadcasted_stream.next()
         ) => {
-            let (actual_message, actual_topic) = result.unwrap().unwrap();
+            let (actual_message, topic_hash) = result.unwrap().unwrap();
             assert_eq!(message, actual_message);
-            assert_eq!(topic, actual_topic);
+            assert_eq!(topic.hash(), topic_hash);
         }
     }
 }
 
 #[tokio::test]
 async fn receive_broadcasted_message() {
-    let topic = "TOPIC".to_owned();
+    let topic = Topic::new("TOPIC");
     let message = vec![1u8, 2u8, 3u8];
 
     let mock_swarm = MockSwarm::default();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::Broadcast(broadcast::ExternalEvent::Received {
+        mixed_behaviour::ExternalEvent::GossipSub(gossipsub_impl::ExternalEvent::Received {
             originated_peer_id: PeerId::random(),
             message: message.clone(),
-            topic: topic.clone(),
+            topic_hash: topic.hash(),
         }),
     )));
 
@@ -480,6 +480,7 @@ async fn receive_broadcasted_message() {
 
     let mut broadcasted_messages_receiver = network_manager
         .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .unwrap()
         .broadcasted_messages_receiver;
 
     tokio::select! {

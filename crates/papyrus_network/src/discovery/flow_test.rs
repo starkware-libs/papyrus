@@ -3,7 +3,7 @@ use std::iter;
 
 use futures::StreamExt;
 use libp2p::core::multiaddr::Protocol;
-use libp2p::identity::PublicKey;
+use libp2p::identity::Keypair;
 use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::behaviour::toggle::Toggle;
 use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
@@ -23,7 +23,7 @@ struct DiscoveryMixedBehaviour {
 }
 
 impl DiscoveryMixedBehaviour {
-    pub fn new(key: PublicKey, bootstrap_peer_multiaddr: Option<Multiaddr>) -> Self {
+    pub fn new(key: Keypair, bootstrap_peer_multiaddr: Option<Multiaddr>) -> Self {
         let mixed_behaviour =
             MixedBehaviour::new(key, bootstrap_peer_multiaddr, Default::default());
         Self {
@@ -39,7 +39,7 @@ async fn all_nodes_have_same_bootstrap_peer() {
     const NUM_NODES: usize = 2;
 
     let mut bootstrap_swarm =
-        Swarm::new_ephemeral(|keypair| DiscoveryMixedBehaviour::new(keypair.public(), None));
+        Swarm::new_ephemeral(|keypair| DiscoveryMixedBehaviour::new(keypair, None));
     bootstrap_swarm.listen().with_memory_addr_external().await;
 
     let bootstrap_peer_id = *bootstrap_swarm.local_peer_id();
@@ -53,7 +53,7 @@ async fn all_nodes_have_same_bootstrap_peer() {
 
     let swarms = (0..NUM_NODES).map(|_| {
         Swarm::new_ephemeral(|keypair| {
-            DiscoveryMixedBehaviour::new(keypair.public(), Some(bootstrap_peer_multiaddr.clone()))
+            DiscoveryMixedBehaviour::new(keypair, Some(bootstrap_peer_multiaddr.clone()))
         })
     });
     let mut swarms_stream = StreamHashMap::new(
