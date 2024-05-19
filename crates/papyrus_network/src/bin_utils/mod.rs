@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use std::time::Duration;
 
-use libp2p::identity::{Keypair, PublicKey};
+use libp2p::identity::Keypair;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::NetworkBehaviour;
 use libp2p::{noise, yamux, Multiaddr, Swarm, SwarmBuilder};
@@ -10,7 +10,7 @@ use tracing::debug;
 pub fn build_swarm<Behaviour: NetworkBehaviour>(
     listen_addresses: Vec<String>,
     idle_connection_timeout: Duration,
-    behaviour: impl Fn(PublicKey) -> Behaviour,
+    behaviour: impl Fn(Keypair) -> Behaviour,
 ) -> Swarm<Behaviour>
 where
 {
@@ -27,7 +27,7 @@ where
         .expect("Error building TCP transport")
         // TODO: quic transpot does not work (failure appears in the command line when running in debug mode)
         // .with_quic()
-        .with_behaviour(|key| behaviour(key.public()))
+        .with_behaviour(|key| behaviour(key.clone()))
         .expect("Error while building the swarm")
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(idle_connection_timeout))
         .build();
