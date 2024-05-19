@@ -5,10 +5,11 @@ mod test;
 
 use std::collections::HashMap;
 
-use futures::channel::mpsc::{Receiver, Sender, UnboundedReceiver, UnboundedSender};
-use futures::future::pending;
-use futures::stream::{self, BoxStream, SelectAll};
-use futures::{FutureExt, StreamExt};
+use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
+use futures::future::{pending, ready, Ready};
+use futures::sink::With;
+use futures::stream::{self, BoxStream, Map, SelectAll};
+use futures::{FutureExt, SinkExt, StreamExt};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
@@ -107,11 +108,15 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
 
     /// Register a new subscriber for broadcasting and receiving broadcasts for a given topic.
     /// Panics if this topic is already subscribed.
-    pub fn register_broadcast_subscriber(
+    pub fn register_broadcast_subscriber<T>(
         &mut self,
         topic: Topic,
         buffer_size: usize,
-    ) -> BroadcastSubscriberChannels {
+    ) -> BroadcastSubscriberChannels<T, <T as TryFrom<Bytes>>::Error>
+    where
+        T: TryFrom<Bytes>,
+        Bytes: From<T>,
+    {
         let (messages_to_broadcast_sender, messages_to_broadcast_receiver) =
             futures::channel::mpsc::channel(buffer_size);
         let (broadcasted_messages_sender, broadcasted_messages_receiver) =
@@ -129,6 +134,20 @@ impl<DBExecutorT: DBExecutor, SwarmT: SwarmTrait> GenericNetworkManager<DBExecut
         if insert_result.is_some() {
             panic!("Topic {} was registered twice", topic);
         }
+
+        let messages_to_broadcast_fn: fn(T) -> Ready<Result<Bytes, SendError>> =
+            |x| ready(Ok(Bytes::from(x)));
+        let messages_to_broadcast_sender =
+            messages_to_broadcast_sender.with(messages_to_broadcast_fn);
+
+        let broadcasted_messages_fn: fn(
+            (Bytes, ReportCallback),
+        ) -> (
+            Result<T, <T as TryFrom<Bytes>>::Error>,
+            ReportCallback,
+        ) = |(x, report_callback)| (T::try_from(x), report_callback);
+        let broadcasted_messages_receiver =
+            broadcasted_messages_receiver.map(broadcasted_messages_fn);
 
         BroadcastSubscriberChannels { messages_to_broadcast_sender, broadcasted_messages_receiver }
     }
@@ -484,7 +503,16 @@ impl NetworkManager {
 pub type ReportCallback = Box<dyn Fn() + Send>;
 
 // TODO(shahak): Make this generic in a type that implements TryFrom<Bytes> and Into<Bytes>.
-pub struct BroadcastSubscriberChannels {
-    pub messages_to_broadcast_sender: Sender<Bytes>,
-    pub broadcasted_messages_receiver: Receiver<(Bytes, ReportCallback)>,
+pub struct BroadcastSubscriberChannels<T, E> {
+    pub messages_to_broadcast_sender: With<
+        Sender<Bytes>,
+        Bytes,
+        T,
+        Ready<Result<Bytes, SendError>>,
+        fn(T) -> Ready<Result<Bytes, SendError>>,
+    >,
+    pub broadcasted_messages_receiver: Map<
+        Receiver<(Bytes, ReportCallback)>,
+        fn((Bytes, ReportCallback)) -> (Result<T, E>, ReportCallback),
+    >,
 }
