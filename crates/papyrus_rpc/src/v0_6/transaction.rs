@@ -851,6 +851,8 @@ impl TransactionOutput {
         }
     }
 
+    // TODO(dvir): delete this.
+    #[allow(dead_code)]
     pub fn from_thin_transaction_output(
         thin_tx_output: ThinTransactionOutput,
         tx_version: TransactionVersion,

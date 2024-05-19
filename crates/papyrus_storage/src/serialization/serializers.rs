@@ -79,13 +79,17 @@ use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     DeclareTransaction,
+    DeclareTransactionOutput,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
     DeclareTransactionV3,
     DeployAccountTransaction,
+    DeployAccountTransactionOutput,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     DeployTransaction,
+    DeployTransactionOutput,
+    Event,
     EventContent,
     EventData,
     EventIndexInTransactionOutput,
@@ -93,10 +97,12 @@ use starknet_api::transaction::{
     ExecutionResources,
     Fee,
     InvokeTransaction,
+    InvokeTransactionOutput,
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
     L1HandlerTransaction,
+    L1HandlerTransactionOutput,
     L1ToL2Payload,
     L2ToL1Payload,
     MessageToL1,
@@ -111,6 +117,7 @@ use starknet_api::transaction::{
     TransactionExecutionStatus,
     TransactionHash,
     TransactionOffsetInBlock,
+    TransactionOutput,
     TransactionSignature,
     TransactionVersion,
 };
@@ -133,6 +140,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
+use crate::db::table_types::ValuePlaceHolder;
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
@@ -194,6 +202,13 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
         V3(DeclareTransactionV3) = 3,
     }
+    pub struct DeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -226,6 +241,22 @@ auto_storage_serde! {
         V1(DeployAccountTransactionV1) = 0,
         V3(DeployAccountTransactionV3) = 1,
     }
+    pub struct DeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+    pub struct DeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
         pub offset: EntryPointOffset,
@@ -254,6 +285,10 @@ auto_storage_serde! {
         pub keys: Vec<TypedParameter>,
         pub name: String,
         pub r#type: EventType,
+    }
+    pub struct Event {
+        pub from_address: ContractAddress,
+        pub content: EventContent,
     }
     pub struct EventContent {
         pub keys: Vec<EventKey>,
@@ -287,6 +322,13 @@ auto_storage_serde! {
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
     }
+    pub struct InvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
     pub enum IsCompressed {
         No = 0,
         Yes = 1,
@@ -294,6 +336,13 @@ auto_storage_serde! {
     pub enum L1DataAvailabilityMode {
         Calldata = 0,
         Blob = 1,
+    }
+    pub struct L1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -325,7 +374,7 @@ auto_storage_serde! {
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
-        ThinTransactionOutput = 4,
+        TransactionOutput = 4,
         Transaction = 5,
     }
     pub struct PaymasterData(pub Vec<StarkFelt>);
@@ -439,6 +488,13 @@ auto_storage_serde! {
     }
     pub struct TransactionHash(pub StarkHash);
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
+    pub enum TransactionOutput {
+        Declare(DeclareTransactionOutput) = 0,
+        Deploy(DeployTransactionOutput) = 1,
+        DeployAccount(DeployAccountTransactionOutput) = 2,
+        Invoke(InvokeTransactionOutput) = 3,
+        L1Handler(L1HandlerTransactionOutput) = 4,
+    }
     pub struct TransactionSignature(pub Vec<StarkFelt>);
     pub struct TransactionVersion(pub StarkFelt);
     pub struct Version{
@@ -903,6 +959,16 @@ impl StorageSerde for BigUint {
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let bytes_be = Vec::<u8>::deserialize_from(bytes)?;
         Some(BigUint::from_bytes_be(bytes_be.as_slice()))
+    }
+}
+
+impl StorageSerde for ValuePlaceHolder {
+    fn serialize_into(&self, _res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        Ok(())
+    }
+
+    fn deserialize_from(_bytes: &mut impl std::io::Read) -> Option<Self> {
+        Some(Self)
     }
 }
 
