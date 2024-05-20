@@ -13,7 +13,7 @@ use libp2p_swarm_test::SwarmExt;
 use super::Behaviour;
 use crate::mixed_behaviour;
 use crate::mixed_behaviour::{BridgedBehaviour, MixedBehaviour};
-use crate::test_utils::StreamHashMap;
+use crate::utils::StreamHashMap;
 
 #[derive(NetworkBehaviour)]
 struct DiscoveryMixedBehaviour {

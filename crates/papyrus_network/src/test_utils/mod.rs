@@ -1,24 +1,22 @@
 mod get_stream;
 
-use std::collections::hash_map::{Keys, ValuesMut};
-use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use std::hash::Hash;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
 use std::time::Duration;
 
 use futures::future::Future;
 use futures::pin_mut;
-use futures::stream::{Stream as StreamTrait, StreamExt};
+use futures::stream::Stream as StreamTrait;
 use libp2p::swarm::{NetworkBehaviour, StreamProtocol, Swarm, SwarmEvent};
 use libp2p::{PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio_stream::StreamExt as TokioStreamExt;
+use tokio_stream::StreamExt;
 
 use crate::streamed_bytes::Bytes;
+use crate::utils::StreamHashMap;
 
 /// Create two streams that are connected to each other. Return them and a join handle for a thread
 /// that will perform the sends between the streams (this thread will run forever so it shouldn't
@@ -32,15 +30,13 @@ pub(crate) async fn get_connected_streams() -> (Stream, Stream, JoinHandle<()>) 
     swarm1.connect(&mut swarm2).await;
 
     let merged_swarm = swarm1.merge(swarm2);
-    let mut filtered_swarm = TokioStreamExt::filter_map(merged_swarm, |event| {
+    let mut filtered_swarm = merged_swarm.filter_map(|event| {
         if let SwarmEvent::Behaviour(stream) = event { Some(stream) } else { None }
     });
     (
-        TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
-        TokioStreamExt::next(&mut filtered_swarm).await.unwrap(),
-        tokio::task::spawn(async move {
-            while TokioStreamExt::next(&mut filtered_swarm).await.is_some() {}
-        }),
+        filtered_swarm.next().await.unwrap(),
+        filtered_swarm.next().await.unwrap(),
+        tokio::task::spawn(async move { while filtered_swarm.next().await.is_some() {} }),
     )
 }
 
@@ -54,58 +50,6 @@ impl crate::streamed_bytes::Config {
             session_timeout: Duration::MAX,
             supported_inbound_protocols: vec![StreamProtocol::new("/")],
         }
-    }
-}
-
-// This is an implementation of `StreamMap` from tokio_stream. The reason we're implementing it
-// ourselves is that the implementation in tokio_stream requires that the values implement the
-// Stream trait from tokio_stream and not from futures.
-pub(crate) struct StreamHashMap<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> {
-    map: HashMap<K, V>,
-    finished_streams: HashSet<K>,
-}
-
-impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamHashMap<K, V> {
-    pub fn new(map: HashMap<K, V>) -> Self {
-        Self { map, finished_streams: Default::default() }
-    }
-
-    pub fn values_mut(&mut self) -> ValuesMut<'_, K, V> {
-        self.map.values_mut()
-    }
-
-    pub fn keys(&self) -> Keys<'_, K, V> {
-        self.map.keys()
-    }
-
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
-        self.map.get_mut(key)
-    }
-}
-
-impl<K: Unpin + Clone + Eq + Hash, V: StreamTrait + Unpin> StreamTrait for StreamHashMap<K, V> {
-    type Item = (K, <V as StreamTrait>::Item);
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let unpinned_self = Pin::into_inner(self);
-        let mut finished = true;
-        for (key, stream) in &mut unpinned_self.map {
-            match stream.poll_next_unpin(cx) {
-                Poll::Ready(Some(value)) => {
-                    return Poll::Ready(Some((key.clone(), value)));
-                }
-                Poll::Ready(None) => {
-                    unpinned_self.finished_streams.insert(key.clone());
-                }
-                Poll::Pending => {
-                    finished = false;
-                }
-            }
-        }
-        if finished {
-            return Poll::Ready(None);
-        }
-        Poll::Pending
     }
 }
 
