@@ -1,6 +1,6 @@
 use std::convert::{TryFrom, TryInto};
 
-use starknet_api::core::{ClassHash, Nonce};
+use starknet_api::core::{ClassHash, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Calldata,
@@ -8,6 +8,7 @@ use starknet_api::transaction::{
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     Fee,
+    InvokeTransactionV0,
     PaymasterData,
     Resource,
     ResourceBounds,
@@ -336,5 +337,54 @@ impl From<ResourceBoundsMapping> for protobuf::ResourceBounds {
         res.l2_gas = Some(resource_limits_l2);
 
         res
+    }
+}
+
+impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::InvokeV0) -> Result<Self, Self::Error> {
+        let max_fee_felt =
+            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+                field_description: "InvokeV0::max_fee",
+            })?)?;
+        let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{max_fee_felt:?}"),
+            }
+        })?);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "InvokeV0::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let contract_address = value
+            .address
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "InvokeV0::address",
+            })?
+            .try_into()?;
+
+        let entry_point_selector_felt = StarkFelt::try_from(value.entry_point_selector.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "InvokeV0::entry_point_selector",
+            },
+        )?)?;
+        let entry_point_selector = EntryPointSelector(entry_point_selector_felt);
+
+        let calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let calldata = Calldata(calldata.into());
+
+        Ok(Self { max_fee, signature, contract_address, entry_point_selector, calldata })
     }
 }
