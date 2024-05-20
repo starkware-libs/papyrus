@@ -97,3 +97,23 @@ impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactio
         })
     }
 }
+
+impl From<DeployAccountTransactionV1> for protobuf::transaction::DeployAccountV1 {
+    fn from(value: DeployAccountTransactionV1) -> Self {
+        Self {
+            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
+            }),
+            nonce: Some(value.nonce.0.into()),
+            class_hash: Some(value.class_hash.0.into()),
+            address_salt: Some(value.contract_address_salt.0.into()),
+            calldata: value
+                .constructor_calldata
+                .0
+                .iter()
+                .map(|calldata| (*calldata).into())
+                .collect(),
+        }
+    }
+}
