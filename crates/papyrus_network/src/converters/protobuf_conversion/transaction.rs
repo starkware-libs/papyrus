@@ -9,6 +9,7 @@ use starknet_api::transaction::{
     DeployAccountTransactionV3,
     Fee,
     InvokeTransactionV0,
+    InvokeTransactionV1,
     PaymasterData,
     Resource,
     ResourceBounds,
@@ -400,5 +401,54 @@ impl From<InvokeTransactionV0> for protobuf::transaction::InvokeV0 {
             entry_point_selector: Some(value.entry_point_selector.0.into()),
             calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::InvokeV1) -> Result<Self, Self::Error> {
+        let max_fee_felt =
+            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+                field_description: "InvokeV1::max_fee",
+            })?)?;
+        let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{max_fee_felt:?}"),
+            }
+        })?);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "InvokeV1::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let sender_address = value
+            .sender
+            .ok_or(ProtobufConversionError::MissingField { field_description: "InvokeV1::sender" })?
+            .try_into()?;
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "InvokeV1::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let calldata = Calldata(calldata.into());
+
+        Ok(Self { max_fee, signature, nonce, sender_address, calldata })
     }
 }
