@@ -29,6 +29,7 @@ fn main() -> Result<()> {
             &[
                 "src/protobuf_messages/proto/p2p/proto/header.proto",
                 "src/protobuf_messages/proto/p2p/proto/state.proto",
+                "src/protobuf_messages/proto/p2p/proto/transaction.proto",
             ],
             &["src/protobuf_messages/proto/"],
         )?;
