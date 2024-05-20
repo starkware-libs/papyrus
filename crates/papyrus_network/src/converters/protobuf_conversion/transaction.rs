@@ -6,13 +6,17 @@ use starknet_api::transaction::{
     Calldata,
     ContractAddressSalt,
     DeployAccountTransactionV1,
+    DeployAccountTransactionV3,
     Fee,
+    PaymasterData,
     Resource,
     ResourceBounds,
     ResourceBoundsMapping,
+    Tip,
     TransactionSignature,
 };
 
+use super::common::enum_int_to_volition_domain;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
 
@@ -118,6 +122,90 @@ impl From<DeployAccountTransactionV1> for protobuf::transaction::DeployAccountV1
                 .map(|calldata| (*calldata).into())
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::DeployAccountV3> for DeployAccountTransactionV3 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::DeployAccountV3) -> Result<Self, Self::Error> {
+        let resource_bounds = ResourceBoundsMapping::try_from(value.resource_bounds.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "DeployAccountV3::resource_bounds",
+            },
+        )?)?;
+
+        let tip = Tip(value.tip);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeployAccountV3::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeployAccountV3::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeployAccountV3::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let contract_address_salt = ContractAddressSalt(
+            value
+                .address_salt
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeployAccountV3::address_salt",
+                })?
+                .try_into()?,
+        );
+
+        let constructor_calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let constructor_calldata = Calldata(constructor_calldata.into());
+
+        let nonce_data_availability_mode =
+            enum_int_to_volition_domain(value.nonce_data_availability_mode)?;
+
+        let fee_data_availability_mode =
+            enum_int_to_volition_domain(value.fee_data_availability_mode)?;
+
+        let paymaster_data = PaymasterData(
+            value
+                .paymaster_data
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        Ok(Self {
+            resource_bounds,
+            tip,
+            signature,
+            nonce,
+            class_hash,
+            contract_address_salt,
+            constructor_calldata,
+            nonce_data_availability_mode,
+            fee_data_availability_mode,
+            paymaster_data,
+        })
     }
 }
 
