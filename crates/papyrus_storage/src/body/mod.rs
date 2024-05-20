@@ -345,10 +345,10 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
             return Ok(None);
         };
 
-        let mut res = Vec::new();
-        for location in locations {
-            res.push(self.file_handlers.get_transaction_output_unchecked(location)?);
-        }
+        let res = locations
+            .into_iter()
+            .map(|location| self.file_handlers.get_transaction_output_unchecked(location))
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Some(res))
     }
@@ -367,10 +367,10 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
             return Ok(None);
         };
 
-        let mut res = Vec::new();
-        for location in locations {
-            res.push(self.file_handlers.get_transaction_unchecked(location)?);
-        }
+        let res = locations
+            .into_iter()
+            .map(|location| self.file_handlers.get_transaction_unchecked(location))
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(Some(res))
     }
