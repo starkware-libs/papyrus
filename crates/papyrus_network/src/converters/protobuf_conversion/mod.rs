@@ -1,6 +1,7 @@
 mod common;
 mod header;
 pub mod state_diff;
+mod transaction;
 
 #[derive(thiserror::Error, Debug)]
 pub enum ProtobufConversionError {
