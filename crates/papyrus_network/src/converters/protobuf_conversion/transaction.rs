@@ -7,6 +7,9 @@ use starknet_api::transaction::{
     ContractAddressSalt,
     DeployAccountTransactionV1,
     Fee,
+    Resource,
+    ResourceBounds,
+    ResourceBoundsMapping,
     TransactionSignature,
 };
 
@@ -115,5 +118,76 @@ impl From<DeployAccountTransactionV1> for protobuf::transaction::DeployAccountV1
                 .map(|calldata| (*calldata).into())
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::ResourceBounds> for ResourceBoundsMapping {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::ResourceBounds) -> Result<Self, Self::Error> {
+        let mut resource_bounds = ResourceBoundsMapping::default();
+        let Some(l1_gas) = value.l1_gas else {
+            return Err(ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l1_gas",
+            });
+        };
+        let max_amount_felt = StarkFelt::try_from(l1_gas.max_amount.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l1_gas::max_amount",
+            },
+        )?)?;
+        let max_amount =
+            max_amount_felt.try_into().map_err(|_| ProtobufConversionError::OutOfRangeValue {
+                type_description: "u64",
+                value_as_str: format!("{max_amount_felt:?}"),
+            })?;
+
+        let max_price_per_unit_felt = StarkFelt::try_from(l1_gas.max_price_per_unit.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l1_gas::max_price_per_unit",
+            },
+        )?)?;
+        let max_price_per_unit =
+            try_from_starkfelt_to_u128(max_price_per_unit_felt).map_err(|_| {
+                ProtobufConversionError::OutOfRangeValue {
+                    type_description: "u128",
+                    value_as_str: format!("{max_price_per_unit_felt:?}"),
+                }
+            })?;
+
+        resource_bounds
+            .0
+            .insert(Resource::L1Gas, ResourceBounds { max_amount, max_price_per_unit });
+        let Some(l2_gas) = value.l2_gas else {
+            return Err(ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l2_gas",
+            });
+        };
+        let max_amount_felt = StarkFelt::try_from(l2_gas.max_amount.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l2_gas::max_amount",
+            },
+        )?)?;
+        let max_amount =
+            max_amount_felt.try_into().map_err(|_| ProtobufConversionError::OutOfRangeValue {
+                type_description: "u64",
+                value_as_str: format!("{max_amount_felt:?}"),
+            })?;
+
+        let max_price_per_unit_felt = StarkFelt::try_from(l2_gas.max_price_per_unit.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "ResourceBounds::l2_gas::max_price_per_unit",
+            },
+        )?)?;
+        let max_price_per_unit =
+            try_from_starkfelt_to_u128(max_price_per_unit_felt).map_err(|_| {
+                ProtobufConversionError::OutOfRangeValue {
+                    type_description: "u128",
+                    value_as_str: format!("{max_price_per_unit_felt:?}"),
+                }
+            })?;
+        resource_bounds
+            .0
+            .insert(Resource::L2Gas, ResourceBounds { max_amount, max_price_per_unit });
+        Ok(resource_bounds)
     }
 }
