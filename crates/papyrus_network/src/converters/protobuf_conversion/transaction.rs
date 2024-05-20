@@ -16,7 +16,7 @@ use starknet_api::transaction::{
     TransactionSignature,
 };
 
-use super::common::enum_int_to_volition_domain;
+use super::common::{enum_int_to_volition_domain, volition_domain_to_enum_int};
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
 
@@ -206,6 +206,39 @@ impl TryFrom<protobuf::transaction::DeployAccountV3> for DeployAccountTransactio
             fee_data_availability_mode,
             paymaster_data,
         })
+    }
+}
+
+impl From<DeployAccountTransactionV3> for protobuf::transaction::DeployAccountV3 {
+    fn from(value: DeployAccountTransactionV3) -> Self {
+        Self {
+            resource_bounds: Some(protobuf::ResourceBounds::from(value.resource_bounds)),
+            tip: value.tip.0,
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
+            }),
+            nonce: Some(value.nonce.0.into()),
+            class_hash: Some(value.class_hash.0.into()),
+            address_salt: Some(value.contract_address_salt.0.into()),
+            calldata: value
+                .constructor_calldata
+                .0
+                .iter()
+                .map(|calldata| (*calldata).into())
+                .collect(),
+            nonce_data_availability_mode: volition_domain_to_enum_int(
+                value.nonce_data_availability_mode,
+            ),
+            fee_data_availability_mode: volition_domain_to_enum_int(
+                value.fee_data_availability_mode,
+            ),
+            paymaster_data: value
+                .paymaster_data
+                .0
+                .iter()
+                .map(|paymaster_data| (*paymaster_data).into())
+                .collect(),
+        }
     }
 }
 
