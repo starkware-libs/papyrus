@@ -6,10 +6,10 @@ use std::time::Duration;
 use std::vec;
 
 use deadqueue::unlimited::Queue;
-use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
+use futures::channel::mpsc::{unbounded, UnboundedSender};
 use futures::channel::oneshot;
 use futures::future::{poll_fn, FutureExt};
-use futures::stream::{FuturesUnordered, Stream};
+use futures::stream::Stream;
 use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
@@ -19,23 +19,16 @@ use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
-use crate::db_executor::{
-    poll_query_execution_set,
-    DBExecutor,
-    DBExecutorError,
-    Data,
-    FetchBlockDataFromDb,
-    QueryId,
-};
+use crate::db_executor::Data;
 use crate::gossipsub_impl::{self, Topic};
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::test_utils::MockDBExecutor;
 use crate::{mixed_behaviour, BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -211,52 +204,6 @@ impl SwarmTrait for MockSwarm {
         for sender in &self.reported_peer_senders {
             sender.unbounded_send(peer_id).unwrap();
         }
-    }
-}
-
-#[derive(Default)]
-struct MockDBExecutor {
-    next_query_id: usize,
-    pub query_to_headers: HashMap<InternalQuery, Vec<BlockHeader>>,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
-}
-
-impl Stream for MockDBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
-    }
-}
-
-impl DBExecutor for MockDBExecutor {
-    // TODO(shahak): Consider fixing code duplication with BlockHeaderDBExecutor.
-    fn register_query(
-        &mut self,
-        query: InternalQuery,
-        _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Data>,
-    ) -> QueryId {
-        let query_id = QueryId(self.next_query_id);
-        self.next_query_id += 1;
-        let headers = self.query_to_headers.get(&query).unwrap().clone();
-        self.query_execution_set.push(tokio::task::spawn(async move {
-            {
-                for header in headers.iter().cloned() {
-                    // Using poll_fn because Sender::poll_ready is not a future
-                    if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
-                            header,
-                            signatures: vec![],
-                        }) {
-                            return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        };
-                    }
-                }
-                Ok(query_id)
-            }
-        }));
-        query_id
     }
 }
 
