@@ -1,20 +1,33 @@
 mod get_stream;
 
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::pin::Pin;
 use std::task::{ready, Context, Poll};
 use std::time::Duration;
+use std::vec;
 
-use futures::future::Future;
+use futures::channel::mpsc::Sender;
+use futures::future::{poll_fn, Future};
 use futures::pin_mut;
-use futures::stream::Stream as StreamTrait;
+use futures::stream::{FuturesUnordered, Stream as StreamTrait};
 use libp2p::swarm::{NetworkBehaviour, StreamProtocol, Swarm, SwarmEvent};
 use libp2p::{PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
+use papyrus_protobuf::sync::{Query, SignedBlockHeader};
+use starknet_api::block::BlockHeader;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
 
+use crate::db_executor::{
+    poll_query_execution_set,
+    DBExecutorError,
+    DBExecutorTrait,
+    Data,
+    FetchBlockDataFromDb,
+    QueryId,
+};
 use crate::sqmr::Bytes;
 use crate::utils::StreamHashMap;
 
@@ -103,5 +116,53 @@ impl<'a, T: StreamTrait + Unpin> Future for NextOnMutexStream<'a, T> {
         let fut = StreamExt::next(&mut *locked_value);
         pin_mut!(fut);
         fut.poll(cx)
+    }
+}
+
+#[derive(Default)]
+pub(crate) struct MockDBExecutor {
+    next_query_id: usize,
+    pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
+    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+}
+
+impl StreamTrait for MockDBExecutor {
+    type Item = Result<QueryId, DBExecutorError>;
+
+    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
+    }
+}
+
+impl DBExecutorTrait for MockDBExecutor {
+    // TODO(shahak): Consider fixing code duplication with DBExecutor.
+    fn register_query(
+        &mut self,
+        query: Query,
+        _data_type: impl FetchBlockDataFromDb + Send,
+        mut sender: Sender<Data>,
+    ) -> QueryId {
+        let query_id = QueryId(self.next_query_id);
+        self.next_query_id += 1;
+        let headers = self.query_to_headers.get(&query).unwrap().clone();
+        self.query_execution_set.push(tokio::task::spawn(async move {
+            {
+                for header in headers.iter().cloned() {
+                    // Using poll_fn because Sender::poll_ready is not a future
+                    if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
+                        if let Err(e) =
+                            sender.start_send(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                                block_header: header,
+                                signatures: vec![],
+                            }))
+                        {
+                            return Err(DBExecutorError::SendError { query_id, send_error: e });
+                        };
+                    }
+                }
+                Ok(query_id)
+            }
+        }));
+        query_id
     }
 }

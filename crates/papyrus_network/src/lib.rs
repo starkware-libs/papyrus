@@ -6,6 +6,8 @@ pub mod bin_utils;
 mod converters;
 mod db_executor;
 mod discovery;
+#[cfg(test)]
+mod e2e_broadcast_test;
 mod gossipsub_impl;
 pub mod mixed_behaviour;
 pub mod network_manager;
