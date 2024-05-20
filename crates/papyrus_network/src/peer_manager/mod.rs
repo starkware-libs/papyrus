@@ -6,7 +6,7 @@ use libp2p::swarm::ToSwarm;
 use libp2p::PeerId;
 use tracing::info;
 
-use self::behaviour_impl::Event;
+pub use self::behaviour_impl::ToOtherBehaviourEvent;
 use self::peer::PeerTrait;
 use crate::mixed_behaviour::BridgedBehaviour;
 use crate::streamed_bytes::OutboundSessionId;
@@ -29,7 +29,7 @@ pub struct PeerManager<P: PeerTrait + 'static> {
     session_to_peer_map: HashMap<OutboundSessionId, PeerId>,
     config: PeerManagerConfig,
     last_peer_index: usize,
-    pending_events: Vec<ToSwarm<Event, libp2p::swarm::THandlerInEvent<Self>>>,
+    pending_events: Vec<ToSwarm<ToOtherBehaviourEvent, libp2p::swarm::THandlerInEvent<Self>>>,
     peers_pending_dial_with_sessions: HashMap<PeerId, Vec<OutboundSessionId>>,
     sessions_received_when_no_peers: Vec<OutboundSessionId>,
 }
@@ -48,11 +48,6 @@ pub(crate) enum PeerManagerError {
     NoSuchSession(OutboundSessionId),
     #[error("Peer is blocked: {0}")]
     PeerIsBlocked(PeerId),
-}
-
-#[derive(Debug)]
-pub enum FromOtherBehaviour {
-    RequestPeerAssignment { outbound_session_id: OutboundSessionId },
 }
 
 impl Default for PeerManagerConfig {
@@ -93,7 +88,7 @@ where
         self.peers.get_mut(&peer_id)
     }
 
-    // TODO(shahak): Remove return value and use FromOtherBehaviour in tests.
+    // TODO(shahak): Remove return value and use events in tests.
     fn assign_peer_to_session(&mut self, outbound_session_id: OutboundSessionId) -> Option<PeerId> {
         // TODO: consider moving this logic to be async (on a different tokio task)
         // until then we can return the assignment even if we use events for the notification.
@@ -120,13 +115,13 @@ where
                     "Session {:?} assigned to peer {:?} with connection id: {:?}",
                     outbound_session_id, peer_id, connection_id
                 );
-                self.pending_events.push(ToSwarm::GenerateEvent(Event::NotifyStreamedBytes(
-                    streamed_bytes::behaviour::FromOtherBehaviour::SessionAssigned {
+                self.pending_events.push(ToSwarm::GenerateEvent(
+                    ToOtherBehaviourEvent::SessionAssigned {
                         outbound_session_id,
                         peer_id: *peer_id,
                         connection_id,
                     },
-                )));
+                ));
             } else {
                 // In case we have a race condition where the connection is closed after we added to
                 // the pending list, the reciever will get an error and will need to ask for
@@ -185,28 +180,20 @@ where
     }
 }
 
-impl From<Event> for mixed_behaviour::Event {
-    fn from(event: Event) -> Self {
-        match event {
-            Event::NotifyStreamedBytes(event) => {
-                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyStreamedBytes(event))
-            }
-            Event::NotifyDiscovery(event) => {
-                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyDiscovery(event))
-            }
-        }
+impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
+    fn from(event: ToOtherBehaviourEvent) -> Self {
+        Self::ToOtherBehaviourEvent(mixed_behaviour::ToOtherBehaviourEvent::PeerManager(event))
     }
 }
 
 impl<P: PeerTrait + 'static> BridgedBehaviour for PeerManager<P> {
-    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        let mixed_behaviour::InternalEvent::NotifyPeerManager(event) = event else {
+    fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
+        let mixed_behaviour::ToOtherBehaviourEvent::StreamedBytes(
+            streamed_bytes::ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
+        ) = event
+        else {
             return;
         };
-        match event {
-            FromOtherBehaviour::RequestPeerAssignment { outbound_session_id } => {
-                self.assign_peer_to_session(outbound_session_id);
-            }
-        }
+        self.assign_peer_to_session(*outbound_session_id);
     }
 }

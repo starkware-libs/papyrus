@@ -24,11 +24,11 @@ use tokio::sync::Mutex;
 use tokio::time::timeout;
 use void::Void;
 
-use super::kad_impl::KadFromOtherBehaviourEvent;
-use super::{Behaviour, FromOtherBehaviourEvent, ToOtherBehaviourEvent, DIAL_SLEEP};
-use crate::mixed_behaviour;
+use super::kad_impl::KadToOtherBehaviourEvent;
+use super::{Behaviour, ToOtherBehaviourEvent, DIAL_SLEEP};
 use crate::mixed_behaviour::BridgedBehaviour;
 use crate::test_utils::next_on_mutex_stream;
+use crate::{mixed_behaviour, peer_manager};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 const SLEEP_DURATION: Duration = Duration::from_millis(10);
@@ -187,12 +187,11 @@ async fn create_behaviour_and_connect_to_bootstrap_node() -> Behaviour {
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
-            KadFromOtherBehaviourEvent::FoundListenAddresses {
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::FoundListenAddresses {
                 peer_id,
                 listen_addresses,
             }
-        )) if peer_id == bootstrap_peer_id && listen_addresses == vec![bootstrap_peer_address]
+        ) if peer_id == bootstrap_peer_id && listen_addresses == vec![bootstrap_peer_address]
     );
 
     behaviour
@@ -205,9 +204,7 @@ async fn discovery_outputs_single_query_after_connecting() {
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
-            _peer_id
-        )))
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::RequestKadQuery(_peer_id))
     );
 
     assert_no_event(&mut behaviour);
@@ -217,20 +214,18 @@ async fn discovery_outputs_single_query_after_connecting() {
 async fn discovery_doesnt_output_queries_while_paused() {
     let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::PauseDiscovery,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+        peer_manager::ToOtherBehaviourEvent::PauseDiscovery,
     ));
     assert_no_event(&mut behaviour);
 
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::ResumeDiscovery,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+        peer_manager::ToOtherBehaviourEvent::ResumeDiscovery,
     ));
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
-            _peer_id
-        )))
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::RequestKadQuery(_peer_id))
     );
 }
 
@@ -241,15 +236,13 @@ async fn discovery_outputs_single_query_on_query_finished() {
     // Consume the initial query event.
     timeout(TIMEOUT, behaviour.next()).await.unwrap();
 
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::KadQueryFinished,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::Kad(
+        KadToOtherBehaviourEvent::KadQueryFinished,
     ));
     let event = timeout(TIMEOUT, behaviour.next()).await.unwrap().unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(ToOtherBehaviourEvent(KadFromOtherBehaviourEvent::RequestKadQuery(
-            _peer_id
-        )))
+        ToSwarm::GenerateEvent(ToOtherBehaviourEvent::RequestKadQuery(_peer_id))
     );
 }
 
@@ -260,14 +253,14 @@ async fn discovery_doesnt_output_queries_if_query_finished_while_paused() {
     // Consume the initial query event.
     timeout(TIMEOUT, behaviour.next()).await.unwrap();
 
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::PauseDiscovery,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+        peer_manager::ToOtherBehaviourEvent::PauseDiscovery,
     ));
     assert_no_event(&mut behaviour);
 
     // Simulate that the query has finished.
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::KadQueryFinished,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::Kad(
+        KadToOtherBehaviourEvent::KadQueryFinished,
     ));
     assert_no_event(&mut behaviour);
 }
@@ -276,8 +269,8 @@ async fn discovery_doesnt_output_queries_if_query_finished_while_paused() {
 async fn discovery_awakes_on_resume() {
     let mut behaviour = create_behaviour_and_connect_to_bootstrap_node().await;
 
-    behaviour.on_other_behaviour_event(mixed_behaviour::InternalEvent::NotifyDiscovery(
-        FromOtherBehaviourEvent::PauseDiscovery,
+    behaviour.on_other_behaviour_event(&mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+        peer_manager::ToOtherBehaviourEvent::PauseDiscovery,
     ));
 
     // There should be an event once we resume because discovery has just started.
@@ -288,8 +281,8 @@ async fn discovery_awakes_on_resume() {
         _ = async {
             tokio::time::sleep(SLEEP_DURATION).await;
             mutex.lock().await.on_other_behaviour_event(
-                mixed_behaviour::InternalEvent::NotifyDiscovery(
-                    FromOtherBehaviourEvent::ResumeDiscovery,
+                &mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+                    peer_manager::ToOtherBehaviourEvent::ResumeDiscovery,
                 )
             );
             timeout(TIMEOUT, pending::<()>()).await.unwrap();
@@ -311,9 +304,8 @@ async fn discovery_awakes_on_query_finished() {
         _ = async {
             tokio::time::sleep(SLEEP_DURATION).await;
             mutex.lock().await.on_other_behaviour_event(
-                mixed_behaviour::InternalEvent::NotifyDiscovery(
-                    FromOtherBehaviourEvent::KadQueryFinished,
-
+                &mixed_behaviour::ToOtherBehaviourEvent::Kad(
+                    KadToOtherBehaviourEvent::KadQueryFinished,
                 )
             );
             timeout(TIMEOUT, pending::<()>()).await.unwrap();

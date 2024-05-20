@@ -89,24 +89,14 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
 pub type ExternalEvent = GenericEvent<SessionError>;
 
 #[derive(Debug)]
-pub enum ToOtherBehaviour {
-    NotifyPeerManager(peer_manager::FromOtherBehaviour),
+pub enum ToOtherBehaviourEvent {
+    RequestPeerAssignment { outbound_session_id: OutboundSessionId },
 }
 
 #[derive(Debug)]
 pub enum Event {
     External(ExternalEvent),
-    ToOtherBehaviour(ToOtherBehaviour),
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
-pub enum FromOtherBehaviour {
-    SessionAssigned {
-        outbound_session_id: OutboundSessionId,
-        peer_id: PeerId,
-        connection_id: ConnectionId,
-    },
+    ToOtherBehaviourEvent(ToOtherBehaviourEvent),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -188,10 +178,8 @@ impl Behaviour {
         self.outbound_sessions_pending_peer_assignment
             .insert(outbound_session_id, (query, protocol_name));
         info!("Requesting peer assignment for outbound session: {:?}.", outbound_session_id);
-        self.add_event_to_queue(ToSwarm::GenerateEvent(Event::ToOtherBehaviour(
-            ToOtherBehaviour::NotifyPeerManager(
-                peer_manager::FromOtherBehaviour::RequestPeerAssignment { outbound_session_id },
-            ),
+        self.add_event_to_queue(ToSwarm::GenerateEvent(Event::ToOtherBehaviourEvent(
+            ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
         )));
 
         outbound_session_id
@@ -375,36 +363,39 @@ impl NetworkBehaviour for Behaviour {
 }
 
 impl BridgedBehaviour for Behaviour {
-    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        let mixed_behaviour::InternalEvent::NotifyStreamedBytes(event) = event else {
+    fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
+        let mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+            peer_manager::ToOtherBehaviourEvent::SessionAssigned {
+                outbound_session_id,
+                peer_id,
+                connection_id,
+            },
+        ) = event
+        else {
             return;
         };
-        match event {
-            FromOtherBehaviour::SessionAssigned { outbound_session_id, peer_id, connection_id } => {
-                self.session_id_to_peer_id_and_connection_id
-                    .insert(outbound_session_id.into(), (peer_id, connection_id));
+        self.session_id_to_peer_id_and_connection_id
+            .insert((*outbound_session_id).into(), (*peer_id, *connection_id));
 
-                let Some((query, protocol_name)) =
-                    self.outbound_sessions_pending_peer_assignment.remove(&outbound_session_id)
-                else {
-                    error!(
-                        "Outbound session assigned peer but it isn't in \
-                         outbound_sessions_pending_peer_assignment. Not running query."
-                    );
-                    return;
-                };
+        let Some((query, protocol_name)) =
+            self.outbound_sessions_pending_peer_assignment.remove(outbound_session_id)
+        else {
+            error!(
+                "Outbound session assigned peer but it isn't in \
+                 outbound_sessions_pending_peer_assignment. Not running query."
+            );
+            return;
+        };
 
-                self.add_event_to_queue(ToSwarm::NotifyHandler {
-                    peer_id,
-                    handler: NotifyHandler::One(connection_id),
-                    event: RequestFromBehaviourEvent::CreateOutboundSession {
-                        query,
-                        outbound_session_id,
-                        protocol_name,
-                    },
-                });
-            }
-        }
+        self.add_event_to_queue(ToSwarm::NotifyHandler {
+            peer_id: *peer_id,
+            handler: NotifyHandler::One(*connection_id),
+            event: RequestFromBehaviourEvent::CreateOutboundSession {
+                query,
+                outbound_session_id: *outbound_session_id,
+                protocol_name,
+            },
+        });
     }
 }
 
@@ -414,9 +405,9 @@ impl From<Event> for mixed_behaviour::Event {
             Event::External(external_event) => {
                 Self::ExternalEvent(mixed_behaviour::ExternalEvent::StreamedBytes(external_event))
             }
-            Event::ToOtherBehaviour(ToOtherBehaviour::NotifyPeerManager(event)) => {
-                Self::InternalEvent(mixed_behaviour::InternalEvent::NotifyPeerManager(event))
-            }
+            Event::ToOtherBehaviourEvent(event) => Self::ToOtherBehaviourEvent(
+                mixed_behaviour::ToOtherBehaviourEvent::StreamedBytes(event),
+            ),
         }
     }
 }

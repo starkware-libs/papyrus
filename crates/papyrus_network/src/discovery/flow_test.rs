@@ -85,21 +85,17 @@ async fn all_nodes_have_same_bootstrap_peer() {
             _ => continue,
         };
 
-        let mixed_behaviour::Event::InternalEvent(event) = mixed_event else {
+        let mixed_behaviour::Event::ToOtherBehaviourEvent(event) = mixed_event else {
+            continue;
+        };
+        if let mixed_behaviour::ToOtherBehaviourEvent::NoOp = event {
             continue;
         };
         let behaviour_ref = swarms_stream.get_mut(&peer_id).unwrap().behaviour_mut();
-        match event {
-            mixed_behaviour::InternalEvent::NoOp => {}
-            mixed_behaviour::InternalEvent::NotifyKad(_) => {
-                behaviour_ref.kademlia.on_other_behaviour_event(event)
-            }
-            mixed_behaviour::InternalEvent::NotifyDiscovery(_) => {
-                if let Some(discovery) = behaviour_ref.discovery.as_mut() {
-                    discovery.on_other_behaviour_event(event);
-                }
-            }
-            _ => {}
+        behaviour_ref.identify.on_other_behaviour_event(&event);
+        behaviour_ref.kademlia.on_other_behaviour_event(&event);
+        if let Some(discovery) = behaviour_ref.discovery.as_mut() {
+            discovery.on_other_behaviour_event(&event);
         }
     }
 }
