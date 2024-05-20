@@ -14,10 +14,12 @@ use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
+use streamed_bytes::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
+use crate::broadcast::Topic;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::mixed_behaviour::{self, BridgedBehaviour};
@@ -39,6 +41,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     header_buffer_size: usize,
     query_results_router: StreamCollection,
     sync_subscriber_channels: Option<SubscriberChannels>,
+    broadcast_subscriber_channels: HashMap<Topic, BroadcastNetworkChannels>,
     query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     // Fields for metrics
@@ -72,6 +75,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             header_buffer_size,
             query_results_router: StreamCollection::new(),
             sync_subscriber_channels: None,
+            broadcast_subscriber_channels: HashMap::new(),
             query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
             num_active_inbound_sessions: 0,
@@ -88,6 +92,30 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         let response_receiver = ResponseReceivers::new(router.get_recievers());
         self.sync_subscriber_channels = Some((query_receiver, router));
         (sender, response_receiver)
+    }
+
+    /// Register a new subscriber for broadcasting and receiving broadcasts for a given topic.
+    /// Panics if this topic is already subscribed.
+    pub fn register_broadcast_subscriber(
+        &mut self,
+        topic: Topic,
+        buffer_size: usize,
+    ) -> BroadcastSubscriberChannels {
+        let (messages_to_broadcast_sender, messages_to_broadcast_receiver) =
+            futures::channel::mpsc::channel(buffer_size);
+        let (broadcasted_messages_sender, broadcasted_messages_receiver) =
+            futures::channel::mpsc::channel(buffer_size);
+        let insert_result = self.broadcast_subscriber_channels.insert(
+            topic.clone(),
+            BroadcastNetworkChannels {
+                messages_to_broadcast_receiver,
+                broadcasted_messages_sender,
+            },
+        );
+        if insert_result.is_some() {
+            panic!("Topic '{}' has already been registered.", topic);
+        }
+        BroadcastSubscriberChannels { messages_to_broadcast_sender, broadcasted_messages_receiver }
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
@@ -396,4 +424,20 @@ impl NetworkManager {
     pub fn get_own_peer_id(&self) -> String {
         self.swarm.local_peer_id().to_string()
     }
+}
+
+// TODO(shahak): Change to a wrapper of PeerId if Box dyn becomes an overhead.
+pub type ReportCallback = Box<dyn Fn() + Send>;
+
+// TODO(shahak): Make this generic in a type that implements TryFrom<Bytes> and Into<Bytes>.
+pub struct BroadcastSubscriberChannels {
+    pub messages_to_broadcast_sender: Sender<Bytes>,
+    pub broadcasted_messages_receiver: Receiver<(Bytes, ReportCallback)>,
+}
+
+struct BroadcastNetworkChannels {
+    #[allow(dead_code)]
+    messages_to_broadcast_receiver: Receiver<Bytes>,
+    #[allow(dead_code)]
+    broadcasted_messages_sender: Sender<(Bytes, ReportCallback)>,
 }
