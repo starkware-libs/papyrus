@@ -8,13 +8,9 @@ use starknet_api::transaction::{
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     Fee,
-    InvokeTransactionV0,
-    InvokeTransactionV1,
-    PaymasterData,
     Resource,
     ResourceBounds,
     ResourceBoundsMapping,
-    Tip,
     TransactionSignature,
 };
 
