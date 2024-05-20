@@ -1,5 +1,5 @@
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::data_availability::L1DataAvailabilityMode;
+use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
@@ -157,13 +157,6 @@ impl TestInstance for protobuf::Address {
 #[cfg(test)]
 impl TestInstance for protobuf::Patricia {
     fn test_instance() -> Self {
-        Self { height: PATRICIA_HEIGHT, root: Some(protobuf::Hash::test_instance()) }
-    }
-}
-
-#[cfg(test)]
-impl TestInstance for protobuf::Merkle {
-    fn test_instance() -> Self {
         Self { n_leaves: 0, root: Some(protobuf::Hash::test_instance()) }
     }
 }
@@ -182,6 +175,27 @@ impl TestInstance for protobuf::ConsensusSignature {
             r: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
             s: Some(protobuf::Felt252 { elements: [1].repeat(32).to_vec() }),
         }
+    }
+}
+
+#[allow(dead_code)]
+pub(super) fn enum_int_to_volition_domain(
+    value: i32,
+) -> Result<DataAvailabilityMode, ProtobufConversionError> {
+    match value {
+        0 => Ok(DataAvailabilityMode::L1),
+        1 => Ok(DataAvailabilityMode::L2),
+        _ => Err(ProtobufConversionError::OutOfRangeValue {
+            type_description: "VolitionDomain",
+            value_as_str: format!("{value}"),
+        }),
+    }
+}
+
+pub(super) fn volition_domain_to_enum_int(value: DataAvailabilityMode) -> i32 {
+    match value {
+        DataAvailabilityMode::L1 => 0,
+        DataAvailabilityMode::L2 => 1,
     }
 }
 

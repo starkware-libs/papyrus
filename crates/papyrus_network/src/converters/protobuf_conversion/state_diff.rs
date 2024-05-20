@@ -1,8 +1,10 @@
 use indexmap::IndexMap;
 use starknet_api::core::{ClassHash, CompiledClassHash, Nonce};
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
+use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf;
 use crate::{InternalQuery, Query};
@@ -132,7 +134,7 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
 // A wrapper struct for Vec<StateDiffsResponse> so that we can implement traits for it.
 pub struct StateDiffsResponseVec(pub Vec<protobuf::StateDiffsResponse>);
 
-const DOMAIN: u32 = 0;
+const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
 impl From<ThinStateDiff> for StateDiffsResponseVec {
     fn from(value: ThinStateDiff) -> Self {
@@ -147,7 +149,7 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
                         protobuf::ContractDiff {
                             address: Some(contract_address.into()),
                             class_hash: Some(class_hash.0.into()),
-                            domain: DOMAIN,
+                            domain: volition_domain_to_enum_int(DOMAIN),
                             ..Default::default()
                         },
                     ),
@@ -170,7 +172,7 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
                                     value: Some(value.into()),
                                 })
                                 .collect(),
-                            domain: DOMAIN,
+                            domain: volition_domain_to_enum_int(DOMAIN),
                             ..Default::default()
                         },
                     ),
@@ -184,7 +186,7 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
                         protobuf::ContractDiff {
                             address: Some(contract_address.into()),
                             nonce: Some(nonce.0.into()),
-                            domain: DOMAIN,
+                            domain: volition_domain_to_enum_int(DOMAIN),
                             ..Default::default()
                         },
                     ),
