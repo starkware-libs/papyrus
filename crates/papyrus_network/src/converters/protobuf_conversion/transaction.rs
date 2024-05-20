@@ -3,6 +3,7 @@ use std::convert::{TryFrom, TryInto};
 use starknet_api::core::{ClassHash, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
+    AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeployAccountTransactionV1,
@@ -10,6 +11,7 @@ use starknet_api::transaction::{
     Fee,
     InvokeTransactionV0,
     InvokeTransactionV1,
+    InvokeTransactionV3,
     PaymasterData,
     Resource,
     ResourceBounds,
@@ -463,5 +465,84 @@ impl From<InvokeTransactionV1> for protobuf::transaction::InvokeV1 {
             nonce: Some(value.nonce.0.into()),
             calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::InvokeV3> for InvokeTransactionV3 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::InvokeV3) -> Result<Self, Self::Error> {
+        let resource_bounds = ResourceBoundsMapping::try_from(value.resource_bounds.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "InvokeV3::resource_bounds",
+            },
+        )?)?;
+
+        let tip = Tip(value.tip);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "InvokeV3::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "InvokeV3::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let sender_address = value
+            .sender
+            .ok_or(ProtobufConversionError::MissingField { field_description: "InvokeV3::sender" })?
+            .try_into()?;
+
+        let calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let calldata = Calldata(calldata.into());
+
+        let nonce_data_availability_mode =
+            enum_int_to_volition_domain(value.nonce_data_availability_mode)?;
+
+        let fee_data_availability_mode =
+            enum_int_to_volition_domain(value.fee_data_availability_mode)?;
+
+        let paymaster_data = PaymasterData(
+            value
+                .paymaster_data
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let account_deployment_data = AccountDeploymentData(
+            value
+                .account_deployment_data
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        Ok(Self {
+            resource_bounds,
+            tip,
+            signature,
+            nonce,
+            sender_address,
+            calldata,
+            nonce_data_availability_mode,
+            fee_data_availability_mode,
+            paymaster_data,
+            account_deployment_data,
+        })
     }
 }
