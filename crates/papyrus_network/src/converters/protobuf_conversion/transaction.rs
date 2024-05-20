@@ -187,3 +187,32 @@ impl TryFrom<protobuf::ResourceBounds> for ResourceBoundsMapping {
         Ok(resource_bounds)
     }
 }
+
+impl From<ResourceBoundsMapping> for protobuf::ResourceBounds {
+    fn from(value: ResourceBoundsMapping) -> Self {
+        let mut res = protobuf::ResourceBounds::default();
+        for (resource, resource_bounds) in value.0 {
+            match resource {
+                Resource::L1Gas => {
+                    let resource_limits = protobuf::ResourceLimits {
+                        max_amount: Some(StarkFelt::from(resource_bounds.max_amount).into()),
+                        max_price_per_unit: Some(
+                            StarkFelt::from(resource_bounds.max_price_per_unit).into(),
+                        ),
+                    };
+                    res.l1_gas = Some(resource_limits);
+                }
+                Resource::L2Gas => {
+                    let resource_limits = protobuf::ResourceLimits {
+                        max_amount: Some(StarkFelt::from(resource_bounds.max_amount).into()),
+                        max_price_per_unit: Some(
+                            StarkFelt::from(resource_bounds.max_price_per_unit).into(),
+                        ),
+                    };
+                    res.l2_gas = Some(resource_limits);
+                }
+            }
+        }
+        res
+    }
+}
