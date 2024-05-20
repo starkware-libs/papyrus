@@ -175,9 +175,9 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 state_diff_length,
                 transaction_commitment,
                 event_commitment,
-                // TODO(shahak): fill this.
                 n_transactions,
                 n_events,
+                // TODO(shahak): fill this.
                 receipt_commitment: None,
                 starknet_version,
             },
@@ -202,6 +202,8 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
             state_diff_commitment: Some(protobuf::StateDiffCommitment {
                 state_diff_length: header
                     .state_diff_length
+                    // If state_diff_length is None, then state_diff_commitment is also None and the
+                    // other peer will know that this node doesn't know about the state diff.
                     .unwrap_or(0)
                     .try_into()
                     .expect("Converting usize to u64 failed"),
