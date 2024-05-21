@@ -388,3 +388,17 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
         Ok(Self { max_fee, signature, contract_address, entry_point_selector, calldata })
     }
 }
+
+impl From<InvokeTransactionV0> for protobuf::transaction::InvokeV0 {
+    fn from(value: InvokeTransactionV0) -> Self {
+        Self {
+            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
+            }),
+            address: Some(value.contract_address.into()),
+            entry_point_selector: Some(value.entry_point_selector.0.into()),
+            calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
+        }
+    }
+}
