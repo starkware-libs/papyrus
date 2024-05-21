@@ -69,6 +69,51 @@ impl From<Number> for Bytes {
 }
 
 #[tokio::test]
+async fn foo() {
+    use libp2p::gossipsub;
+    let mut swarm1 = Swarm::<gossipsub::Behaviour>::new_ephemeral(|keypair| {
+        gossipsub::Behaviour::new(
+            gossipsub::MessageAuthenticity::Signed(keypair),
+            gossipsub::Config::default(),
+        )
+        .unwrap()
+    });
+    let mut swarm2 = Swarm::<gossipsub::Behaviour>::new_ephemeral(|keypair| {
+        gossipsub::Behaviour::new(
+            gossipsub::MessageAuthenticity::Signed(keypair),
+            gossipsub::Config::default(),
+        )
+        .unwrap()
+    });
+    swarm1.listen().with_memory_addr_external().await;
+    swarm2.listen().with_memory_addr_external().await;
+    swarm1.connect(&mut swarm2).await;
+
+    let topic = Topic::new("TOPIC");
+    swarm2.behaviour_mut().subscribe(&topic).unwrap();
+
+    let peer_id1 = *swarm1.local_peer_id();
+    let mut swarms_stream = crate::utils::StreamHashMap::new(
+        [(*swarm1.local_peer_id(), swarm1), (*swarm2.local_peer_id(), swarm2)]
+            .into_iter()
+            .collect(),
+    );
+    let event = swarms_stream.next().await.unwrap();
+    println!("SUBSCRIPTION: {event:?}");
+
+    swarms_stream
+        .get_mut(&peer_id1)
+        .unwrap()
+        .behaviour_mut()
+        .publish(topic.hash(), vec![1u8])
+        .unwrap();
+
+    while let Some(event) = swarms_stream.next().await {
+        println!("{event:?}");
+    }
+}
+
+#[tokio::test]
 async fn broadcast_subscriber_end_to_end_test() {
     let topic1 = Topic::new("TOPIC1");
     let topic2 = Topic::new("TOPIC2");
