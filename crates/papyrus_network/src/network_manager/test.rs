@@ -35,12 +35,23 @@ use crate::db_executor::{
 use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{mixed_behaviour, BlockHashOrNumber, DataType, Direction, InternalQuery, Query};
+use crate::{
+    broadcast,
+    mixed_behaviour,
+    BlockHashOrNumber,
+    DataType,
+    Direction,
+    InternalQuery,
+    Query,
+};
+
+const TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Default)]
 struct MockSwarm {
     pub pending_events: Queue<Event>,
     pub sent_queries: Vec<(InternalQuery, PeerId)>,
+    broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -77,6 +88,12 @@ impl MockSwarm {
             panic!("Called get_data_sent_to_inbound_session on {inbound_session_id:?} twice");
         }
         data_receiver.collect()
+    }
+
+    pub fn stream_messages_we_broadcasted(&mut self) -> impl Stream<Item = (Bytes, Topic)> {
+        let (sender, receiver) = unbounded();
+        self.broadcasted_messages_senders.push(sender);
+        receiver
     }
 
     fn create_received_data_events_for_query(
@@ -178,9 +195,10 @@ impl SwarmTrait for MockSwarm {
 
     fn add_external_address(&mut self, _address: Multiaddr) {}
 
-    fn broadcast_message(&mut self, _message: Bytes, _topic: Topic) {
-        // TODO(shahak): Test broadcast flow and received broadcast message flow.
-        unimplemented!()
+    fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
+        for sender in &self.broadcasted_messages_senders {
+            sender.unbounded_send((message.clone(), topic.clone())).unwrap();
+        }
     }
 }
 
@@ -230,7 +248,7 @@ impl DBExecutorTrait for MockDBExecutor {
     }
 }
 
-const HEADER_BUFFER_SIZE: usize = 100;
+const BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
 async fn register_subscriber_and_use_channels() {
@@ -242,11 +260,8 @@ async fn register_subscriber_and_use_channels() {
     mock_swarm.first_polled_event_notifier = Some(event_notifier);
 
     // network manager to register subscriber and send query
-    let mut network_manager = GenericNetworkManager::generic_new(
-        mock_swarm,
-        MockDBExecutor::default(),
-        HEADER_BUFFER_SIZE,
-    );
+    let mut network_manager =
+        GenericNetworkManager::generic_new(mock_swarm, MockDBExecutor::default(), BUFFER_SIZE);
     // define query
     let query_limit = 5;
     let start_block_number = 0;
@@ -334,7 +349,7 @@ async fn process_incoming_query() {
     let get_data_fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
 
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
 
     select! {
         inbound_session_data = get_data_fut => {
@@ -406,12 +421,75 @@ async fn close_inbound_session() {
 
     // Create network manager and run it
     let network_manager =
-        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, HEADER_BUFFER_SIZE);
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = inbound_session_closed_receiver => {}
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
+        }
+    }
+}
+
+#[tokio::test]
+async fn broadcast_message() {
+    let topic = "TOPIC".to_owned();
+    let message = vec![1u8, 2u8, 3u8];
+
+    let mut mock_swarm = MockSwarm::default();
+    let mut messages_we_broadcasted_stream = mock_swarm.stream_messages_we_broadcasted();
+
+    let mock_db_executor = MockDBExecutor::default();
+    let mut network_manager =
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
+
+    let mut messages_to_broadcast_sender = network_manager
+        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .messages_to_broadcast_sender;
+    messages_to_broadcast_sender.try_send(message.clone()).unwrap();
+
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        result = tokio::time::timeout(
+            TIMEOUT, messages_we_broadcasted_stream.next()
+        ) => {
+            let (actual_message, actual_topic) = result.unwrap().unwrap();
+            assert_eq!(message, actual_message);
+            assert_eq!(topic, actual_topic);
+        }
+    }
+}
+
+#[tokio::test]
+async fn receive_broadcasted_message() {
+    let topic = "TOPIC".to_owned();
+    let message = vec![1u8, 2u8, 3u8];
+
+    let mock_swarm = MockSwarm::default();
+    mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
+        mixed_behaviour::ExternalEvent::Broadcast(broadcast::ExternalEvent::Received {
+            originated_peer_id: PeerId::random(),
+            message: message.clone(),
+            topic: topic.clone(),
+        }),
+    )));
+
+    let mock_db_executor = MockDBExecutor::default();
+    let mut network_manager =
+        GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
+
+    let mut broadcasted_messages_receiver = network_manager
+        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .broadcasted_messages_receiver;
+
+    tokio::select! {
+        _ = network_manager.run() => panic!("network manager ended"),
+        result = tokio::time::timeout(
+            TIMEOUT, broadcasted_messages_receiver.next()
+        ) => {
+            let (actual_message, _report_callback) = result.unwrap().unwrap();
+            assert_eq!(message, actual_message);
+            // TODO(shahak): Call the report callback once it's implemented.
         }
     }
 }
