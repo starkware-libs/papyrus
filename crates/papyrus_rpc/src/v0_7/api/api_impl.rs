@@ -1561,22 +1561,12 @@ fn get_non_pending_receipt<Mode: TransactionKind>(
     let block_hash =
         get_block_header_by_number(txn, block_number).map_err(internal_server_error)?.block_hash;
 
-    let thin_tx_output = txn
+    let output = txn
         .get_transaction_output(transaction_index)
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-    let events = txn
-        .get_transaction_events(transaction_index)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-    let output = TransactionOutput::from_thin_transaction_output(
-        thin_tx_output,
-        tx_version,
-        events,
-        msg_hash,
-    );
+    let output = TransactionOutput::from((output, tx_version, msg_hash));
 
     Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
         finality_status: status.into(),
