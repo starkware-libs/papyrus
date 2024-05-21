@@ -452,3 +452,17 @@ impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
         Ok(Self { max_fee, signature, nonce, sender_address, calldata })
     }
 }
+
+impl From<InvokeTransactionV1> for protobuf::transaction::InvokeV1 {
+    fn from(value: InvokeTransactionV1) -> Self {
+        Self {
+            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
+            }),
+            sender: Some(value.sender_address.into()),
+            nonce: Some(value.nonce.0.into()),
+            calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
+        }
+    }
+}
