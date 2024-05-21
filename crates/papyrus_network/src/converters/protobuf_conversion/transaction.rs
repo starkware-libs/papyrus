@@ -642,3 +642,58 @@ impl From<DeclareTransactionV0V1> for protobuf::transaction::DeclareV0 {
         }
     }
 }
+
+impl TryFrom<protobuf::transaction::DeclareV1> for DeclareTransactionV0V1 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::DeclareV1) -> Result<Self, Self::Error> {
+        let max_fee_felt =
+            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV1::max_fee",
+            })?)?;
+        let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{max_fee_felt:?}"),
+            }
+        })?);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV1::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV1::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV1::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let sender_address = value
+            .sender
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV1::sender",
+            })?
+            .try_into()?;
+
+        Ok(Self { max_fee, signature, nonce, class_hash, sender_address })
+    }
+}
