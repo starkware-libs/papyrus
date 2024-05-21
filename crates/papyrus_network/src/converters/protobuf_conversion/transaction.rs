@@ -6,6 +6,7 @@ use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
+    DeclareTransactionV0V1,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     Fee,
@@ -578,5 +579,54 @@ impl From<InvokeTransactionV3> for protobuf::transaction::InvokeV3 {
                 .map(|account_deployment_data| (*account_deployment_data).into())
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::DeclareV0> for DeclareTransactionV0V1 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::DeclareV0) -> Result<Self, Self::Error> {
+        let max_fee_felt =
+            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV0::max_fee",
+            })?)?;
+        let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{max_fee_felt:?}"),
+            }
+        })?);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV0::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        // V0 transactions don't have a nonce, but the StarkNet API adds one to them
+        let nonce = Nonce::default();
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV0::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let sender_address = value
+            .sender
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV0::sender",
+            })?
+            .try_into()?;
+
+        Ok(Self { max_fee, signature, nonce, class_hash, sender_address })
     }
 }
