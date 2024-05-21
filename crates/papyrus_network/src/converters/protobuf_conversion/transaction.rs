@@ -776,3 +776,18 @@ impl TryFrom<protobuf::transaction::DeclareV2> for DeclareTransactionV2 {
         Ok(Self { max_fee, signature, nonce, class_hash, compiled_class_hash, sender_address })
     }
 }
+
+impl From<DeclareTransactionV2> for protobuf::transaction::DeclareV2 {
+    fn from(value: DeclareTransactionV2) -> Self {
+        Self {
+            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
+            }),
+            nonce: Some(value.nonce.0.into()),
+            class_hash: Some(value.class_hash.0.into()),
+            compiled_class_hash: Some(value.compiled_class_hash.0.into()),
+            sender: Some(value.sender_address.into()),
+        }
+    }
+}
