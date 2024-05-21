@@ -888,3 +888,37 @@ impl TryFrom<protobuf::transaction::DeclareV3> for DeclareTransactionV3 {
         })
     }
 }
+
+impl From<DeclareTransactionV3> for protobuf::transaction::DeclareV3 {
+    fn from(value: DeclareTransactionV3) -> Self {
+        Self {
+            resource_bounds: Some(protobuf::ResourceBounds::from(value.resource_bounds)),
+            tip: value.tip.0,
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
+            }),
+            nonce: Some(value.nonce.0.into()),
+            class_hash: Some(value.class_hash.0.into()),
+            compiled_class_hash: Some(value.compiled_class_hash.0.into()),
+            sender: Some(value.sender_address.into()),
+            nonce_data_availability_mode: volition_domain_to_enum_int(
+                value.nonce_data_availability_mode,
+            ),
+            fee_data_availability_mode: volition_domain_to_enum_int(
+                value.fee_data_availability_mode,
+            ),
+            paymaster_data: value
+                .paymaster_data
+                .0
+                .iter()
+                .map(|paymaster_data| (*paymaster_data).into())
+                .collect(),
+            account_deployment_data: value
+                .account_deployment_data
+                .0
+                .iter()
+                .map(|account_deployment_data| (*account_deployment_data).into())
+                .collect(),
+        }
+    }
+}
