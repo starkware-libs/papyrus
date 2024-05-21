@@ -1,12 +1,13 @@
 use std::convert::{TryFrom, TryInto};
 
-use starknet_api::core::{ClassHash, EntryPointSelector, Nonce};
+use starknet_api::core::{ClassHash, CompiledClassHash, EntryPointSelector, Nonce};
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
     DeclareTransactionV0V1,
+    DeclareTransactionV2,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     Fee,
@@ -709,5 +710,69 @@ impl From<DeclareTransactionV0V1> for protobuf::transaction::DeclareV1 {
             class_hash: Some(value.class_hash.0.into()),
             sender: Some(value.sender_address.into()),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::DeclareV2> for DeclareTransactionV2 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::DeclareV2) -> Result<Self, Self::Error> {
+        let max_fee_felt =
+            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV2::max_fee",
+            })?)?;
+        let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{max_fee_felt:?}"),
+            }
+        })?);
+
+        let signature = TransactionSignature(
+            value
+                .signature
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV2::signature",
+                })?
+                .parts
+                .into_iter()
+                .map(StarkFelt::try_from)
+                .collect::<Result<Vec<_>, _>>()?,
+        );
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV2::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV2::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let compiled_class_hash = CompiledClassHash(
+            value
+                .compiled_class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "DeclareV2::compiled_class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let sender_address = value
+            .sender
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeclareV2::sender",
+            })?
+            .try_into()?;
+
+        Ok(Self { max_fee, signature, nonce, class_hash, compiled_class_hash, sender_address })
     }
 }
