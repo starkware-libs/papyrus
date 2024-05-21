@@ -122,15 +122,7 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 
-use crate::body::events::{
-    EventIndex,
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
-    ThinTransactionOutput,
-};
+use crate::body::events::EventIndex;
 use crate::body::TransactionIndex;
 use crate::compression_utils::{
     compress,
@@ -423,54 +415,10 @@ auto_storage_serde! {
     pub struct StarknetVersion(pub String);
     pub struct StateDiffCommitment(pub PoseidonHash);
     pub struct Tip(pub u64);
-    pub struct ThinDeclareTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinDeployTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinDeployAccountTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
     pub struct TransactionCommitment(pub StarkHash);
     pub struct TypedParameter {
         pub name: String,
         pub r#type: String,
-    }
-    pub struct ThinInvokeTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinL1HandlerTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub enum ThinTransactionOutput {
-        Declare(ThinDeclareTransactionOutput) = 0,
-        Deploy(ThinDeployTransactionOutput) = 1,
-        DeployAccount(ThinDeployAccountTransactionOutput) = 2,
-        Invoke(ThinInvokeTransactionOutput) = 3,
-        L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     pub enum Transaction {
         Declare(DeclareTransaction) = 0,

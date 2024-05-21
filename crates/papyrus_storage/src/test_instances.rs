@@ -1,6 +1,5 @@
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPricePerToken};
 use starknet_api::core::{
-    ContractAddress,
     EventCommitment,
     GlobalRoot,
     ReceiptCommitment,
@@ -9,24 +8,9 @@ use starknet_api::core::{
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::transaction::{
-    EventIndexInTransactionOutput,
-    ExecutionResources,
-    Fee,
-    MessageToL1,
-    TransactionExecutionStatus,
-    TransactionOffsetInBlock,
-};
+use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
-use crate::body::events::{
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
-    ThinTransactionOutput,
-};
 use crate::body::TransactionIndex;
 use crate::compression_utils::IsCompressed;
 use crate::header::StorageBlockHeader;
@@ -78,50 +62,6 @@ auto_impl_get_test_instance! {
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
-    }
-    pub struct ThinDeclareTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinDeployTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinDeployAccountTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinInvokeTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct ThinL1HandlerTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events_contract_addresses: Vec<ContractAddress>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub enum ThinTransactionOutput {
-        Declare(ThinDeclareTransactionOutput) = 0,
-        Deploy(ThinDeployTransactionOutput) = 1,
-        DeployAccount(ThinDeployAccountTransactionOutput) = 2,
-        Invoke(ThinInvokeTransactionOutput) = 3,
-        L1Handler(ThinL1HandlerTransactionOutput) = 4,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct Version{
