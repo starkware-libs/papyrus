@@ -547,3 +547,36 @@ impl TryFrom<protobuf::transaction::InvokeV3> for InvokeTransactionV3 {
         })
     }
 }
+
+impl From<InvokeTransactionV3> for protobuf::transaction::InvokeV3 {
+    fn from(value: InvokeTransactionV3) -> Self {
+        Self {
+            resource_bounds: Some(protobuf::ResourceBounds::from(value.resource_bounds)),
+            tip: value.tip.0,
+            signature: Some(protobuf::AccountSignature {
+                parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
+            }),
+            nonce: Some(value.nonce.0.into()),
+            sender: Some(value.sender_address.into()),
+            calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
+            nonce_data_availability_mode: volition_domain_to_enum_int(
+                value.nonce_data_availability_mode,
+            ),
+            fee_data_availability_mode: volition_domain_to_enum_int(
+                value.fee_data_availability_mode,
+            ),
+            paymaster_data: value
+                .paymaster_data
+                .0
+                .iter()
+                .map(|paymaster_data| (*paymaster_data).into())
+                .collect(),
+            account_deployment_data: value
+                .account_deployment_data
+                .0
+                .iter()
+                .map(|account_deployment_data| (*account_deployment_data).into())
+                .collect(),
+        }
+    }
+}
