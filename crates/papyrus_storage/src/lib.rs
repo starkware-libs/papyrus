@@ -114,7 +114,7 @@ use db::serialization::{
     VersionWrapper,
     VersionZeroWrapper,
 };
-use db::table_types::{Table, ValuePlaceHolder};
+use db::table_types::{NoValue, Table};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -527,7 +527,7 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<NoValue>, SimpleTable>,
         headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,

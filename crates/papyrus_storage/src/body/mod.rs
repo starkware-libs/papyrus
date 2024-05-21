@@ -59,7 +59,7 @@ use tracing::debug;
 
 use crate::body::events::EventIndex;
 use crate::db::serialization::{NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
-use crate::db::table_types::{DbCursorTrait, SimpleTable, Table, ValuePlaceHolder};
+use crate::db::table_types::{DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::mmap_file::LocationInFile;
 use crate::{
@@ -82,7 +82,7 @@ type TransactionIdxToHashTable<'env> =
     TableHandle<'env, TransactionIndex, NoVersionValueWrapper<TransactionHash>, SimpleTable>;
 type EventsTableKey = (ContractAddress, EventIndex);
 type EventsTable<'env> =
-    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>;
+    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -503,7 +503,7 @@ fn write_events<'env>(
 ) -> StorageResult<()> {
     for (index, event) in tx_output.events().iter().enumerate() {
         let event_index = EventIndex(transaction_index, EventIndexInTransactionOutput(index));
-        events_table.insert(txn, &(event.from_address, event_index), &ValuePlaceHolder)?;
+        events_table.insert(txn, &(event.from_address, event_index), &NoValue)?;
     }
     Ok(())
 }

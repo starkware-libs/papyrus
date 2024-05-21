@@ -140,7 +140,7 @@ use crate::compression_utils::{
     IsCompressed,
 };
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
-use crate::db::table_types::ValuePlaceHolder;
+use crate::db::table_types::NoValue;
 use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 #[cfg(test)]
@@ -962,7 +962,7 @@ impl StorageSerde for BigUint {
     }
 }
 
-impl StorageSerde for ValuePlaceHolder {
+impl StorageSerde for NoValue {
     fn serialize_into(&self, _res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
         Ok(())
     }

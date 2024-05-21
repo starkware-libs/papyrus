@@ -65,7 +65,7 @@ use starknet_api::transaction::{
 use super::TransactionOutputsTable;
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursor, DbCursorTrait, SimpleTable, Table, ValuePlaceHolder};
+use crate::db::table_types::{DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
 use crate::mmap_file::LocationInFile;
 use crate::{FileHandlers, StorageResult, StorageTxn};
@@ -142,8 +142,11 @@ impl Iterator for EventIter<'_, '_> {
 pub struct EventIterByContractAddress<'env, 'txn> {
     txn: &'txn DbTransaction<'env, RO>,
     file_handles: &'txn FileHandlers<RO>,
-    current: Option<EventsTableKeyValue>,
-    tx_current: Option<(TransactionIndex, TransactionOutput)>,
+    // This value is the next event to return. If it is None there are no more events.
+    current: Option<EventsTableKey>,
+    // The current transaction output. This is None only at the beginning of the iteration and
+    // filled with the first transaction output.
+    current_tx: Option<(TransactionIndex, TransactionOutput)>,
     cursor: EventsTableCursor<'txn>,
     transaction_outputs_table: TransactionOutputsTable<'env>,
 }
@@ -154,27 +157,28 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
-        let res = self.current.take();
-        let Some(((contract_address, EventIndex(tx_index, event_offset)), _)) = res else {
+        // let res = self.current.take();
+        let Some((contract_address, EventIndex(tx_index, event_offset))) = self.current.take()
+        else {
             return Ok(None);
         };
-        if self.tx_current.is_none()
+        if self.current_tx.is_none()
             || tx_index
-                != self.tx_current.as_ref().expect("The None case was checked previously.").0
+                != self.current_tx.as_ref().expect("The None case was checked previously.").0
         {
             let Some(location) = self.transaction_outputs_table.get(self.txn, &tx_index)? else {
                 return Ok(None);
             };
-            self.tx_current =
+            self.current_tx =
                 Some((tx_index, self.file_handles.get_transaction_output_unchecked(location)?));
         }
 
-        self.current = self.cursor.next()?;
+        self.current = self.cursor.next()?.map(|(key, _)| key);
 
         let key = (contract_address, EventIndex(tx_index, event_offset));
         // TODO(dvir): don't clone here the event content.
         let content = self
-            .tx_current
+            .current_tx
             .as_ref()
             .expect(
                 "The current transaction was initialized with Some previously in this function.",
@@ -271,12 +275,12 @@ where
         let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
-        let current = cursor.lower_bound(&key)?;
+        let current = cursor.lower_bound(&key)?.map(|(key, _)| key);
         Ok(EventIterByContractAddress {
             txn: &self.txn,
             file_handles: &self.file_handlers,
             current,
-            tx_current: None,
+            current_tx: None,
             cursor,
             transaction_outputs_table,
         })
@@ -517,11 +521,9 @@ impl From<TransactionOutput> for ThinTransactionOutput {
     }
 }
 
-/// A key-value pair of the events table.
-type EventsTableKeyValue = (EventsTableKey, ValuePlaceHolder);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> =
-    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<ValuePlaceHolder>, SimpleTable>;
+    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
 /// A cursor of the transaction outputs table.
 type TransactionOutputsTableCursor<'txn> =
     DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>;
