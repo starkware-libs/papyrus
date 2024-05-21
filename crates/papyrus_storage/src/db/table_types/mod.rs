@@ -90,4 +90,4 @@ pub(crate) trait TableType {}
 
 // A value place holder for tables where we don't need a value.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
-pub(crate) struct ValuePlaceHolder;
+pub(crate) struct NoValue;
