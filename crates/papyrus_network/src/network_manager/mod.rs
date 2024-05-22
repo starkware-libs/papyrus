@@ -90,7 +90,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    pub fn register_subscriber(
+    pub fn register_sqmr_subscriber(
         &mut self,
         protocols: Vec<Protocol>,
     ) -> (Sender<Query>, ResponseReceivers) {
