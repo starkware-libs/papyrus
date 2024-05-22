@@ -44,6 +44,21 @@ fn try_from_starkfelt_to_u128(felt: StarkFelt) -> Result<u128, &'static str> {
 
     Ok(u128::from_be_bytes(bytes))
 }
+// TODO: use the conversion in Starknet api once its upgraded
+fn try_from_starkfelt_to_u32(felt: StarkFelt) -> Result<u32, &'static str> {
+    const COMPLIMENT_OF_U32: usize = 28; // 32 - 4
+    let (rest, u32_bytes) = felt.bytes().split_at(COMPLIMENT_OF_U32);
+    if rest != [0u8; COMPLIMENT_OF_U32] {
+        return Err("Value out of range");
+    }
+
+    let bytes: [u8; 4] = match u32_bytes.try_into() {
+        Ok(b) => b,
+        Err(_) => return Err("Failed to convert bytes to u32"),
+    };
+
+    Ok(u32::from_be_bytes(bytes))
+}
 
 impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactionV1 {
     type Error = ProtobufConversionError;
@@ -954,5 +969,21 @@ impl TryFrom<protobuf::transaction::Deploy> for DeployTransaction {
         let constructor_calldata = Calldata(constructor_calldata.into());
 
         Ok(Self { version, class_hash, contract_address_salt, constructor_calldata })
+    }
+}
+
+impl From<DeployTransaction> for protobuf::transaction::Deploy {
+    fn from(value: DeployTransaction) -> Self {
+        Self {
+            version: try_from_starkfelt_to_u32(value.version.0).unwrap_or_default(),
+            class_hash: Some(value.class_hash.0.into()),
+            address_salt: Some(value.contract_address_salt.0.into()),
+            calldata: value
+                .constructor_calldata
+                .0
+                .iter()
+                .map(|calldata| (*calldata).into())
+                .collect(),
+        }
     }
 }
