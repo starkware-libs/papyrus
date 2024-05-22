@@ -34,8 +34,8 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
+use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 use crate::{broadcast, mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -111,7 +111,7 @@ impl MockSwarm {
             let data_bytes =
                 protobuf::BlockHeadersResponse::from(Some(signed_header)).encode_to_vec();
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-                mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
+                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
                     data: data_bytes,
                     outbound_session_id,
                 }),
@@ -331,7 +331,7 @@ async fn process_incoming_query() {
     .encode(&mut query_bytes)
     .unwrap();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
@@ -402,7 +402,7 @@ async fn close_inbound_session() {
     let inbound_session_id = InboundSessionId { value: 0 };
     let _fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),

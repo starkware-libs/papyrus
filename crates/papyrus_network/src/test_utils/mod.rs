@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio_stream::StreamExt;
 
-use crate::streamed_bytes::Bytes;
+use crate::sqmr::Bytes;
 use crate::utils::StreamHashMap;
 
 /// Create two streams that are connected to each other. Return them and a join handle for a thread
@@ -44,7 +44,7 @@ pub(crate) fn dummy_data() -> Vec<Bytes> {
     vec![vec![1u8], vec![2u8, 3u8], vec![4u8, 5u8, 6u8]]
 }
 
-impl crate::streamed_bytes::Config {
+impl crate::sqmr::Config {
     pub fn get_test_config() -> Self {
         Self {
             session_timeout: Duration::MAX,
