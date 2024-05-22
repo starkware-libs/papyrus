@@ -142,9 +142,18 @@ use crate::version::Version;
 use crate::{MarkerKind, OffsetKind};
 
 // The threshold for compressing transactions.
-const COMPRESSION_THRESHOLD_BYTES: usize = 384;
+// const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 
 auto_storage_serde! {
+    pub struct ThinStateDiff {
+        pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
+        pub deprecated_declared_classes: Vec<ClassHash>,
+        pub nonces: IndexMap<ContractAddress, Nonce>,
+        pub replaced_classes: IndexMap<ContractAddress, ClassHash>,
+    }
+
     pub struct AccountDeploymentData(pub Vec<StarkFelt>);
     pub struct BlockHash(pub StarkHash);
     pub struct StorageBlockHeader {
@@ -1065,81 +1074,81 @@ impl StorageSerde for CasmContractClass {
 #[cfg(test)]
 create_storage_serde_test!(CasmContractClass);
 
-impl StorageSerde for ThinStateDiff {
-    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-        let mut to_compress: Vec<u8> = Vec::new();
-        self.deployed_contracts.serialize_into(&mut to_compress)?;
-        self.storage_diffs.serialize_into(&mut to_compress)?;
-        self.declared_classes.serialize_into(&mut to_compress)?;
-        self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
-        self.nonces.serialize_into(&mut to_compress)?;
-        self.replaced_classes.serialize_into(&mut to_compress)?;
-        let compressed = compress(to_compress.as_slice())?;
-        compressed.serialize_into(res)?;
-        Ok(())
-    }
+// impl StorageSerde for ThinStateDiff {
+//     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+//         let mut to_compress: Vec<u8> = Vec::new();
+//         self.deployed_contracts.serialize_into(&mut to_compress)?;
+//         self.storage_diffs.serialize_into(&mut to_compress)?;
+//         self.declared_classes.serialize_into(&mut to_compress)?;
+//         self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
+//         self.nonces.serialize_into(&mut to_compress)?;
+//         self.replaced_classes.serialize_into(&mut to_compress)?;
+//         let compressed = compress(to_compress.as_slice())?;
+//         compressed.serialize_into(res)?;
+//         Ok(())
+//     }
 
-    fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
-        let data = &mut data.as_slice();
-        Some(Self {
-            deployed_contracts: IndexMap::deserialize_from(data)?,
-            storage_diffs: IndexMap::deserialize_from(data)?,
-            declared_classes: IndexMap::deserialize_from(data)?,
-            deprecated_declared_classes: Vec::deserialize_from(data)?,
-            nonces: IndexMap::deserialize_from(data)?,
-            replaced_classes: IndexMap::deserialize_from(data)?,
-        })
-    }
-}
+//     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+//         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+//         let data = decompress(compressed_data.as_slice()).ok()?;
+//         let data = &mut data.as_slice();
+//         Some(Self {
+//             deployed_contracts: IndexMap::deserialize_from(data)?,
+//             storage_diffs: IndexMap::deserialize_from(data)?,
+//             declared_classes: IndexMap::deserialize_from(data)?,
+//             deprecated_declared_classes: Vec::deserialize_from(data)?,
+//             nonces: IndexMap::deserialize_from(data)?,
+//             replaced_classes: IndexMap::deserialize_from(data)?,
+//         })
+//     }
+// }
 
-#[cfg(test)]
-create_storage_serde_test!(ThinStateDiff);
+// #[cfg(test)]
+// create_storage_serde_test!(ThinStateDiff);
 
 // The following structs are conditionally compressed based on their serialized size.
-macro_rules! auto_storage_serde_conditionally_compressed {
-    () => {};
-    ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
-        impl StorageSerde for $name {
-            fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
-                let mut to_compress: Vec<u8> = Vec::new();
-                $(
-                    self.$field.serialize_into(&mut to_compress)?;
-                )*
-                if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
-                    IsCompressed::Yes.serialize_into(res)?;
-                    let compressed = compress(to_compress.as_slice())?;
-                    compressed.serialize_into(res)?;
-                } else {
-                    IsCompressed::No.serialize_into(res)?;
-                    to_compress.serialize_into(res)?;
-                }
-                Ok(())
-            }
-            fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-                let is_compressed = IsCompressed::deserialize_from(bytes)?;
-                let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-                let data = match is_compressed {
-                    IsCompressed::No => maybe_compressed_data,
-                    IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
-                };
-                let data = &mut data.as_slice();
-                Some(Self {
-                    $(
-                        $field: <$ty>::deserialize_from(data)?,
-                    )*
-                })
-            }
-        }
-        #[cfg(test)]
-        create_storage_serde_test!($name);
-        auto_storage_serde_conditionally_compressed!($($rest)*);
-    };
-}
+// macro_rules! auto_storage_serde_conditionally_compressed {
+//     () => {};
+//     ($(pub)? struct $name:ident { $(pub $field:ident : $ty:ty ,)* } $($rest:tt)*) => {
+//         impl StorageSerde for $name {
+//             fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+//                 let mut to_compress: Vec<u8> = Vec::new();
+//                 $(
+//                     self.$field.serialize_into(&mut to_compress)?;
+//                 )*
+//                 if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
+//                     IsCompressed::Yes.serialize_into(res)?;
+//                     let compressed = compress(to_compress.as_slice())?;
+//                     compressed.serialize_into(res)?;
+//                 } else {
+//                     IsCompressed::No.serialize_into(res)?;
+//                     to_compress.serialize_into(res)?;
+//                 }
+//                 Ok(())
+//             }
+//             fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
+//                 let is_compressed = IsCompressed::deserialize_from(bytes)?;
+//                 let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
+//                 let data = match is_compressed {
+//                     IsCompressed::No => maybe_compressed_data,
+//                     IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
+//                 };
+//                 let data = &mut data.as_slice();
+//                 Some(Self {
+//                     $(
+//                         $field: <$ty>::deserialize_from(data)?,
+//                     )*
+//                 })
+//             }
+//         }
+//         #[cfg(test)]
+//         create_storage_serde_test!($name);
+//         auto_storage_serde_conditionally_compressed!($($rest)*);
+//     };
+// }
 
 // The following transactions have variable length Calldata and are conditionally compressed.
-auto_storage_serde_conditionally_compressed! {
+auto_storage_serde! {
     pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
