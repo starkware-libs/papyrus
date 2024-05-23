@@ -7,41 +7,12 @@ license-file.workspace = true
 
 [dependencies]
 bytes.workspace = true
-chrono.workspace = true
-defaultmap.workspace = true
-derive_more.workspace = true
-enum-iterator.workspace = true
-futures.workspace = true
 indexmap.workspace = true
-lazy_static.workspace = true
-libp2p = { workspace = true, features = [
-    "identify",
-    "kad",
-    "macros",
-    "noise",
-    "quic",
-    "tcp",
-    "tokio",
-    "yamux",
-    "serde",
-] }
-metrics.workspace = true
-replace_with.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.2" }
+primitive-types.workspace = true
 prost.workspace = true
 prost-types.workspace = true
-serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 thiserror.workspace = true
-tokio = { workspace = true, features = ["full", "sync"] }
-tracing.workspace = true
-unsigned-varint = { workspace = true, features = ["std"] }
-
-# Binaries dependencies
-clap = { workspace = true, optional = true, features = ["derive"] }
-
 
 [build-dependencies]
 prost-build.workspace = true

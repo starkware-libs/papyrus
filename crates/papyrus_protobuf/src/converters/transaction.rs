@@ -37,7 +37,7 @@ use super::common::{
     volition_domain_to_enum_int,
 };
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf::{self};
+use crate::protobuf;
 
 impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactionV1 {
     type Error = ProtobufConversionError;

@@ -19,17 +19,11 @@ use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
 use papyrus_network::network_manager::NetworkError;
-use papyrus_network::{
-    network_manager,
-    DataType,
-    NetworkConfig,
-    Protocol,
-    Query,
-    ResponseReceivers,
-};
+use papyrus_network::{network_manager, DataType, NetworkConfig, Protocol, ResponseReceivers};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+use papyrus_protobuf::sync::Query;
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};

@@ -1,6 +1,7 @@
 use futures::future::ready;
 use futures::{SinkExt, StreamExt};
-use papyrus_network::{BlockHashOrNumber, DataType, Direction, Query, SignedBlockHeader};
+use papyrus_network::DataType;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;

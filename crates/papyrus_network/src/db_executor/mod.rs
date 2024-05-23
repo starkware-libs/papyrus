@@ -10,6 +10,10 @@ use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
 #[cfg(test)]
 use mockall::automock;
+use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
+use papyrus_protobuf::converters::state_diff::DOMAIN;
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
@@ -18,9 +22,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
-use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
-use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, DataType, Query, SignedBlockHeader};
+use crate::DataType;
 
 #[cfg(test)]
 mod test;
