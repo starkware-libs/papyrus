@@ -6080,6 +6080,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_protobuf"
+version = "0.4.0-dev.2"
+dependencies = [
+ "bytes",
+ "chrono",
+ "clap",
+ "defaultmap",
+ "derive_more",
+ "enum-iterator",
+ "futures",
+ "indexmap 2.1.0",
+ "lazy_static",
+ "libp2p",
+ "metrics",
+ "papyrus_common",
+ "papyrus_config",
+ "papyrus_storage",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "replace_with",
+ "serde",
+ "starknet_api",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "unsigned-varint 0.8.0",
+]
+
+[[package]]
 name = "papyrus_rpc"
 version = "0.4.0-dev.2"
 dependencies = [
