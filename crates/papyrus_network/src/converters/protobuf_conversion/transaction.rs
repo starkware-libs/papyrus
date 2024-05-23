@@ -11,6 +11,7 @@ use starknet_api::transaction::{
     DeclareTransactionV3,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
+    DeployTransaction,
     Fee,
     InvokeTransactionV0,
     InvokeTransactionV1,
@@ -21,6 +22,7 @@ use starknet_api::transaction::{
     ResourceBoundsMapping,
     Tip,
     TransactionSignature,
+    TransactionVersion,
 };
 
 use super::common::{enum_int_to_volition_domain, volition_domain_to_enum_int};
@@ -920,5 +922,37 @@ impl From<DeclareTransactionV3> for protobuf::transaction::DeclareV3 {
                 .map(|account_deployment_data| (*account_deployment_data).into())
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::Deploy> for DeployTransaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::Deploy) -> Result<Self, Self::Error> {
+        let version = TransactionVersion(StarkFelt::from_u128(value.version.into()));
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "Deploy::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let contract_address_salt = ContractAddressSalt(
+            value
+                .address_salt
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "Deploy::address_salt",
+                })?
+                .try_into()?,
+        );
+
+        let constructor_calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let constructor_calldata = Calldata(constructor_calldata.into());
+
+        Ok(Self { version, class_hash, contract_address_salt, constructor_calldata })
     }
 }
