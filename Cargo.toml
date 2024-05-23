@@ -14,6 +14,7 @@ members = [
     "crates/papyrus_node",
     "crates/papyrus_p2p_sync",
     "crates/papyrus_proc_macros",
+    "crates/papyrus_protobuf",
     "crates/papyrus_rpc",
     "crates/papyrus_storage",
     "crates/papyrus_sync",
