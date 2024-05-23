@@ -5,6 +5,7 @@ use futures::channel::mpsc::Receiver;
 use futures::future::poll_fn;
 use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -21,7 +22,8 @@ use crate::db_executor::{
     MockFetchBlockDataFromDb,
     QueryId,
 };
-use crate::{BlockHashOrNumber, DataType, Direction, Query, SignedBlockHeader};
+use crate::DataType;
+
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]

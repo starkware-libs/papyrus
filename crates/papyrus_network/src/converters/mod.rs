@@ -1,12 +1,10 @@
-pub mod protobuf_conversion;
-
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
+use papyrus_protobuf::protobuf;
 use prost::Message;
 
-use crate::protobuf_messages::protobuf::{self};
 use crate::{Protocol, ResponseReceivers};
 
 impl ResponseReceivers {

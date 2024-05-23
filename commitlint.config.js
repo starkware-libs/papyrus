@@ -32,6 +32,7 @@ const Configuration = {
             'monitoring',
             'network',
             'node',
+            'protobuf',
             'release',
             'starknet_client',
             'storage',
