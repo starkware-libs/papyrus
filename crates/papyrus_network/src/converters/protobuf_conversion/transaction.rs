@@ -1085,3 +1085,45 @@ impl TryFrom<protobuf::transaction::Txn> for Transaction {
         })
     }
 }
+
+impl From<Transaction> for protobuf::transaction::Txn {
+    fn from(value: Transaction) -> Self {
+        match value {
+            Transaction::Declare(DeclareTransaction::V0(declare_v0)) => {
+                protobuf::transaction::Txn::DeclareV0(declare_v0.into())
+            }
+            Transaction::Declare(DeclareTransaction::V1(declare_v1)) => {
+                protobuf::transaction::Txn::DeclareV1(declare_v1.into())
+            }
+            Transaction::Declare(DeclareTransaction::V2(declare_v2)) => {
+                protobuf::transaction::Txn::DeclareV2(declare_v2.into())
+            }
+            Transaction::Declare(DeclareTransaction::V3(declare_v3)) => {
+                protobuf::transaction::Txn::DeclareV3(declare_v3.into())
+            }
+            Transaction::Deploy(deploy) => protobuf::transaction::Txn::Deploy(deploy.into()),
+            Transaction::DeployAccount(deploy_account) => match deploy_account {
+                DeployAccountTransaction::V1(deploy_account_v1) => {
+                    protobuf::transaction::Txn::DeployAccountV1(deploy_account_v1.into())
+                }
+                DeployAccountTransaction::V3(deploy_account_v3) => {
+                    protobuf::transaction::Txn::DeployAccountV3(deploy_account_v3.into())
+                }
+            },
+            Transaction::Invoke(invoke) => match invoke {
+                InvokeTransaction::V0(invoke_v0) => {
+                    protobuf::transaction::Txn::InvokeV0(invoke_v0.into())
+                }
+                InvokeTransaction::V1(invoke_v1) => {
+                    protobuf::transaction::Txn::InvokeV1(invoke_v1.into())
+                }
+                InvokeTransaction::V3(invoke_v3) => {
+                    protobuf::transaction::Txn::InvokeV3(invoke_v3.into())
+                }
+            },
+            Transaction::L1Handler(l1_handler) => {
+                protobuf::transaction::Txn::L1Handler(l1_handler.into())
+            }
+        }
+    }
+}
