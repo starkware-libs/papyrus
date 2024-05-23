@@ -1,11 +1,89 @@
 use std::collections::HashMap;
 
-use starknet_api::core::{ContractAddress, EthAddress};
+use starknet_api::core::{ContractAddress, EthAddress, PatriciaKey};
 use starknet_api::hash::StarkFelt;
-use starknet_api::transaction::{Builtin, ExecutionResources, L2ToL1Payload, MessageToL1};
+use starknet_api::transaction::{
+    Builtin,
+    DeployAccountTransactionOutput,
+    ExecutionResources,
+    Fee,
+    L2ToL1Payload,
+    MessageToL1,
+    RevertedTransactionExecutionStatus,
+    TransactionExecutionStatus,
+};
 
+use super::common::try_from_starkfelt_to_u128;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
+
+// the output will have an empty events vec
+impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::DeployAccount) -> Result<Self, Self::Error> {
+        let common = value.common.ok_or(ProtobufConversionError::MissingField {
+            field_description: "DeployAccount::common",
+        })?;
+
+        let actual_fee_felt = StarkFelt::try_from(common.actual_fee.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "DeployAccount::common.actual_fee",
+            },
+        )?)?;
+        let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{actual_fee_felt:?}"),
+            }
+        })?);
+
+        let messages_sent = common
+            .messages_sent
+            .into_iter()
+            .map(MessageToL1::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let events = vec![];
+
+        let contract_address =
+            value.contract_address.ok_or(ProtobufConversionError::MissingField {
+                field_description: "DeployAccount::contract_address",
+            })?;
+        let felt = StarkFelt::try_from(contract_address)?;
+        let contract_address = if let Ok(patricia_key) = PatriciaKey::try_from(felt) {
+            ContractAddress(patricia_key)
+        } else {
+            return Err(ProtobufConversionError::OutOfRangeValue {
+                type_description: "Felt252",
+                value_as_str: format!("{felt:?}"),
+            });
+        };
+
+        let execution_status = common.revert_reason.map_or_else(
+            || TransactionExecutionStatus::Succeeded,
+            |revert_reason| {
+                TransactionExecutionStatus::Reverted(RevertedTransactionExecutionStatus {
+                    revert_reason,
+                })
+            },
+        );
+
+        let execution_resources = ExecutionResources::try_from(common.execution_resources.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "DeployAccount::common.execution_resources",
+            },
+        )?)?;
+
+        Ok(Self {
+            actual_fee,
+            messages_sent,
+            events,
+            contract_address,
+            execution_status,
+            execution_resources,
+        })
+    }
+}
 
 type ProtobufBuiltinCounter = protobuf::receipt::execution_resources::BuiltinCounter;
 
