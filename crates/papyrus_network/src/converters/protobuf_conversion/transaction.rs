@@ -16,6 +16,7 @@ use starknet_api::transaction::{
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
+    L1HandlerTransaction,
     PaymasterData,
     Resource,
     ResourceBounds,
@@ -985,5 +986,42 @@ impl From<DeployTransaction> for protobuf::transaction::Deploy {
                 .map(|calldata| (*calldata).into())
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::L1HandlerV0) -> Result<Self, Self::Error> {
+        let version = TransactionVersion(StarkFelt::ZERO);
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "L1HandlerV0::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let contract_address = value
+            .address
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "L1HandlerV0::address",
+            })?
+            .try_into()?;
+
+        let entry_point_selector_felt = StarkFelt::try_from(value.entry_point_selector.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "L1HandlerV0::entry_point_selector",
+            },
+        )?)?;
+        let entry_point_selector = EntryPointSelector(entry_point_selector_felt);
+
+        let calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let calldata = Calldata(calldata.into());
+
+        Ok(Self { version, nonce, contract_address, entry_point_selector, calldata })
     }
 }
