@@ -1,6 +1,7 @@
 use futures::future::ready;
 use futures::{SinkExt, StreamExt};
-use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
+use papyrus_network::DataType;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
@@ -23,7 +24,7 @@ async fn signed_headers_basic_flow() {
         create_block_hashes_and_signatures((NUM_QUERIES * HEADER_QUERY_LENGTH).try_into().unwrap());
 
     let mut query_receiver = query_receiver
-        .filter(|query| ready(matches!(query.data_type, DataType::SignedBlockHeader)));
+        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::SignedBlockHeader)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -32,15 +33,16 @@ async fn signed_headers_basic_flow() {
             let end_block_number = (query_index + 1) * HEADER_QUERY_LENGTH;
 
             // Receive query and validate it.
-            let query = query_receiver.next().await.unwrap();
+            let (query, _) = query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 Query {
-                    start_block: BlockNumber(start_block_number.try_into().unwrap()),
+                    start_block: BlockHashOrNumber::Number(BlockNumber(
+                        start_block_number.try_into().unwrap()
+                    ),),
                     direction: Direction::Forward,
                     limit: HEADER_QUERY_LENGTH,
                     step: 1,
-                    data_type: DataType::SignedBlockHeader,
                 }
             );
 
@@ -102,7 +104,7 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
 
     let mut query_receiver = query_receiver
-        .filter(|query| ready(matches!(query.data_type, DataType::SignedBlockHeader)));
+        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::SignedBlockHeader)));
 
     // Create a future that will receive a query, send partial responses and receive the next query.
     let parse_queries_future = async move {
@@ -125,19 +127,19 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
         signed_headers_sender.send(None).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let query = timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, query_receiver.next())
-            .await
-            .unwrap()
-            .unwrap();
+        let (query, _) =
+            timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, query_receiver.next())
+                .await
+                .unwrap()
+                .unwrap();
 
         assert_eq!(
             query,
             Query {
-                start_block: BlockNumber(NUM_ACTUAL_RESPONSES.into()),
+                start_block: BlockHashOrNumber::Number(BlockNumber(NUM_ACTUAL_RESPONSES.into())),
                 direction: Direction::Forward,
                 limit: HEADER_QUERY_LENGTH,
                 step: 1,
-                data_type: DataType::SignedBlockHeader,
             }
         );
     };

@@ -10,17 +10,19 @@ use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
 #[cfg(test)]
 use mockall::automock;
+use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
+use papyrus_protobuf::converters::state_diff::DOMAIN;
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use prost::Message;
-use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
-use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
-use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, DataType, InternalQuery};
+use crate::DataType;
 
 #[cfg(test)]
 mod test;
@@ -36,8 +38,7 @@ pub struct DataEncodingError;
 
 #[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
-    // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
+    BlockHeaderAndSignature(SignedBlockHeader),
     StateDiff { state_diff: ThinStateDiff },
     Fin(DataType),
 }
@@ -59,7 +60,7 @@ impl Data {
         B: BufMut,
     {
         match self {
-            Data::BlockHeaderAndSignature { .. } => self
+            Data::BlockHeaderAndSignature(signed_block_header) => Some(signed_block_header)
                 .try_into()
                 .map(|data: protobuf::BlockHeadersResponse| match encode_with_length_prefix_flag {
                     true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
@@ -139,7 +140,7 @@ pub enum DBExecutorError {
     #[error(
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
-    BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
+    BlockNumberOutOfRange { query: Query, counter: u64, query_id: QueryId },
     // TODO: add data type to the error message.
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
@@ -189,7 +190,7 @@ pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unp
     // TODO: add writer functionality
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         sender: Sender<Data>,
     ) -> QueryId;
@@ -211,11 +212,12 @@ impl DBExecutor {
 impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         mut sender: Sender<Data>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
+        let limit = u64::try_from(query.limit).expect("Failed converting usize to u64");
         self.next_query_id += 1;
         let storage_reader_clone = self.storage_reader.clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
@@ -238,9 +240,9 @@ impl DBExecutorTrait for DBExecutor {
                             .0
                     }
                 };
-                for block_counter in 0..query.limit {
+                for block_counter in 0..limit {
                     let block_number = BlockNumber(utils::calculate_block_number(
-                        query,
+                        &query,
                         start_block_number,
                         block_counter,
                         query_id,
@@ -348,7 +350,10 @@ impl FetchBlockDataFromDb for DataType {
                         storage_error: err,
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
-                Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+                Ok(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                    block_header: header,
+                    signatures: vec![signature],
+                }))
             }
             DataType::StateDiff => {
                 let state_diff = txn

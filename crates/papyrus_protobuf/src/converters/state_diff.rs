@@ -4,12 +4,11 @@ use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
-use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf;
-use crate::{InternalQuery, Query};
+use crate::protobuf;
+use crate::sync::StateDiffQuery;
 
-const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
+pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
 impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     type Error = ProtobufConversionError;
@@ -133,18 +132,22 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
     }
 }
 
-impl TryFrom<protobuf::StateDiffsRequest> for InternalQuery {
+impl TryFrom<protobuf::StateDiffsRequest> for StateDiffQuery {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
-        let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
-            field_description: "StateDiffsRequest::iteration",
-        })?;
-        value.try_into()
+        Ok(StateDiffQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "StateDiffsRequest::iteration",
+                })?
+                .try_into()?,
+        ))
     }
 }
 
-impl From<Query> for protobuf::StateDiffsRequest {
-    fn from(value: Query) -> Self {
-        protobuf::StateDiffsRequest { iteration: Some(value.into()) }
+impl From<StateDiffQuery> for protobuf::StateDiffsRequest {
+    fn from(value: StateDiffQuery) -> Self {
+        protobuf::StateDiffsRequest { iteration: Some(value.0.into()) }
     }
 }

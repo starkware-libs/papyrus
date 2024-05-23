@@ -5,6 +5,7 @@ use futures::channel::mpsc::Receiver;
 use futures::future::poll_fn;
 use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -21,7 +22,7 @@ use crate::db_executor::{
     MockFetchBlockDataFromDb,
     QueryId,
 };
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery};
+use crate::DataType;
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -34,17 +35,17 @@ async fn header_db_executor_can_register_and_run_a_query() {
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
 
     // register a query.
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(0)),
         direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
+        limit: NUM_OF_BLOCKS.try_into().unwrap(),
         step: 1,
     };
     let (query_ids, mut receivers): (Vec<QueryId>, Vec<(Receiver<Data>, DataType)>) =
         enum_iterator::all::<DataType>()
             .map(|data_type| {
                 let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-                let query_id = db_executor.register_query(query, data_type, sender);
+                let query_id = db_executor.register_query(query.clone(), data_type, sender);
                 (query_id, (receiver, data_type))
             })
             .unzip();
@@ -84,7 +85,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
                     }
                 }
                 match data {
-                    Data::BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} => {
+                    Data::BlockHeaderAndSignature(SignedBlockHeader{ block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) => {
                         assert_eq!(block_number, &(i as u64));
                     }
                     Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
@@ -117,10 +118,10 @@ async fn header_db_executor_start_block_given_by_hash() {
 
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Hash(block_hash),
         direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
+        limit: NUM_OF_BLOCKS.try_into().unwrap(),
         step: 1,
     };
     let query_id = db_executor.register_query(query, DataType::SignedBlockHeader, sender);
@@ -135,7 +136,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in res.iter().enumerate() {
-                assert_matches!(data, BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} if block_number == &(i as u64));
+                assert_matches!(data, BlockHeaderAndSignature(SignedBlockHeader{block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) if block_number == &(i as u64));
             }
         }
     }
@@ -151,10 +152,10 @@ async fn header_db_executor_query_of_missing_block() {
     const BLOCKS_DELTA: u64 = 5;
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(NUM_OF_BLOCKS - BLOCKS_DELTA)),
         direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
+        limit: NUM_OF_BLOCKS.try_into().unwrap(),
         step: 1,
     };
     let mut mock_data_type = MockFetchBlockDataFromDb::new();
@@ -203,10 +204,10 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
     for _ in 0..2 {
         // register a query.
         let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-        let query = InternalQuery {
+        let query = Query {
             start_block: BlockHashOrNumber::Number(BlockNumber(0)),
             direction: Direction::Forward,
-            limit: NUM_OF_BLOCKS,
+            limit: NUM_OF_BLOCKS.try_into().unwrap(),
             step: 1,
         };
         let mut mock_data_type = MockFetchBlockDataFromDb::new();
@@ -240,10 +241,10 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
 
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(1)),
         direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
+        limit: NUM_OF_BLOCKS.try_into().unwrap(),
         step: 1,
     };
     drop(receiver);

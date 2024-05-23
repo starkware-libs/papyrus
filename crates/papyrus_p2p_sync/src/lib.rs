@@ -15,7 +15,8 @@ use futures::channel::mpsc::{SendError, Sender};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::{DataType, Query, ResponseReceivers};
+use papyrus_network::{DataType, ResponseReceivers};
+use papyrus_protobuf::sync::Query;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
@@ -139,7 +140,7 @@ pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    query_sender: Sender<Query>,
+    query_sender: Sender<(Query, DataType)>,
     response_receivers: ResponseReceivers,
 }
 
@@ -148,7 +149,7 @@ impl P2PSync {
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
+        query_sender: Sender<(Query, DataType)>,
         response_receivers: ResponseReceivers,
     ) -> Self {
         Self { config, storage_reader, storage_writer, query_sender, response_receivers }

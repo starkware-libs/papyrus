@@ -25,7 +25,7 @@ use starknet_api::transaction::{
 
 use super::common::{enum_int_to_volition_domain, volition_domain_to_enum_int};
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf::{self};
+use crate::protobuf;
 
 // TODO: use the conversion in Starknet api once its upgraded
 fn try_from_starkfelt_to_u128(felt: StarkFelt) -> Result<u128, &'static str> {

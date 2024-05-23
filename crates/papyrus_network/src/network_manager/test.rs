@@ -14,6 +14,8 @@ use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -32,25 +34,16 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{
-    broadcast,
-    mixed_behaviour,
-    BlockHashOrNumber,
-    DataType,
-    Direction,
-    InternalQuery,
-    Query,
-};
+use crate::{broadcast, mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Default)]
 struct MockSwarm {
     pub pending_events: Queue<Event>,
-    pub sent_queries: Vec<(InternalQuery, PeerId)>,
+    pub sent_queries: Vec<(Query, PeerId)>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
@@ -98,31 +91,27 @@ impl MockSwarm {
 
     fn create_received_data_events_for_query(
         &self,
-        query: InternalQuery,
+        query: Query,
         outbound_session_id: OutboundSessionId,
     ) {
         let BlockHashOrNumber::Number(BlockNumber(start_block_number)) = query.start_block else {
             unimplemented!("test does not support start block as block hash")
         };
-        let block_max_number = start_block_number + (query.step * query.limit);
+        let block_max_number =
+            start_block_number + u64::try_from(query.step * query.limit).unwrap();
         for block_number in (start_block_number..block_max_number)
             .step_by(query.step.try_into().expect("step too large to convert to usize"))
         {
-            let signed_header = Data::BlockHeaderAndSignature {
-                header: BlockHeader {
+            let signed_header = SignedBlockHeader {
+                block_header: BlockHeader {
                     block_number: BlockNumber(block_number),
                     ..Default::default()
                 },
                 signatures: vec![],
             };
-            let mut data_bytes = vec![];
-            protobuf::BlockHeadersResponse::try_from(signed_header)
-                .expect(
-                    "Data::BlockHeaderAndSignature should be convertable to \
-                     protobuf::BlockHeadersResponse",
-                )
-                .encode(&mut data_bytes)
-                .expect("failed to convert data to bytes");
+            let data_bytes = protobuf::BlockHeadersResponse::try_from(Some(signed_header))
+                .unwrap()
+                .encode_to_vec();
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
                 mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
                     data: data_bytes,
@@ -144,11 +133,17 @@ impl SwarmTrait for MockSwarm {
              first",
         );
         // TODO(shahak): Add tests for state diff.
-        let data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
-            .unwrap()
-            .try_into()
-            .unwrap();
-        let is_fin = matches!(data, Data::Fin(DataType::SignedBlockHeader));
+        let (data, is_fin) =
+            match protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
+                .unwrap()
+                .try_into()
+                .unwrap()
+            {
+                Some(signed_block_header) => {
+                    (Data::BlockHeaderAndSignature(signed_block_header), false)
+                }
+                None => (Data::Fin(DataType::SignedBlockHeader), true),
+            };
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
             data_sender.close_channel();
@@ -162,11 +157,11 @@ impl SwarmTrait for MockSwarm {
         peer_id: PeerId,
         _protocol: crate::Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        let query = protobuf::BlockHeadersRequest::decode(&query[..])
+        let query: Query = protobuf::Iteration::decode(&query[..])
             .expect("failed to decode protobuf BlockHeadersRequest")
             .try_into()
             .expect("failed to convert BlockHeadersRequest");
-        self.sent_queries.push((query, peer_id));
+        self.sent_queries.push((query.clone(), peer_id));
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_received_data_events_for_query(query, outbound_session_id);
         self.next_outbound_session_id += 1;
@@ -205,7 +200,7 @@ impl SwarmTrait for MockSwarm {
 #[derive(Default)]
 struct MockDBExecutor {
     next_query_id: usize,
-    pub query_to_headers: HashMap<InternalQuery, Vec<BlockHeader>>,
+    pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
     query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
@@ -221,7 +216,7 @@ impl DBExecutorTrait for MockDBExecutor {
     // TODO(shahak): Consider fixing code duplication with DBExecutor.
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
         mut sender: Sender<Data>,
     ) -> QueryId {
@@ -233,10 +228,12 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
-                            header,
-                            signatures: vec![],
-                        }) {
+                        if let Err(e) =
+                            sender.start_send(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                                block_header: header,
+                                signatures: vec![],
+                            }))
+                        {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -266,11 +263,10 @@ async fn register_subscriber_and_use_channels() {
     let query_limit = 5;
     let start_block_number = 0;
     let query = Query {
-        start_block: BlockNumber(start_block_number),
+        start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
         direction: Direction::Forward,
         limit: query_limit,
         step: 1,
-        data_type: DataType::SignedBlockHeader,
     };
 
     // register subscriber and send query
@@ -292,7 +288,8 @@ async fn register_subscriber_and_use_channels() {
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()}).then(|_| async move {
+            query_sender.send((query, DataType::SignedBlockHeader)).await.unwrap()})
+            .then(|_| async move {
                 *cloned_signed_header_receiver_length.lock().await = signed_header_receiver_collector.await.len();
             }) => {},
         _ = sleep(Duration::from_secs(5)) => {
@@ -306,7 +303,7 @@ async fn register_subscriber_and_use_channels() {
 async fn process_incoming_query() {
     // Create data for test.
     const BLOCK_NUM: u64 = 0;
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(BLOCK_NUM)),
         direction: Direction::Forward,
         limit: 5,
@@ -320,7 +317,7 @@ async fn process_incoming_query() {
 
     // Setup mock DB executor and tell it to reply to the query with the given headers.
     let mut mock_db_executor = MockDBExecutor::default();
-    mock_db_executor.query_to_headers.insert(query, headers.clone());
+    mock_db_executor.query_to_headers.insert(query.clone(), headers.clone());
 
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
@@ -330,8 +327,8 @@ async fn process_incoming_query() {
         iteration: Some(protobuf::Iteration {
             start: Some(protobuf::iteration::Start::BlockNumber(BLOCK_NUM)),
             direction: protobuf::iteration::Direction::Forward as i32,
-            limit: query.limit,
-            step: query.step,
+            limit: query.limit.try_into().unwrap(),
+            step: query.step.try_into().unwrap(),
         }),
     }
     .encode(&mut query_bytes)
@@ -356,9 +353,10 @@ async fn process_incoming_query() {
             let mut expected_data = headers
                 .into_iter()
                 .map(|header| {
-                    Data::BlockHeaderAndSignature {
-                    header, signatures: vec![]
-                }})
+                    Data::BlockHeaderAndSignature(SignedBlockHeader {
+                        block_header: header, signatures: vec![]
+                    })
+                })
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin(DataType::SignedBlockHeader));
             assert_eq!(inbound_session_data, expected_data);
@@ -377,7 +375,7 @@ async fn close_inbound_session() {
     // define query
     let query_limit = 5;
     let start_block_number = 0;
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
         direction: Direction::Forward,
         limit: query_limit,
@@ -390,7 +388,7 @@ async fn close_inbound_session() {
         iteration: Some(protobuf::Iteration {
             start: Some(protobuf::iteration::Start::BlockNumber(start_block_number)),
             direction: protobuf::iteration::Direction::Forward as i32,
-            limit: query_limit,
+            limit: query_limit.try_into().unwrap(),
             step: 1,
         }),
     }
