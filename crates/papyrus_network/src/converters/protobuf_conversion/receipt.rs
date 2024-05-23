@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use starknet_api::core::EthAddress;
+use starknet_api::core::{ContractAddress, EthAddress};
 use starknet_api::hash::StarkFelt;
-use starknet_api::transaction::{Builtin, ExecutionResources};
+use starknet_api::transaction::{Builtin, ExecutionResources, L2ToL1Payload, MessageToL1};
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
@@ -118,5 +118,41 @@ impl From<EthAddress> for protobuf::EthereumAddress {
     fn from(value: EthAddress) -> Self {
         let elements = value.0.as_bytes().to_vec();
         protobuf::EthereumAddress { elements }
+    }
+}
+
+impl TryFrom<protobuf::MessageToL1> for MessageToL1 {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::MessageToL1) -> Result<Self, Self::Error> {
+        let from_address_felt = StarkFelt::try_from(value.from_address.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "MessageToL1::from_address",
+            },
+        )?)?;
+        let from_address = ContractAddress::try_from(from_address_felt)
+            .expect("Converting ContractAddress from StarkFelt failed");
+
+        let to_address = EthAddress::try_from(value.to_address.ok_or(
+            ProtobufConversionError::MissingField { field_description: "MessageToL1::to_address" },
+        )?)?;
+
+        let payload = L2ToL1Payload(
+            value.payload.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?,
+        );
+
+        Ok(MessageToL1 { from_address, to_address, payload })
+    }
+}
+
+impl From<MessageToL1> for protobuf::MessageToL1 {
+    fn from(value: MessageToL1) -> Self {
+        let from_address = StarkFelt::from(value.from_address).into();
+        let to_address = value.to_address.into();
+        let payload = value.payload.0.into_iter().map(StarkFelt::from).map(Into::into).collect();
+        protobuf::MessageToL1 {
+            from_address: Some(from_address),
+            to_address: Some(to_address),
+            payload,
+        }
     }
 }
