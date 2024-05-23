@@ -1,5 +1,6 @@
+use papyrus_protobuf::sync::{Direction, Query};
+
 use super::{DBExecutorError, QueryId};
-use crate::{Direction, Query};
 
 pub(crate) fn calculate_block_number(
     query: &Query,

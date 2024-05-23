@@ -10,7 +10,6 @@ mod discovery;
 pub mod mixed_behaviour;
 pub mod network_manager;
 mod peer_manager;
-pub mod protobuf_messages;
 pub mod streamed_bytes;
 #[cfg(test)]
 mod test_utils;
@@ -29,10 +28,10 @@ use libp2p::{Multiaddr, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{Query, SignedBlockHeader};
 use prost::Message;
-use protobuf_messages::protobuf;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 
 // TODO: add peer manager config to the network config
@@ -74,44 +73,6 @@ impl From<DataType> for Protocol {
             DataType::SignedBlockHeader => Protocol::SignedBlockHeader,
             DataType::StateDiff => Protocol::StateDiff,
         }
-    }
-}
-
-/// This struct represents a query that can be sent to a peer.
-#[derive(Default, Clone, Debug, PartialEq, Eq)]
-#[cfg_attr(test, derive(Hash))]
-pub struct Query {
-    pub start_block: BlockHashOrNumber,
-    pub direction: Direction,
-    pub limit: u64,
-    pub step: u64,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
-#[cfg_attr(test, derive(Hash))]
-pub enum Direction {
-    #[default]
-    Forward,
-    Backward,
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(Clone, PartialEq, Eq))]
-pub struct SignedBlockHeader {
-    pub block_header: BlockHeader,
-    pub signatures: Vec<BlockSignature>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(test, derive(Hash))]
-pub enum BlockHashOrNumber {
-    Hash(BlockHash),
-    Number(BlockNumber),
-}
-
-impl Default for BlockHashOrNumber {
-    fn default() -> Self {
-        Self::Number(BlockNumber::default())
     }
 }
 

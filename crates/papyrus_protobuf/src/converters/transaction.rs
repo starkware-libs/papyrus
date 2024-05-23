@@ -6,26 +6,33 @@ use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
+    DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
     DeclareTransactionV3,
+    DeployAccountTransaction,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
+    DeployTransaction,
     Fee,
+    InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
+    L1HandlerTransaction,
     PaymasterData,
     Resource,
     ResourceBounds,
     ResourceBoundsMapping,
     Tip,
+    Transaction,
     TransactionSignature,
+    TransactionVersion,
 };
 
 use super::common::{enum_int_to_volition_domain, volition_domain_to_enum_int};
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf::{self};
+use crate::protobuf;
 
 // TODO: use the conversion in Starknet api once its upgraded
 fn try_from_starkfelt_to_u128(felt: StarkFelt) -> Result<u128, &'static str> {
@@ -41,6 +48,21 @@ fn try_from_starkfelt_to_u128(felt: StarkFelt) -> Result<u128, &'static str> {
     };
 
     Ok(u128::from_be_bytes(bytes))
+}
+// TODO: use the conversion in Starknet api once its upgraded
+fn try_from_starkfelt_to_u32(felt: StarkFelt) -> Result<u32, &'static str> {
+    const COMPLIMENT_OF_U32: usize = 28; // 32 - 4
+    let (rest, u32_bytes) = felt.bytes().split_at(COMPLIMENT_OF_U32);
+    if rest != [0u8; COMPLIMENT_OF_U32] {
+        return Err("Value out of range");
+    }
+
+    let bytes: [u8; 4] = match u32_bytes.try_into() {
+        Ok(b) => b,
+        Err(_) => return Err("Failed to convert bytes to u32"),
+    };
+
+    Ok(u32::from_be_bytes(bytes))
 }
 
 impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactionV1 {
@@ -919,6 +941,189 @@ impl From<DeclareTransactionV3> for protobuf::transaction::DeclareV3 {
                 .iter()
                 .map(|account_deployment_data| (*account_deployment_data).into())
                 .collect(),
+        }
+    }
+}
+
+impl TryFrom<protobuf::transaction::Deploy> for DeployTransaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::Deploy) -> Result<Self, Self::Error> {
+        let version = TransactionVersion(StarkFelt::from_u128(value.version.into()));
+
+        let class_hash = ClassHash(
+            value
+                .class_hash
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "Deploy::class_hash",
+                })?
+                .try_into()?,
+        );
+
+        let contract_address_salt = ContractAddressSalt(
+            value
+                .address_salt
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "Deploy::address_salt",
+                })?
+                .try_into()?,
+        );
+
+        let constructor_calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let constructor_calldata = Calldata(constructor_calldata.into());
+
+        Ok(Self { version, class_hash, contract_address_salt, constructor_calldata })
+    }
+}
+
+impl From<DeployTransaction> for protobuf::transaction::Deploy {
+    fn from(value: DeployTransaction) -> Self {
+        Self {
+            version: try_from_starkfelt_to_u32(value.version.0).unwrap_or_default(),
+            class_hash: Some(value.class_hash.0.into()),
+            address_salt: Some(value.contract_address_salt.0.into()),
+            calldata: value
+                .constructor_calldata
+                .0
+                .iter()
+                .map(|calldata| (*calldata).into())
+                .collect(),
+        }
+    }
+}
+
+impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::L1HandlerV0) -> Result<Self, Self::Error> {
+        let version = TransactionVersion(StarkFelt::ZERO);
+
+        let nonce = Nonce(
+            value
+                .nonce
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "L1HandlerV0::nonce",
+                })?
+                .try_into()?,
+        );
+
+        let contract_address = value
+            .address
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "L1HandlerV0::address",
+            })?
+            .try_into()?;
+
+        let entry_point_selector_felt = StarkFelt::try_from(value.entry_point_selector.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "L1HandlerV0::entry_point_selector",
+            },
+        )?)?;
+        let entry_point_selector = EntryPointSelector(entry_point_selector_felt);
+
+        let calldata =
+            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+
+        let calldata = Calldata(calldata.into());
+
+        Ok(Self { version, nonce, contract_address, entry_point_selector, calldata })
+    }
+}
+
+impl From<L1HandlerTransaction> for protobuf::transaction::L1HandlerV0 {
+    fn from(value: L1HandlerTransaction) -> Self {
+        Self {
+            nonce: Some(value.nonce.0.into()),
+            address: Some(value.contract_address.into()),
+            entry_point_selector: Some(value.entry_point_selector.0.into()),
+            calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
+        }
+    }
+}
+
+impl TryFrom<protobuf::transaction::Txn> for Transaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::Txn) -> Result<Self, Self::Error> {
+        Ok(match value {
+            protobuf::transaction::Txn::DeclareV0(declare_v0) => Transaction::Declare(
+                DeclareTransaction::V0(DeclareTransactionV0V1::try_from(declare_v0)?),
+            ),
+            protobuf::transaction::Txn::DeclareV1(declare_v1) => Transaction::Declare(
+                DeclareTransaction::V1(DeclareTransactionV0V1::try_from(declare_v1)?),
+            ),
+            protobuf::transaction::Txn::DeclareV2(declare_v2) => Transaction::Declare(
+                DeclareTransaction::V2(DeclareTransactionV2::try_from(declare_v2)?),
+            ),
+            protobuf::transaction::Txn::DeclareV3(declare_v3) => Transaction::Declare(
+                DeclareTransaction::V3(DeclareTransactionV3::try_from(declare_v3)?),
+            ),
+            protobuf::transaction::Txn::Deploy(deploy) => {
+                Transaction::Deploy(DeployTransaction::try_from(deploy)?)
+            }
+            protobuf::transaction::Txn::DeployAccountV1(deploy_account_v1) => {
+                Transaction::DeployAccount(DeployAccountTransaction::V1(
+                    DeployAccountTransactionV1::try_from(deploy_account_v1)?,
+                ))
+            }
+            protobuf::transaction::Txn::DeployAccountV3(deploy_account_v3) => {
+                Transaction::DeployAccount(DeployAccountTransaction::V3(
+                    DeployAccountTransactionV3::try_from(deploy_account_v3)?,
+                ))
+            }
+            protobuf::transaction::Txn::InvokeV0(invoke_v0) => Transaction::Invoke(
+                InvokeTransaction::V0(InvokeTransactionV0::try_from(invoke_v0)?),
+            ),
+            protobuf::transaction::Txn::InvokeV1(invoke_v1) => Transaction::Invoke(
+                InvokeTransaction::V1(InvokeTransactionV1::try_from(invoke_v1)?),
+            ),
+            protobuf::transaction::Txn::InvokeV3(invoke_v3) => Transaction::Invoke(
+                InvokeTransaction::V3(InvokeTransactionV3::try_from(invoke_v3)?),
+            ),
+            protobuf::transaction::Txn::L1Handler(l1_handler) => {
+                Transaction::L1Handler(L1HandlerTransaction::try_from(l1_handler)?)
+            }
+        })
+    }
+}
+
+impl From<Transaction> for protobuf::transaction::Txn {
+    fn from(value: Transaction) -> Self {
+        match value {
+            Transaction::Declare(DeclareTransaction::V0(declare_v0)) => {
+                protobuf::transaction::Txn::DeclareV0(declare_v0.into())
+            }
+            Transaction::Declare(DeclareTransaction::V1(declare_v1)) => {
+                protobuf::transaction::Txn::DeclareV1(declare_v1.into())
+            }
+            Transaction::Declare(DeclareTransaction::V2(declare_v2)) => {
+                protobuf::transaction::Txn::DeclareV2(declare_v2.into())
+            }
+            Transaction::Declare(DeclareTransaction::V3(declare_v3)) => {
+                protobuf::transaction::Txn::DeclareV3(declare_v3.into())
+            }
+            Transaction::Deploy(deploy) => protobuf::transaction::Txn::Deploy(deploy.into()),
+            Transaction::DeployAccount(deploy_account) => match deploy_account {
+                DeployAccountTransaction::V1(deploy_account_v1) => {
+                    protobuf::transaction::Txn::DeployAccountV1(deploy_account_v1.into())
+                }
+                DeployAccountTransaction::V3(deploy_account_v3) => {
+                    protobuf::transaction::Txn::DeployAccountV3(deploy_account_v3.into())
+                }
+            },
+            Transaction::Invoke(invoke) => match invoke {
+                InvokeTransaction::V0(invoke_v0) => {
+                    protobuf::transaction::Txn::InvokeV0(invoke_v0.into())
+                }
+                InvokeTransaction::V1(invoke_v1) => {
+                    protobuf::transaction::Txn::InvokeV1(invoke_v1.into())
+                }
+                InvokeTransaction::V3(invoke_v3) => {
+                    protobuf::transaction::Txn::InvokeV3(invoke_v3.into())
+                }
+            },
+            Transaction::L1Handler(l1_handler) => {
+                protobuf::transaction::Txn::L1Handler(l1_handler.into())
+            }
         }
     }
 }

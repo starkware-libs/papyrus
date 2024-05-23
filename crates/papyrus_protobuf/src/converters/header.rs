@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "header_test.rs"]
+mod header_test;
+
 use starknet_api::block::{
     BlockHash,
     BlockHeader,
@@ -16,10 +20,9 @@ use starknet_api::core::{
 use starknet_api::crypto::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
-use super::{ProtobufConversionError, ProtobufResponseToDataError};
-use crate::db_executor::Data;
-use crate::protobuf_messages::protobuf::{self};
-use crate::{DataType, InternalQuery, Query, SignedBlockHeader};
+use super::ProtobufConversionError;
+use crate::protobuf;
+use crate::sync::{Query, SignedBlockHeader};
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {
     type Error = ProtobufConversionError;
@@ -264,66 +267,34 @@ impl From<starknet_api::block::BlockSignature> for protobuf::ConsensusSignature 
     }
 }
 
-impl TryFrom<Data> for protobuf::BlockHeadersResponse {
-    type Error = ProtobufResponseToDataError;
-
-    fn try_from(data: Data) -> Result<Self, Self::Error> {
+impl From<Option<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
+    fn from(data: Option<SignedBlockHeader>) -> Self {
         match data {
-            Data::BlockHeaderAndSignature { header, signatures } => {
-                Ok(protobuf::BlockHeadersResponse {
+            Some(SignedBlockHeader { block_header, signatures }) => {
+                protobuf::BlockHeadersResponse {
                     header_message: Some(protobuf::block_headers_response::HeaderMessage::Header(
-                        (header, signatures).into(),
+                        (block_header, signatures).into(),
                     )),
-                })
+                }
             }
-            Data::Fin(data_type) => match data_type {
-                DataType::SignedBlockHeader => Ok(protobuf::BlockHeadersResponse {
-                    header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
-                        protobuf::Fin {},
-                    )),
-                }),
-                _ => Err(ProtobufResponseToDataError::UnsupportedDataType {
-                    data_type: data_type.to_string(),
-                    type_description: "BlockHeadersResponse".to_string(),
-                }),
+            None => protobuf::BlockHeadersResponse {
+                header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
+                    protobuf::Fin {},
+                )),
             },
-            Data::StateDiff { .. } => Err(ProtobufResponseToDataError::UnsupportedDataType {
-                data_type: "StateDiff".to_string(),
-                type_description: "BlockHeadersResponse".to_string(),
-            }),
         }
     }
 }
 
-impl TryFrom<protobuf::BlockHeadersResponse> for Data {
-    type Error = ProtobufConversionError;
-
-    fn try_from(value: protobuf::BlockHeadersResponse) -> Result<Self, Self::Error> {
-        match value.header_message {
-            Some(protobuf::block_headers_response::HeaderMessage::Header(header)) => {
-                let signed_block_header = SignedBlockHeader::try_from(header)?;
-                Ok(Data::BlockHeaderAndSignature {
-                    header: signed_block_header.block_header,
-                    signatures: signed_block_header.signatures,
-                })
-            }
-            Some(protobuf::block_headers_response::HeaderMessage::Fin(_)) => {
-                Ok(Data::Fin(DataType::SignedBlockHeader))
-            }
-            None => Err(ProtobufConversionError::MissingField {
-                field_description: "BlockHeadersResponse::header_message",
-            }),
-        }
-    }
-}
-
-impl TryFrom<protobuf::BlockHeadersRequest> for InternalQuery {
+impl TryFrom<protobuf::BlockHeadersRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
-        let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
-            field_description: "BlockHeadersRequest::iteration",
-        })?;
-        value.try_into()
+        value
+            .iteration
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "StateDiffsRequest::iteration",
+            })?
+            .try_into()
     }
 }
 
