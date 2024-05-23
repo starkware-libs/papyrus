@@ -1,5 +1,6 @@
 mod common;
 mod header;
+mod receipt;
 pub mod state_diff;
 mod transaction;
 
