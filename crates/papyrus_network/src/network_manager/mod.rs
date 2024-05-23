@@ -14,6 +14,7 @@ use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_storage::StorageReader;
+use prost::Message;
 use streamed_bytes::Bytes;
 use tracing::{debug, error, info, trace};
 
@@ -23,12 +24,13 @@ use crate::broadcast::Topic;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::mixed_behaviour::{self, BridgedBehaviour};
+use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
 use crate::{broadcast, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
-type SubscriberChannels = (Receiver<Query>, Router);
+type SubscriberChannels = (Receiver<(Query, DataType)>, Router);
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -63,7 +65,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
                 Some(res) = self.sync_subscriber_channels.as_mut()
                     .map(|(query_receiver, _)| query_receiver.next().boxed())
-                    .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res),
+                    .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res.0, res.1),
                 Some((topic, message)) = self.messages_to_broadcast_receivers.next() => self.broadcast_message(message, topic),
             }
         }
@@ -93,7 +95,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     pub fn register_subscriber(
         &mut self,
         protocols: Vec<Protocol>,
-    ) -> (Sender<Query>, ResponseReceivers) {
+    ) -> (Sender<(Query, DataType)>, ResponseReceivers) {
         let (sender, query_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
         let mut router = Router::new(protocols, self.header_buffer_size);
         let response_receiver = ResponseReceivers::new(router.get_recievers());
@@ -380,11 +382,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_sync_subscriber_query(&mut self, query: Query) {
-        let data_type = query.data_type;
+    fn handle_sync_subscriber_query(&mut self, query: Query, data_type: DataType) {
         let protocol = data_type.into();
-        let mut query_bytes = vec![];
-        query.encode(&mut query_bytes).expect("failed to encode query");
+        let query_bytes = match data_type {
+            DataType::SignedBlockHeader => {
+                protobuf::BlockHeadersRequest::from(query).encode_to_vec()
+            }
+            DataType::StateDiff => protobuf::StateDiffsRequest::from(query).encode_to_vec(),
+        };
         match self.swarm.send_query(query_bytes, PeerId::random(), protocol) {
             Ok(outbound_session_id) => {
                 debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");

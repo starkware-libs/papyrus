@@ -111,8 +111,8 @@ async fn state_diff_basic_flow() {
 
     // We don't need to read the header query in order to know which headers to send, and we
     // already validate the header query in a different test.
-    let mut query_receiver =
-        query_receiver.filter(|query| ready(matches!(query.data_type, DataType::StateDiff)));
+    let mut query_receiver = query_receiver
+        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::StateDiff)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -148,7 +148,7 @@ async fn state_diff_basic_flow() {
             ),
         ] {
             // Get a state diff query and validate it
-            let query = query_receiver.next().await.unwrap();
+            let (query, _) = query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 Query {
@@ -156,7 +156,6 @@ async fn state_diff_basic_flow() {
                     direction: Direction::Forward,
                     limit: num_blocks,
                     step: 1,
-                    data_type: DataType::StateDiff,
                 }
             );
 
@@ -216,8 +215,8 @@ async fn validate_state_diff_fails(
 
     // We don't need to read the header query in order to know which headers to send, and we
     // already validate the header query in a different test.
-    let mut query_receiver =
-        query_receiver.filter(|query| ready(matches!(query.data_type, DataType::StateDiff)));
+    let mut query_receiver = query_receiver
+        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::StateDiff)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -236,16 +235,10 @@ async fn validate_state_diff_fails(
             .unwrap();
 
         // Get a state diff query and validate it
-        let query = query_receiver.next().await.unwrap();
+        let (query, _) = query_receiver.next().await.unwrap();
         assert_eq!(
             query,
-            Query {
-                start_block: BlockNumber(0),
-                direction: Direction::Forward,
-                limit: 1,
-                step: 1,
-                data_type: DataType::StateDiff,
-            }
+            Query { start_block: BlockNumber(0), direction: Direction::Forward, limit: 1, step: 1 }
         );
 
         // Send state diffs.

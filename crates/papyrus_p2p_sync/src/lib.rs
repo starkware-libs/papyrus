@@ -139,7 +139,7 @@ pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    query_sender: Sender<Query>,
+    query_sender: Sender<(Query, DataType)>,
     response_receivers: ResponseReceivers,
 }
 
@@ -148,7 +148,7 @@ impl P2PSync {
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
+        query_sender: Sender<(Query, DataType)>,
         response_receivers: ResponseReceivers,
     ) -> Self {
         Self { config, storage_reader, storage_writer, query_sender, response_receivers }
