@@ -43,6 +43,7 @@ use crate::{
     Direction,
     InternalQuery,
     Query,
+    SignedBlockHeader,
 };
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -108,21 +109,16 @@ impl MockSwarm {
         for block_number in (start_block_number..block_max_number)
             .step_by(query.step.try_into().expect("step too large to convert to usize"))
         {
-            let signed_header = Data::BlockHeaderAndSignature {
-                header: BlockHeader {
+            let signed_header = SignedBlockHeader {
+                block_header: BlockHeader {
                     block_number: BlockNumber(block_number),
                     ..Default::default()
                 },
                 signatures: vec![],
             };
-            let mut data_bytes = vec![];
-            protobuf::BlockHeadersResponse::try_from(signed_header)
-                .expect(
-                    "Data::BlockHeaderAndSignature should be convertable to \
-                     protobuf::BlockHeadersResponse",
-                )
-                .encode(&mut data_bytes)
-                .expect("failed to convert data to bytes");
+            let data_bytes = protobuf::BlockHeadersResponse::try_from(Some(signed_header))
+                .unwrap()
+                .encode_to_vec();
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
                 mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
                     data: data_bytes,
@@ -144,11 +140,17 @@ impl SwarmTrait for MockSwarm {
              first",
         );
         // TODO(shahak): Add tests for state diff.
-        let data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
-            .unwrap()
-            .try_into()
-            .unwrap();
-        let is_fin = matches!(data, Data::Fin(DataType::SignedBlockHeader));
+        let (data, is_fin) =
+            match protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
+                .unwrap()
+                .try_into()
+                .unwrap()
+            {
+                Some(signed_block_header) => {
+                    (Data::BlockHeaderAndSignature(signed_block_header), false)
+                }
+                None => (Data::Fin(DataType::SignedBlockHeader), true),
+            };
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
             data_sender.close_channel();
@@ -233,10 +235,12 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(Data::BlockHeaderAndSignature {
-                            header,
-                            signatures: vec![],
-                        }) {
+                        if let Err(e) =
+                            sender.start_send(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                                block_header: header,
+                                signatures: vec![],
+                            }))
+                        {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -356,9 +360,10 @@ async fn process_incoming_query() {
             let mut expected_data = headers
                 .into_iter()
                 .map(|header| {
-                    Data::BlockHeaderAndSignature {
-                    header, signatures: vec![]
-                }})
+                    Data::BlockHeaderAndSignature(SignedBlockHeader {
+                        block_header: header, signatures: vec![]
+                    })
+                })
                 .collect::<Vec<_>>();
             expected_data.push(Data::Fin(DataType::SignedBlockHeader));
             assert_eq!(inbound_session_data, expected_data);
