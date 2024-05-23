@@ -78,12 +78,13 @@ impl From<DataType> for Protocol {
 }
 
 /// This struct represents a query that can be sent to a peer.
-#[derive(Default, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(test, derive(Hash))]
 pub struct Query {
-    pub start_block: BlockNumber,
+    pub start_block: BlockHashOrNumber,
     pub direction: Direction,
-    pub limit: usize,
-    pub step: usize,
+    pub limit: u64,
+    pub step: u64,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
@@ -101,21 +102,17 @@ pub struct SignedBlockHeader {
     pub signatures: Vec<BlockSignature>,
 }
 
-// TODO(shahak): Internalize this when we have a mixed behaviour.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(test, derive(Hash))]
-pub struct InternalQuery {
-    pub start_block: BlockHashOrNumber,
-    pub direction: Direction,
-    pub limit: u64,
-    pub step: u64,
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[cfg_attr(test, derive(Hash))]
 pub enum BlockHashOrNumber {
     Hash(BlockHash),
     Number(BlockNumber),
+}
+
+impl Default for BlockHashOrNumber {
+    fn default() -> Self {
+        Self::Number(BlockNumber::default())
+    }
 }
 
 pub type SignedBlockHeaderStream = Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>;
@@ -145,7 +142,7 @@ impl Protocol {
         }
     }
 
-    pub fn bytes_query_to_protobuf_request(&self, query: Vec<u8>) -> InternalQuery {
+    pub fn bytes_query_to_protobuf_request(&self, query: Vec<u8>) -> Query {
         // TODO: make this function return errors instead of panicking.
         match self {
             Protocol::SignedBlockHeader => protobuf::BlockHeadersRequest::decode(&query[..])
@@ -241,17 +238,6 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(120),
             header_buffer_size: 100000,
             bootstrap_peer_multiaddr: None,
-        }
-    }
-}
-
-impl From<Query> for InternalQuery {
-    fn from(query: Query) -> InternalQuery {
-        InternalQuery {
-            start_block: BlockHashOrNumber::Number(query.start_block),
-            direction: query.direction,
-            limit: query.limit as u64,
-            step: query.step as u64,
         }
     }
 }

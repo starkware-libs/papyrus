@@ -21,7 +21,7 @@ use crate::db_executor::{
     MockFetchBlockDataFromDb,
     QueryId,
 };
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, SignedBlockHeader};
+use crate::{BlockHashOrNumber, DataType, Direction, Query, SignedBlockHeader};
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -34,7 +34,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
 
     // register a query.
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(0)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
@@ -44,7 +44,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
         enum_iterator::all::<DataType>()
             .map(|data_type| {
                 let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-                let query_id = db_executor.register_query(query, data_type, sender);
+                let query_id = db_executor.register_query(query.clone(), data_type, sender);
                 (query_id, (receiver, data_type))
             })
             .unzip();
@@ -117,7 +117,7 @@ async fn header_db_executor_start_block_given_by_hash() {
 
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Hash(block_hash),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
@@ -151,7 +151,7 @@ async fn header_db_executor_query_of_missing_block() {
     const BLOCKS_DELTA: u64 = 5;
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(NUM_OF_BLOCKS - BLOCKS_DELTA)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,
@@ -203,7 +203,7 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
     for _ in 0..2 {
         // register a query.
         let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-        let query = InternalQuery {
+        let query = Query {
             start_block: BlockHashOrNumber::Number(BlockNumber(0)),
             direction: Direction::Forward,
             limit: NUM_OF_BLOCKS,
@@ -240,7 +240,7 @@ async fn header_db_executor_drop_receiver_before_query_is_done() {
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
 
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(1)),
         direction: Direction::Forward,
         limit: NUM_OF_BLOCKS,

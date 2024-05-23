@@ -7,7 +7,7 @@ use starknet_api::state::{StorageKey, ThinStateDiff};
 use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf;
-use crate::{InternalQuery, Query};
+use crate::Query;
 
 impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     type Error = ProtobufConversionError;
@@ -223,7 +223,7 @@ impl From<ThinStateDiff> for StateDiffsResponseVec {
     }
 }
 
-impl TryFrom<protobuf::StateDiffsRequest> for InternalQuery {
+impl TryFrom<protobuf::StateDiffsRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
         let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
