@@ -1025,3 +1025,14 @@ impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
         Ok(Self { version, nonce, contract_address, entry_point_selector, calldata })
     }
 }
+
+impl From<L1HandlerTransaction> for protobuf::transaction::L1HandlerV0 {
+    fn from(value: L1HandlerTransaction) -> Self {
+        Self {
+            nonce: Some(value.nonce.0.into()),
+            address: Some(value.contract_address.into()),
+            entry_point_selector: Some(value.entry_point_selector.0.into()),
+            calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
+        }
+    }
+}
