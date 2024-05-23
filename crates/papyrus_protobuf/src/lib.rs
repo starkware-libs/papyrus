@@ -1,2 +1,5 @@
+// TODO(shahak): Internalize this once network doesn't depend on protobuf.
 pub mod converters;
-mod protobuf;
+// TODO(shahak): Internalize this once network doesn't depend on protobuf.
+pub mod protobuf;
+pub mod sync;

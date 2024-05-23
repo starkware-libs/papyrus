@@ -2,8 +2,8 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf::{self};
-use crate::{BlockHashOrNumber, Direction, Query};
+use crate::protobuf;
+use crate::sync::{BlockHashOrNumber, Direction, Query};
 
 #[cfg(test)]
 #[allow(dead_code)]
@@ -192,7 +192,8 @@ pub(super) fn enum_int_to_volition_domain(
     }
 }
 
-pub(super) fn volition_domain_to_enum_int(value: DataAvailabilityMode) -> i32 {
+// TODO(shahak): Internalize this once network doesn't depend on protobuf.
+pub fn volition_domain_to_enum_int(value: DataAvailabilityMode) -> i32 {
     match value {
         DataAvailabilityMode::L1 => 0,
         DataAvailabilityMode::L2 => 1,

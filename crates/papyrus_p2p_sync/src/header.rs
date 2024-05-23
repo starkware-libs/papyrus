@@ -2,7 +2,8 @@ use std::pin::Pin;
 
 use futures::future::BoxFuture;
 use futures::{FutureExt, Stream, StreamExt};
-use papyrus_network::{DataType, SignedBlockHeader};
+use papyrus_network::DataType;
+use papyrus_protobuf::sync::SignedBlockHeader;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;

@@ -1,6 +1,8 @@
-mod common;
+// TODO(shahak): Internalize this once network doesn't depend on protobuf.
+pub mod common;
 mod header;
 mod receipt;
+// TODO(shahak): Internalize this once network doesn't depend on protobuf.
 pub mod state_diff;
 mod transaction;
 

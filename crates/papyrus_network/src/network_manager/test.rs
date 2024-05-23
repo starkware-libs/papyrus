@@ -14,6 +14,8 @@ use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -32,18 +34,9 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::protobuf_messages::protobuf;
 use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{
-    broadcast,
-    mixed_behaviour,
-    BlockHashOrNumber,
-    DataType,
-    Direction,
-    Query,
-    SignedBlockHeader,
-};
+use crate::{broadcast, mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
