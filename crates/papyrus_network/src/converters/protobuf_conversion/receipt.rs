@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use starknet_api::transaction::Builtin;
+use starknet_api::hash::StarkFelt;
+use starknet_api::transaction::{Builtin, ExecutionResources};
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
@@ -44,5 +45,66 @@ impl From<HashMap<Builtin, u64>> for ProtobufBuiltinCounter {
             output: 0,
         };
         builtin_counter
+    }
+}
+
+impl TryFrom<protobuf::receipt::ExecutionResources> for ExecutionResources {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::ExecutionResources) -> Result<Self, Self::Error> {
+        let builtin_instance_counter = value
+            .builtins
+            .ok_or(ProtobufConversionError::MissingField { field_description: "builtins" })?;
+        let builtin_instance_counter = HashMap::<Builtin, u64>::try_from(builtin_instance_counter)?;
+
+        let da_l1_gas_consumed_felt =
+            StarkFelt::try_from(value.l1_gas.ok_or(ProtobufConversionError::MissingField {
+                field_description: "ExecutionResources::l1_gas",
+            })?)?;
+        let da_l1_gas_consumed = da_l1_gas_consumed_felt.try_into().map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u64",
+                value_as_str: format!("{da_l1_gas_consumed_felt:?}"),
+            }
+        })?;
+
+        let da_l1_data_gas_consumed_felt = StarkFelt::try_from(value.l1_data_gas.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "ExecutionResources::l1_data_gas",
+            },
+        )?)?;
+        let da_l1_data_gas_consumed = da_l1_data_gas_consumed_felt.try_into().map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u64",
+                value_as_str: format!("{da_l1_data_gas_consumed_felt:?}"),
+            }
+        })?;
+
+        let execution_resources = ExecutionResources {
+            steps: u64::from(value.steps),
+            builtin_instance_counter,
+            memory_holes: u64::from(value.memory_holes),
+            da_l1_gas_consumed,
+            da_l1_data_gas_consumed,
+        };
+        Ok(execution_resources)
+    }
+}
+
+impl From<ExecutionResources> for protobuf::receipt::ExecutionResources {
+    fn from(value: ExecutionResources) -> Self {
+        let builtin_instance_counter = ProtobufBuiltinCounter::from(value.builtin_instance_counter);
+        let l1_gas = StarkFelt::from(value.da_l1_gas_consumed).into();
+        let l1_data_gas = StarkFelt::from(value.da_l1_data_gas_consumed).into();
+        // TODO: should not panic
+        let steps = u32::try_from(value.steps).expect("Failed to convert u64 to u32");
+        let memory_holes = u32::try_from(value.memory_holes).expect("Failed to convert u64 to u32");
+
+        protobuf::receipt::ExecutionResources {
+            builtins: Some(builtin_instance_counter),
+            steps,
+            memory_holes,
+            l1_gas: Some(l1_gas),
+            l1_data_gas: Some(l1_data_gas),
+        }
     }
 }
