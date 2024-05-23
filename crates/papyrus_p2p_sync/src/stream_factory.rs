@@ -47,7 +47,7 @@ pub(crate) trait DataStreamFactory {
 
     fn create_stream(
         mut data_receiver: Pin<Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>>,
-        mut query_sender: Sender<Query>,
+        mut query_sender: Sender<(Query, DataType)>,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: usize,
@@ -83,13 +83,15 @@ pub(crate) trait DataStreamFactory {
                     end_block_number,
                 );
                 query_sender
-                    .send(Query {
-                        start_block: current_block_number,
-                        direction: Direction::Forward,
-                        limit,
-                        step: STEP,
-                        data_type: Self::DATA_TYPE,
-                    })
+                    .send((
+                        Query {
+                            start_block: current_block_number,
+                            direction: Direction::Forward,
+                            limit,
+                            step: STEP,
+                        },
+                        Self::DATA_TYPE,
+                    ))
                     .await?;
 
                 while current_block_number.0 < end_block_number {
