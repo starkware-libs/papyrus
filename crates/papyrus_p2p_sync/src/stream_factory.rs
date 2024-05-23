@@ -7,7 +7,7 @@ use futures::channel::mpsc::Sender;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{SinkExt, Stream, StreamExt};
-use papyrus_network::{DataType, Direction, Query};
+use papyrus_network::{BlockHashOrNumber, DataType, Direction, Query};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
@@ -50,7 +50,7 @@ pub(crate) trait DataStreamFactory {
         mut query_sender: Sender<(Query, DataType)>,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
-        num_blocks_per_query: usize,
+        num_blocks_per_query: u64,
         stop_sync_at_block_number: Option<BlockNumber>,
     ) -> BoxStream<'static, Result<Box<dyn BlockData>, P2PSyncError>> {
         stream! {
@@ -61,8 +61,7 @@ pub(crate) trait DataStreamFactory {
                     BlockNumberLimit::HeaderMarker => {
                         let last_block_number = storage_reader.begin_ro_txn()?.get_header_marker()?;
                         let limit = min(
-                            usize::try_from(last_block_number.0 - current_block_number.0)
-                                .expect("failed converting u64 to usize"),
+                            last_block_number.0 - current_block_number.0,
                             num_blocks_per_query,
                         );
                         if limit == 0 {
@@ -73,9 +72,7 @@ pub(crate) trait DataStreamFactory {
                         limit
                     }
                 };
-                let end_block_number = current_block_number.0
-                    + u64::try_from(limit)
-                        .expect("Failed converting usize to u64");
+                let end_block_number = current_block_number.0 + limit;
                 debug!(
                     "Downloading {:?} for blocks [{}, {})",
                     Self::DATA_TYPE,
@@ -85,7 +82,7 @@ pub(crate) trait DataStreamFactory {
                 query_sender
                     .send((
                         Query {
-                            start_block: current_block_number,
+                            start_block: BlockHashOrNumber::Number(current_block_number),
                             direction: Direction::Forward,
                             limit,
                             step: STEP,

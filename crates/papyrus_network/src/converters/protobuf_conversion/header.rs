@@ -22,7 +22,7 @@ use starknet_api::crypto::Signature;
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
-use crate::{InternalQuery, Query, SignedBlockHeader};
+use crate::{Query, SignedBlockHeader};
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {
     type Error = ProtobufConversionError;
@@ -286,7 +286,7 @@ impl From<Option<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
     }
 }
 
-impl TryFrom<protobuf::BlockHeadersRequest> for InternalQuery {
+impl TryFrom<protobuf::BlockHeadersRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
         let value = value.iteration.ok_or(ProtobufConversionError::MissingField {

@@ -41,7 +41,6 @@ use crate::{
     BlockHashOrNumber,
     DataType,
     Direction,
-    InternalQuery,
     Query,
     SignedBlockHeader,
 };
@@ -51,7 +50,7 @@ const TIMEOUT: Duration = Duration::from_secs(1);
 #[derive(Default)]
 struct MockSwarm {
     pub pending_events: Queue<Event>,
-    pub sent_queries: Vec<(InternalQuery, PeerId)>,
+    pub sent_queries: Vec<(Query, PeerId)>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
@@ -99,7 +98,7 @@ impl MockSwarm {
 
     fn create_received_data_events_for_query(
         &self,
-        query: InternalQuery,
+        query: Query,
         outbound_session_id: OutboundSessionId,
     ) {
         let BlockHashOrNumber::Number(BlockNumber(start_block_number)) = query.start_block else {
@@ -163,11 +162,11 @@ impl SwarmTrait for MockSwarm {
         peer_id: PeerId,
         _protocol: crate::Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        let query = protobuf::BlockHeadersRequest::decode(&query[..])
+        let query: Query = protobuf::BlockHeadersRequest::decode(&query[..])
             .expect("failed to decode protobuf BlockHeadersRequest")
             .try_into()
             .expect("failed to convert BlockHeadersRequest");
-        self.sent_queries.push((query, peer_id));
+        self.sent_queries.push((query.clone(), peer_id));
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_received_data_events_for_query(query, outbound_session_id);
         self.next_outbound_session_id += 1;
@@ -206,7 +205,7 @@ impl SwarmTrait for MockSwarm {
 #[derive(Default)]
 struct MockDBExecutor {
     next_query_id: usize,
-    pub query_to_headers: HashMap<InternalQuery, Vec<BlockHeader>>,
+    pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
     query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
@@ -222,7 +221,7 @@ impl DBExecutorTrait for MockDBExecutor {
     // TODO(shahak): Consider fixing code duplication with DBExecutor.
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
         mut sender: Sender<Data>,
     ) -> QueryId {
@@ -266,12 +265,12 @@ async fn register_subscriber_and_use_channels() {
     let mut network_manager =
         GenericNetworkManager::generic_new(mock_swarm, MockDBExecutor::default(), BUFFER_SIZE);
     // define query
-    let query_limit = 5;
+    let query_limit: usize = 5;
     let start_block_number = 0;
     let query = Query {
-        start_block: BlockNumber(start_block_number),
+        start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
         direction: Direction::Forward,
-        limit: query_limit,
+        limit: query_limit.try_into().unwrap(),
         step: 1,
     };
 
@@ -309,7 +308,7 @@ async fn register_subscriber_and_use_channels() {
 async fn process_incoming_query() {
     // Create data for test.
     const BLOCK_NUM: u64 = 0;
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(BLOCK_NUM)),
         direction: Direction::Forward,
         limit: 5,
@@ -323,7 +322,7 @@ async fn process_incoming_query() {
 
     // Setup mock DB executor and tell it to reply to the query with the given headers.
     let mut mock_db_executor = MockDBExecutor::default();
-    mock_db_executor.query_to_headers.insert(query, headers.clone());
+    mock_db_executor.query_to_headers.insert(query.clone(), headers.clone());
 
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
@@ -381,7 +380,7 @@ async fn close_inbound_session() {
     // define query
     let query_limit = 5;
     let start_block_number = 0;
-    let query = InternalQuery {
+    let query = Query {
         start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
         direction: Direction::Forward,
         limit: query_limit,

@@ -14,8 +14,8 @@ use starknet_api::state::ThinStateDiff;
 use crate::{P2PSync, P2PSyncConfig};
 
 pub const BUFFER_SIZE: usize = 1000;
-pub const HEADER_QUERY_LENGTH: usize = 5;
-pub const STATE_DIFF_QUERY_LENGTH: usize = 3;
+pub const HEADER_QUERY_LENGTH: u64 = 5;
+pub const STATE_DIFF_QUERY_LENGTH: u64 = 3;
 pub const SLEEP_DURATION_TO_LET_SYNC_ADVANCE: Duration = Duration::from_millis(10);
 // This should be substantially bigger than SLEEP_DURATION_TO_LET_SYNC_ADVANCE.
 pub const WAIT_PERIOD_FOR_NEW_DATA: Duration = Duration::from_millis(50);

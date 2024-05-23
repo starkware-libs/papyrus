@@ -26,15 +26,15 @@ use crate::header::HeaderStreamFactory;
 use crate::state_diff::StateDiffStreamFactory;
 use crate::stream_factory::DataStreamFactory;
 
-const STEP: usize = 1;
+const STEP: u64 = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 
 const NETWORK_DATA_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct P2PSyncConfig {
-    pub num_headers_per_query: usize,
-    pub num_block_state_diffs_per_query: usize,
+    pub num_headers_per_query: u64,
+    pub num_block_state_diffs_per_query: u64,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
     pub stop_sync_at_block_number: Option<BlockNumber>,
