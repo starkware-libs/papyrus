@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use starknet_api::core::EthAddress;
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{Builtin, ExecutionResources};
 
@@ -95,5 +96,27 @@ impl From<ExecutionResources> for protobuf::receipt::ExecutionResources {
             l1_gas: Some(l1_gas),
             l1_data_gas: Some(l1_data_gas),
         }
+    }
+}
+
+impl TryFrom<protobuf::EthereumAddress> for EthAddress {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::EthereumAddress) -> Result<Self, Self::Error> {
+        let mut felt = [0; 20];
+        if value.elements.len() != 20 {
+            return Err(ProtobufConversionError::BytesDataLengthMismatch {
+                type_description: "EthereumAddress",
+                num_expected: 20,
+                value: value.elements,
+            });
+        }
+        felt.copy_from_slice(&value.elements);
+        Ok(EthAddress(primitive_types::H160(felt)))
+    }
+}
+impl From<EthAddress> for protobuf::EthereumAddress {
+    fn from(value: EthAddress) -> Self {
+        let elements = value.0.as_bytes().to_vec();
+        protobuf::EthereumAddress { elements }
     }
 }

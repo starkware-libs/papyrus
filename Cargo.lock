@@ -5979,6 +5979,7 @@ dependencies = [
  "papyrus_config",
  "papyrus_storage",
  "pretty_assertions",
+ "primitive-types",
  "prost",
  "prost-build",
  "prost-types",
