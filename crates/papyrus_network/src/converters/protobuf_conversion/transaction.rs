@@ -6,13 +6,16 @@ use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
     ContractAddressSalt,
+    DeclareTransaction,
     DeclareTransactionV0V1,
     DeclareTransactionV2,
     DeclareTransactionV3,
+    DeployAccountTransaction,
     DeployAccountTransactionV1,
     DeployAccountTransactionV3,
     DeployTransaction,
     Fee,
+    InvokeTransaction,
     InvokeTransactionV0,
     InvokeTransactionV1,
     InvokeTransactionV3,
@@ -22,6 +25,7 @@ use starknet_api::transaction::{
     ResourceBounds,
     ResourceBoundsMapping,
     Tip,
+    Transaction,
     TransactionSignature,
     TransactionVersion,
 };
@@ -1034,5 +1038,50 @@ impl From<L1HandlerTransaction> for protobuf::transaction::L1HandlerV0 {
             entry_point_selector: Some(value.entry_point_selector.0.into()),
             calldata: value.calldata.0.iter().map(|calldata| (*calldata).into()).collect(),
         }
+    }
+}
+
+impl TryFrom<protobuf::transaction::Txn> for Transaction {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::transaction::Txn) -> Result<Self, Self::Error> {
+        Ok(match value {
+            protobuf::transaction::Txn::DeclareV0(declare_v0) => Transaction::Declare(
+                DeclareTransaction::V0(DeclareTransactionV0V1::try_from(declare_v0)?),
+            ),
+            protobuf::transaction::Txn::DeclareV1(declare_v1) => Transaction::Declare(
+                DeclareTransaction::V1(DeclareTransactionV0V1::try_from(declare_v1)?),
+            ),
+            protobuf::transaction::Txn::DeclareV2(declare_v2) => Transaction::Declare(
+                DeclareTransaction::V2(DeclareTransactionV2::try_from(declare_v2)?),
+            ),
+            protobuf::transaction::Txn::DeclareV3(declare_v3) => Transaction::Declare(
+                DeclareTransaction::V3(DeclareTransactionV3::try_from(declare_v3)?),
+            ),
+            protobuf::transaction::Txn::Deploy(deploy) => {
+                Transaction::Deploy(DeployTransaction::try_from(deploy)?)
+            }
+            protobuf::transaction::Txn::DeployAccountV1(deploy_account_v1) => {
+                Transaction::DeployAccount(DeployAccountTransaction::V1(
+                    DeployAccountTransactionV1::try_from(deploy_account_v1)?,
+                ))
+            }
+            protobuf::transaction::Txn::DeployAccountV3(deploy_account_v3) => {
+                Transaction::DeployAccount(DeployAccountTransaction::V3(
+                    DeployAccountTransactionV3::try_from(deploy_account_v3)?,
+                ))
+            }
+            protobuf::transaction::Txn::InvokeV0(invoke_v0) => Transaction::Invoke(
+                InvokeTransaction::V0(InvokeTransactionV0::try_from(invoke_v0)?),
+            ),
+            protobuf::transaction::Txn::InvokeV1(invoke_v1) => Transaction::Invoke(
+                InvokeTransaction::V1(InvokeTransactionV1::try_from(invoke_v1)?),
+            ),
+            protobuf::transaction::Txn::InvokeV3(invoke_v3) => Transaction::Invoke(
+                InvokeTransaction::V3(InvokeTransactionV3::try_from(invoke_v3)?),
+            ),
+            protobuf::transaction::Txn::L1Handler(l1_handler) => {
+                Transaction::L1Handler(L1HandlerTransaction::try_from(l1_handler)?)
+            }
+        })
     }
 }
