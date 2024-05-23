@@ -3,7 +3,7 @@ use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMo
 
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
-use crate::{BlockHashOrNumber, Direction, InternalQuery, Query};
+use crate::{BlockHashOrNumber, Direction, Query};
 
 #[cfg(test)]
 #[allow(dead_code)]
@@ -199,7 +199,7 @@ pub(super) fn volition_domain_to_enum_int(value: DataAvailabilityMode) -> i32 {
     }
 }
 
-impl TryFrom<protobuf::Iteration> for InternalQuery {
+impl TryFrom<protobuf::Iteration> for Query {
     type Error = ProtobufConversionError;
 
     fn try_from(value: protobuf::Iteration) -> Result<Self, Self::Error> {
@@ -226,21 +226,28 @@ impl TryFrom<protobuf::Iteration> for InternalQuery {
         };
         let limit = value.limit;
         let step = value.step;
-        Ok(InternalQuery { start_block, direction, limit, step })
+        Ok(Query { start_block, direction, limit, step })
     }
 }
 
 impl From<Query> for protobuf::Iteration {
     fn from(value: Query) -> Self {
-        let start = protobuf::iteration::Start::BlockNumber(value.start_block.0);
+        let start = match value.start_block {
+            BlockHashOrNumber::Number(BlockNumber(number)) => {
+                protobuf::iteration::Start::BlockNumber(number)
+            }
+            BlockHashOrNumber::Hash(block_hash) => {
+                protobuf::iteration::Start::Header(block_hash.into())
+            }
+        };
         Self {
             start: Some(start),
             direction: match value.direction {
                 Direction::Forward => 0,
                 Direction::Backward => 1,
             },
-            limit: value.limit as u64,
-            step: value.step as u64,
+            limit: value.limit,
+            step: value.step,
         }
     }
 }

@@ -4,7 +4,7 @@ use assert_matches::assert_matches;
 use futures::future::ready;
 use futures::{FutureExt, SinkExt, StreamExt};
 use indexmap::{indexmap, IndexMap};
-use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
+use papyrus_network::{BlockHashOrNumber, DataType, Direction, Query, SignedBlockHeader};
 use papyrus_storage::state::StateStorageReader;
 use rand::RngCore;
 use starknet_api::block::{BlockHeader, BlockNumber};
@@ -142,26 +142,21 @@ async fn state_diff_basic_flow() {
         }
         for (start_block_number, num_blocks) in [
             (0u64, STATE_DIFF_QUERY_LENGTH),
-            (
-                STATE_DIFF_QUERY_LENGTH.try_into().unwrap(),
-                HEADER_QUERY_LENGTH - STATE_DIFF_QUERY_LENGTH,
-            ),
+            (STATE_DIFF_QUERY_LENGTH, HEADER_QUERY_LENGTH - STATE_DIFF_QUERY_LENGTH),
         ] {
             // Get a state diff query and validate it
             let (query, _) = query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 Query {
-                    start_block: BlockNumber(start_block_number),
+                    start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: num_blocks,
                     step: 1,
                 }
             );
 
-            for block_number in
-                start_block_number..(start_block_number + u64::try_from(num_blocks).unwrap())
-            {
+            for block_number in start_block_number..(start_block_number + num_blocks) {
                 let expected_state_diff: &ThinStateDiff =
                     &state_diffs[usize::try_from(block_number).unwrap()];
                 let state_diff_parts = split_state_diff(expected_state_diff.clone());
@@ -238,7 +233,12 @@ async fn validate_state_diff_fails(
         let (query, _) = query_receiver.next().await.unwrap();
         assert_eq!(
             query,
-            Query { start_block: BlockNumber(0), direction: Direction::Forward, limit: 1, step: 1 }
+            Query {
+                start_block: BlockHashOrNumber::Number(BlockNumber(0)),
+                direction: Direction::Forward,
+                limit: 1,
+                step: 1,
+            }
         );
 
         // Send state diffs.
