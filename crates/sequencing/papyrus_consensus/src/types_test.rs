@@ -1,16 +1,13 @@
-use crate::types::{ConsensusBlock, ConsensusContext};
+use crate::types::ConsensusContext;
 
 // This should cause compilation to fail if the traits are not object safe.
 #[test]
 fn check_object_safety() {
-    // Arbitrarily chosen types for testing.
-    type _ProposalIter = std::slice::Iter<'static, u32>;
-    type _Blk = Box<dyn ConsensusBlock<ProposalChunk = u32, ProposalIter = _ProposalIter>>;
+    struct _Blk {}
 
-    fn _check_consensus_block() -> _Blk {
-        todo!()
-    }
-
+    // This test only checks object safety, not that `ConsensusContext::Block` implements the
+    // required traits. That check is performed by the compiler in an `impl ConsensusContext`
+    // block.
     fn _check_context() -> Box<dyn ConsensusContext<Block = _Blk>> {
         todo!()
     }
