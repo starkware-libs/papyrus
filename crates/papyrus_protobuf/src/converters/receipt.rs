@@ -72,6 +72,34 @@ impl From<TransactionOutput> for protobuf::Receipt {
     }
 }
 
+impl TryFrom<protobuf::Receipt> for TransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::Receipt) -> Result<Self, Self::Error> {
+        let r#type = value
+            .r#type
+            .ok_or(ProtobufConversionError::MissingField { field_description: "Receipt::type" })?;
+        match r#type {
+            protobuf::receipt::Type::Invoke(invoke) => {
+                Ok(TransactionOutput::Invoke(InvokeTransactionOutput::try_from(invoke)?))
+            }
+            protobuf::receipt::Type::L1Handler(l1_handler) => {
+                Ok(TransactionOutput::L1Handler(L1HandlerTransactionOutput::try_from(l1_handler)?))
+            }
+            protobuf::receipt::Type::Declare(declare) => {
+                Ok(TransactionOutput::Declare(DeclareTransactionOutput::try_from(declare)?))
+            }
+            protobuf::receipt::Type::DeprecatedDeploy(deploy) => {
+                Ok(TransactionOutput::Deploy(DeployTransactionOutput::try_from(deploy)?))
+            }
+            protobuf::receipt::Type::DeployAccount(deploy_account) => {
+                Ok(TransactionOutput::DeployAccount(DeployAccountTransactionOutput::try_from(
+                    deploy_account,
+                )?))
+            }
+        }
+    }
+}
+
 // The output will have an empty events vec
 impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutput {
     type Error = ProtobufConversionError;
