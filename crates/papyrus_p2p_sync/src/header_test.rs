@@ -1,6 +1,6 @@
 use futures::future::ready;
 use futures::{SinkExt, StreamExt};
-use papyrus_network::{DataType, Direction, Query, SignedBlockHeader};
+use papyrus_network::{BlockHashOrNumber, DataType, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
@@ -15,7 +15,7 @@ use crate::test_utils::{
 
 #[tokio::test]
 async fn signed_headers_basic_flow() {
-    const NUM_QUERIES: usize = 3;
+    const NUM_QUERIES: u64 = 3;
 
     let (p2p_sync, storage_reader, query_receiver, mut signed_headers_sender, _state_diffs_sender) =
         setup();
@@ -36,7 +36,7 @@ async fn signed_headers_basic_flow() {
             assert_eq!(
                 query,
                 Query {
-                    start_block: BlockNumber(start_block_number.try_into().unwrap()),
+                    start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: HEADER_QUERY_LENGTH,
                     step: 1,
@@ -46,8 +46,8 @@ async fn signed_headers_basic_flow() {
             for (i, (block_hash, block_signature)) in block_hashes_and_signatures
                 .iter()
                 .enumerate()
-                .take(end_block_number)
-                .skip(start_block_number)
+                .take(end_block_number.try_into().expect("Failed converting u64 to usize"))
+                .skip(start_block_number.try_into().expect("Failed converting u64 to usize"))
             {
                 // Send responses
                 signed_headers_sender
@@ -94,7 +94,7 @@ async fn signed_headers_basic_flow() {
 #[tokio::test]
 async fn sync_sends_new_header_query_if_it_got_partial_responses() {
     const NUM_ACTUAL_RESPONSES: u8 = 2;
-    assert!(usize::from(NUM_ACTUAL_RESPONSES) < HEADER_QUERY_LENGTH);
+    assert!(u64::from(NUM_ACTUAL_RESPONSES) < HEADER_QUERY_LENGTH);
 
     let (p2p_sync, _storage_reader, query_receiver, mut signed_headers_sender, _state_diffs_sender) =
         setup();
@@ -133,7 +133,7 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
         assert_eq!(
             query,
             Query {
-                start_block: BlockNumber(NUM_ACTUAL_RESPONSES.into()),
+                start_block: BlockHashOrNumber::Number(BlockNumber(NUM_ACTUAL_RESPONSES.into())),
                 direction: Direction::Forward,
                 limit: HEADER_QUERY_LENGTH,
                 step: 1,

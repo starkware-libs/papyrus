@@ -20,7 +20,7 @@ use tokio::task::JoinHandle;
 
 use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
 use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, DataType, InternalQuery, SignedBlockHeader};
+use crate::{BlockHashOrNumber, DataType, Query, SignedBlockHeader};
 
 #[cfg(test)]
 mod test;
@@ -138,7 +138,7 @@ pub enum DBExecutorError {
     #[error(
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
-    BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
+    BlockNumberOutOfRange { query: Query, counter: u64, query_id: QueryId },
     // TODO: add data type to the error message.
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
@@ -188,7 +188,7 @@ pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unp
     // TODO: add writer functionality
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         sender: Sender<Data>,
     ) -> QueryId;
@@ -210,7 +210,7 @@ impl DBExecutor {
 impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         mut sender: Sender<Data>,
     ) -> QueryId {
@@ -239,7 +239,7 @@ impl DBExecutorTrait for DBExecutor {
                 };
                 for block_counter in 0..query.limit {
                     let block_number = BlockNumber(utils::calculate_block_number(
-                        query,
+                        &query,
                         start_block_number,
                         block_counter,
                         query_id,
