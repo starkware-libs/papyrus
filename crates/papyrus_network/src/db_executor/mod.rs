@@ -14,13 +14,13 @@ use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use prost::Message;
-use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
 use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
 use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, DataType, InternalQuery};
+use crate::{BlockHashOrNumber, DataType, InternalQuery, SignedBlockHeader};
 
 #[cfg(test)]
 mod test;
@@ -36,8 +36,7 @@ pub struct DataEncodingError;
 
 #[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
 pub enum Data {
-    // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
+    BlockHeaderAndSignature(SignedBlockHeader),
     StateDiff { state_diff: ThinStateDiff },
     Fin(DataType),
 }
@@ -59,13 +58,13 @@ impl Data {
         B: BufMut,
     {
         match self {
-            Data::BlockHeaderAndSignature { .. } => self
-                .try_into()
-                .map(|data: protobuf::BlockHeadersResponse| match encode_with_length_prefix_flag {
+            Data::BlockHeaderAndSignature(signed_block_header) => {
+                let data: protobuf::BlockHeadersResponse = Some(signed_block_header).into();
+                match encode_with_length_prefix_flag {
                     true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
                     false => data.encode(buf).map_err(|_| DataEncodingError),
-                })
-                .map_err(|_| DataEncodingError)?,
+                }
+            }
             Data::StateDiff { state_diff } => {
                 let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
                 let res = state_diffs_response_vec
@@ -348,7 +347,10 @@ impl FetchBlockDataFromDb for DataType {
                         storage_error: err,
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
-                Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+                Ok(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                    block_header: header,
+                    signatures: vec![signature],
+                }))
             }
             DataType::StateDiff => {
                 let state_diff = txn

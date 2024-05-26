@@ -1,8 +1,5 @@
 pub mod protobuf_conversion;
 
-#[cfg(test)]
-mod test;
-
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, Sender};

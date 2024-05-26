@@ -21,7 +21,7 @@ use crate::db_executor::{
     MockFetchBlockDataFromDb,
     QueryId,
 };
-use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery};
+use crate::{BlockHashOrNumber, DataType, Direction, InternalQuery, SignedBlockHeader};
 const BUFFER_SIZE: usize = 10;
 
 #[tokio::test]
@@ -84,7 +84,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
                     }
                 }
                 match data {
-                    Data::BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} => {
+                    Data::BlockHeaderAndSignature(SignedBlockHeader{ block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) => {
                         assert_eq!(block_number, &(i as u64));
                     }
                     Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
@@ -135,7 +135,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in res.iter().enumerate() {
-                assert_matches!(data, BlockHeaderAndSignature { header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..} if block_number == &(i as u64));
+                assert_matches!(data, BlockHeaderAndSignature(SignedBlockHeader{block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) if block_number == &(i as u64));
             }
         }
     }

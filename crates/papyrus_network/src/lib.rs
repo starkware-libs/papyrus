@@ -118,7 +118,7 @@ pub enum Direction {
 }
 
 #[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
+#[cfg_attr(test, derive(Clone, PartialEq, Eq))]
 pub struct SignedBlockHeader {
     pub block_header: BlockHeader,
     pub signatures: Vec<BlockSignature>,
