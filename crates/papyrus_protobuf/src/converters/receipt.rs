@@ -50,30 +50,24 @@ impl TryFrom<protobuf::Receipt> for TransactionOutput {
     }
 }
 
-impl TryFrom<protobuf::Receipt> for TransactionOutput {
-    type Error = ProtobufConversionError;
-    fn try_from(value: protobuf::Receipt) -> Result<Self, Self::Error> {
-        let r#type = value
-            .r#type
-            .ok_or(ProtobufConversionError::MissingField { field_description: "Receipt::type" })?;
-        match r#type {
-            protobuf::receipt::Type::Invoke(invoke) => {
-                Ok(TransactionOutput::Invoke(InvokeTransactionOutput::try_from(invoke)?))
+impl From<TransactionOutput> for protobuf::Receipt {
+    fn from(value: TransactionOutput) -> Self {
+        match value {
+            TransactionOutput::Invoke(invoke) => {
+                protobuf::Receipt { r#type: Some(protobuf::receipt::Type::Invoke(invoke.into())) }
             }
-            protobuf::receipt::Type::L1Handler(l1_handler) => {
-                Ok(TransactionOutput::L1Handler(L1HandlerTransactionOutput::try_from(l1_handler)?))
+            TransactionOutput::L1Handler(l1_handler) => protobuf::Receipt {
+                r#type: Some(protobuf::receipt::Type::L1Handler(l1_handler.into())),
+            },
+            TransactionOutput::Declare(declare) => {
+                protobuf::Receipt { r#type: Some(protobuf::receipt::Type::Declare(declare.into())) }
             }
-            protobuf::receipt::Type::Declare(declare) => {
-                Ok(TransactionOutput::Declare(DeclareTransactionOutput::try_from(declare)?))
-            }
-            protobuf::receipt::Type::DeprecatedDeploy(deploy) => {
-                Ok(TransactionOutput::Deploy(DeployTransactionOutput::try_from(deploy)?))
-            }
-            protobuf::receipt::Type::DeployAccount(deploy_account) => {
-                Ok(TransactionOutput::DeployAccount(DeployAccountTransactionOutput::try_from(
-                    deploy_account,
-                )?))
-            }
+            TransactionOutput::Deploy(deploy) => protobuf::Receipt {
+                r#type: Some(protobuf::receipt::Type::DeprecatedDeploy(deploy.into())),
+            },
+            TransactionOutput::DeployAccount(deploy_account) => protobuf::Receipt {
+                r#type: Some(protobuf::receipt::Type::DeployAccount(deploy_account.into())),
+            },
         }
     }
 }
@@ -110,6 +104,23 @@ impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutpu
     }
 }
 
+// The price_unit will be updated in the caller function
+impl From<DeployAccountTransactionOutput> for protobuf::receipt::DeployAccount {
+    fn from(value: DeployAccountTransactionOutput) -> Self {
+        let common = create_receipt_common_from_txn_output_fields(
+            value.actual_fee,
+            value.messages_sent,
+            value.execution_resources,
+            value.execution_status,
+        );
+
+        protobuf::receipt::DeployAccount {
+            common: Some(common),
+            contract_address: Some(StarkFelt::from(value.contract_address).into()),
+        }
+    }
+}
+
 // The output will have an empty events vec
 impl TryFrom<protobuf::receipt::Deploy> for DeployTransactionOutput {
     type Error = ProtobufConversionError;
@@ -142,6 +153,23 @@ impl TryFrom<protobuf::receipt::Deploy> for DeployTransactionOutput {
     }
 }
 
+// The price_unit will be updated in the caller function
+impl From<DeployTransactionOutput> for protobuf::receipt::Deploy {
+    fn from(value: DeployTransactionOutput) -> Self {
+        let common = create_receipt_common_from_txn_output_fields(
+            value.actual_fee,
+            value.messages_sent,
+            value.execution_resources,
+            value.execution_status,
+        );
+
+        protobuf::receipt::Deploy {
+            common: Some(common),
+            contract_address: Some(StarkFelt::from(value.contract_address).into()),
+        }
+    }
+}
+
 // The output will have an empty events vec
 impl TryFrom<protobuf::receipt::Declare> for DeclareTransactionOutput {
     type Error = ProtobufConversionError;
@@ -152,6 +180,20 @@ impl TryFrom<protobuf::receipt::Declare> for DeclareTransactionOutput {
         let events = vec![];
 
         Ok(Self { actual_fee, messages_sent, events, execution_status, execution_resources })
+    }
+}
+
+// The price_unit will be updated in the caller function
+impl From<DeclareTransactionOutput> for protobuf::receipt::Declare {
+    fn from(value: DeclareTransactionOutput) -> Self {
+        let common = create_receipt_common_from_txn_output_fields(
+            value.actual_fee,
+            value.messages_sent,
+            value.execution_resources,
+            value.execution_status,
+        );
+
+        protobuf::receipt::Declare { common: Some(common) }
     }
 }
 
@@ -168,6 +210,20 @@ impl TryFrom<protobuf::receipt::Invoke> for InvokeTransactionOutput {
     }
 }
 
+// The price_unit will be updated in the caller function
+impl From<InvokeTransactionOutput> for protobuf::receipt::Invoke {
+    fn from(value: InvokeTransactionOutput) -> Self {
+        let common = create_receipt_common_from_txn_output_fields(
+            value.actual_fee,
+            value.messages_sent,
+            value.execution_resources,
+            value.execution_status,
+        );
+
+        protobuf::receipt::Invoke { common: Some(common) }
+    }
+}
+
 // The output will have an empty events vec
 impl TryFrom<protobuf::receipt::L1Handler> for L1HandlerTransactionOutput {
     type Error = ProtobufConversionError;
@@ -178,6 +234,20 @@ impl TryFrom<protobuf::receipt::L1Handler> for L1HandlerTransactionOutput {
         let events = vec![];
 
         Ok(Self { actual_fee, messages_sent, events, execution_status, execution_resources })
+    }
+}
+
+// The price_unit will be updated in the caller function
+impl From<L1HandlerTransactionOutput> for protobuf::receipt::L1Handler {
+    fn from(value: L1HandlerTransactionOutput) -> Self {
+        let common = create_receipt_common_from_txn_output_fields(
+            value.actual_fee,
+            value.messages_sent,
+            value.execution_resources,
+            value.execution_status,
+        );
+
+        protobuf::receipt::L1Handler { common: Some(common), msg_hash: None }
     }
 }
 
@@ -377,4 +447,28 @@ fn parse_common_receipt_fields(
         ProtobufConversionError::MissingField { field_description: "Common::execution_resources" },
     )?)?;
     Ok((actual_fee, messages_sent, execution_status, execution_resources))
+}
+
+fn create_receipt_common_from_txn_output_fields(
+    actual_fee: Fee,
+    messages_sent: Vec<MessageToL1>,
+    execution_resources: ExecutionResources,
+    execution_status: TransactionExecutionStatus,
+) -> protobuf::receipt::Common {
+    let actual_fee = StarkFelt::from(actual_fee).into();
+    let messages_sent = messages_sent.into_iter().map(protobuf::MessageToL1::from).collect();
+    let execution_resources = execution_resources.into();
+    let revert_reason =
+        if let TransactionExecutionStatus::Reverted(reverted_status) = execution_status {
+            Some(reverted_status.revert_reason)
+        } else {
+            None
+        };
+    protobuf::receipt::Common {
+        actual_fee: Some(actual_fee),
+        price_unit: 0,
+        messages_sent,
+        execution_resources: Some(execution_resources),
+        revert_reason,
+    }
 }

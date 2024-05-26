@@ -1101,3 +1101,51 @@ impl From<Transaction> for protobuf::transaction::Txn {
         }
     }
 }
+
+#[allow(dead_code)]
+pub fn set_price_unit_based_on_transaction(
+    receipt: &mut protobuf::Receipt,
+    transaction: &protobuf::Transaction,
+) {
+    let price_unit = match &transaction.txn {
+        Some(protobuf::transaction::Txn::DeclareV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeclareV2(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeclareV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::Deploy(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeployAccountV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeployAccountV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::InvokeV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::InvokeV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::L1Handler(_)) => protobuf::PriceUnit::Wei,
+        _ => return,
+    };
+    if let Some(ref mut receipt_type) = receipt.r#type {
+        match receipt_type {
+            protobuf::receipt::Type::Invoke(invoke) => {
+                if let Some(ref mut common) = invoke.common {
+                    common.price_unit = price_unit.into();
+                }
+            }
+            protobuf::receipt::Type::L1Handler(l1_handler) => {
+                if let Some(ref mut common) = l1_handler.common {
+                    common.price_unit = price_unit.into();
+                }
+            }
+            protobuf::receipt::Type::Declare(declare) => {
+                if let Some(ref mut common) = declare.common {
+                    common.price_unit = price_unit.into();
+                }
+            }
+            protobuf::receipt::Type::DeprecatedDeploy(deploy) => {
+                if let Some(ref mut common) = deploy.common {
+                    common.price_unit = price_unit.into();
+                }
+            }
+            protobuf::receipt::Type::DeployAccount(deploy_account) => {
+                if let Some(ref mut common) = deploy_account.common {
+                    common.price_unit = price_unit.into();
+                }
+            }
+        }
+    }
+}
