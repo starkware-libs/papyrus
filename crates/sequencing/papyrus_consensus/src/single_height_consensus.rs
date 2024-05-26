@@ -5,7 +5,7 @@ mod single_height_consensus_test;
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use starknet_api::block::BlockNumber;
 
 use crate::types::{
@@ -47,11 +47,7 @@ where
         // TODO(matan): In the future this logic will be encapsulated in the state machine, and SHC
         // will await a signal from SHC to propose.
         let proposer_id = self.context.proposer(&self.validators, self.height);
-        if proposer_id == self.id {
-            self.propose().await
-        } else {
-            todo!("run as validator");
-        }
+        if proposer_id == self.id { self.propose().await } else { self.validate(proposer_id).await }
     }
 
     async fn propose(&mut self) -> BlockT {
@@ -63,7 +59,28 @@ where
             .await
             .expect("failed to send proposal to peering");
         let block = block_receiver.await.expect("failed to build block");
+        // TODO: Switch this to the Proposal signature.
         fin_sender.send(block.id()).expect("failed to send block hash");
+        block
+    }
+
+    async fn validate(&mut self, proposer_id: NodeId) -> BlockT {
+        let Some(msg) = self.from_peering_receiver.next().await else {
+            panic!("Peering component disconnected from SingleHeightConsensus");
+        };
+
+        let (init, content_receiver, fin_receiver) = match msg {
+            PeeringConsensusMessage::Proposal((init, content_receiver, block_hash_receiver)) => {
+                (init, content_receiver, block_hash_receiver)
+            }
+        };
+        assert_eq!(init.height, self.height);
+        assert_eq!(init.proposer, proposer_id);
+        let block_receiver = self.context.validate_proposal(self.height, content_receiver).await;
+        let block = block_receiver.await.expect("failed to build block");
+        let fin = fin_receiver.await.expect("failed to receive block hash");
+        // TODO Switch to signature validation.
+        assert_eq!(block.id(), fin);
         block
     }
 }

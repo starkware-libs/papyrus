@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use starknet_api::block::BlockNumber;
 use tokio;
 
@@ -84,4 +84,39 @@ async fn propose() {
         shc_to_peering_receiver.next().await.unwrap();
     assert_eq!(init, ProposalInit { height: BlockNumber(0), proposer: node_id });
     assert_eq!(block_id_receiver.await.unwrap(), block.id());
+}
+
+#[tokio::test]
+async fn validate() {
+    let mut test_fields = setup();
+    let node_id: NodeId = 1;
+    let proposer: NodeId = 2;
+    let block = TestBlock { content: vec![1, 2, 3], id: 1 };
+    // Set expectations for how the test should run:
+    test_fields.context.expect_validators().returning(move |_| vec![node_id, proposer, 3, 4]);
+    test_fields.context.expect_proposer().returning(move |_, _| proposer);
+    let block_clone = block.clone();
+    test_fields.context.expect_validate_proposal().returning(move |_, _| {
+        let (block_sender, block_receiver) = oneshot::channel();
+        block_sender.send(block_clone.clone()).unwrap();
+        block_receiver
+    });
+
+    // Creation calls to `context.validators`.
+    let (shc, _, mut peering_to_shc_sender) = test_fields.new_shc(BlockNumber(0), node_id).await;
+
+    // Send the proposal from the peer.
+    let (fin_sender, fin_receiver) = oneshot::channel();
+    peering_to_shc_sender
+        .send(PeeringMessage::Proposal((
+            ProposalInit { height: BlockNumber(0), proposer },
+            mpsc::channel(1).1, // content - ignored by SHC.
+            fin_receiver,
+        )))
+        .await
+        .unwrap();
+    fin_sender.send(block.id()).unwrap();
+
+    // This calls to `context.proposer` and `context.build_proposal`.
+    assert_eq!(shc.run().await.id(), block.id());
 }
