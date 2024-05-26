@@ -4,9 +4,13 @@ use starknet_api::core::{ContractAddress, EthAddress, PatriciaKey};
 use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Builtin,
+    DeclareTransactionOutput,
     DeployAccountTransactionOutput,
+    DeployTransactionOutput,
     ExecutionResources,
     Fee,
+    InvokeTransactionOutput,
+    L1HandlerTransactionOutput,
     L2ToL1Payload,
     MessageToL1,
     RevertedTransactionExecutionStatus,
@@ -80,6 +84,213 @@ impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutpu
             execution_status,
             execution_resources,
         })
+    }
+}
+
+// The output will have an empty events vec
+impl TryFrom<protobuf::receipt::Deploy> for DeployTransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::Deploy) -> Result<Self, Self::Error> {
+        let common = value
+            .common
+            .ok_or(ProtobufConversionError::MissingField { field_description: "Deploy::common" })?;
+
+        let actual_fee_felt = StarkFelt::try_from(common.actual_fee.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Deploy::common.actual_fee",
+            },
+        )?)?;
+        let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{actual_fee_felt:?}"),
+            }
+        })?);
+
+        let messages_sent = common
+            .messages_sent
+            .into_iter()
+            .map(MessageToL1::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let events = vec![];
+
+        let contract_address =
+            value.contract_address.ok_or(ProtobufConversionError::MissingField {
+                field_description: "Deploy::contract_address",
+            })?;
+        let felt = StarkFelt::try_from(contract_address)?;
+        let contract_address = ContractAddress(PatriciaKey::try_from(felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "PatriciaKey",
+                value_as_str: format!("{felt:?}"),
+            }
+        })?);
+
+        let execution_status = common.revert_reason.map_or_else(
+            || TransactionExecutionStatus::Succeeded,
+            |revert_reason| {
+                TransactionExecutionStatus::Reverted(RevertedTransactionExecutionStatus {
+                    revert_reason,
+                })
+            },
+        );
+
+        let execution_resources = ExecutionResources::try_from(common.execution_resources.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Deploy::common.execution_resources",
+            },
+        )?)?;
+
+        Ok(Self {
+            actual_fee,
+            messages_sent,
+            events,
+            contract_address,
+            execution_status,
+            execution_resources,
+        })
+    }
+}
+
+// The output will have an empty events vec
+impl TryFrom<protobuf::receipt::Declare> for DeclareTransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::Declare) -> Result<Self, Self::Error> {
+        let common = value.common.ok_or(ProtobufConversionError::MissingField {
+            field_description: "Declare::common",
+        })?;
+
+        let actual_fee_felt = StarkFelt::try_from(common.actual_fee.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Declare::common.actual_fee",
+            },
+        )?)?;
+        let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{actual_fee_felt:?}"),
+            }
+        })?);
+
+        let messages_sent = common
+            .messages_sent
+            .into_iter()
+            .map(MessageToL1::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let events = vec![];
+
+        let execution_status = common.revert_reason.map_or_else(
+            || TransactionExecutionStatus::Succeeded,
+            |revert_reason| {
+                TransactionExecutionStatus::Reverted(RevertedTransactionExecutionStatus {
+                    revert_reason,
+                })
+            },
+        );
+
+        let execution_resources = ExecutionResources::try_from(common.execution_resources.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Declare::common.execution_resources",
+            },
+        )?)?;
+
+        Ok(Self { actual_fee, messages_sent, events, execution_status, execution_resources })
+    }
+}
+
+// The output will have an empty events vec
+impl TryFrom<protobuf::receipt::Invoke> for InvokeTransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::Invoke) -> Result<Self, Self::Error> {
+        let common = value
+            .common
+            .ok_or(ProtobufConversionError::MissingField { field_description: "Invoke::common" })?;
+
+        let actual_fee_felt = StarkFelt::try_from(common.actual_fee.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Invoke::common.actual_fee",
+            },
+        )?)?;
+        let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{actual_fee_felt:?}"),
+            }
+        })?);
+
+        let messages_sent = common
+            .messages_sent
+            .into_iter()
+            .map(MessageToL1::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let events = vec![];
+
+        let execution_status = common.revert_reason.map_or_else(
+            || TransactionExecutionStatus::Succeeded,
+            |revert_reason| {
+                TransactionExecutionStatus::Reverted(RevertedTransactionExecutionStatus {
+                    revert_reason,
+                })
+            },
+        );
+
+        let execution_resources = ExecutionResources::try_from(common.execution_resources.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "Invoke::common.execution_resources",
+            },
+        )?)?;
+
+        Ok(Self { actual_fee, messages_sent, events, execution_status, execution_resources })
+    }
+}
+
+// The output will have an empty events vec
+impl TryFrom<protobuf::receipt::L1Handler> for L1HandlerTransactionOutput {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::receipt::L1Handler) -> Result<Self, Self::Error> {
+        let common = value.common.ok_or(ProtobufConversionError::MissingField {
+            field_description: "L1Handler::common",
+        })?;
+
+        let actual_fee_felt = StarkFelt::try_from(common.actual_fee.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "L1Handler::common.actual_fee",
+            },
+        )?)?;
+        let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "u128",
+                value_as_str: format!("{actual_fee_felt:?}"),
+            }
+        })?);
+
+        let messages_sent = common
+            .messages_sent
+            .into_iter()
+            .map(MessageToL1::try_from)
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let events = vec![];
+
+        let execution_status = common.revert_reason.map_or_else(
+            || TransactionExecutionStatus::Succeeded,
+            |revert_reason| {
+                TransactionExecutionStatus::Reverted(RevertedTransactionExecutionStatus {
+                    revert_reason,
+                })
+            },
+        );
+
+        let execution_resources = ExecutionResources::try_from(common.execution_resources.ok_or(
+            ProtobufConversionError::MissingField {
+                field_description: "L1Handler::common.execution_resources",
+            },
+        )?)?;
+
+        Ok(Self { actual_fee, messages_sent, events, execution_status, execution_resources })
     }
 }
 
