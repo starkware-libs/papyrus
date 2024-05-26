@@ -3,33 +3,32 @@
 mod types_test;
 
 use async_trait::async_trait;
-use tokio::sync::{mpsc, oneshot};
+use futures::channel::{mpsc, oneshot};
+use starknet_api::block::{BlockHash, BlockNumber};
 
 /// Used to identify the node by consensus.
 /// 1. This ID is derived from the id registered with Starknet's L2 staking contract.
 /// 2. We must be able to derive the public key associated with this ID for the sake of validating
 ///    signatures.
-// TODO: Determine the actual type of NodeId.
+// TODO(matan): Determine the actual type of NodeId.
 pub type NodeId = u64;
 
 /// Interface that any concrete block type must implement to be used by consensus.
-// In principle Consensus does not care about the content of a block. In practice though it will
-// need to perform certain activities with blocks:
-// 1. All proposals for a given height are held by consensus for book keeping, with only the decided
-//    block returned to ConsensusContext.
-// 2. If we re-propose a block, then Consensus needs the ability to stream out the content.
-// 3. We need the ability to identify the content of a proposal.
-pub trait ConsensusBlock {
-    /// The chunks of content returned for each step when streaming out the proposal.
-    // Why do we use an associated type?
-    // 1. In principle consensus is indifferent to the actual content in a proposal, and so we don't
-    //    want consensus to be tied to a specific concrete type.
-    // 2. Why not make `proposal_stream` generic? While this would allow a given concrete block type
-    //    to stream its content in multiple forms, this would also make `ConsensusBlock` object
-    //    unsafe, which hurts ergonomics.
+///
+/// In principle Consensus does not care about the content of a block. In practice though it will
+/// need to perform certain activities with blocks:
+/// 1. All proposals for a given height are held by consensus for book keeping, with only the
+///    decided block returned to ConsensusContext.
+/// 2. Tendermint may require re-broadcasting an old proposal [Line 16 of Algorithm 1]( https://arxiv.org/pdf/1807.04938)
+// This trait was designed with the following in mind:
+// 1. It must allow `ConsensusContext` to be object safe. This precludes generics.
+// 2. Starknet blocks are expected to be quite large, and we expect consensus to hold something akin
+//    to a reference with a small stack size and cheap shallow cloning.
+pub trait ConsensusBlock: Send {
+    /// The chunks of content returned when iterating the proposal.
     type ProposalChunk;
     /// Iterator for accessing the proposal's content.
-    // ProposalIter is used instead of returning `impl Iterator` due to object safety.
+    // An associated type is used instead of returning `impl Iterator` due to object safety.
     type ProposalIter: Iterator<Item = Self::ProposalChunk>;
 
     /// Identifies the block for the sake of Consensus voting.
@@ -41,14 +40,24 @@ pub trait ConsensusBlock {
     // Since the proposal as well as votes sign not only on the block ID but also the height at
     // which they vote, not including height poses no security risk. Including it has no impact on
     // Tendermint.
-    fn id(&self) -> u64;
+    fn id(&self) -> BlockHash;
 
-    /// Returns an iterator over the block's content. Since this is the proposal content we stream
-    /// out only the information used to build the proposal need be included, not the built
-    /// information (ie the transactions, not the state diff).
-    // For milestone 1 this will be used by Peering when we receive a proposal, to fake streaming
-    // this into the ConsensusContext.
-    fn proposal_stream(&self) -> Self::ProposalIter;
+    /// Returns an iterator for streaming out this block as a proposal to other nodes.
+    // Note on the ownership and lifetime model. This call is done by reference, yet the returned
+    // iterator is implicitly an owning iterator.
+    // 1. Why did we not want reference iteration? This would require a lifetime to be part of the
+    //    type definition for `ProposalIter` and therefore `ConsensusBlock`. This results in a lot
+    //    of lifetime pollution making it much harder to work with this type; attempted both options
+    //    from here:
+    //    https://stackoverflow.com/questions/33734640/how-do-i-specify-lifetime-parameters-in-an-associated-type
+    // 2. Why is owning iteration reasonable? The expected use case for this is to stream out the
+    //    proposal to other nodes, which implies ownership of data, not just a reference for
+    //    internal use. We also expect the actual object implementing this trait to be itself a
+    //    reference to the underlying data, and so returning an "owning" iterator to be relatively
+    //    cheap.
+    // TODO(matan): Consider changing ConsensusBlock to `IntoIterator + Clone` and removing
+    // `proposal_iter`.
+    fn proposal_iter(&self) -> Self::ProposalIter;
 }
 
 /// Interface for consensus to call out to the node.
@@ -60,8 +69,13 @@ pub trait ConsensusBlock {
 //    limitation of Sync to keep functions `&self` shouldn't be a problem.
 #[async_trait]
 pub trait ConsensusContext: Send + Sync {
-    // See [`ConsensusBlock::ProposalChunk`] for why we use an associated type.
+    /// The [block](`ConsensusBlock`) type built by `ConsensusContext` from a proposal.
+    // We use an associated type since consensus is indifferent to the actual content of a proposal,
+    // but we cannot use generics due to object safety.
     type Block: ConsensusBlock;
+
+    // TODO(matan): The oneshot for receiving the build block could be generalized to just be some
+    // future which returns a block.
 
     /// This function is called by consensus to request a block from the node. It expects that this
     /// call will return immediately and that consensus can then stream in the block's content in
@@ -78,7 +92,7 @@ pub trait ConsensusContext: Send + Sync {
     ///   ConsensusContext.
     async fn build_proposal(
         &self,
-        height: u64,
+        height: BlockNumber,
     ) -> (
         mpsc::Receiver<<Self::Block as ConsensusBlock>::ProposalChunk>,
         oneshot::Receiver<Self::Block>,
@@ -98,17 +112,29 @@ pub trait ConsensusContext: Send + Sync {
     ///   dropped by ConsensusContext.
     async fn validate_proposal(
         &self,
-        height: u64,
+        height: BlockNumber,
         content: mpsc::Receiver<<Self::Block as ConsensusBlock>::ProposalChunk>,
     ) -> oneshot::Receiver<Self::Block>;
 
     /// Get the set of validators for a given height. These are the nodes that can propose and vote
     /// on blocks.
-    // TODO: We expect this to change in the future to BTreeMap. Why?
+    // TODO(matan): We expect this to change in the future to BTreeMap. Why?
     // 1. Map - The nodes will have associated information (e.g. voting weight).
     // 2. BTreeMap - We want a stable ordering of the nodes for deterministic leader selection.
-    async fn validators(&self, height: u64) -> Vec<NodeId>;
+    async fn validators(&self, height: BlockNumber) -> Vec<NodeId>;
 
     /// Calculates the ID of the Proposer based on the inputs.
-    fn proposer(&self, validators: &Vec<NodeId>, height: u64) -> NodeId;
+    fn proposer(&self, validators: &Vec<NodeId>, height: BlockNumber) -> NodeId;
+}
+
+#[derive(PartialEq, Debug)]
+pub(crate) struct ProposalInit {
+    pub height: BlockNumber,
+    pub proposer: NodeId,
+}
+
+// This type encapsulate the messages that are sent between the SingleHeightConsensus and the
+// Peering components.
+pub(crate) enum PeeringConsensusMessage<ProposalChunkT> {
+    Proposal((ProposalInit, mpsc::Receiver<ProposalChunkT>, oneshot::Receiver<BlockHash>)),
 }

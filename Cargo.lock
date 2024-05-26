@@ -5881,6 +5881,9 @@ name = "papyrus_consensus"
 version = "0.4.0-dev.2"
 dependencies = [
  "async-trait",
+ "futures",
+ "mockall",
+ "starknet_api",
  "tokio",
 ]
 
