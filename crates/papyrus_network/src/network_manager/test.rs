@@ -272,7 +272,6 @@ async fn register_subscriber_and_use_channels() {
         direction: Direction::Forward,
         limit: query_limit,
         step: 1,
-        data_type: DataType::SignedBlockHeader,
     };
 
     // register subscriber and send query
@@ -294,7 +293,8 @@ async fn register_subscriber_and_use_channels() {
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()}).then(|_| async move {
+            query_sender.send((query, DataType::SignedBlockHeader)).await.unwrap()})
+            .then(|_| async move {
                 *cloned_signed_header_receiver_length.lock().await = signed_header_receiver_collector.await.len();
             }) => {},
         _ = sleep(Duration::from_secs(5)) => {

@@ -3,7 +3,7 @@ use std::time::Duration;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
 use lazy_static::lazy_static;
-use papyrus_network::{Query, ResponseReceivers, SignedBlockHeader};
+use papyrus_network::{DataType, Query, ResponseReceivers, SignedBlockHeader};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
@@ -35,7 +35,7 @@ lazy_static! {
 pub fn setup() -> (
     P2PSync,
     StorageReader,
-    Receiver<Query>,
+    Receiver<(Query, DataType)>,
     Sender<Option<SignedBlockHeader>>,
     Sender<Option<ThinStateDiff>>,
 ) {

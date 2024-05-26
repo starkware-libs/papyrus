@@ -21,7 +21,6 @@ use std::pin::Pin;
 use std::time::Duration;
 use std::usize;
 
-use bytes::BufMut;
 use derive_more::Display;
 use enum_iterator::Sequence;
 use futures::Stream;
@@ -30,7 +29,7 @@ use libp2p::{Multiaddr, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use prost::{EncodeError, Message};
+use prost::Message;
 use protobuf_messages::protobuf;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
@@ -85,28 +84,6 @@ pub struct Query {
     pub direction: Direction,
     pub limit: usize,
     pub step: usize,
-    pub data_type: DataType,
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to encode query")]
-pub struct QueryEncodingError;
-
-impl Query {
-    pub fn encode<B>(self, buf: &mut B) -> Result<(), QueryEncodingError>
-    where
-        B: BufMut,
-    {
-        match self.data_type {
-            DataType::SignedBlockHeader => {
-                <Query as Into<protobuf::BlockHeadersRequest>>::into(self).encode(buf)
-            }
-            DataType::StateDiff => {
-                <Query as Into<protobuf::StateDiffsRequest>>::into(self).encode(buf)
-            }
-        }
-        .map_err(|_: EncodeError| QueryEncodingError)
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
