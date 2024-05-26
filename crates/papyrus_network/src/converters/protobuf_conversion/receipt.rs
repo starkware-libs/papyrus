@@ -17,7 +17,7 @@ use super::common::try_from_starkfelt_to_u128;
 use super::ProtobufConversionError;
 use crate::protobuf_messages::protobuf::{self};
 
-// the output will have an empty events vec
+// The output will have an empty events vec
 impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutput {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::receipt::DeployAccount) -> Result<Self, Self::Error> {
@@ -50,14 +50,12 @@ impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutpu
                 field_description: "DeployAccount::contract_address",
             })?;
         let felt = StarkFelt::try_from(contract_address)?;
-        let contract_address = if let Ok(patricia_key) = PatriciaKey::try_from(felt) {
-            ContractAddress(patricia_key)
-        } else {
-            return Err(ProtobufConversionError::OutOfRangeValue {
-                type_description: "Felt252",
+        let contract_address = ContractAddress(PatriciaKey::try_from(felt).map_err(|_| {
+            ProtobufConversionError::OutOfRangeValue {
+                type_description: "PatriciaKey",
                 value_as_str: format!("{felt:?}"),
-            });
-        };
+            }
+        })?);
 
         let execution_status = common.revert_reason.map_or_else(
             || TransactionExecutionStatus::Succeeded,
