@@ -138,18 +138,17 @@ impl SwarmTrait for MockSwarm {
             "Called send_length_prefixed_data without calling get_data_sent_to_inbound_session \
              first",
         );
+        let decoded_data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
+            .unwrap()
+            .try_into()
+            .unwrap();
         // TODO(shahak): Add tests for state diff.
-        let (data, is_fin) =
-            match protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
-                .unwrap()
-                .try_into()
-                .unwrap()
-            {
-                Some(signed_block_header) => {
-                    (Data::BlockHeaderAndSignature(signed_block_header), false)
-                }
-                None => (Data::Fin(DataType::SignedBlockHeader), true),
-            };
+        let (data, is_fin) = match decoded_data {
+            Some(signed_block_header) => {
+                (Data::BlockHeaderAndSignature(signed_block_header), false)
+            }
+            None => (Data::Fin(DataType::SignedBlockHeader), true),
+        };
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
             data_sender.close_channel();
