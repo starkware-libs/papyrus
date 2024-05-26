@@ -3,10 +3,14 @@ name = "papyrus_consensus"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true
-license.workspace = true
 license-file.workspace = true
 description = "Reach consensus for Starknet"
 
 [dependencies]
 async-trait.workspace = true
-tokio = { workspace = true, features = ["sync"] }
+futures.workspace = true
+starknet_api.workspace = true
+tokio = { workspace = true, features = ["full"] }
+
+[dev-dependencies]
+mockall.workspace = true
