@@ -1,7 +1,7 @@
 use starknet_api::block::BlockHeader;
 
-use crate::protobuf_messages::protobuf;
-use crate::SignedBlockHeader;
+use crate::protobuf;
+use crate::sync::SignedBlockHeader;
 
 #[test]
 fn block_header_to_protobuf_and_back() {

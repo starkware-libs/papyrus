@@ -5977,12 +5977,10 @@ dependencies = [
  "mockall",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_protobuf",
  "papyrus_storage",
  "pretty_assertions",
- "primitive-types",
  "prost",
- "prost-build",
- "prost-types",
  "rand 0.8.5",
  "replace_with",
  "serde",
@@ -6020,6 +6018,7 @@ dependencies = [
  "papyrus_monitoring_gateway",
  "papyrus_network",
  "papyrus_p2p_sync",
+ "papyrus_protobuf",
  "papyrus_rpc",
  "papyrus_storage",
  "papyrus_sync",
@@ -6055,6 +6054,7 @@ dependencies = [
  "papyrus_config",
  "papyrus_network",
  "papyrus_proc_macros",
+ "papyrus_protobuf",
  "papyrus_storage",
  "rand 0.8.5",
  "serde",
@@ -6078,6 +6078,20 @@ dependencies = [
  "quote",
  "syn 2.0.39",
  "test_utils",
+]
+
+[[package]]
+name = "papyrus_protobuf"
+version = "0.4.0-dev.2"
+dependencies = [
+ "bytes",
+ "indexmap 2.1.0",
+ "primitive-types",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "starknet_api",
+ "thiserror",
 ]
 
 [[package]]

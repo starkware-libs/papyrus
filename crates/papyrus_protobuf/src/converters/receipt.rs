@@ -19,7 +19,7 @@ use starknet_api::transaction::{
 
 use super::common::try_from_starkfelt_to_u128;
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf::{self};
+use crate::protobuf;
 
 // The output will have an empty events vec
 impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutput {

@@ -4,10 +4,11 @@ use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
-use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
-use crate::protobuf_messages::protobuf;
-use crate::Query;
+use crate::protobuf;
+use crate::sync::Query;
+
+pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
 impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     type Error = ProtobufConversionError;
@@ -131,105 +132,15 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
     }
 }
 
-// A wrapper struct for Vec<StateDiffsResponse> so that we can implement traits for it.
-pub struct StateDiffsResponseVec(pub Vec<protobuf::StateDiffsResponse>);
-
-const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
-
-impl From<ThinStateDiff> for StateDiffsResponseVec {
-    fn from(value: ThinStateDiff) -> Self {
-        let mut result = Vec::new();
-
-        for (contract_address, class_hash) in
-            value.deployed_contracts.into_iter().chain(value.replaced_classes.into_iter())
-        {
-            result.push(protobuf::StateDiffsResponse {
-                state_diff_message: Some(
-                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
-                        protobuf::ContractDiff {
-                            address: Some(contract_address.into()),
-                            class_hash: Some(class_hash.0.into()),
-                            domain: volition_domain_to_enum_int(DOMAIN),
-                            ..Default::default()
-                        },
-                    ),
-                ),
-            });
-        }
-        for (contract_address, storage_diffs) in value.storage_diffs {
-            if storage_diffs.is_empty() {
-                continue;
-            }
-            result.push(protobuf::StateDiffsResponse {
-                state_diff_message: Some(
-                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
-                        protobuf::ContractDiff {
-                            address: Some(contract_address.into()),
-                            values: storage_diffs
-                                .into_iter()
-                                .map(|(key, value)| protobuf::ContractStoredValue {
-                                    key: Some((*key.0.key()).into()),
-                                    value: Some(value.into()),
-                                })
-                                .collect(),
-                            domain: volition_domain_to_enum_int(DOMAIN),
-                            ..Default::default()
-                        },
-                    ),
-                ),
-            });
-        }
-        for (contract_address, nonce) in value.nonces {
-            result.push(protobuf::StateDiffsResponse {
-                state_diff_message: Some(
-                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
-                        protobuf::ContractDiff {
-                            address: Some(contract_address.into()),
-                            nonce: Some(nonce.0.into()),
-                            domain: volition_domain_to_enum_int(DOMAIN),
-                            ..Default::default()
-                        },
-                    ),
-                ),
-            });
-        }
-
-        for (class_hash, compiled_class_hash) in value.declared_classes {
-            result.push(protobuf::StateDiffsResponse {
-                state_diff_message: Some(
-                    protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
-                        protobuf::DeclaredClass {
-                            class_hash: Some(class_hash.0.into()),
-                            compiled_class_hash: Some(compiled_class_hash.0.into()),
-                        },
-                    ),
-                ),
-            });
-        }
-        for class_hash in value.deprecated_declared_classes {
-            result.push(protobuf::StateDiffsResponse {
-                state_diff_message: Some(
-                    protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
-                        protobuf::DeclaredClass {
-                            class_hash: Some(class_hash.0.into()),
-                            compiled_class_hash: None,
-                        },
-                    ),
-                ),
-            });
-        }
-
-        Self(result)
-    }
-}
-
 impl TryFrom<protobuf::StateDiffsRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
-        let value = value.iteration.ok_or(ProtobufConversionError::MissingField {
-            field_description: "StateDiffsRequest::iteration",
-        })?;
-        value.try_into()
+        value
+            .iteration
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "StateDiffsRequest::iteration",
+            })?
+            .try_into()
     }
 }
 
