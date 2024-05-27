@@ -22,8 +22,15 @@ use starknet_api::crypto::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
 use super::ProtobufConversionError;
-use crate::sync::{HeaderQuery, Query, SignedBlockHeader};
+use crate::sync::{BlockHeaderResponse, HeaderQuery, Query, SignedBlockHeader};
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
+
+impl TryFrom<protobuf::BlockHeadersResponse> for BlockHeaderResponse {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::BlockHeadersResponse) -> Result<Self, Self::Error> {
+        Ok(Self(value.try_into()?))
+    }
+}
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {
     type Error = ProtobufConversionError;
@@ -195,6 +202,12 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
     }
 }
 
+impl From<BlockHeaderResponse> for protobuf::BlockHeadersResponse {
+    fn from(value: BlockHeaderResponse) -> Self {
+        value.0.into()
+    }
+}
+
 impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
     fn from((header, signatures): (BlockHeader, Vec<BlockSignature>)) -> Self {
         Self {
@@ -286,6 +299,8 @@ impl From<Option<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
         }
     }
 }
+
+auto_impl_into_and_try_from_vec_u8!(BlockHeaderResponse, protobuf::BlockHeadersResponse);
 
 // TODO(shahak): Erase this once network stops using it.
 impl TryFrom<protobuf::BlockHeadersRequest> for Query {
