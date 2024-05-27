@@ -1,7 +1,7 @@
-use starknet_api::block::BlockHeader;
+use starknet_api::block::{BlockHeader, BlockNumber};
 
 use crate::protobuf;
-use crate::sync::SignedBlockHeader;
+use crate::sync::{BlockHashOrNumber, Direction, HeaderQuery, Query, SignedBlockHeader};
 
 #[test]
 fn block_header_to_protobuf_and_back() {
@@ -24,4 +24,18 @@ fn fin_to_protobuf_and_back() {
 
     let res_data = Option::<SignedBlockHeader>::try_from(proto_data).unwrap();
     assert!(res_data.is_none());
+}
+
+#[test]
+fn header_query_to_bytes_and_back() {
+    let query = HeaderQuery(Query {
+        start_block: BlockHashOrNumber::Number(BlockNumber(0)),
+        direction: Direction::Forward,
+        limit: 1,
+        step: 1,
+    });
+
+    let bytes = Vec::<u8>::from(query.clone());
+    let res_query = HeaderQuery::try_from(bytes).unwrap();
+    assert_eq!(query, res_query);
 }
