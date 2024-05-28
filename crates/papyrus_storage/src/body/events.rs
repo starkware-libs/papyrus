@@ -58,7 +58,7 @@ use starknet_api::transaction::{
     TransactionOutput,
 };
 
-use super::TransactionMetadataTable;
+use super::{EventIdentifier, TransactionMetadataTable};
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
@@ -124,7 +124,7 @@ pub enum EventIter<'txn, 'env> {
 /// With this wrapper we can execute the same code, regardless the
 /// type of iteration used.
 impl Iterator for EventIter<'_, '_> {
-    type Item = (EventsTableKey, EventContent);
+    type Item = (EventIdentifier, EventContent);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -147,6 +147,8 @@ pub struct EventIterByContractAddress<'env, 'txn> {
     current_tx: Option<(TransactionIndex, TransactionOutput)>,
     cursor: EventsTableCursor<'txn>,
     transaction_metadata_table: TransactionMetadataTable<'env>,
+    current_event_index: usize,
+    current_contract_address: ContractAddress,
 }
 
 impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
@@ -154,15 +156,22 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
-        let Some((contract_address, EventIndex(tx_index, event_offset))) = self.current.take()
-        else {
-            return Ok(None);
-        };
-        if self.current_tx.is_none()
-            || tx_index
-                != self.current_tx.as_ref().expect("The None case was checked previously.").0
-        {
+    fn next(&mut self) -> StorageResult<Option<(EventIdentifier, EventContent)>> {
+        let mut should_get_next_tx = true;
+
+        if self.current_tx.is_some() {
+            let events = self.current_tx.as_ref().expect("current_tx is some.").1.events();
+            if let Some(next_event_index) = (self.current_event_index..events.len())
+                .find(|&idx| events[idx].from_address == self.current_contract_address)
+            {
+                self.current_event_index = next_event_index;
+                should_get_next_tx = false;
+            }
+        }
+        if should_get_next_tx {
+            let Some((contract_address, tx_index)) = self.current.take() else {
+                return Ok(None);
+            };
             let Some(tx_metadata) = self.transaction_metadata_table.get(self.txn, &tx_index)?
             else {
                 return Ok(None);
@@ -172,11 +181,24 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
                 self.file_handles
                     .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
             ));
+            self.current_event_index = 0;
+            self.current_contract_address = contract_address;
+            self.current = self.cursor.next()?.map(|(key, _)| key);
         }
 
-        self.current = self.cursor.next()?.map(|(key, _)| key);
+        let (tx_index, tx_output) = self.current_tx.as_ref().expect("current_tx was initialized");
+        let events = tx_output.events();
 
-        let key = (contract_address, EventIndex(tx_index, event_offset));
+        let Some(event_offset) = (self.current_event_index..events.len())
+            .find(|&idx| events[idx].from_address == self.current_contract_address)
+        else {
+            return Ok(None);
+        };
+
+        let key = (
+            self.current_contract_address,
+            EventIndex(*tx_index, EventIndexInTransactionOutput(event_offset)),
+        );
         // TODO(dvir): don't clone here the event content.
         let content = self
             .current_tx
@@ -185,10 +207,11 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
                 "The current transaction was initialized with Some previously in this function.",
             )
             .1
-            .events()[event_offset.0]
+            .events()[event_offset]
             .content
             .clone();
 
+        self.current_event_index = event_offset + 1;
         Ok(Some((key, content)))
     }
 }
@@ -210,7 +233,7 @@ impl EventIterByEventIndex<'_> {
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
+    fn next(&mut self) -> StorageResult<Option<(EventIdentifier, EventContent)>> {
         let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
         let Some(Event { from_address, content }) =
             tx_output.events().get(self.event_index_in_tx_current.0)
@@ -274,12 +297,13 @@ where
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn iter_events_by_contract_address(
         &'env self,
-        key: EventsTableKey,
+        key: EventIdentifier,
     ) -> StorageResult<EventIterByContractAddress<'env, 'txn>> {
         let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
-        let current = cursor.lower_bound(&key)?.map(|(key, _)| key);
+        let first_key = (key.0, key.1.0);
+        let current = cursor.lower_bound(&first_key)?.map(|(key, _)| key);
         Ok(EventIterByContractAddress {
             txn: &self.txn,
             file_handles: &self.file_handlers,
@@ -287,6 +311,8 @@ where
             current_tx: None,
             cursor,
             transaction_metadata_table,
+            current_event_index: key.1.1.0,
+            current_contract_address: key.0,
         })
     }
 
