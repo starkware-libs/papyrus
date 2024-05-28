@@ -11,6 +11,7 @@ async-trait.workspace = true
 futures.workspace = true
 starknet_api.workspace = true
 tokio = { workspace = true, features = ["full"] }
+thiserror.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true
