@@ -943,8 +943,7 @@ dependencies = [
 [[package]]
 name = "blockifier"
 version = "0.7.0-dev.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "279ea24b641c6efbeff9b93b4b97f4c6a75399b39580b6cf882a0c92850336df"
+source = "git+https://github.com/starkware-libs/blockifier.git?rev=fc62b8b8#fc62b8b8e0680643736c135178d3924309b70b19"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -969,6 +968,7 @@ dependencies = [
  "num-traits 0.2.17",
  "once_cell",
  "phf",
+ "rstest",
  "serde",
  "serde_json",
  "sha3",
@@ -7443,6 +7443,32 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "afab94fb28594581f62d981211a9a4d53cc8130bbcbbb89a0440d9b8e81a7746"
 
 [[package]]
+name = "rstest"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "de1bb486a691878cd320c2f0d319ba91eeaa2e894066d8b5f8f117c000e9d962"
+dependencies = [
+ "futures",
+ "futures-timer",
+ "rstest_macros",
+ "rustc_version",
+]
+
+[[package]]
+name = "rstest_macros"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "290ca1a1c8ca7edb7c3283bd44dc35dd54fdec6253a3912e201ba1072018fca8"
+dependencies = [
+ "cfg-if",
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "syn 1.0.109",
+ "unicode-ident",
+]
+
+[[package]]
 name = "rtnetlink"
 version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8296,8 +8322,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.12.0-dev.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4333a5d836f1018c87a0db36ffe673e8f79db4c40718dca65ad82430d9204b16"
+source = "git+https://github.com/starkware-libs/starknet-api.git?rev=0f49f20a#0f49f20a6a78fa9db15043d9db08e74e83470359"
 dependencies = [
  "cairo-lang-starknet-classes",
  "derive_more",

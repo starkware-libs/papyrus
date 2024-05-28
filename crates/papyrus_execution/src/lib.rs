@@ -34,7 +34,7 @@ use blockifier::execution::entry_point::{
     CallType as BlockifierCallType,
     EntryPointExecutionContext,
 };
-use blockifier::state::cached_state::{CachedState, GlobalContractCache};
+use blockifier::state::cached_state::CachedState;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
     DeprecatedTransactionInfo,
@@ -85,9 +85,6 @@ use state_reader::ExecutionStateReader;
 use tracing::trace;
 
 use crate::objects::{tx_execution_output_to_fee_estimation, FeeEstimation, PendingData};
-
-// TODO(yair): understand what it is and whether the use of this constant should change.
-const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
 const STARKNET_VERSION_O_13_0: &str = "0.13.0";
 const STARKNET_VERSION_O_13_1: &str = "0.13.1";
@@ -240,15 +237,12 @@ pub fn execute_call(
         initial_gas: execution_config.initial_gas_cost,
     };
 
-    let mut cached_state = CachedState::new(
-        ExecutionStateReader {
-            storage_reader: storage_reader.clone(),
-            state_number,
-            maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: Cell::new(None),
-        },
-        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
-    );
+    let mut cached_state = CachedState::new(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+        maybe_pending_data: maybe_pending_data.clone(),
+        missing_compiled_class: Cell::new(None),
+    });
 
     let block_context = create_block_context(
         &mut cached_state,
@@ -606,15 +600,12 @@ fn execute_transactions(
     override_kzg_da_to_false: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::new(
-        ExecutionStateReader {
-            storage_reader: storage_reader.clone(),
-            state_number,
-            maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: Cell::new(None),
-        },
-        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
-    );
+    let mut cached_state = CachedState::new(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+        maybe_pending_data: maybe_pending_data.clone(),
+        missing_compiled_class: Cell::new(None),
+    });
 
     let block_context = create_block_context(
         &mut cached_state,
