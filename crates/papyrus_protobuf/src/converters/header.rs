@@ -2,6 +2,7 @@
 #[path = "header_test.rs"]
 mod header_test;
 
+use prost::Message;
 use starknet_api::block::{
     BlockHash,
     BlockHeader,
@@ -21,8 +22,8 @@ use starknet_api::crypto::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
 use super::ProtobufConversionError;
-use crate::protobuf;
-use crate::sync::{Query, SignedBlockHeader};
+use crate::sync::{HeaderQuery, Query, SignedBlockHeader};
+use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 impl TryFrom<protobuf::BlockHeadersResponse> for Option<SignedBlockHeader> {
     type Error = ProtobufConversionError;
@@ -83,7 +84,7 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
         let transaction_commitment = value
             .transactions
             .map(|transactions| {
-                Ok(TransactionCommitment(
+                Ok::<_, ProtobufConversionError>(TransactionCommitment(
                     transactions
                         .root
                         .ok_or(ProtobufConversionError::MissingField {
@@ -102,7 +103,7 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
         let event_commitment = value
             .events
             .map(|events| {
-                Ok(EventCommitment(
+                Ok::<_, ProtobufConversionError>(EventCommitment(
                     events
                         .root
                         .ok_or(ProtobufConversionError::MissingField {
@@ -286,20 +287,39 @@ impl From<Option<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
     }
 }
 
+// TODO(shahak): Erase this once network stops using it.
 impl TryFrom<protobuf::BlockHeadersRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
-        value
-            .iteration
-            .ok_or(ProtobufConversionError::MissingField {
-                field_description: "BlockHeadersRequest::iteration",
-            })?
-            .try_into()
+        Ok(HeaderQuery::try_from(value)?.0)
     }
 }
 
+impl TryFrom<protobuf::BlockHeadersRequest> for HeaderQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::BlockHeadersRequest) -> Result<Self, Self::Error> {
+        Ok(HeaderQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "BlockHeadersRequest::iteration",
+                })?
+                .try_into()?,
+        ))
+    }
+}
+
+// TODO(shahak): Erase this once network stops using it.
 impl From<Query> for protobuf::BlockHeadersRequest {
     fn from(value: Query) -> Self {
         protobuf::BlockHeadersRequest { iteration: Some(value.into()) }
     }
 }
+
+impl From<HeaderQuery> for protobuf::BlockHeadersRequest {
+    fn from(value: HeaderQuery) -> Self {
+        protobuf::BlockHeadersRequest { iteration: Some(value.0.into()) }
+    }
+}
+
+auto_impl_into_and_try_from_vec_u8!(HeaderQuery, protobuf::BlockHeadersRequest);

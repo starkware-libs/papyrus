@@ -1,12 +1,13 @@
 use indexmap::IndexMap;
+use prost::Message;
 use starknet_api::core::{ClassHash, CompiledClassHash, Nonce};
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
 use super::ProtobufConversionError;
-use crate::protobuf;
-use crate::sync::Query;
+use crate::sync::{Query, StateDiffQuery};
+use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
@@ -40,7 +41,12 @@ impl TryFrom<protobuf::ContractDiff> for ThinStateDiff {
 
         let deployed_contracts = value
             .class_hash
-            .map(|hash| Ok(IndexMap::from_iter([(contract_address, ClassHash(hash.try_into()?))])))
+            .map(|hash| {
+                Ok::<_, ProtobufConversionError>(IndexMap::from_iter([(
+                    contract_address,
+                    ClassHash(hash.try_into()?),
+                )]))
+            })
             .transpose()?
             .unwrap_or_default();
 
@@ -57,7 +63,12 @@ impl TryFrom<protobuf::ContractDiff> for ThinStateDiff {
 
         let nonces = value
             .nonce
-            .map(|nonce| Ok(IndexMap::from_iter([(contract_address, Nonce(nonce.try_into()?))])))
+            .map(|nonce| {
+                Ok::<_, ProtobufConversionError>(IndexMap::from_iter([(
+                    contract_address,
+                    Nonce(nonce.try_into()?),
+                )]))
+            })
             .transpose()?
             .unwrap_or_default();
 
@@ -132,20 +143,39 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
     }
 }
 
+// TODO(shahak): Erase this once network stops using it.
 impl TryFrom<protobuf::StateDiffsRequest> for Query {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
-        value
-            .iteration
-            .ok_or(ProtobufConversionError::MissingField {
-                field_description: "StateDiffsRequest::iteration",
-            })?
-            .try_into()
+        Ok(StateDiffQuery::try_from(value)?.0)
     }
 }
 
+impl TryFrom<protobuf::StateDiffsRequest> for StateDiffQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::StateDiffsRequest) -> Result<Self, Self::Error> {
+        Ok(StateDiffQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "StateDiffsRequest::iteration",
+                })?
+                .try_into()?,
+        ))
+    }
+}
+
+// TODO(shahak): Erase this once network stops using it.
 impl From<Query> for protobuf::StateDiffsRequest {
     fn from(value: Query) -> Self {
         protobuf::StateDiffsRequest { iteration: Some(value.into()) }
     }
 }
+
+impl From<StateDiffQuery> for protobuf::StateDiffsRequest {
+    fn from(value: StateDiffQuery) -> Self {
+        protobuf::StateDiffsRequest { iteration: Some(value.0.into()) }
+    }
+}
+
+auto_impl_into_and_try_from_vec_u8!(StateDiffQuery, protobuf::StateDiffsRequest);
