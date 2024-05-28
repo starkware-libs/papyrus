@@ -5887,6 +5887,7 @@ dependencies = [
  "futures",
  "mockall",
  "starknet_api",
+ "thiserror",
  "tokio",
 ]
 
