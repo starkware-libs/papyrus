@@ -168,3 +168,13 @@ pub(crate) enum PeeringConsensusMessage<ProposalChunkT> {
     // TODO: Switch the oneshot channel to be a Signature when we add.
     Proposal((ProposalInit, mpsc::Receiver<ProposalChunkT>, oneshot::Receiver<BlockHash>)),
 }
+
+#[derive(thiserror::Error, Debug)]
+pub enum ConsensusError {
+    #[error(transparent)]
+    Send(#[from] mpsc::SendError),
+    #[error(transparent)]
+    Canceled(#[from] oneshot::Canceled),
+    #[error("{0}")]
+    Other(String),
+}

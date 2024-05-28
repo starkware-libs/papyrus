@@ -87,7 +87,7 @@ async fn propose() {
     let (shc, mut shc_to_peering_receiver, _) = test_fields.new_shc(BlockNumber(0), node_id).await;
 
     // This calls to `context.proposer` and `context.build_proposal`.
-    let block = shc.run().await;
+    let block = shc.run().await.unwrap();
     assert_eq!(block.id(), block_id);
 
     // Check what was sent to peering. We don't check the content stream as that is filled by
@@ -136,5 +136,5 @@ async fn validate() {
     fin_sender.send(block_id).unwrap();
 
     // This calls to `context.proposer` and `context.build_proposal`.
-    assert_eq!(shc.run().await.id(), block_id);
+    assert_eq!(shc.run().await.unwrap().id(), block_id);
 }
