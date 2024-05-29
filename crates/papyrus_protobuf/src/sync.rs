@@ -48,22 +48,30 @@ pub struct SignedBlockHeader {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StateDiffsResponse(pub Option<StateDiffChunk>);
 
-// TODO(shahak): Implement conversion to/from protobuf.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ContractDiff {
+    pub contract_address: ContractAddress,
+    // Has value only if the contract was deployed or replaced in this block.
+    pub class_hash: Option<ClassHash>,
+    // Has value only if the nonce was updated in this block.
+    pub nonce: Option<Nonce>,
+    pub storage_diffs: IndexMap<StorageKey, StarkFelt>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeclaredClass {
+    pub class_hash: ClassHash,
+    pub compiled_class_hash: CompiledClassHash,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DeprecatedDeclaredClass {
+    pub class_hash: ClassHash,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StateDiffChunk {
-    ContractDiff {
-        contract_address: ContractAddress,
-        // Has value only if the contract was deployed or replaced in this block.
-        class_hash: Option<ClassHash>,
-        // Has value only if the nonce was updated in this block.
-        nonce: Option<Nonce>,
-        storage_diffs: IndexMap<StorageKey, StarkFelt>,
-    },
-    DeclaredClass {
-        class_hash: ClassHash,
-        compiled_class_hash: CompiledClassHash,
-    },
-    DeprecatedDeclaredClass {
-        class_hash: ClassHash,
-    },
+    ContractDiff(ContractDiff),
+    DeclaredClass(DeclaredClass),
+    DeprecatedDeclaredClass(DeprecatedDeclaredClass),
 }
