@@ -5,8 +5,9 @@ use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 
+use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
-use crate::sync::{Query, StateDiffQuery};
+use crate::sync::{Query, StateDiffChunk, StateDiffQuery, StateDiffsResponse};
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
@@ -26,6 +27,127 @@ impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
                 field_description: "StateDiffsResponse::state_diff_message",
             }),
         }
+    }
+}
+
+impl TryFrom<protobuf::StateDiffsResponse> for StateDiffsResponse {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::StateDiffsResponse) -> Result<Self, Self::Error> {
+        match value.state_diff_message {
+            Some(protobuf::state_diffs_response::StateDiffMessage::ContractDiff(contract_diff)) => {
+                let contract_address = contract_diff
+                    .address
+                    .ok_or(ProtobufConversionError::MissingField {
+                        field_description: "ContractDiff::address",
+                    })?
+                    .try_into()?;
+
+                let class_hash = Some(ClassHash(
+                    contract_diff
+                        .class_hash
+                        .ok_or(ProtobufConversionError::MissingField {
+                            field_description: "ContractDiff::class_hash",
+                        })?
+                        .try_into()?,
+                ));
+
+                let nonce = contract_diff
+                    .nonce
+                    .map(|nonce| Ok::<_, ProtobufConversionError>(Nonce(nonce.try_into()?)))
+                    .transpose()?;
+
+                let storage_diffs = if contract_diff.values.is_empty() {
+                    IndexMap::new()
+                } else {
+                    contract_diff
+                        .values
+                        .into_iter()
+                        .map(|stored_value| stored_value.try_into())
+                        .collect::<Result<IndexMap<StorageKey, StarkFelt>, _>>()?
+                };
+
+                Ok(StateDiffsResponse(Some(StateDiffChunk::ContractDiff {
+                    contract_address,
+                    class_hash,
+                    nonce,
+                    storage_diffs,
+                })))
+            }
+            Some(protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
+                declared_class,
+            )) => {
+                let class_hash = ClassHash(
+                    declared_class
+                        .class_hash
+                        .ok_or(ProtobufConversionError::MissingField {
+                            field_description: "DeclaredClass::class_hash",
+                        })?
+                        .try_into()?,
+                );
+
+                let Some(compiled_class_hash) = declared_class.compiled_class_hash else {
+                    return Ok(StateDiffsResponse(Some(StateDiffChunk::DeprecatedDeclaredClass {
+                        class_hash,
+                    })));
+                };
+
+                let compiled_class_hash = CompiledClassHash(compiled_class_hash.try_into()?);
+                Ok(StateDiffsResponse(Some(StateDiffChunk::DeclaredClass {
+                    class_hash,
+                    compiled_class_hash,
+                })))
+            }
+            Some(protobuf::state_diffs_response::StateDiffMessage::Fin(_)) => {
+                Ok(StateDiffsResponse(None))
+            }
+            None => Err(ProtobufConversionError::MissingField {
+                field_description: "StateDiffsResponse::state_diff_message",
+            }),
+        }
+    }
+}
+
+impl From<StateDiffsResponse> for protobuf::StateDiffsResponse {
+    fn from(value: StateDiffsResponse) -> Self {
+        let state_diff_message = match value.0 {
+            Some(StateDiffChunk::ContractDiff {
+                contract_address,
+                class_hash,
+                nonce,
+                storage_diffs,
+            }) => {
+                let contract_diff = protobuf::ContractDiff {
+                    address: Some(contract_address.into()),
+                    class_hash: class_hash.map(|hash| hash.0.into()),
+                    nonce: nonce.map(|nonce| nonce.0.into()),
+                    values: storage_diffs
+                        .into_iter()
+                        .map(|(key, value)| protobuf::ContractStoredValue {
+                            key: Some((*key.0.key()).into()),
+                            value: Some(value.into()),
+                        })
+                        .collect(),
+                    domain: volition_domain_to_enum_int(DOMAIN),
+                };
+                protobuf::state_diffs_response::StateDiffMessage::ContractDiff(contract_diff)
+            }
+            Some(StateDiffChunk::DeclaredClass { class_hash, compiled_class_hash }) => {
+                let declared_class = protobuf::DeclaredClass {
+                    class_hash: Some(class_hash.0.into()),
+                    compiled_class_hash: Some(compiled_class_hash.0.into()),
+                };
+                protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(declared_class)
+            }
+            Some(StateDiffChunk::DeprecatedDeclaredClass { class_hash }) => {
+                let declared_class = protobuf::DeclaredClass {
+                    class_hash: Some(class_hash.0.into()),
+                    compiled_class_hash: None,
+                };
+                protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(declared_class)
+            }
+            None => protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+        };
+        protobuf::StateDiffsResponse { state_diff_message: Some(state_diff_message) }
     }
 }
 
