@@ -4,8 +4,8 @@ use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
 use libp2p::{Multiaddr, PeerId, Swarm};
 
 use crate::broadcast::Topic;
-use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{Bytes, InboundSessionId, OutboundSessionId};
+use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
+use crate::sqmr::{Bytes, InboundSessionId, OutboundSessionId};
 use crate::{mixed_behaviour, Protocol};
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
@@ -46,7 +46,7 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().streamed_bytes.send_length_prefixed_data(data, inbound_session_id)
+        self.behaviour_mut().sqmr.send_length_prefixed_data(data, inbound_session_id)
     }
 
     // TODO: change this function signature
@@ -56,7 +56,7 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         _peer_id: PeerId,
         protocol: Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        Ok(self.behaviour_mut().streamed_bytes.start_query(query, protocol.into()))
+        Ok(self.behaviour_mut().sqmr.start_query(query, protocol.into()))
     }
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError> {
@@ -70,7 +70,7 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         &mut self,
         session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().streamed_bytes.close_inbound_session(session_id)
+        self.behaviour_mut().sqmr.close_inbound_session(session_id)
     }
 
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {

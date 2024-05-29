@@ -10,7 +10,7 @@ mod discovery;
 pub mod mixed_behaviour;
 pub mod network_manager;
 mod peer_manager;
-pub mod streamed_bytes;
+pub mod sqmr;
 #[cfg(test)]
 mod test_utils;
 mod utils;

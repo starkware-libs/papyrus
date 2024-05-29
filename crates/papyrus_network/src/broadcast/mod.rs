@@ -15,7 +15,7 @@ use libp2p::{Multiaddr, PeerId};
 use crate::mixed_behaviour;
 use crate::mixed_behaviour::BridgedBehaviour;
 // TODO(shahak): move Bytes to a more generic file.
-use crate::streamed_bytes::Bytes;
+use crate::sqmr::Bytes;
 
 pub struct Behaviour;
 

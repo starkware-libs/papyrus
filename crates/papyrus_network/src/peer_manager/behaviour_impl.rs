@@ -15,7 +15,7 @@ use tracing::{debug, error};
 
 use super::peer::PeerTrait;
 use super::{PeerManager, PeerManagerError};
-use crate::streamed_bytes::OutboundSessionId;
+use crate::sqmr::OutboundSessionId;
 
 #[derive(Debug)]
 pub enum ToOtherBehaviourEvent {
