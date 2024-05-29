@@ -42,7 +42,8 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let (query_ids, mut receivers): (Vec<QueryId>, Vec<(Receiver<Data>, DataType)>) =
+    type ReceiversType = Vec<(Receiver<Vec<Data>>, DataType)>;
+    let (query_ids, mut receivers): (Vec<QueryId>, ReceiversType) =
         enum_iterator::all::<DataType>()
             .map(|data_type| {
                 let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
@@ -73,26 +74,30 @@ async fn header_db_executor_can_register_and_run_a_query() {
             let (data, requested_data_type) = res.await;
             assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in data.iter().enumerate() {
-                if i == 0{
+                if i == 0 {
                     // requested DataType dictates what kind of Data we should expect.
                     match requested_data_type {
                         DataType::SignedBlockHeader => {
-                            assert_matches!(data, BlockHeaderAndSignature { .. });
+                            assert_matches!(data.first().unwrap(), BlockHeaderAndSignature { .. });
                         }
                         DataType::StateDiff => {
-                            assert_matches!(data, Data::StateDiff{..});
+                            for data in data.iter() {
+                                assert_matches!(data, Data::StateDiff{..});
+                            }
 
                         }
                     }
                 }
-                match data {
-                    Data::BlockHeaderAndSignature(SignedBlockHeader{ block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) => {
-                        assert_eq!(block_number, &(i as u64));
+                for data in data.iter() {
+                    match data {
+                        Data::BlockHeaderAndSignature(SignedBlockHeader{ block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) => {
+                            assert_eq!(block_number, &(i as u64));
+                        }
+                        Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
+                            // TODO: check the state diff.
+                        }
+                        _ => panic!("Unexpected data type"),
                     }
-                    Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
-                        // TODO: check the state diff.
-                    }
-                    _ => panic!("Unexpected data type"),
                 }
             }
         }
@@ -137,7 +142,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in res.iter().enumerate() {
-                assert_matches!(data, BlockHeaderAndSignature(SignedBlockHeader{block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) if block_number == &(i as u64));
+                assert_matches!(data.first().unwrap(), BlockHeaderAndSignature(SignedBlockHeader{block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) if block_number == &(i as u64));
             }
         }
     }
@@ -168,7 +173,7 @@ async fn header_db_executor_query_of_missing_block() {
                     query_id,
                 })
             } else {
-                Ok(Data::default())
+                Ok(vec![Data::default()])
             }
         },
     );
@@ -215,7 +220,7 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
         mock_data_type
             .expect_fetch_block_data_from_db()
             .times(NUM_OF_BLOCKS as usize)
-            .returning(|_, _, _| Ok(Data::default()));
+            .returning(|_, _, _| Ok(vec![Data::default()]));
         let query_id = db_executor.register_query(query, mock_data_type, sender);
 
         // run the executor and collect query results.
