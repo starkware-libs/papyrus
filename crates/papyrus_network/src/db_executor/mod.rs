@@ -36,7 +36,8 @@ pub struct QueryId(pub usize);
 #[error("Failed to encode data")]
 pub struct DataEncodingError;
 
-#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[derive(Clone)]
 pub enum Data {
     BlockHeaderAndSignature(SignedBlockHeader),
     StateDiff { state_diff: ThinStateDiff },
@@ -250,7 +251,7 @@ impl DBExecutorTrait for DBExecutor {
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
-                            if let Err(e) = sender.start_send(data) {
+                            if let Err(e) = sender.start_send(data.first().unwrap().clone()) {
                                 // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };
@@ -305,7 +306,7 @@ pub trait FetchBlockDataFromDb {
         block_number: BlockNumber,
         query_id: QueryId,
         txn: &StorageTxn<'a, db::RO>,
-    ) -> Result<Data, DBExecutorError>;
+    ) -> Result<Vec<Data>, DBExecutorError>;
 }
 
 impl FetchBlockDataFromDb for DataType {
@@ -314,7 +315,7 @@ impl FetchBlockDataFromDb for DataType {
         block_number: BlockNumber,
         query_id: QueryId,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Data, DBExecutorError> {
+    ) -> Result<Vec<Data>, DBExecutorError> {
         match self {
             DataType::SignedBlockHeader => {
                 let mut header = txn
@@ -349,23 +350,25 @@ impl FetchBlockDataFromDb for DataType {
                         storage_error: err,
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
-                Ok(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                Ok(vec![Data::BlockHeaderAndSignature(SignedBlockHeader {
                     block_header: header,
                     signatures: vec![signature],
-                }))
+                })])
             }
             DataType::StateDiff => {
-                let state_diff = txn
-                    .get_state_diff(block_number)
-                    .map_err(|err| DBExecutorError::DBInternalError {
-                        query_id,
-                        storage_error: err,
-                    })?
-                    .ok_or(DBExecutorError::BlockNotFound {
-                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                        query_id,
-                    })?;
-                Ok(Data::StateDiff { state_diff })
+                let vec_data = vec![Data::StateDiff {
+                    state_diff: txn
+                        .get_state_diff(block_number)
+                        .map_err(|err| DBExecutorError::DBInternalError {
+                            query_id,
+                            storage_error: err,
+                        })?
+                        .ok_or(DBExecutorError::BlockNotFound {
+                            block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                            query_id,
+                        })?,
+                }];
+                Ok(vec_data)
             }
         }
     }

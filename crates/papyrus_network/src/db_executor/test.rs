@@ -168,7 +168,7 @@ async fn header_db_executor_query_of_missing_block() {
                     query_id,
                 })
             } else {
-                Ok(Data::default())
+                Ok(vec![Data::default()])
             }
         },
     );
@@ -215,7 +215,7 @@ async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
         mock_data_type
             .expect_fetch_block_data_from_db()
             .times(NUM_OF_BLOCKS as usize)
-            .returning(|_, _, _| Ok(Data::default()));
+            .returning(|_, _, _| Ok(vec![Data::default()]));
         let query_id = db_executor.register_query(query, mock_data_type, sender);
 
         // run the executor and collect query results.
