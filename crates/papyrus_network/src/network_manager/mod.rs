@@ -16,7 +16,7 @@ use papyrus_common::metrics as papyrus_metrics;
 use papyrus_protobuf::protobuf;
 use papyrus_storage::StorageReader;
 use prost::Message;
-use streamed_bytes::Bytes;
+use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
@@ -25,7 +25,7 @@ use crate::broadcast::Topic;
 use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::mixed_behaviour::{self, BridgedBehaviour};
-use crate::streamed_bytes::{self, InboundSessionId, OutboundSessionId, SessionId};
+use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
 use crate::{broadcast, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
 
@@ -220,7 +220,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
 
     fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
         match event {
-            mixed_behaviour::ExternalEvent::StreamedBytes(event) => {
+            mixed_behaviour::ExternalEvent::Sqmr(event) => {
                 self.handle_stream_bytes_behaviour_event(event);
             }
             mixed_behaviour::ExternalEvent::Broadcast(event) => {
@@ -239,17 +239,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         if let Some(discovery) = self.swarm.behaviour_mut().discovery.as_mut() {
             discovery.on_other_behaviour_event(&event);
         }
-        self.swarm.behaviour_mut().streamed_bytes.on_other_behaviour_event(&event);
+        self.swarm.behaviour_mut().sqmr.on_other_behaviour_event(&event);
         self.swarm.behaviour_mut().peer_manager.on_other_behaviour_event(&event);
         self.swarm.behaviour_mut().broadcast.on_other_behaviour_event(&event);
     }
 
-    fn handle_stream_bytes_behaviour_event(
-        &mut self,
-        event: streamed_bytes::behaviour::ExternalEvent,
-    ) {
+    fn handle_stream_bytes_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
         match event {
-            streamed_bytes::behaviour::ExternalEvent::NewInboundSession {
+            sqmr::behaviour::ExternalEvent::NewInboundSession {
                 query,
                 inbound_session_id,
                 peer_id: _,
@@ -279,10 +276,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                         .boxed(),
                 );
             }
-            streamed_bytes::behaviour::ExternalEvent::ReceivedData {
-                outbound_session_id,
-                data,
-            } => {
+            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data } => {
                 trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -313,7 +307,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     }
                 }
             }
-            streamed_bytes::behaviour::ExternalEvent::SessionFailed { session_id, error } => {
+            sqmr::behaviour::ExternalEvent::SessionFailed { session_id, error } => {
                 error!("Session {session_id:?} failed on {error:?}");
                 self.report_session_removed_to_metrics(session_id);
                 // TODO: Handle reputation and retry.
@@ -321,9 +315,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     self.outbound_session_id_to_protocol.remove(&outbound_session_id);
                 }
             }
-            streamed_bytes::behaviour::ExternalEvent::SessionFinishedSuccessfully {
-                session_id,
-            } => {
+            sqmr::behaviour::ExternalEvent::SessionFinishedSuccessfully { session_id } => {
                 debug!("Session completed successfully. session_id: {session_id:?}");
                 self.report_session_removed_to_metrics(session_id);
                 if let SessionId::OutboundSessionId(outbound_session_id) = session_id {
@@ -455,7 +447,7 @@ impl NetworkManager {
             mixed_behaviour::MixedBehaviour::new(
                 key,
                 bootstrap_peer_multiaddr.clone(),
-                streamed_bytes::Config {
+                sqmr::Config {
                     session_timeout,
                     supported_inbound_protocols: vec![
                         Protocol::SignedBlockHeader.into(),

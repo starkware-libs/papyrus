@@ -403,11 +403,11 @@ impl From<Event> for mixed_behaviour::Event {
     fn from(event: Event) -> Self {
         match event {
             Event::External(external_event) => {
-                Self::ExternalEvent(mixed_behaviour::ExternalEvent::StreamedBytes(external_event))
+                Self::ExternalEvent(mixed_behaviour::ExternalEvent::Sqmr(external_event))
             }
-            Event::ToOtherBehaviourEvent(event) => Self::ToOtherBehaviourEvent(
-                mixed_behaviour::ToOtherBehaviourEvent::StreamedBytes(event),
-            ),
+            Event::ToOtherBehaviourEvent(event) => {
+                Self::ToOtherBehaviourEvent(mixed_behaviour::ToOtherBehaviourEvent::Sqmr(event))
+            }
         }
     }
 }
