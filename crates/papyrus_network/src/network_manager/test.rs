@@ -441,7 +441,7 @@ async fn broadcast_message() {
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
         .messages_to_broadcast_sender;
-    messages_to_broadcast_sender.try_send(message.clone()).unwrap();
+    messages_to_broadcast_sender.send(message.clone()).await.unwrap();
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
@@ -474,7 +474,7 @@ async fn receive_broadcasted_message() {
         GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
 
     let mut broadcasted_messages_receiver = network_manager
-        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .register_broadcast_subscriber::<Bytes>(topic.clone(), BUFFER_SIZE)
         .broadcasted_messages_receiver;
 
     tokio::select! {
@@ -483,7 +483,7 @@ async fn receive_broadcasted_message() {
             TIMEOUT, broadcasted_messages_receiver.next()
         ) => {
             let (actual_message, _report_callback) = result.unwrap().unwrap();
-            assert_eq!(message, actual_message);
+            assert_eq!(message, actual_message.unwrap());
             // TODO(shahak): Call the report callback once it's implemented.
         }
     }
