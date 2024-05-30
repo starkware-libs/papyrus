@@ -2,6 +2,7 @@ use std::vec;
 
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
+use starknet_api::block::BlockNumber;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::hash::StarkHash;
 use starknet_api::patricia_key;
@@ -97,9 +98,8 @@ fn iter_events_by_index() {
         EventIndexInTransactionOutput(2),
     );
     let txn = storage_reader.begin_ro_txn().unwrap();
-    for (i, e) in txn.iter_events(None, event_index, block_number).unwrap().enumerate() {
-        assert_eq!(emitted_events[i], e);
-    }
+    let event_iter = txn.iter_events(None, event_index, block_number).unwrap();
+    assert_eq!(event_iter.into_iter().collect::<Vec<_>>(), emitted_events);
 }
 
 #[test]
@@ -178,4 +178,62 @@ fn revert_events() {
             );
         }
     }
+}
+
+#[test]
+fn iter_events_by_contract_address_with_start_event_index() {
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+    let block = get_test_block(1, Some(2), Some(vec![ContractAddress::default()]), None);
+    let block_number = block.header.block_number;
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    let event_iter = txn
+        .iter_events(
+            Some(ContractAddress::default()),
+            EventIndex(
+                TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
+                EventIndexInTransactionOutput(1),
+            ),
+            block_number,
+        )
+        .unwrap();
+    assert_eq!(event_iter.into_iter().collect::<Vec<_>>().len(), 1);
+}
+
+#[test]
+fn iter_events_by_contract_address_with_start_event_index_and_no_relevant_event_in_the_first_tx() {
+    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+    let block = get_test_block(1, Some(2), Some(vec![ContractAddress::default()]), None);
+    let block_number = block.header.block_number;
+    storage_writer
+        .begin_rw_txn()
+        .unwrap()
+        .append_header(block_number, &block.header)
+        .unwrap()
+        .append_body(block_number, block.body.clone())
+        .unwrap()
+        .commit()
+        .unwrap();
+
+    let txn = storage_reader.begin_ro_txn().unwrap();
+    let event_iter = txn
+        .iter_events(
+            Some(ContractAddress(patricia_key!("0x1"))),
+            EventIndex(
+                TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(0)),
+                EventIndexInTransactionOutput(1),
+            ),
+            block_number,
+        )
+        .unwrap();
+    assert_eq!(event_iter.into_iter().collect::<Vec<_>>().len(), 0);
 }
