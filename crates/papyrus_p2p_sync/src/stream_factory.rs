@@ -1,20 +1,18 @@
 use std::cmp::min;
-use std::pin::Pin;
 use std::time::Duration;
 
 use async_stream::stream;
-use futures::channel::mpsc::Sender;
+use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use futures::{SinkExt, Stream, StreamExt};
-use papyrus_network::DataType;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query};
+use futures::{Sink, SinkExt, Stream, StreamExt};
+use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
 
-use crate::{P2PSyncError, STEP};
+use crate::{P2PSyncError, Response, STEP};
 
 pub(crate) trait BlockData: Send {
     fn write_to_storage(
@@ -30,16 +28,22 @@ pub(crate) enum BlockNumberLimit {
     // TODO(shahak): Add variant for state diff marker once we support classes sync.
 }
 
-pub(crate) trait DataStreamFactory {
-    type InputFromNetwork: Send + 'static;
+pub(crate) trait DataStreamFactory<QuerySender, DataReceiver, InputFromNetwork>
+where
+    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    DataReceiver: Stream<Item = Response<InputFromNetwork>> + Unpin + Send + 'static,
+    InputFromNetwork: Send + 'static,
+    DataOrFin<InputFromNetwork>: TryFrom<Vec<u8>>,
+    <DataOrFin<InputFromNetwork> as TryFrom<Vec<u8>>>::Error: Send,
+{
     type Output: BlockData + 'static;
 
-    const DATA_TYPE: DataType;
+    const TYPE_DESCRIPTION: &'static str;
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit;
 
     // Async functions in trait don't work well with argument references
     fn parse_data_for_block<'a>(
-        data_receiver: &'a mut Pin<Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>>,
+        data_receiver: &'a mut DataReceiver,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>>;
@@ -47,8 +51,8 @@ pub(crate) trait DataStreamFactory {
     fn get_start_block_number(storage_reader: &StorageReader) -> Result<BlockNumber, StorageError>;
 
     fn create_stream(
-        mut data_receiver: Pin<Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>>,
-        mut query_sender: Sender<(Query, DataType)>,
+        mut query_sender: QuerySender,
+        mut data_receiver: DataReceiver,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: u64,
@@ -66,7 +70,7 @@ pub(crate) trait DataStreamFactory {
                             num_blocks_per_query,
                         );
                         if limit == 0 {
-                            debug!("{:?} sync is waiting for a new header", Self::DATA_TYPE);
+                            debug!("{:?} sync is waiting for a new header", Self::TYPE_DESCRIPTION);
                             tokio::time::sleep(wait_period_for_new_data).await;
                             continue;
                         }
@@ -76,20 +80,19 @@ pub(crate) trait DataStreamFactory {
                 let end_block_number = current_block_number.0 + limit;
                 debug!(
                     "Downloading {:?} for blocks [{}, {})",
-                    Self::DATA_TYPE,
+                    Self::TYPE_DESCRIPTION,
                     current_block_number.0,
                     end_block_number,
                 );
                 query_sender
-                    .send((
+                    .send(
                         Query {
                             start_block: BlockHashOrNumber::Number(current_block_number),
                             direction: Direction::Forward,
                             limit,
                             step: STEP,
                         },
-                        Self::DATA_TYPE,
-                    ))
+                    )
                     .await?;
 
                 while current_block_number.0 < end_block_number {
@@ -101,31 +104,31 @@ pub(crate) trait DataStreamFactory {
                             debug!(
                                 "Query for {:?} returned with partial data. Waiting {:?} before \
                                  sending another query.",
-                                Self::DATA_TYPE,
+                                Self::TYPE_DESCRIPTION,
                                 wait_period_for_new_data
                             );
                             tokio::time::sleep(wait_period_for_new_data).await;
                             continue 'send_query_and_parse_responses;
                         }
                     }
-                    info!("Added {:?} for block {}.", Self::DATA_TYPE, current_block_number);
+                    info!("Added {:?} for block {}.", Self::TYPE_DESCRIPTION, current_block_number);
                     current_block_number = current_block_number.unchecked_next();
                     if stop_sync_at_block_number.is_some_and(|stop_sync_at_block_number| {
                         current_block_number >= stop_sync_at_block_number
                     }) {
-                        info!("{:?} hit the stop sync block number.", Self::DATA_TYPE);
+                        info!("{:?} hit the stop sync block number.", Self::TYPE_DESCRIPTION);
                         return;
                     }
                 }
 
                 // Consume the None message signaling the end of the query.
                 match data_receiver.next().await {
-                    Some(None) => {
-                        debug!("Query sent to network for {:?} finished", Self::DATA_TYPE);
+                    Some((Ok(DataOrFin(None)), _report_callback)) => {
+                        debug!("Query sent to network for {:?} finished", Self::TYPE_DESCRIPTION);
                     },
-                    Some(Some(_)) => Err(P2PSyncError::TooManyResponses)?,
+                    Some(_) => Err(P2PSyncError::TooManyResponses)?,
                     None => Err(P2PSyncError::ReceiverChannelTerminated {
-                        data_type: Self::DATA_TYPE
+                        type_description: Self::TYPE_DESCRIPTION
                     })?,
                 }
             }
