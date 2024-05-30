@@ -3,7 +3,6 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
-mod converters;
 mod db_executor;
 mod discovery;
 mod gossipsub_impl;
@@ -16,23 +15,22 @@ mod test_utils;
 mod utils;
 
 use std::collections::{BTreeMap, HashMap};
-use std::pin::Pin;
 use std::time::Duration;
 use std::usize;
 
 use derive_more::Display;
 use enum_iterator::Sequence;
-use futures::Stream;
 use lazy_static::lazy_static;
 use libp2p::{Multiaddr, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_protobuf::protobuf;
-use papyrus_protobuf::sync::{Query, SignedBlockHeader};
+use papyrus_protobuf::sync::Query;
 use prost::Message;
 use serde::{Deserialize, Serialize};
-use starknet_api::state::ThinStateDiff;
+
+pub use crate::network_manager::SqmrSubscriberChannels;
 
 // TODO: add peer manager config to the network config
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -76,20 +74,10 @@ impl From<DataType> for Protocol {
     }
 }
 
-pub type SignedBlockHeaderStream = Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>;
-pub type StateDiffStream = Pin<Box<dyn Stream<Item = Option<ThinStateDiff>> + Send>>;
-
-/// This struct represents the receiver end of the response streams for a network subscriber.
-/// It is created by the network manager and passed to the subscriber when calling
-/// [`register_sqmr_subscriber`](`network_manager::GenericNetworkManager::register_sqmr_subscriber`).
-pub struct ResponseReceivers {
-    pub signed_headers_receiver: Option<SignedBlockHeaderStream>,
-    pub state_diffs_receiver: Option<StateDiffStream>,
-}
-
 /// This is a part of the exposed API of the network manager.
 /// This is meant to represent the different underlying p2p protocols the network manager supports.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
+// TODO(shahak): Change protocol to a wrapper of string.
+#[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
 pub enum Protocol {
     SignedBlockHeader,
     StateDiff,

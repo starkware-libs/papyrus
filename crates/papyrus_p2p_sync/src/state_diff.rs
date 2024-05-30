@@ -1,12 +1,13 @@
 use std::collections::HashSet;
 use std::hash::Hash;
-use std::pin::Pin;
+use std::marker::PhantomData;
 
+use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
-use futures::{FutureExt, Stream, StreamExt};
+use futures::{FutureExt, Sink, Stream, StreamExt};
 use indexmap::IndexMap;
-use papyrus_network::DataType;
 use papyrus_proc_macros::latency_histogram;
+use papyrus_protobuf::sync::Query;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -14,7 +15,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, NETWORK_DATA_TIMEOUT};
+use crate::{P2PSyncError, Response, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
     #[latency_histogram("p2p_sync_state_diff_write_to_storage_latency_seconds", true)]
@@ -26,20 +27,25 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
     }
 }
 
-pub(crate) struct StateDiffStreamFactory;
+pub(crate) struct StateDiffStreamFactory<QuerySender, DataReceiver>(
+    PhantomData<(QuerySender, DataReceiver)>,
+);
 
-impl DataStreamFactory for StateDiffStreamFactory {
-    type InputFromNetwork = ThinStateDiff;
+// TODO(shahak): Change to StateDiffChunk.
+impl<
+    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    DataReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
+> DataStreamFactory<QuerySender, DataReceiver, ThinStateDiff>
+    for StateDiffStreamFactory<QuerySender, DataReceiver>
+{
     type Output = (ThinStateDiff, BlockNumber);
 
-    const DATA_TYPE: DataType = DataType::StateDiff;
+    const TYPE_DESCRIPTION: &'static str = "state diffs";
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit = BlockNumberLimit::HeaderMarker;
 
     #[latency_histogram("p2p_sync_state_diff_parse_data_for_block_latency_seconds", true)]
     fn parse_data_for_block<'a>(
-        state_diffs_receiver: &'a mut Pin<
-            Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>,
-        >,
+        state_diffs_receiver: &'a mut DataReceiver,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
@@ -58,14 +64,14 @@ impl DataStreamFactory for StateDiffStreamFactory {
                 })?;
 
             while current_state_diff_len < target_state_diff_len {
-                let Some(maybe_state_diff_part) =
+                let Some((maybe_state_diff_part, _report_callback)) =
                     tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diffs_receiver.next()).await?
                 else {
                     return Err(P2PSyncError::ReceiverChannelTerminated {
-                        data_type: Self::DATA_TYPE,
+                        type_description: Self::TYPE_DESCRIPTION,
                     });
                 };
-                let Some(state_diff_part) = maybe_state_diff_part else {
+                let Some(state_diff_part) = maybe_state_diff_part?.0 else {
                     if current_state_diff_len == 0 {
                         return Ok(None);
                     } else {

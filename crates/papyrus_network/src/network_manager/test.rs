@@ -16,7 +16,7 @@ use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 use papyrus_protobuf::protobuf;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -25,7 +25,7 @@ use tokio::task::JoinHandle;
 use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
-use super::GenericNetworkManager;
+use super::{GenericNetworkManager, SqmrSubscriberChannels};
 use crate::db_executor::{
     poll_query_execution_set,
     DBExecutorError,
@@ -287,33 +287,37 @@ async fn register_subscriber_and_use_channels() {
     };
 
     // register subscriber and send query
-    let (mut query_sender, response_receivers) =
-        network_manager.register_sqmr_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+    let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
+        .register_sqmr_subscriber::<DataOrFin<SignedBlockHeader>>(
+            crate::Protocol::SignedBlockHeader,
+        );
 
-    let signed_header_receiver_length = Arc::new(Mutex::new(0));
-    let cloned_signed_header_receiver_length = Arc::clone(&signed_header_receiver_length);
-    let signed_header_receiver_collector = response_receivers
-        .signed_headers_receiver
-        .unwrap()
+    let response_receiver_length = Arc::new(Mutex::new(0));
+    let cloned_response_receiver_length = Arc::clone(&response_receiver_length);
+    let response_receiver_collector = response_receiver
         .enumerate()
         .take(query_limit)
-        .map(|(i, signed_block_header)| {
-            assert_eq!(signed_block_header.clone().unwrap().block_header.block_number.0, i as u64);
+        .map(|(i, (signed_block_header_result, _report_callback))| {
+            let signed_block_header = signed_block_header_result.unwrap();
+            assert_eq!(
+                signed_block_header.clone().0.unwrap().block_header.block_number.0,
+                i as u64
+            );
             signed_block_header
         })
         .collect::<Vec<_>>();
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send((query, DataType::SignedBlockHeader)).await.unwrap()})
+            query_sender.send(query).await.unwrap()})
             .then(|_| async move {
-                *cloned_signed_header_receiver_length.lock().await = signed_header_receiver_collector.await.len();
+                *cloned_response_receiver_length.lock().await = response_receiver_collector.await.len();
             }) => {},
         _ = sleep(Duration::from_secs(5)) => {
             panic!("Test timed out");
         }
     }
-    assert_eq!(*signed_header_receiver_length.lock().await, query_limit);
+    assert_eq!(*response_receiver_length.lock().await, query_limit);
 }
 
 #[tokio::test]
