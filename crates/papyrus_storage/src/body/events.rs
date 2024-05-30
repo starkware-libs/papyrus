@@ -142,12 +142,14 @@ pub struct EventIterByContractAddress<'env, 'txn> {
     txn: &'txn DbTransaction<'env, RO>,
     file_handles: &'txn FileHandlers<RO>,
     // This value is the next event to return. If it is None there are no more events.
-    current: Option<EventsTableKey>,
+    next_entry_in_event_table: Option<EventsTableKey>,
     // The current transaction output. This is None only at the beginning of the iteration and
     // filled with the first transaction output.
     current_tx: Option<(TransactionIndex, TransactionOutput)>,
     cursor: EventsTableCursor<'txn>,
     transaction_metadata_table: TransactionMetadataTable<'env>,
+    // The first index in the `current_tx` events, we still didn't search for the event of the
+    // `current_contract_address`.
     current_event_index: usize,
     current_contract_address: ContractAddress,
 }
@@ -170,8 +172,10 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
             }
         }
 
+        // After this we know for sure that in current_tx there is an event with the
+        // current_contract_address from index current_event_index.
         if should_get_next_tx {
-            let Some((contract_address, tx_index)) = self.current.take() else {
+            let Some((contract_address, tx_index)) = self.next_entry_in_event_table.take() else {
                 return Ok(None);
             };
             let Some(tx_metadata) = self.transaction_metadata_table.get(self.txn, &tx_index)?
@@ -179,14 +183,29 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
                 error!("Transaction metadata not found for transaction index: {tx_index:?}");
                 return Ok(None);
             };
-            self.current_tx = Some((
-                tx_index,
-                self.file_handles
-                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
-            ));
-            self.current_event_index = 0;
+            let new_current_tx = self
+                .file_handles
+                .get_transaction_output_unchecked(tx_metadata.tx_output_location)?;
+
+            // If this the first time we get the transaction output, we need to check if even there
+            // is a relevant event from the current event offset.
+            if self.current_tx.is_none() {
+                if let Some(event_offset) =
+                    (self.current_event_index..new_current_tx.events().len()).find(|&idx| {
+                        new_current_tx.events()[idx].from_address == self.current_contract_address
+                    })
+                {
+                    self.current_event_index = event_offset;
+                } else {
+                    self.current_event_index = 0;
+                }
+            } else {
+                self.current_event_index = 0;
+            }
+
+            self.current_tx = Some((tx_index, new_current_tx));
             self.current_contract_address = contract_address;
-            self.current = self.cursor.next()?.map(|(key, _)| key);
+            self.next_entry_in_event_table = self.cursor.next()?.map(|(key, _)| key);
         }
 
         let (tx_index, tx_output) = self.current_tx.as_ref().expect("current_tx was initialized");
@@ -196,8 +215,9 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
             .find(|&idx| events[idx].from_address == self.current_contract_address)
         else {
             error!(
-                "Event not found for contract address: {:?} in transaction: {tx_index:?}",
-                self.current_contract_address
+                "Event not found for contract address: {:?} in transaction: {tx_index:?} from \
+                 offset: {:?}",
+                self.current_contract_address, self.current_event_index
             );
             return Ok(None);
         };
@@ -309,16 +329,22 @@ where
         let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
-        let current = cursor.lower_bound(&(key.0, key.1.0))?.map(|(key, _)| key);
+        let next_entry_in_event_table = cursor.lower_bound(&(key.0, key.1.0))?.map(|(key, _)| key);
+        let current_contract_address = match next_entry_in_event_table {
+            Some((contract_address, _)) => contract_address,
+            // If there are no relevant entries in the events table, we nevertheless will not return
+            // any event, so we pass here a placeholder.
+            None => ContractAddress::default(),
+        };
         Ok(EventIterByContractAddress {
             txn: &self.txn,
             file_handles: &self.file_handlers,
-            current,
+            next_entry_in_event_table,
             current_tx: None,
             cursor,
             transaction_metadata_table,
             current_event_index: key.1.1.0,
-            current_contract_address: key.0,
+            current_contract_address,
         })
     }
 
