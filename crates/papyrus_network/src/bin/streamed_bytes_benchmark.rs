@@ -221,6 +221,7 @@ async fn main() {
     let mut swarm = build_swarm(
         vec![args.listen_address.clone()],
         Duration::from_secs(args.idle_connection_timeout),
+        None,
         |_| {
             Behaviour::new(Config {
                 session_timeout: Duration::from_secs(3600),

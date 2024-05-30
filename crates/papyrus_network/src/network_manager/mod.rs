@@ -492,6 +492,7 @@ impl NetworkManager {
             idle_connection_timeout,
             header_buffer_size,
             bootstrap_peer_multiaddr,
+            secret_key,
         } = config;
 
         let listen_addresses = vec![
@@ -499,7 +500,7 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
-        let swarm = build_swarm(listen_addresses, idle_connection_timeout, |key| {
+        let swarm = build_swarm(listen_addresses, idle_connection_timeout, secret_key, |key| {
             mixed_behaviour::MixedBehaviour::new(
                 key,
                 bootstrap_peer_multiaddr.clone(),
