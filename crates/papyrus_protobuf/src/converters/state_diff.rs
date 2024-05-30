@@ -11,12 +11,13 @@ use crate::sync::{
     ContractDiff,
     DeclaredClass,
     DeprecatedDeclaredClass,
+    DeprecatedStateDiffsResponse,
     Query,
     StateDiffChunk,
     StateDiffQuery,
     StateDiffsResponse,
 };
-use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
+use crate::{auto_impl_into_and_try_from_vec_u8, auto_impl_try_from_vec_u8, protobuf};
 
 pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
@@ -37,6 +38,15 @@ impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
         }
     }
 }
+
+impl TryFrom<protobuf::StateDiffsResponse> for DeprecatedStateDiffsResponse {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::StateDiffsResponse) -> Result<Self, Self::Error> {
+        Ok(Self(value.try_into()?))
+    }
+}
+
+auto_impl_try_from_vec_u8!(DeprecatedStateDiffsResponse, protobuf::StateDiffsResponse);
 
 impl TryFrom<protobuf::StateDiffsResponse> for StateDiffsResponse {
     type Error = ProtobufConversionError;
