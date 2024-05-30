@@ -1,3 +1,5 @@
+use std::fmt::Debug;
+
 use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
@@ -37,6 +39,11 @@ pub struct HeaderQuery(pub Query);
 
 #[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct StateDiffQuery(pub Query);
+
+// We have this struct in order to implement on it traits.
+// TODO(shahak): Rename the protobuf message from BlockHeadersResponse to BlockHeaderResponse.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockHeaderResponse(pub Option<SignedBlockHeader>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlockHeader {
