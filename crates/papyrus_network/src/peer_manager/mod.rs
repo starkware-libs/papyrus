@@ -9,8 +9,8 @@ use tracing::info;
 pub use self::behaviour_impl::ToOtherBehaviourEvent;
 use self::peer::PeerTrait;
 use crate::mixed_behaviour::BridgedBehaviour;
-use crate::streamed_bytes::OutboundSessionId;
-use crate::{mixed_behaviour, streamed_bytes};
+use crate::sqmr::OutboundSessionId;
+use crate::{mixed_behaviour, sqmr};
 
 pub(crate) mod behaviour_impl;
 pub(crate) mod peer;
@@ -141,7 +141,7 @@ where
         })
     }
 
-    fn report_peer(
+    pub(crate) fn report_peer(
         &mut self,
         peer_id: PeerId,
         reason: ReputationModifier,
@@ -188,8 +188,8 @@ impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
 
 impl<P: PeerTrait + 'static> BridgedBehaviour for PeerManager<P> {
     fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
-        let mixed_behaviour::ToOtherBehaviourEvent::StreamedBytes(
-            streamed_bytes::ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
+        let mixed_behaviour::ToOtherBehaviourEvent::Sqmr(
+            sqmr::ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
         ) = event
         else {
             return;

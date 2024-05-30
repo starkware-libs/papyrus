@@ -22,9 +22,7 @@ impl<T: StorageSerde> StorageSerdeEx for T {
 
     fn deserialize(bytes: &mut impl std::io::Read) -> Option<Self> {
         let res = Self::deserialize_from(bytes)?;
-        let mut buf = [0u8, 1];
-        // Make sure we are at EOF.
-        if bytes.read(&mut buf[..]).ok()? != 0 {
+        if !is_all_bytes_read(bytes) {
             return None;
         }
         Some(res)
@@ -97,9 +95,7 @@ impl<T: StorageSerde + Debug> ValueSerde for VersionZeroWrapper<T> {
         }
         let res = Self::Value::deserialize_from(bytes)?;
 
-        let mut buf = [0u8, 1];
-        // Make sure we are at EOF.
-        if bytes.read(&mut buf[..]).ok()? != 0 {
+        if !is_all_bytes_read(bytes) {
             return None;
         }
         Some(res)
@@ -147,16 +143,14 @@ impl<T: StorageSerde + Debug + Migratable, const VERSION: u8> ValueSerde
             );
             return None;
         }
-        if version[0] < VERSION {
+        let res = if version[0] < VERSION {
             debug!("Migrating value with version {} to version {}", version[0], VERSION);
-            return T::try_from_older_version(bytes, version[0]).ok();
-        }
-        let res = Self::Value::deserialize_from(bytes)?;
+            T::try_from_older_version(bytes, version[0]).ok()?
+        } else {
+            Self::Value::deserialize_from(bytes)?
+        };
 
-        let mut buf = [0u8, 1];
-        // Make sure we are at EOF.
-        if bytes.read(&mut buf[..]).ok()? != 0 {
-            // TODO: Return an error here.
+        if !is_all_bytes_read(bytes) {
             return None;
         }
         Some(res)
@@ -173,4 +167,11 @@ pub enum StorageSerdeError {
     /// An error occurred during migration.
     #[error("Failed to migrate value")]
     Migration,
+}
+
+// Make sure we are at EOF.
+fn is_all_bytes_read(bytes: &mut impl std::io::Read) -> bool {
+    let mut buf = [0u8, 1];
+    // TODO: return an error instead of false.
+    bytes.read(&mut buf[..]).ok() == Some(0)
 }

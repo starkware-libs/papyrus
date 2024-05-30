@@ -14,7 +14,7 @@ use tokio::time::sleep;
 use super::behaviour_impl::ToOtherBehaviourEvent;
 use crate::peer_manager::peer::{MockPeerTrait, Peer, PeerTrait};
 use crate::peer_manager::{PeerManager, PeerManagerConfig, ReputationModifier};
-use crate::streamed_bytes::OutboundSessionId;
+use crate::sqmr::OutboundSessionId;
 
 #[test]
 fn peer_assignment_round_robin() {

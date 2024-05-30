@@ -34,8 +34,8 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
+use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 use crate::{broadcast, mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -45,6 +45,7 @@ struct MockSwarm {
     pub pending_events: Queue<Event>,
     pub sent_queries: Vec<(Query, PeerId)>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
+    reported_peer_senders: Vec<UnboundedSender<PeerId>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -89,6 +90,12 @@ impl MockSwarm {
         receiver
     }
 
+    pub fn get_reported_peers_stream(&mut self) -> impl Stream<Item = PeerId> {
+        let (sender, receiver) = unbounded();
+        self.reported_peer_senders.push(sender);
+        receiver
+    }
+
     fn create_received_data_events_for_query(
         &self,
         query: Query,
@@ -111,7 +118,7 @@ impl MockSwarm {
             let data_bytes =
                 protobuf::BlockHeadersResponse::from(Some(signed_header)).encode_to_vec();
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-                mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
+                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
                     data: data_bytes,
                     outbound_session_id,
                 }),
@@ -192,6 +199,12 @@ impl SwarmTrait for MockSwarm {
             sender.unbounded_send((message.clone(), topic.clone())).unwrap();
         }
     }
+
+    fn report_peer(&mut self, peer_id: PeerId) {
+        for sender in &self.reported_peer_senders {
+            sender.unbounded_send(peer_id).unwrap();
+        }
+    }
 }
 
 #[derive(Default)]
@@ -268,7 +281,7 @@ async fn register_subscriber_and_use_channels() {
 
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+        network_manager.register_sqmr_subscriber(vec![crate::Protocol::SignedBlockHeader]);
 
     let signed_header_receiver_length = Arc::new(Mutex::new(0));
     let cloned_signed_header_receiver_length = Arc::clone(&signed_header_receiver_length);
@@ -331,7 +344,7 @@ async fn process_incoming_query() {
     .encode(&mut query_bytes)
     .unwrap();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
@@ -402,7 +415,7 @@ async fn close_inbound_session() {
     let inbound_session_id = InboundSessionId { value: 0 };
     let _fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
@@ -441,7 +454,7 @@ async fn broadcast_message() {
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
         .messages_to_broadcast_sender;
-    messages_to_broadcast_sender.try_send(message.clone()).unwrap();
+    messages_to_broadcast_sender.send(message.clone()).await.unwrap();
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
@@ -456,35 +469,41 @@ async fn broadcast_message() {
 }
 
 #[tokio::test]
-async fn receive_broadcasted_message() {
+async fn receive_broadcasted_message_and_report_it() {
     let topic = "TOPIC".to_owned();
     let message = vec![1u8, 2u8, 3u8];
+    let originated_peer_id = PeerId::random();
 
-    let mock_swarm = MockSwarm::default();
+    let mut mock_swarm = MockSwarm::default();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
         mixed_behaviour::ExternalEvent::Broadcast(broadcast::ExternalEvent::Received {
-            originated_peer_id: PeerId::random(),
+            originated_peer_id,
             message: message.clone(),
             topic: topic.clone(),
         }),
     )));
+    let mut reported_peer_receiver = mock_swarm.get_reported_peers_stream();
 
     let mock_db_executor = MockDBExecutor::default();
     let mut network_manager =
         GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
 
     let mut broadcasted_messages_receiver = network_manager
-        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .register_broadcast_subscriber::<Bytes>(topic.clone(), BUFFER_SIZE)
         .broadcasted_messages_receiver;
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
-        result = tokio::time::timeout(
-            TIMEOUT, broadcasted_messages_receiver.next()
-        ) => {
-            let (actual_message, _report_callback) = result.unwrap().unwrap();
-            assert_eq!(message, actual_message);
-            // TODO(shahak): Call the report callback once it's implemented.
+        // We need to do the entire calculation in the future here so that the network will keep
+        // running while we call report_callback.
+        reported_peer_result = tokio::time::timeout(TIMEOUT, broadcasted_messages_receiver.next())
+            .then(|result| {
+                let (message_result, report_callback) = result.unwrap().unwrap();
+                assert_eq!(message, message_result.unwrap());
+                report_callback();
+                tokio::time::timeout(TIMEOUT, reported_peer_receiver.next())
+            }) => {
+            assert_eq!(originated_peer_id, reported_peer_result.unwrap().unwrap());
         }
     }
 }

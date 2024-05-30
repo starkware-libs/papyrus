@@ -1101,3 +1101,37 @@ impl From<Transaction> for protobuf::transaction::Txn {
         }
     }
 }
+
+#[allow(dead_code)]
+pub fn set_price_unit_based_on_transaction(
+    receipt: &mut protobuf::Receipt,
+    transaction: &protobuf::Transaction,
+) {
+    let price_unit = match &transaction.txn {
+        Some(protobuf::transaction::Txn::DeclareV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeclareV2(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeclareV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::Deploy(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeployAccountV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::DeployAccountV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::InvokeV1(_)) => protobuf::PriceUnit::Wei,
+        Some(protobuf::transaction::Txn::InvokeV3(_)) => protobuf::PriceUnit::Fri,
+        Some(protobuf::transaction::Txn::L1Handler(_)) => protobuf::PriceUnit::Wei,
+        _ => return,
+    };
+    let Some(ref mut receipt_type) = receipt.r#type else {
+        return;
+    };
+
+    let common = match receipt_type {
+        protobuf::receipt::Type::Invoke(invoke) => invoke.common.as_mut(),
+        protobuf::receipt::Type::L1Handler(l1_handler) => l1_handler.common.as_mut(),
+        protobuf::receipt::Type::Declare(declare) => declare.common.as_mut(),
+        protobuf::receipt::Type::DeprecatedDeploy(deploy) => deploy.common.as_mut(),
+        protobuf::receipt::Type::DeployAccount(deploy_account) => deploy_account.common.as_mut(),
+    };
+
+    if let Some(common) = common {
+        common.price_unit = price_unit.into();
+    }
+}
