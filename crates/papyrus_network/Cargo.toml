@@ -46,6 +46,7 @@ tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
 unsigned-varint = { workspace = true, features = ["std"] }
 async-trait.workspace = true
+validator = { workspace = true, features = ["derive"] }
 
 # Binaries dependencies
 clap = { workspace = true, optional = true, features = ["derive"] }
