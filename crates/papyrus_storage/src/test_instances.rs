@@ -8,7 +8,11 @@ use starknet_api::core::{
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
+use starknet_api::transaction::{
+    EventIndexInTransactionOutput,
+    TransactionHash,
+    TransactionOffsetInBlock,
+};
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::body::TransactionIndex;
@@ -17,7 +21,7 @@ use crate::header::StorageBlockHeader;
 use crate::mmap_file::LocationInFile;
 use crate::state::data::IndexedDeprecatedContractClass;
 use crate::version::Version;
-use crate::{EventIndex, MarkerKind, OffsetKind};
+use crate::{EventIndex, MarkerKind, OffsetKind, TransactionMetadata};
 
 auto_impl_get_test_instance! {
     pub struct StorageBlockHeader {
@@ -62,6 +66,11 @@ auto_impl_get_test_instance! {
         ContractClass = 1,
         Casm = 2,
         DeprecatedContractClass = 3,
+    }
+    pub struct TransactionMetadata{
+        pub tx_hash: TransactionHash,
+        pub tx_location: LocationInFile,
+        pub tx_output_location: LocationInFile,
     }
     struct TransactionIndex(pub BlockNumber, pub TransactionOffsetInBlock);
     pub struct Version{

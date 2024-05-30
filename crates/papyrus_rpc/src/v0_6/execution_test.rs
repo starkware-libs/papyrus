@@ -762,9 +762,14 @@ async fn trace_block_transactions_regular_and_pending() {
             BlockNumber(2),
             BlockBody {
                 transactions: vec![tx1, tx2],
-                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
-                    starknet_api::transaction::InvokeTransactionOutput::default(),
-                )],
+                transaction_outputs: vec![
+                    starknet_api::transaction::TransactionOutput::Invoke(
+                        starknet_api::transaction::InvokeTransactionOutput::default(),
+                    ),
+                    starknet_api::transaction::TransactionOutput::Invoke(
+                        starknet_api::transaction::InvokeTransactionOutput::default(),
+                    ),
+                ],
                 transaction_hashes: vec![tx_hash1, tx_hash2],
             },
         )
@@ -960,9 +965,14 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
             BlockNumber(2),
             BlockBody {
                 transactions: vec![tx1, tx2],
-                transaction_outputs: vec![starknet_api::transaction::TransactionOutput::Invoke(
-                    starknet_api::transaction::InvokeTransactionOutput::default(),
-                )],
+                transaction_outputs: vec![
+                    starknet_api::transaction::TransactionOutput::Invoke(
+                        starknet_api::transaction::InvokeTransactionOutput::default(),
+                    ),
+                    starknet_api::transaction::TransactionOutput::Invoke(
+                        starknet_api::transaction::InvokeTransactionOutput::default(),
+                    ),
+                ],
                 transaction_hashes: vec![tx_hash1, tx_hash2],
             },
         )

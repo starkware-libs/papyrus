@@ -34,8 +34,8 @@ use crate::db_executor::{
     FetchBlockDataFromDb,
     QueryId,
 };
-use crate::streamed_bytes::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::streamed_bytes::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
+use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
+use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 use crate::{broadcast, mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
@@ -111,7 +111,7 @@ impl MockSwarm {
             let data_bytes =
                 protobuf::BlockHeadersResponse::from(Some(signed_header)).encode_to_vec();
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-                mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::ReceivedData {
+                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
                     data: data_bytes,
                     outbound_session_id,
                 }),
@@ -268,7 +268,7 @@ async fn register_subscriber_and_use_channels() {
 
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+        network_manager.register_sqmr_subscriber(vec![crate::Protocol::SignedBlockHeader]);
 
     let signed_header_receiver_length = Arc::new(Mutex::new(0));
     let cloned_signed_header_receiver_length = Arc::clone(&signed_header_receiver_length);
@@ -331,7 +331,7 @@ async fn process_incoming_query() {
     .encode(&mut query_bytes)
     .unwrap();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
@@ -402,7 +402,7 @@ async fn close_inbound_session() {
     let inbound_session_id = InboundSessionId { value: 0 };
     let _fut = mock_swarm.get_data_sent_to_inbound_session(inbound_session_id);
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-        mixed_behaviour::ExternalEvent::StreamedBytes(GenericEvent::NewInboundSession {
+        mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::NewInboundSession {
             query: query_bytes,
             inbound_session_id,
             peer_id: PeerId::random(),
@@ -441,7 +441,7 @@ async fn broadcast_message() {
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
         .messages_to_broadcast_sender;
-    messages_to_broadcast_sender.try_send(message.clone()).unwrap();
+    messages_to_broadcast_sender.send(message.clone()).await.unwrap();
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
@@ -474,7 +474,7 @@ async fn receive_broadcasted_message() {
         GenericNetworkManager::generic_new(mock_swarm, mock_db_executor, BUFFER_SIZE);
 
     let mut broadcasted_messages_receiver = network_manager
-        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .register_broadcast_subscriber::<Bytes>(topic.clone(), BUFFER_SIZE)
         .broadcasted_messages_receiver;
 
     tokio::select! {
@@ -483,7 +483,7 @@ async fn receive_broadcasted_message() {
             TIMEOUT, broadcasted_messages_receiver.next()
         ) => {
             let (actual_message, _report_callback) = result.unwrap().unwrap();
-            assert_eq!(message, actual_message);
+            assert_eq!(message, actual_message.unwrap());
             // TODO(shahak): Call the report callback once it's implemented.
         }
     }

@@ -187,9 +187,7 @@ pub fn open_storage(
         file_offsets: db_writer.create_simple_table("file_offsets")?,
         state_diffs: db_writer.create_simple_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_simple_table("transaction_hash_to_idx")?,
-        transaction_idx_to_hash: db_writer.create_simple_table("transaction_idx_to_hash")?,
-        transaction_outputs: db_writer.create_simple_table("transaction_outputs")?,
-        transactions: db_writer.create_simple_table("transactions")?,
+        transaction_metadata: db_writer.create_simple_table("transaction_metadata")?,
 
         // Version tables
         starknet_version: db_writer.create_simple_table("starknet_version")?,
@@ -497,9 +495,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
             let unused_tables = [
                 self.tables.events.name,
                 self.tables.transaction_hash_to_idx.name,
-                self.tables.transaction_idx_to_hash.name,
-                self.tables.transaction_outputs.name,
-                self.tables.transactions.name,
+                self.tables.transaction_metadata.name,
             ];
             if unused_tables.contains(&table_id.name) {
                 return Err(StorageError::ScopeError {
@@ -534,11 +530,8 @@ struct_field_names! {
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
         state_diffs: TableIdentifier<BlockNumber, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, NoVersionValueWrapper<TransactionHash>, SimpleTable>,
-        // TODO(dvir): write transaction also to a file and combine all the mapping from tx_index to the same table.
-        // Afterward add option to iterate over tx/output also with tx_hash.
-        transaction_outputs: TableIdentifier<TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        transactions: TableIdentifier<TransactionIndex, VersionZeroWrapper<LocationInFile>, SimpleTable>,
+        // TODO(dvir): consider not saving transaction hash and calculating it from the transaction on demand.
+        transaction_metadata: TableIdentifier<TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>,
 
         // Version tables
         starknet_version: TableIdentifier<BlockNumber, VersionZeroWrapper<StarknetVersion>, SimpleTable>,
@@ -561,6 +554,13 @@ macro_rules! struct_field_names {
     }
 }
 use struct_field_names;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TransactionMetadata {
+    tx_hash: TransactionHash,
+    tx_location: LocationInFile,
+    tx_output_location: LocationInFile,
+}
 
 // TODO: sort the variants alphabetically.
 /// Error type for the storage crate.
