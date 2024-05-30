@@ -1,9 +1,7 @@
 use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
-use futures::StreamExt;
 use lazy_static::lazy_static;
-use papyrus_network::{DataType, ResponseReceivers};
 use papyrus_protobuf::sync::{Query, SignedBlockHeader};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
@@ -12,7 +10,7 @@ use starknet_api::crypto::Signature;
 use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::ThinStateDiff;
 
-use crate::{P2PSync, P2PSyncConfig};
+use crate::{P2PSync, P2PSyncConfig, Response};
 
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;
@@ -32,30 +30,45 @@ lazy_static! {
     };
 }
 
-#[allow(clippy::type_complexity)]
-pub fn setup() -> (
-    P2PSync,
-    StorageReader,
-    Receiver<(Query, DataType)>,
-    Sender<Option<SignedBlockHeader>>,
-    Sender<Option<ThinStateDiff>>,
-) {
+pub struct TestArgs {
+    #[allow(clippy::type_complexity)]
+    pub p2p_sync: P2PSync<
+        Sender<Query>,
+        Receiver<Response<SignedBlockHeader>>,
+        Sender<Query>,
+        Receiver<Response<ThinStateDiff>>,
+    >,
+    pub storage_reader: StorageReader,
+    pub header_query_receiver: Receiver<Query>,
+    pub state_diff_query_receiver: Receiver<Query>,
+    pub headers_sender: Sender<Response<SignedBlockHeader>>,
+    pub state_diffs_sender: Sender<Response<ThinStateDiff>>,
+}
+
+pub fn setup() -> TestArgs {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
-    let (query_sender, query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let (signed_headers_sender, signed_headers_receiver) =
+    let (header_query_sender, header_query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diff_query_sender, state_diff_query_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (headers_sender, headers_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let p2p_sync = P2PSync::new(
         *TEST_CONFIG,
         storage_reader.clone(),
         storage_writer,
-        query_sender,
-        ResponseReceivers {
-            signed_headers_receiver: Some(signed_headers_receiver.boxed()),
-            state_diffs_receiver: Some(state_diffs_receiver.boxed()),
-        },
+        header_query_sender,
+        headers_receiver,
+        state_diff_query_sender,
+        state_diffs_receiver,
     );
-    (p2p_sync, storage_reader, query_receiver, signed_headers_sender, state_diffs_sender)
+    TestArgs {
+        p2p_sync,
+        storage_reader,
+        header_query_receiver,
+        state_diff_query_receiver,
+        headers_sender,
+        state_diffs_sender,
+    }
 }
 
 pub fn create_block_hashes_and_signatures(n_blocks: u8) -> Vec<(BlockHash, BlockSignature)> {
