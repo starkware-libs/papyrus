@@ -1,0 +1,10 @@
+syntax = "proto3";
+import "p2p/proto/transaction.proto";
+import "p2p/proto/common.proto";
+
+message Proposal {
+    repeated Transaction transactions = 1;
+    uint64 height = 2;
+    Address proposer = 3;
+    Hash block_hash = 4;
+}
