@@ -45,6 +45,7 @@ struct MockSwarm {
     pub pending_events: Queue<Event>,
     pub sent_queries: Vec<(Query, PeerId)>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, Topic)>>,
+    reported_peer_senders: Vec<UnboundedSender<PeerId>>,
     inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -86,6 +87,12 @@ impl MockSwarm {
     pub fn stream_messages_we_broadcasted(&mut self) -> impl Stream<Item = (Bytes, Topic)> {
         let (sender, receiver) = unbounded();
         self.broadcasted_messages_senders.push(sender);
+        receiver
+    }
+
+    pub fn get_reported_peers_stream(&mut self) -> impl Stream<Item = PeerId> {
+        let (sender, receiver) = unbounded();
+        self.reported_peer_senders.push(sender);
         receiver
     }
 
@@ -190,6 +197,12 @@ impl SwarmTrait for MockSwarm {
     fn broadcast_message(&mut self, message: Bytes, topic: Topic) {
         for sender in &self.broadcasted_messages_senders {
             sender.unbounded_send((message.clone(), topic.clone())).unwrap();
+        }
+    }
+
+    fn report_peer(&mut self, peer_id: PeerId) {
+        for sender in &self.reported_peer_senders {
+            sender.unbounded_send(peer_id).unwrap();
         }
     }
 }
@@ -456,18 +469,20 @@ async fn broadcast_message() {
 }
 
 #[tokio::test]
-async fn receive_broadcasted_message() {
+async fn receive_broadcasted_message_and_report_it() {
     let topic = "TOPIC".to_owned();
     let message = vec![1u8, 2u8, 3u8];
+    let originated_peer_id = PeerId::random();
 
-    let mock_swarm = MockSwarm::default();
+    let mut mock_swarm = MockSwarm::default();
     mock_swarm.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
         mixed_behaviour::ExternalEvent::Broadcast(broadcast::ExternalEvent::Received {
-            originated_peer_id: PeerId::random(),
+            originated_peer_id,
             message: message.clone(),
             topic: topic.clone(),
         }),
     )));
+    let mut reported_peer_receiver = mock_swarm.get_reported_peers_stream();
 
     let mock_db_executor = MockDBExecutor::default();
     let mut network_manager =
@@ -479,12 +494,16 @@ async fn receive_broadcasted_message() {
 
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
-        result = tokio::time::timeout(
-            TIMEOUT, broadcasted_messages_receiver.next()
-        ) => {
-            let (actual_message, _report_callback) = result.unwrap().unwrap();
-            assert_eq!(message, actual_message.unwrap());
-            // TODO(shahak): Call the report callback once it's implemented.
+        // We need to do the entire calculation in the future here so that the network will keep
+        // running while we call report_callback.
+        reported_peer_result = tokio::time::timeout(TIMEOUT, broadcasted_messages_receiver.next())
+            .then(|result| {
+                let (message_result, report_callback) = result.unwrap().unwrap();
+                assert_eq!(message, message_result.unwrap());
+                report_callback();
+                tokio::time::timeout(TIMEOUT, reported_peer_receiver.next())
+            }) => {
+            assert_eq!(originated_peer_id, reported_peer_result.unwrap().unwrap());
         }
     }
 }

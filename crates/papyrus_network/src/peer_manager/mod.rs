@@ -141,7 +141,7 @@ where
         })
     }
 
-    fn report_peer(
+    pub(crate) fn report_peer(
         &mut self,
         peer_id: PeerId,
         reason: ReputationModifier,
