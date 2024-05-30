@@ -80,7 +80,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
                             assert_matches!(data, BlockHeaderAndSignature { .. });
                         }
                         DataType::StateDiff => {
-                            assert_matches!(data, Data::StateDiff{..});
+                            assert_matches!(data, Data::StateDiffChunk{..});
 
                         }
                     }
@@ -89,7 +89,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
                     Data::BlockHeaderAndSignature(SignedBlockHeader{ block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) => {
                         assert_eq!(block_number, &(i as u64));
                     }
-                    Data::StateDiff{state_diff: ThinStateDiff { .. }} => {
+                    Data::StateDiffChunk { state_diff: _ } => {
                         // TODO: check the state diff.
                     }
                     _ => panic!("Unexpected data type"),
