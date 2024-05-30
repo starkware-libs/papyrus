@@ -10,6 +10,7 @@ use tracing::debug;
 pub fn build_swarm<Behaviour: NetworkBehaviour>(
     listen_addresses: Vec<String>,
     idle_connection_timeout: Duration,
+    secret_key: Option<Vec<u8>>,
     behaviour: impl Fn(PublicKey) -> Behaviour,
 ) -> Swarm<Behaviour>
 where
@@ -20,7 +21,12 @@ where
     });
     debug!("Creating swarm with listen addresses: {:?}", listen_addresses);
 
-    let key_pair = Keypair::generate_ed25519();
+    let key_pair = match secret_key {
+        Some(secret_key) => {
+            Keypair::ed25519_from_bytes(secret_key).expect("Error while parsing secret key")
+        }
+        None => Keypair::generate_ed25519(),
+    };
     let mut swarm = SwarmBuilder::with_existing_identity(key_pair)
         .with_tokio()
         .with_tcp(Default::default(), noise::Config::new, yamux::Config::default)
