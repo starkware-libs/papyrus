@@ -268,7 +268,7 @@ async fn register_subscriber_and_use_channels() {
 
     // register subscriber and send query
     let (mut query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![crate::Protocol::SignedBlockHeader]);
+        network_manager.register_sqmr_subscriber(vec![crate::Protocol::SignedBlockHeader]);
 
     let signed_header_receiver_length = Arc::new(Mutex::new(0));
     let cloned_signed_header_receiver_length = Arc::clone(&signed_header_receiver_length);

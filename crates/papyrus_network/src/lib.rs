@@ -81,7 +81,7 @@ pub type StateDiffStream = Pin<Box<dyn Stream<Item = Option<ThinStateDiff>> + Se
 
 /// This struct represents the receiver end of the response streams for a network subscriber.
 /// It is created by the network manager and passed to the subscriber when calling
-/// register_subscriber.
+/// [`register_sqmr_subscriber`](`network_manager::GenericNetworkManager::register_sqmr_subscriber`).
 pub struct ResponseReceivers {
     pub signed_headers_receiver: Option<SignedBlockHeaderStream>,
     pub state_diffs_receiver: Option<StateDiffStream>,
