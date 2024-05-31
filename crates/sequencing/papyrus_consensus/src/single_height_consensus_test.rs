@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
@@ -52,7 +53,7 @@ impl TestSetup {
             Arc::new(self.context),
             id,
             self.shc_to_peering_sender,
-            self.peering_to_shc_receiver,
+            RefCell::new(self.peering_to_shc_receiver),
         )
         .await;
         (shc, self.shc_to_peering_receiver, self.peering_to_shc_sender)
