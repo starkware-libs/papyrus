@@ -4,8 +4,9 @@ mod single_height_consensus_test;
 
 use std::sync::Arc;
 
+use async_channel as mpmc;
 use futures::channel::{mpsc, oneshot};
-use futures::{SinkExt, StreamExt};
+use futures::SinkExt;
 use starknet_api::block::BlockNumber;
 
 use crate::types::{
@@ -26,7 +27,10 @@ where
     validators: Vec<NodeId>,
     id: NodeId,
     to_peering_sender: mpsc::Sender<PeeringConsensusMessage<BlockT::ProposalChunk>>,
-    from_peering_receiver: mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
+    // The receiver from peering is a multi consumer channel. This is because each SHC is dropped
+    // at the end of each each height, and an mpmc channel allows the manager to hold onto a
+    // Receiver to clone and pass to each instance of SHC.
+    from_peering_receiver: mpmc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
 }
 
 impl<BlockT> SingleHeightConsensus<BlockT>
@@ -38,7 +42,7 @@ where
         context: Arc<dyn ConsensusContext<Block = BlockT>>,
         id: NodeId,
         to_peering_sender: mpsc::Sender<PeeringConsensusMessage<BlockT::ProposalChunk>>,
-        from_peering_receiver: mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
+        from_peering_receiver: mpmc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
     ) -> Self {
         let validators = context.validators(height).await;
         Self { height, context, validators, id, to_peering_sender, from_peering_receiver }
@@ -80,7 +84,7 @@ where
 
     async fn validate(&mut self, proposer_id: NodeId) -> Result<BlockT, ConsensusError> {
         // Peering is a permanent component, so if receiving from it fails we cannot continue.
-        let msg = self.from_peering_receiver.next().await.expect("Cannot receive from Peering");
+        let msg = self.from_peering_receiver.recv().await.expect("Cannot receive from Peering");
         let (init, content_receiver, fin_receiver) = match msg {
             PeeringConsensusMessage::Proposal((init, content_receiver, block_hash_receiver)) => {
                 (init, content_receiver, block_hash_receiver)
