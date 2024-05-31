@@ -12,6 +12,7 @@ futures.workspace = true
 starknet_api.workspace = true
 tokio = { workspace = true, features = ["full"] }
 thiserror.workspace = true
+async-channel = "2.3.1"
 
 [dev-dependencies]
 mockall.workspace = true
