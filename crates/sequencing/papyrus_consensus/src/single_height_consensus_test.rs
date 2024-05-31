@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
-use futures::{SinkExt, StreamExt};
+use futures::StreamExt;
 use starknet_api::block::BlockNumber;
-use tokio;
+use {async_channel as mpmc, tokio};
 
 use super::SingleHeightConsensus;
 use crate::test_utils::{MockTestContext, TestBlock};
@@ -17,8 +17,8 @@ struct TestSetup {
     pub context: MockTestContext,
     pub shc_to_peering_sender: mpsc::Sender<PeeringConsensusMessage<u32>>,
     pub shc_to_peering_receiver: mpsc::Receiver<PeeringConsensusMessage<u32>>,
-    pub peering_to_shc_sender: mpsc::Sender<PeeringConsensusMessage<u32>>,
-    pub peering_to_shc_receiver: mpsc::Receiver<PeeringConsensusMessage<u32>>,
+    pub peering_to_shc_sender: mpmc::Sender<PeeringConsensusMessage<u32>>,
+    pub peering_to_shc_receiver: mpmc::Receiver<PeeringConsensusMessage<u32>>,
 }
 
 impl TestSetup {
@@ -43,7 +43,7 @@ impl TestSetup {
     ) -> (
         Shc,
         mpsc::Receiver<PeeringConsensusMessage<u32>>,
-        mpsc::Sender<PeeringConsensusMessage<u32>>,
+        mpmc::Sender<PeeringConsensusMessage<u32>>,
     ) {
         let shc = Shc::new(
             height,
@@ -106,7 +106,7 @@ async fn validate() {
     });
 
     // Creation calls to `context.validators`.
-    let (shc, _, mut peering_to_shc_sender) = test_fields.begin_test(BlockNumber(0), node_id).await;
+    let (shc, _, peering_to_shc_sender) = test_fields.begin_test(BlockNumber(0), node_id).await;
 
     // Send the proposal from the peer.
     let (fin_sender, fin_receiver) = oneshot::channel();
