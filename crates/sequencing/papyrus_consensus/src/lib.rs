@@ -2,6 +2,6 @@
 #[allow(dead_code)]
 pub mod single_height_consensus;
 #[cfg(test)]
-pub mod test_utils;
+pub(crate) mod test_utils;
 #[allow(dead_code)]
 pub mod types;
