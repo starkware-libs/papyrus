@@ -13,6 +13,8 @@ starknet_api.workspace = true
 starknet-types-core.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full"] }
+papyrus_protobuf = { path = "../../papyrus_protobuf", version = "0.4.0-dev.2" }
+papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
 
 [dev-dependencies]
 mockall.workspace = true
