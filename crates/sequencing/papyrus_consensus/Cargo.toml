@@ -13,6 +13,8 @@ starknet_api.workspace = true
 tokio = { workspace = true, features = ["full"] }
 thiserror.workspace = true
 async-channel = "2.3.1"
+papyrus_protobuf = { path = "../../papyrus_protobuf", version = "0.4.0-dev.2" }
+papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
 
 [dev-dependencies]
 mockall.workspace = true

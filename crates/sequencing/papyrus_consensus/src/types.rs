@@ -136,6 +136,9 @@ pub(crate) struct ProposalInit {
 
 // This type encapsulate the messages that are sent between the SingleHeightConsensus and the
 // Peering components.
+//
+// TODO(matan): Consider passing `ReportCallback` with these messages. Relevant for stateful checks
+// which peering can't handle.
 pub(crate) enum PeeringConsensusMessage<ProposalChunkT> {
     // TODO(matan): Switch the oneshot channel to be a Signature when we add.
     Proposal((ProposalInit, mpsc::Receiver<ProposalChunkT>, oneshot::Receiver<BlockHash>)),

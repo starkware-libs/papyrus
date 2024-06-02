@@ -5905,6 +5905,8 @@ dependencies = [
  "async-trait",
  "futures",
  "mockall",
+ "papyrus_network",
+ "papyrus_protobuf",
  "starknet_api",
  "thiserror",
  "tokio",
