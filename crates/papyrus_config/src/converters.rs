@@ -78,3 +78,55 @@ where
     }
     Ok(Some(map))
 }
+
+/// Serializes a vector to string structure. The vector is expected to be a hex string.
+pub fn serialize_optional_vector(optional_vector: &Option<Vec<u8>>) -> String {
+    match optional_vector {
+        None => "".to_owned(),
+        Some(vector) => {
+            format!(
+                "0x{}",
+                vector.iter().map(|v| format!("{:02x}", v)).collect::<Vec<String>>().join("")
+            )
+        }
+    }
+}
+
+/// Deserializes a vector from string structure. The vector is expected to be a list of u8 values
+/// separated by spaces.
+pub fn deserialize_optional_vector<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw_str: String = Deserialize::deserialize(de)?;
+    if raw_str.is_empty() {
+        return Ok(None);
+    }
+
+    if !raw_str.starts_with("0x") {
+        return Err(D::Error::custom(
+            "Couldn't deserialize vector. Expected hex string starting with \"0x\"",
+        ));
+    }
+
+    let hex_str = &raw_str[2..]; // Strip the "0x" prefix
+
+    if hex_str.len() != 64 {
+        return Err(D::Error::custom(
+            "Couldn't deserialize vector. Expected hex string of length 64",
+        ));
+    }
+
+    let mut vector = Vec::new();
+    for i in (0..hex_str.len()).step_by(2) {
+        let byte_str = &hex_str[i..i + 2];
+        let byte = u8::from_str_radix(byte_str, 16).map_err(|e| {
+            D::Error::custom(format!(
+                "Couldn't deserialize vector. Failed to parse byte: /{}/ {}",
+                byte_str, e
+            ))
+        })?;
+        vector.push(byte);
+    }
+    Ok(Some(vector))
+}
