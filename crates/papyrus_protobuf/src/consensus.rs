@@ -8,3 +8,7 @@ pub struct Proposal {
     pub transactions: Vec<Transaction>,
     pub block_hash: BlockHash,
 }
+
+pub enum ConsensusMessage {
+    Proposal(Proposal),
+}
