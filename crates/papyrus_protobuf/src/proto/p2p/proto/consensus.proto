@@ -8,3 +8,9 @@ message Proposal {
     repeated Transaction transactions = 3;
     Hash block_hash = 4;
 }
+
+message ConsensusMessage {
+    oneof message {
+        Proposal proposal = 1;
+    }
+}
