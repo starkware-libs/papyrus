@@ -2,15 +2,14 @@ use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use mockall::mock;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_types_core::felt::Felt;
 
-use crate::types::{ConsensusBlock, ConsensusContext, NodeId};
+use crate::types::{ConsensusBlock, ConsensusContext, ValidatorId};
 
 /// Define a consensus block which can be used to enable auto mocking Context.
 #[derive(Debug, PartialEq, Clone)]
 pub struct TestBlock {
     pub content: Vec<u32>,
-    pub id: u32,
+    pub id: BlockHash,
 }
 
 impl ConsensusBlock for TestBlock {
@@ -18,7 +17,7 @@ impl ConsensusBlock for TestBlock {
     type ProposalIter = std::vec::IntoIter<u32>;
 
     fn id(&self) -> BlockHash {
-        BlockHash(Felt::from(self.id))
+        self.id
     }
 
     fn proposal_iter(&self) -> Self::ProposalIter {
@@ -43,7 +42,7 @@ mock! {
             height: BlockNumber,
             content: mpsc::Receiver<u32>
         ) -> oneshot::Receiver<TestBlock>;
-        async fn validators(&self, height: BlockNumber) -> Vec<NodeId>;
-        fn proposer(&self, validators: &Vec<NodeId>, height: BlockNumber) -> NodeId;
+        async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
+        fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
     }
 }
