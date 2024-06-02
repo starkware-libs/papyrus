@@ -63,10 +63,13 @@ impl TestSetup {
 #[tokio::test]
 async fn propose() {
     let mut test_fields = TestSetup::new();
-    let node_id: NodeId = 1;
+    let node_id: NodeId = 1_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: 1 };
     // Set expectations for how the test should run:
-    test_fields.context.expect_validators().returning(move |_| vec![node_id, 2, 3, 4]);
+    test_fields
+        .context
+        .expect_validators()
+        .returning(move |_| vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()]);
     test_fields.context.expect_proposer().returning(move |_, _| node_id);
     let block_clone = block.clone();
     test_fields.context.expect_build_proposal().returning(move |_| {
@@ -94,11 +97,14 @@ async fn propose() {
 #[tokio::test]
 async fn validate() {
     let mut test_fields = TestSetup::new();
-    let node_id: NodeId = 1;
-    let proposer: NodeId = 2;
+    let node_id: NodeId = 1_u32.into();
+    let proposer: NodeId = 2_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: 1 };
     // Set expectations for how the test should run:
-    test_fields.context.expect_validators().returning(move |_| vec![node_id, proposer, 3, 4]);
+    test_fields
+        .context
+        .expect_validators()
+        .returning(move |_| vec![node_id, proposer, 3_u32.into(), 4_u32.into()]);
     test_fields.context.expect_proposer().returning(move |_, _| proposer);
     let block_clone = block.clone();
     test_fields.context.expect_validate_proposal().returning(move |_, _| {
