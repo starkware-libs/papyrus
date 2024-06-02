@@ -78,3 +78,33 @@ where
     }
     Ok(Some(map))
 }
+
+/// Serializes a vector to string structure. The vector is expected to be a list of u8 values
+/// separated by spaces.
+pub fn serialize_optional_vector(optional_vector: &Option<Vec<u8>>) -> String {
+    match optional_vector {
+        None => "".to_owned(),
+        Some(vector) => vector.iter().map(|v| format!("{v}")).collect::<Vec<String>>().join(","),
+    }
+}
+
+/// Deserializes a vector from string structure. The vector is expected to be a list of u8 values
+/// separated by spaces.
+pub fn deserialize_optional_vector<'de, D>(de: D) -> Result<Option<Vec<u8>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let raw_str: String = Deserialize::deserialize(de)?;
+    if raw_str.is_empty() {
+        return Ok(None);
+    }
+
+    let mut vector = Vec::new();
+    for raw_value in raw_str.split(',') {
+        let value: u8 = raw_value.parse().map_err(|_| {
+            D::Error::custom(format!("value \"{raw_value}\" is not a valid u8 number"))
+        })?;
+        vector.push(value);
+    }
+    Ok(Some(vector))
+}
