@@ -15,26 +15,30 @@ pub(crate) use simple_table::SimpleTable;
 pub(crate) mod test_utils;
 
 // TODO(dvir): consider adding the create_table method to the Table trait.
-// TODO(dvir): add some documentation to the Table and the cursor traits.
 // TODO(dvir): consider adding unchecked version of the those functions.
+
 pub(crate) trait Table<'env> {
     type Key: KeyTrait + Debug;
     type Value: ValueSerde + Debug;
     type TableVariant: TableType;
 
     // TODO(dvir): consider move this to the cursor trait and get rid of the TableVariant type.
+    // Create a cursor for the table.
     #[allow(clippy::type_complexity)]
     fn cursor<'txn, Mode: TransactionKind>(
         &'env self,
         txn: &'txn DbTransaction<'env, Mode>,
     ) -> DbResult<DbCursor<'txn, Mode, Self::Key, Self::Value, Self::TableVariant>>;
 
+    // Get a key value pair from the table.
     fn get<Mode: TransactionKind>(
         &'env self,
         txn: &'env DbTransaction<'env, Mode>,
         key: &Self::Key,
     ) -> DbResult<Option<<Self::Value as ValueSerde>::Value>>;
 
+    // Insert or update a key value pair in the table. If the key already exists, the value will be
+    // updated.
     fn upsert(
         &'env self,
         txn: &DbTransaction<'env, RW>,
@@ -42,6 +46,7 @@ pub(crate) trait Table<'env> {
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()>;
 
+    // Insert a key value pair in the table. If the key already exists, an error will be returned.
     fn insert(
         &'env self,
         txn: &DbTransaction<'env, RW>,
@@ -59,6 +64,7 @@ pub(crate) trait Table<'env> {
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()>;
 
+    // Delete a key value pair from the table.
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()>;
 }
 
@@ -68,10 +74,15 @@ pub(crate) trait DbCursorTrait {
     type Key: KeyTrait + Debug;
     type Value: ValueSerde + Debug;
 
+    // Position at the previous key.
     #[allow(clippy::type_complexity)]
     fn prev(&mut self) -> DbResult<Option<(Self::Key, <Self::Value as ValueSerde>::Value)>>;
+
+    // Position at the next key.
     #[allow(clippy::type_complexity)]
     fn next(&mut self) -> DbResult<Option<(Self::Key, <Self::Value as ValueSerde>::Value)>>;
+
+    // Position at first key greater than or equal to specified key.
     #[allow(clippy::type_complexity)]
     fn lower_bound(
         &mut self,

@@ -25,30 +25,39 @@ use crate::db::{
     RW,
 };
 
-// All tables types that use libmdbx dup sort feature
+// NOTICE: If a write operation fails (insert, upsert, append, delete, append_greater_sub_key), the
+// transaction should not be committed. Doing so can cause a corrupt database.
+// TODO(dvir): enforce this in code.
+
+// TODO(dvir): add the following table types: 1. key suffix and value with fixed size. 2. key and
+// value with a fixed size. This is not done because of a bug in the libmdbx `DUP_FIXED` feature. We
+// should be careful when using this feature.
+
+// All tables types that use libmdbx `DUP_SORT` feature
 trait DupSortTableType {}
 impl<T: DupSortTableType> TableType for T {}
 
 // A table with keys with common prefix. The same common prefix will be saved only once.
-// NOTICE: the size of the serialized sub key and value must be no more than half of page size.
+// NOTICE: the size of the serialized sub-key and value must be no more than half of page size.
 pub(crate) struct CommonPrefix;
 
 impl DupSortTableType for CommonPrefix {}
 
 // TODO(dvir): consider move this to the end of the file.
-// This trait represents the required functionality for table types using libmdbx DUP_SORT feature,
-// ensuring their automatic implementation of the Table trait (along with the cursor trait).
+// This trait represents the required functionality for table types using libmdbx `DUP_SORT`
+// feature, ensuring their automatic implementation of the Table trait (along with the cursor
+// trait).
 trait DupSortUtils<K: KeyTrait, V: ValueSerde> {
-    // Returns the main key bytes.
+    // Returns the main-key bytes.
     fn get_main_key(key: &K) -> DbResult<Vec<u8>>;
 
-    // Returns the sub key bytes.
+    // Returns the sub-key bytes.
     fn get_sub_key(key: &K) -> DbResult<Vec<u8>>;
 
-    // Returns the sub key and value bytes.
+    // Returns the sub-key and value bytes.
     fn get_sub_key_and_value(key: &K, value: &V::Value) -> DbResult<Vec<u8>>;
 
-    // Returns the first sub key (bytes) that is greater than or equal to sub key of the given key.
+    // Returns the first sub-key (bytes) that is greater than or equal to sub-key of the given key.
     fn get_sub_key_lower_bound(key: &K) -> DbResult<Vec<u8>>;
 
     // Changes main_key_bytes to the next greater one.
@@ -186,6 +195,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         Ok(None)
     }
 
+    // NOTICE: if this returns an error, the transaction should not be committed. Doing so can cause
+    // a corrupt database.
+    // TODO(dvir): consider first checking if the key exists, if so delete it and only than insert
+    // it (instead of upsert and fix if there is a problem).
     fn upsert(
         &'env self,
         txn: &DbTransaction<'env, RW>,
@@ -222,6 +235,8 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         Ok(())
     }
 
+    // NOTICE: if this returns an error, the transaction should not be committed. Doing so can cause
+    // a corrupt database.
     // TODO(dvir): consider first checking if the key exists and only then insert it (instead of
     // insert and  fix if there is a problem).
     fn insert(
@@ -243,7 +258,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
             },
         )?;
 
-        // In the case of existing main key and sub key but different values, because the bytes
+        // In the case of existing main-key and sub-key but different values, because the bytes
         // array of the key suffix and value is not present in the table, the put will
         // succeed, although the key exists. The next two checks come to find those cases
         // and delete the new value from the DB.
@@ -274,6 +289,8 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         Ok(())
     }
 
+    // NOTICE: if this returns an error, the transaction should not be committed. Doing so can cause
+    // a corrupt database.
     // TODO(dvir): consider first checking if the key is equal to the last key, delete the last key,
     // and then append instead of optimistically append.
     fn append(
@@ -290,7 +307,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         {
             Err(libmdbx::Error::KeyMismatch) => {
                 // This case can happen if the appended sub_key_and_value is smaller than the last
-                // entry value, but the sub key itself is equal.
+                // entry value, but the sub-key itself is equal.
                 // For example: append (0,0) -> 1, old last entry: (0,0) -> 2.
                 let (last_main_key_bytes, last_key_suffix_and_value_bytes) =
                     cursor.last::<DbKeyType<'_>, DbValueType<'_>>()?.expect(
@@ -329,6 +346,8 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         }
     }
 
+    // NOTICE: if this returns an error, the transaction should not be committed. Doing so can cause
+    // a corrupt database.
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
         let main_key = T::get_main_key(key)?;
         let first_sub_key = T::get_sub_key_lower_bound(key)?;
@@ -351,10 +370,12 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
 impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + DupSortUtils<K, V>>
     TableHandle<'env, K, V, T>
 {
-    // Append a new value to the given key. The sub key must be bigger than the last sub key for the
-    // given main key, otherwise an error will be returned.
+    // Append a new value to the given key. The sub-key must be bigger than the last sub-key for the
+    // given main-key, otherwise an error will be returned.
     // In contrast to the append function in the Table trait, this function will return an error if
-    // The sub key is equal to the last sub key of the given main key.
+    // The sub-key is equal to the last sub-key of the given main-key.
+    // NOTICE: if this returns an error, the transaction should not be committed. Doing so can cause
+    // a corrupt database.
     #[allow(dead_code)]
     pub(crate) fn append_greater_sub_key(
         &'env self,
@@ -373,7 +394,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
             },
         )?;
 
-        // This checks the case where the the sub key is already the last in the sub tree; in this
+        // This checks the case where the the sub-key is already the last in the sub tree; in this
         // case, we revert the last put and return an error.
         if let Some(prev) = cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()? {
             if prev.1.starts_with(&T::get_sub_key(key)?) {
@@ -428,14 +449,14 @@ impl<
         let mut main_key = T::get_main_key(key)?;
         let first_sub_key = T::get_sub_key_lower_bound(key)?;
 
-        // First try to find a match for the main key.
+        // First try to find a match for the main-key.
         if let Some(value_bytes) =
             self.cursor.get_both_range::<DbValueType<'_>>(&main_key, &first_sub_key)?
         {
             return Ok(T::get_key_value_pair(&main_key, &value_bytes));
         }
 
-        // The next main key bytes.
+        // The next main-key bytes.
         T::next_main_key(&mut main_key);
 
         let Some((main_key_bytes, sub_key_value_bytes)) =
