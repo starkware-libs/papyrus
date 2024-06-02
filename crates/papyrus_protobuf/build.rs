@@ -30,6 +30,7 @@ fn main() -> Result<()> {
                 "src/proto/p2p/proto/header.proto",
                 "src/proto/p2p/proto/state.proto",
                 "src/proto/p2p/proto/transaction.proto",
+                "src/proto/p2p/proto/consensus.proto",
             ],
             &["src/proto/"],
         )?;
