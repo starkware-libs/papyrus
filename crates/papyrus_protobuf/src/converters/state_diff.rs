@@ -16,27 +16,29 @@ use crate::sync::{
     StateDiffChunk,
     StateDiffQuery,
 };
-use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
+use crate::{auto_impl_into_and_try_from_vec_u8, auto_impl_try_from_vec_u8, protobuf};
 
 pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
 
-impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
+// TODO(shahak): Remove this once we finish the sync refactor.
+impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<ThinStateDiff> {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsResponse) -> Result<Self, Self::Error> {
         match value.state_diff_message {
             Some(protobuf::state_diffs_response::StateDiffMessage::ContractDiff(contract_diff)) => {
-                Ok(Some(contract_diff.try_into()?))
+                Ok(DataOrFin(Some(contract_diff.try_into()?)))
             }
             Some(protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
                 declared_class,
-            )) => Ok(Some(declared_class.try_into()?)),
-            Some(protobuf::state_diffs_response::StateDiffMessage::Fin(_)) => Ok(None),
+            )) => Ok(DataOrFin(Some(declared_class.try_into()?))),
+            Some(protobuf::state_diffs_response::StateDiffMessage::Fin(_)) => Ok(DataOrFin(None)),
             None => Err(ProtobufConversionError::MissingField {
                 field_description: "StateDiffsResponse::state_diff_message",
             }),
         }
     }
 }
+auto_impl_try_from_vec_u8!(DataOrFin<ThinStateDiff>, protobuf::StateDiffsResponse);
 
 impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<StateDiffChunk> {
     type Error = ProtobufConversionError;
