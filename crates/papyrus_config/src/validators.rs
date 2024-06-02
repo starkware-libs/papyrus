@@ -27,6 +27,19 @@ pub fn validate_path_exists(file_path: &Path) -> Result<(), ValidationError> {
     Ok(())
 }
 
+/// Custom validation for a 32 bytes hex string.
+pub fn validate_hex_string_u256_representation(hex_string: &str) -> Result<(), ValidationError> {
+    if hex_string.len() != 64 {
+        return Err(ValidationError::new("The value is not a 32 bytes hex string"));
+    }
+    for c in hex_string.chars() {
+        if !c.is_ascii_hexdigit() {
+            return Err(ValidationError::new("The value is not a 32 bytes hex string"));
+        }
+    }
+    Ok(())
+}
+
 /// Struct for parsing a validation error.
 #[derive(Debug)]
 pub struct ParsedValidationError {
