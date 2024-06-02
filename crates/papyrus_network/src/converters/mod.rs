@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
 use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::DataOrFin;
 use prost::Message;
+use starknet_api::state::ThinStateDiff;
 
 use crate::{Protocol, ResponseReceivers};
 
@@ -26,10 +28,12 @@ impl ResponseReceivers {
             protocol_to_receiver_map.remove(&Protocol::StateDiff).map(|receiver| {
                 receiver
                     .map(|data_bytes| {
-                        protobuf::StateDiffsResponse::decode(&data_bytes[..])
-                            .expect("failed to decode protobuf StateDiff")
-                            .try_into()
-                            .expect("failed to convert ThinStateDiff")
+                        DataOrFin::<ThinStateDiff>::try_from(
+                            protobuf::StateDiffsResponse::decode(&data_bytes[..])
+                                .expect("failed to decode protobuf StateDiff"),
+                        )
+                        .expect("failed to convert ThinStateDiff")
+                        .0
                     })
                     .boxed()
             });
