@@ -194,13 +194,6 @@ auto_storage_serde! {
         V2(DeclareTransactionV2) = 2,
         V3(DeclareTransactionV3) = 3,
     }
-    pub struct DeclareTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
     pub struct DeclareTransactionV0V1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,
@@ -232,22 +225,6 @@ auto_storage_serde! {
     pub enum DeployAccountTransaction {
         V1(DeployAccountTransactionV1) = 0,
         V3(DeployAccountTransactionV3) = 1,
-    }
-    pub struct DeployAccountTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
-    pub struct DeployTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
-        pub contract_address: ContractAddress,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
     }
     pub struct DeprecatedEntryPoint {
         pub selector: EntryPointSelector,
@@ -314,13 +291,6 @@ auto_storage_serde! {
         V1(InvokeTransactionV1) = 1,
         V3(InvokeTransactionV3) = 2,
     }
-    pub struct InvokeTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
-    }
     pub enum IsCompressed {
         No = 0,
         Yes = 1,
@@ -328,13 +298,6 @@ auto_storage_serde! {
     pub enum L1DataAvailabilityMode {
         Calldata = 0,
         Blob = 1,
-    }
-    pub struct L1HandlerTransactionOutput {
-        pub actual_fee: Fee,
-        pub messages_sent: Vec<MessageToL1>,
-        pub events: Vec<Event>,
-        pub execution_status: TransactionExecutionStatus,
-        pub execution_resources: ExecutionResources,
     }
     pub struct L1ToL2Payload(pub Vec<StarkFelt>);
     pub struct L2ToL1Payload(pub Vec<StarkFelt>);
@@ -1209,5 +1172,47 @@ auto_storage_serde_conditionally_compressed! {
         pub contract_address: ContractAddress,
         pub entry_point_selector: EntryPointSelector,
         pub calldata: Calldata,
+    }
+
+    pub struct DeclareTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeployAccountTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct DeployTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub contract_address: ContractAddress,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct InvokeTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
+    }
+
+    pub struct L1HandlerTransactionOutput {
+        pub actual_fee: Fee,
+        pub messages_sent: Vec<MessageToL1>,
+        pub events: Vec<Event>,
+        pub execution_status: TransactionExecutionStatus,
+        pub execution_resources: ExecutionResources,
     }
 }
