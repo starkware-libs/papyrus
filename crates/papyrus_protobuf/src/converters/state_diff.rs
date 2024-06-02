@@ -9,12 +9,12 @@ use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
 use crate::sync::{
     ContractDiff,
+    DataOrFin,
     DeclaredClass,
     DeprecatedDeclaredClass,
     Query,
     StateDiffChunk,
     StateDiffQuery,
-    StateDiffsResponse,
 };
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
@@ -38,28 +38,24 @@ impl TryFrom<protobuf::StateDiffsResponse> for Option<ThinStateDiff> {
     }
 }
 
-impl TryFrom<protobuf::StateDiffsResponse> for StateDiffsResponse {
+impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<StateDiffChunk> {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::StateDiffsResponse) -> Result<Self, Self::Error> {
         match value.state_diff_message {
             Some(protobuf::state_diffs_response::StateDiffMessage::ContractDiff(contract_diff)) => {
-                Ok(StateDiffsResponse(Some(StateDiffChunk::ContractDiff(
-                    contract_diff.try_into()?,
-                ))))
+                Ok(DataOrFin(Some(StateDiffChunk::ContractDiff(contract_diff.try_into()?))))
             }
             Some(protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
                 declared_class,
             )) => match declared_class.compiled_class_hash.as_ref() {
-                Some(_compiled_class_hash) => Ok(StateDiffsResponse(Some(
-                    StateDiffChunk::DeclaredClass(declared_class.try_into()?),
-                ))),
-                None => Ok(StateDiffsResponse(Some(StateDiffChunk::DeprecatedDeclaredClass(
+                Some(_compiled_class_hash) => {
+                    Ok(DataOrFin(Some(StateDiffChunk::DeclaredClass(declared_class.try_into()?))))
+                }
+                None => Ok(DataOrFin(Some(StateDiffChunk::DeprecatedDeclaredClass(
                     declared_class.try_into()?,
                 )))),
             },
-            Some(protobuf::state_diffs_response::StateDiffMessage::Fin(_)) => {
-                Ok(StateDiffsResponse(None))
-            }
+            Some(protobuf::state_diffs_response::StateDiffMessage::Fin(_)) => Ok(DataOrFin(None)),
             None => Err(ProtobufConversionError::MissingField {
                 field_description: "StateDiffsResponse::state_diff_message",
             }),
@@ -67,8 +63,8 @@ impl TryFrom<protobuf::StateDiffsResponse> for StateDiffsResponse {
     }
 }
 
-impl From<StateDiffsResponse> for protobuf::StateDiffsResponse {
-    fn from(value: StateDiffsResponse) -> Self {
+impl From<DataOrFin<StateDiffChunk>> for protobuf::StateDiffsResponse {
+    fn from(value: DataOrFin<StateDiffChunk>) -> Self {
         let state_diff_message = match value.0 {
             Some(StateDiffChunk::ContractDiff(contract_diff)) => {
                 protobuf::state_diffs_response::StateDiffMessage::ContractDiff(contract_diff.into())

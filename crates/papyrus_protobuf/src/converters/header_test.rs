@@ -1,17 +1,10 @@
 use starknet_api::block::{BlockHeader, BlockNumber};
 
-use crate::sync::{
-    BlockHashOrNumber,
-    BlockHeaderResponse,
-    Direction,
-    HeaderQuery,
-    Query,
-    SignedBlockHeader,
-};
+use crate::sync::{BlockHashOrNumber, DataOrFin, Direction, HeaderQuery, Query, SignedBlockHeader};
 
 #[test]
 fn block_header_to_bytes_and_back() {
-    let data = BlockHeaderResponse(Some(SignedBlockHeader {
+    let data = DataOrFin(Some(SignedBlockHeader {
         // TODO(shahak): Remove state_diff_length from here once we correctly deduce if it should
         // be None or Some.
         block_header: BlockHeader { state_diff_length: Some(0), ..Default::default() },
@@ -20,15 +13,15 @@ fn block_header_to_bytes_and_back() {
     dbg!(&data);
     let bytes_data = Vec::<u8>::from(data.clone());
 
-    let res_data = BlockHeaderResponse::try_from(bytes_data).unwrap();
+    let res_data = DataOrFin::try_from(bytes_data).unwrap();
     assert_eq!(res_data, data);
 }
 
 #[test]
 fn fin_to_bytes_and_back() {
-    let bytes_data = Vec::<u8>::from(BlockHeaderResponse(None));
+    let bytes_data = Vec::<u8>::from(DataOrFin::<SignedBlockHeader>(None));
 
-    let res_data = BlockHeaderResponse::try_from(bytes_data).unwrap();
+    let res_data = DataOrFin::<SignedBlockHeader>::try_from(bytes_data).unwrap();
     assert!(res_data.0.is_none());
 }
 

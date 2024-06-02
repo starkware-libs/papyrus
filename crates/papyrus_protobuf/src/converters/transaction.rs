@@ -39,10 +39,10 @@ use super::common::{
     volition_domain_to_enum_int,
 };
 use super::ProtobufConversionError;
-use crate::sync::TransactionsResponse;
+use crate::sync::DataOrFin;
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
-impl TryFrom<protobuf::TransactionsResponse> for TransactionsResponse {
+impl TryFrom<protobuf::TransactionsResponse> for DataOrFin<(Transaction, TransactionOutput)> {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::TransactionsResponse) -> Result<Self, Self::Error> {
         let Some(transaction_message) = value.transaction_message else {
@@ -56,16 +56,14 @@ impl TryFrom<protobuf::TransactionsResponse> for TransactionsResponse {
                 tx_with_receipt,
             ) => {
                 let result: (Transaction, TransactionOutput) = tx_with_receipt.try_into()?;
-                Ok(TransactionsResponse(Some(result)))
+                Ok(DataOrFin(Some(result)))
             }
-            protobuf::transactions_response::TransactionMessage::Fin(_) => {
-                Ok(TransactionsResponse(None))
-            }
+            protobuf::transactions_response::TransactionMessage::Fin(_) => Ok(DataOrFin(None)),
         }
     }
 }
-impl From<TransactionsResponse> for protobuf::TransactionsResponse {
-    fn from(value: TransactionsResponse) -> Self {
+impl From<DataOrFin<(Transaction, TransactionOutput)>> for protobuf::TransactionsResponse {
+    fn from(value: DataOrFin<(Transaction, TransactionOutput)>) -> Self {
         match value.0 {
             Some((transaction, output)) => protobuf::TransactionsResponse {
                 transaction_message: Some(
@@ -83,7 +81,10 @@ impl From<TransactionsResponse> for protobuf::TransactionsResponse {
     }
 }
 
-auto_impl_into_and_try_from_vec_u8!(TransactionsResponse, protobuf::TransactionsResponse);
+auto_impl_into_and_try_from_vec_u8!(
+    DataOrFin<(Transaction, TransactionOutput)>,
+    protobuf::TransactionsResponse
+);
 
 impl TryFrom<protobuf::TransactionWithReceipt> for (Transaction, TransactionOutput) {
     type Error = ProtobufConversionError;
