@@ -38,7 +38,7 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
 //          }
 //      }
 // }
-// and a param path, for example 'a.b.v1', and removes the v1 from the json.
+// and a param path, for example 'a.b.v1', and removes the v1 from the json if it exists.
 // The result will be:
 // {
 //      a: {
@@ -47,6 +47,7 @@ pub fn get_config_presentation<T: Serialize + SerializeConfig>(
 //          }
 //      }
 // }
+// If path not found in json then function returns.
 fn remove_path_from_json(
     param_path: &str,
     json: &mut serde_json::Value,
@@ -58,16 +59,16 @@ fn remove_path_from_json(
         // TODO: Can we expect this to never happen?
         return Ok(()); // Empty param path.
     };
-
-    // Traverse the json using path_to_entry to get to the part of the json that contains the entry
-    // to remove, I.E. get json[a][b].
-    let most_inner_json =
-        path_to_entry.iter().fold(json, |entry, config_name| entry.index_mut(config_name));
-
-    // Remove the entry from from the json.
-    most_inner_json
-        .as_object_mut()
-        .ok_or_else(|| ConfigError::ParamNotFound { param_path: param_path.to_string() })?
-        .remove(entry_to_remove);
+    let mut inner_json = json;
+    for path in &path_to_entry {
+        if !inner_json.is_object() {
+            return Ok(()); // Path not found in json.
+        }
+        inner_json = inner_json.index_mut(path);
+    }
+    // remove entry_to_remove from inner_json
+    if let Some(obj) = inner_json.as_object_mut() {
+        obj.remove(entry_to_remove);
+    }
     Ok(())
 }
