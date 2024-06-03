@@ -4,10 +4,10 @@ use assert_matches::assert_matches;
 use futures::future::ready;
 use futures::{FutureExt, SinkExt, StreamExt};
 use indexmap::{indexmap, IndexMap};
+use papyrus_common::state::create_random_state_diff;
 use papyrus_network::DataType;
 use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
 use papyrus_storage::state::StateStorageReader;
-use rand::RngCore;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::{StarkFelt, StarkHash};
@@ -25,34 +25,6 @@ use crate::test_utils::{
 use crate::P2PSyncError;
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
-
-fn create_random_state_diff(rng: &mut impl RngCore) -> ThinStateDiff {
-    let contract0 = ContractAddress::from(rng.next_u64());
-    let contract1 = ContractAddress::from(rng.next_u64());
-    let contract2 = ContractAddress::from(rng.next_u64());
-    let class_hash = ClassHash(rng.next_u64().into());
-    let compiled_class_hash = CompiledClassHash(rng.next_u64().into());
-    let deprecated_class_hash = ClassHash(rng.next_u64().into());
-    ThinStateDiff {
-        deployed_contracts: indexmap! {
-            contract0 => class_hash, contract1 => class_hash, contract2 => deprecated_class_hash
-        },
-        storage_diffs: indexmap! {
-            contract0 => indexmap! {
-                1u64.into() => StarkFelt::ONE, 2u64.into() => StarkFelt::TWO
-            },
-            contract1 => indexmap! {
-                3u64.into() => StarkFelt::TWO, 4u64.into() => StarkFelt::ONE
-            },
-        },
-        declared_classes: indexmap! { class_hash => compiled_class_hash },
-        deprecated_declared_classes: vec![deprecated_class_hash],
-        nonces: indexmap! {
-            contract0 => Nonce(StarkFelt::ONE), contract2 => Nonce(StarkFelt::TWO)
-        },
-        replaced_classes: Default::default(),
-    }
-}
 
 fn split_state_diff(state_diff: ThinStateDiff) -> Vec<ThinStateDiff> {
     let mut result = Vec::new();
