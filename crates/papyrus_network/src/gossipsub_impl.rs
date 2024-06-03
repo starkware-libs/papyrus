@@ -13,8 +13,8 @@ pub type Topic = gossipsub::Sha256Topic;
 
 #[derive(Debug)]
 pub enum ExternalEvent {
-    #[allow(dead_code)]
     Received { originated_peer_id: PeerId, message: Bytes, topic_hash: TopicHash },
+    PeerSubscribed { topic_hash: TopicHash },
 }
 
 impl From<gossipsub::Event> for mixed_behaviour::Event {
@@ -39,6 +39,11 @@ impl From<gossipsub::Event> for mixed_behaviour::Event {
                         message: data,
                         topic_hash: topic,
                     },
+                ))
+            }
+            gossipsub::Event::Subscribed { peer_id: _, topic: topic_hash } => {
+                mixed_behaviour::Event::ExternalEvent(mixed_behaviour::ExternalEvent::GossipSub(
+                    ExternalEvent::PeerSubscribed { topic_hash },
                 ))
             }
             _ => mixed_behaviour::Event::ToOtherBehaviourEvent(
