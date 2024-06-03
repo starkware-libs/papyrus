@@ -12,7 +12,7 @@ use futures::future::{poll_fn, FutureExt};
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
-use libp2p::gossipsub::{SubscriptionError, TopicHash};
+use libp2p::gossipsub::{PublishError, SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 use papyrus_protobuf::protobuf;
@@ -201,10 +201,15 @@ impl SwarmTrait for MockSwarm {
         Ok(())
     }
 
-    fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash) {
+    fn broadcast_message(
+        &mut self,
+        message: Bytes,
+        topic_hash: TopicHash,
+    ) -> Result<(), PublishError> {
         for sender in &self.broadcasted_messages_senders {
             sender.unbounded_send((message.clone(), topic_hash.clone())).unwrap();
         }
+        Ok(())
     }
 
     fn report_peer(&mut self, peer_id: PeerId) {

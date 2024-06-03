@@ -5,12 +5,13 @@ mod test;
 
 use std::collections::HashMap;
 
+use defaultmap::DefaultHashMap;
 use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
 use futures::future::{pending, ready, Ready};
 use futures::sink::With;
 use futures::stream::{self, BoxStream, Map, SelectAll};
 use futures::{FutureExt, SinkExt, StreamExt};
-use libp2p::gossipsub::{SubscriptionError, TopicHash};
+use libp2p::gossipsub::{PublishError, SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
@@ -56,6 +57,7 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     reported_peer_receiver: UnboundedReceiver<PeerId>,
     // We keep this just for giving a clone of it for subscribers.
     reported_peer_sender: UnboundedSender<PeerId>,
+    messages_broadcasted_when_no_subscribed_peers: DefaultHashMap<TopicHash, Vec<Bytes>>,
     // Fields for metrics
     num_active_inbound_sessions: usize,
     num_active_outbound_sessions: usize,
@@ -98,6 +100,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             outbound_session_id_to_protocol: HashMap::new(),
             reported_peer_sender,
             reported_peer_receiver,
+            messages_broadcasted_when_no_subscribed_peers: DefaultHashMap::default(),
             num_active_inbound_sessions: 0,
             num_active_outbound_sessions: 0,
         }
@@ -389,6 +392,17 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     }
                 }
             }
+            gossipsub_impl::ExternalEvent::PeerSubscribed { topic_hash } => {
+                // TODO(shahak): Test this flow.
+                let Some(messages) =
+                    self.messages_broadcasted_when_no_subscribed_peers.remove(&topic_hash)
+                else {
+                    return;
+                };
+                for message in messages {
+                    self.broadcast_message(message, topic_hash.clone());
+                }
+            }
         }
     }
 
@@ -446,7 +460,26 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     }
 
     fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash) {
-        self.swarm.broadcast_message(message, topic_hash);
+        // TODO(shahak): Open a github issue to rust-libp2p to return the message in the error.
+        match self.swarm.broadcast_message(message.clone(), topic_hash.clone()) {
+            Ok(()) => {}
+            Err(PublishError::InsufficientPeers) => {
+                debug!(
+                    "Attempted to broadcast a message to the topic with hash {topic_hash:?} but \
+                     there are no peers subscribed to that topic. Waiting for peers to become \
+                     subscribed"
+                );
+                self.messages_broadcasted_when_no_subscribed_peers
+                    .get_mut(topic_hash)
+                    .push(message);
+            }
+            Err(err) => {
+                error!(
+                    "Error occured while broadcasting a message to the topic with hash \
+                     {topic_hash:?}: {err:?}"
+                );
+            }
+        }
     }
 
     fn report_session_removed_to_metrics(&mut self, session_id: SessionId) {
