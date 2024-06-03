@@ -62,3 +62,4 @@ rand.workspace = true
 tokio = { workspace = true, features = ["full", "sync", "test-util"] }
 tokio-stream.workspace = true
 void.workspace = true
+test_utils = { path = "../test_utils" }
