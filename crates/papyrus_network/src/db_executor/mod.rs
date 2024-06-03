@@ -13,7 +13,14 @@ use mockall::automock;
 use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
 use papyrus_protobuf::converters::state_diff::DOMAIN;
 use papyrus_protobuf::protobuf;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    DataOrFin,
+    Query,
+    SignedBlockHeader,
+    StateDiffChunk,
+    StateDiffChunkVec,
+};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
@@ -40,7 +47,7 @@ pub struct DataEncodingError;
 #[derive(Clone)]
 pub enum Data {
     BlockHeaderAndSignature(SignedBlockHeader),
-    StateDiff { state_diff: ThinStateDiff },
+    StateDiffChunk { state_diff: StateDiffChunk },
     Fin(DataType),
 }
 
@@ -68,25 +75,14 @@ impl Data {
                     false => data.encode(buf).map_err(|_| DataEncodingError),
                 }
             }
-            Data::StateDiff { state_diff } => {
-                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
-                let res = state_diffs_response_vec
-                    .0
-                    .iter()
-                    .map(|data| {
-                        let mut buf: Vec<u8> = vec![];
-                        match encode_with_length_prefix_flag {
-                            true => data.encode_length_delimited(&mut buf),
-                            false => data.encode(&mut buf),
-                        }
-                        .map_err(|_| DataEncodingError)
-                        .map(|_| buf)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                for byte in res.iter().flatten() {
-                    buf.put_u8(*byte);
+            Data::StateDiffChunk { state_diff } => {
+                let x = DataOrFin(Some(state_diff));
+                let state_diffs_response = protobuf::StateDiffsResponse::from(x);
+                match encode_with_length_prefix_flag {
+                    true => state_diffs_response.encode_length_delimited(buf),
+                    false => state_diffs_response.encode(buf),
                 }
-                Ok(())
+                .map_err(|_| DataEncodingError)
             }
             Data::Fin(data_type) => match data_type {
                 DataType::SignedBlockHeader => {
@@ -357,18 +353,21 @@ impl FetchBlockDataFromDb for DataType {
                 })])
             }
             DataType::StateDiff => {
-                let vec_data = vec![Data::StateDiff {
-                    state_diff: txn
-                        .get_state_diff(block_number)
-                        .map_err(|err| DBExecutorError::DBInternalError {
-                            query_id,
-                            storage_error: err,
-                        })?
-                        .ok_or(DBExecutorError::BlockNotFound {
-                            block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                            query_id,
-                        })?,
-                }];
+                let thin_state_diff = txn
+                    .get_state_diff(block_number)
+                    .map_err(|err| DBExecutorError::DBInternalError {
+                        query_id,
+                        storage_error: err,
+                    })?
+                    .ok_or(DBExecutorError::BlockNotFound {
+                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
+                        query_id,
+                    })?;
+                let vec_data = StateDiffChunkVec::from(thin_state_diff)
+                    .0
+                    .into_iter()
+                    .map(|state_diff| Data::StateDiffChunk { state_diff })
+                    .collect();
                 Ok(vec_data)
             }
         }

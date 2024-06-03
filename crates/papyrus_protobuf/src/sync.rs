@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkFelt;
-use starknet_api::state::StorageKey;
+use starknet_api::state::{StorageKey, ThinStateDiff};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default, Hash)]
 pub enum Direction {
@@ -75,4 +75,53 @@ pub enum StateDiffChunk {
     ContractDiff(ContractDiff),
     DeclaredClass(DeclaredClass),
     DeprecatedDeclaredClass(DeprecatedDeclaredClass),
+}
+
+pub struct StateDiffChunkVec(pub Vec<StateDiffChunk>);
+
+impl From<ThinStateDiff> for StateDiffChunkVec {
+    fn from(thin_state_diff: ThinStateDiff) -> Self {
+        let mut state_diff_chunks = Vec::new();
+
+        for (contract_address, class_hash) in thin_state_diff.deployed_contracts.iter() {
+            state_diff_chunks.push(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: *contract_address,
+                class_hash: Some(*class_hash),
+                nonce: thin_state_diff.nonces.get(contract_address).cloned(),
+                storage_diffs: thin_state_diff
+                    .storage_diffs
+                    .get(contract_address)
+                    .cloned()
+                    .unwrap_or_default(),
+            }));
+        }
+
+        for (contract_address, class_hash) in thin_state_diff.replaced_classes.iter() {
+            state_diff_chunks.push(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: *contract_address,
+                class_hash: Some(*class_hash),
+                nonce: thin_state_diff.nonces.get(contract_address).cloned(),
+                storage_diffs: thin_state_diff
+                    .storage_diffs
+                    .get(contract_address)
+                    .cloned()
+                    .unwrap_or_default(),
+            }));
+        }
+
+        for (class_hash, compiled_class_hash) in thin_state_diff.declared_classes.iter() {
+            state_diff_chunks.push(StateDiffChunk::DeclaredClass(DeclaredClass {
+                class_hash: *class_hash,
+                compiled_class_hash: *compiled_class_hash,
+            }));
+        }
+
+        for class_hash in thin_state_diff.deprecated_declared_classes.iter() {
+            state_diff_chunks.push(StateDiffChunk::DeprecatedDeclaredClass(
+                DeprecatedDeclaredClass { class_hash: *class_hash },
+            ));
+        }
+
+        StateDiffChunkVec(state_diff_chunks)
+    }
 }
