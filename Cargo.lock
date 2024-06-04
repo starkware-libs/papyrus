@@ -5991,6 +5991,7 @@ dependencies = [
  "replace_with",
  "serde",
  "starknet_api",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-stream",
