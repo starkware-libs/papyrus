@@ -12,7 +12,7 @@ use crate::block_hash::{
 };
 
 fn validate_block_hash_util(file_name: &str, version: BlockHashVersion) {
-    let chain_id = ChainId("SN_MAIN".to_owned());
+    let chain_id = ChainId::Mainnet;
     let block: Block = serde_json::from_value(read_json_file(file_name)).unwrap();
     let calculated_hash =
         calculate_block_hash_by_version(&block.header, version, &chain_id).unwrap();
@@ -54,7 +54,7 @@ fn test_deprecated_block_hash_v0() {
 
 #[test]
 fn test_missing_header_data() {
-    let chain_id = ChainId("SN_MAIN".to_owned());
+    let chain_id = ChainId::Mainnet;
     let mut block: Block = serde_json::from_value(read_json_file("block_hash.json")).unwrap();
     block.header.transaction_commitment = None;
     let err = calculate_block_hash_by_version(&block.header, BlockHashVersion::V3, &chain_id)

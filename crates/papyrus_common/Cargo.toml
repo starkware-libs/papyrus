@@ -16,6 +16,7 @@ serde_json.workspace = true
 sha3.workspace = true
 starknet_api.workspace = true
 starknet-crypto.workspace = true
+starknet-types-core = { workspace = true, features = ["hash"] }
 thiserror.workspace = true
 rand.workspace = true
 indexmap.workspace = true
