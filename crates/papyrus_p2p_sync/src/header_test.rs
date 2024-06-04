@@ -1,7 +1,5 @@
-use futures::future::ready;
 use futures::{SinkExt, StreamExt};
-use papyrus_network::DataType;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
 use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
@@ -9,6 +7,7 @@ use tokio::time::timeout;
 use crate::test_utils::{
     create_block_hashes_and_signatures,
     setup,
+    TestArgs,
     HEADER_QUERY_LENGTH,
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE,
@@ -18,13 +17,17 @@ use crate::test_utils::{
 async fn signed_headers_basic_flow() {
     const NUM_QUERIES: u64 = 3;
 
-    let (p2p_sync, storage_reader, query_receiver, mut signed_headers_sender, _state_diffs_sender) =
-        setup();
+    let TestArgs {
+        p2p_sync,
+        storage_reader,
+        mut header_query_receiver,
+        mut headers_sender,
+        // The test will fail if we drop these
+        state_diff_query_receiver: _state_diff_query_receiver,
+        state_diffs_sender: _state_diffs_sender,
+    } = setup();
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures((NUM_QUERIES * HEADER_QUERY_LENGTH).try_into().unwrap());
-
-    let mut query_receiver = query_receiver
-        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::SignedBlockHeader)));
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -33,7 +36,7 @@ async fn signed_headers_basic_flow() {
             let end_block_number = (query_index + 1) * HEADER_QUERY_LENGTH;
 
             // Receive query and validate it.
-            let (query, _) = query_receiver.next().await.unwrap();
+            let query = header_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 Query {
@@ -51,16 +54,19 @@ async fn signed_headers_basic_flow() {
                 .skip(start_block_number.try_into().expect("Failed converting u64 to usize"))
             {
                 // Send responses
-                signed_headers_sender
-                    .send(Some(SignedBlockHeader {
-                        block_header: BlockHeader {
-                            block_number: BlockNumber(i.try_into().unwrap()),
-                            block_hash: *block_hash,
-                            state_diff_length: Some(0),
-                            ..Default::default()
-                        },
-                        signatures: vec![*block_signature],
-                    }))
+                headers_sender
+                    .send((
+                        (Ok(DataOrFin(Some(SignedBlockHeader {
+                            block_header: BlockHeader {
+                                block_number: BlockNumber(i.try_into().unwrap()),
+                                block_hash: *block_hash,
+                                state_diff_length: Some(0),
+                                ..Default::default()
+                            },
+                            signatures: vec![*block_signature],
+                        })))),
+                        Box::new(|| {}),
+                    ))
                     .await
                     .unwrap();
 
@@ -79,7 +85,7 @@ async fn signed_headers_basic_flow() {
                     txn.get_block_signature(block_number).unwrap().unwrap();
                 assert_eq!(*block_signature, actual_block_signature);
             }
-            signed_headers_sender.send(None).await.unwrap();
+            headers_sender.send((Ok(DataOrFin(None)), Box::new(|| {}))).await.unwrap();
         }
     };
 
@@ -97,36 +103,43 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
     const NUM_ACTUAL_RESPONSES: u8 = 2;
     assert!(u64::from(NUM_ACTUAL_RESPONSES) < HEADER_QUERY_LENGTH);
 
-    let (p2p_sync, _storage_reader, query_receiver, mut signed_headers_sender, _state_diffs_sender) =
-        setup();
+    let TestArgs {
+        p2p_sync,
+        mut header_query_receiver,
+        mut headers_sender,
+        // The test will fail if we drop these
+        state_diff_query_receiver: _state_diff_query_receiver,
+        state_diffs_sender: _state_diffs_sender,
+        ..
+    } = setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
-
-    let mut query_receiver = query_receiver
-        .filter(|(_query, data_type)| ready(matches!(data_type, DataType::SignedBlockHeader)));
 
     // Create a future that will receive a query, send partial responses and receive the next query.
     let parse_queries_future = async move {
-        let _query = query_receiver.next().await.unwrap();
+        let _query = header_query_receiver.next().await.unwrap();
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
-            signed_headers_sender
-                .send(Some(SignedBlockHeader {
-                    block_header: BlockHeader {
-                        block_number: BlockNumber(i.try_into().unwrap()),
-                        block_hash,
-                        state_diff_length: Some(0),
-                        ..Default::default()
-                    },
-                    signatures: vec![signature],
-                }))
+            headers_sender
+                .send((
+                    Ok(DataOrFin(Some(SignedBlockHeader {
+                        block_header: BlockHeader {
+                            block_number: BlockNumber(i.try_into().unwrap()),
+                            block_hash,
+                            state_diff_length: Some(0),
+                            ..Default::default()
+                        },
+                        signatures: vec![signature],
+                    }))),
+                    Box::new(|| {}),
+                ))
                 .await
                 .unwrap();
         }
-        signed_headers_sender.send(None).await.unwrap();
+        headers_sender.send((Ok(DataOrFin(None)), Box::new(|| {}))).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let (query, _) =
-            timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, query_receiver.next())
+        let query =
+            timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, header_query_receiver.next())
                 .await
                 .unwrap()
                 .unwrap();

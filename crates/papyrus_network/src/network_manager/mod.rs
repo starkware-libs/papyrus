@@ -6,33 +6,30 @@ mod test;
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
-use futures::future::{pending, ready, Ready};
+use futures::future::{ready, Ready};
 use futures::sink::With;
 use futures::stream::{self, BoxStream, Map, SelectAll};
-use futures::{FutureExt, SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
-use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{HeaderQuery, StateDiffQuery};
 use papyrus_storage::StorageReader;
-use prost::Message;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::converters::{Router, RouterError};
 use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol, Query, ResponseReceivers};
+use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol, Query};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
-type SubscriberChannels = (Receiver<(Query, DataType)>, Router);
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -45,7 +42,11 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     db_executor: DBExecutorT,
     header_buffer_size: usize,
     query_results_router: StreamCollection,
-    sync_subscriber_channels: Option<SubscriberChannels>,
+    // Splitting the response receivers from the query senders in order to poll all
+    // receivers simultaneously.
+    // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
+    sqmr_query_receivers: StreamHashMap<Protocol, Receiver<Bytes>>,
+    sqmr_response_senders: HashMap<Protocol, Sender<(Bytes, ReportCallback)>>,
     // Splitting the broadcast receivers from the broadcasted senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
@@ -68,9 +69,9 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
                 Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
-                Some(res) = self.sync_subscriber_channels.as_mut()
-                    .map(|(query_receiver, _)| query_receiver.next().boxed())
-                    .unwrap_or(pending().boxed()) => self.handle_sync_subscriber_query(res.0, res.1),
+                Some((protocol, query)) = self.sqmr_query_receivers.next() => {
+                    self.handle_local_sqmr_query(protocol, query)
+                }
                 Some((topic_hash, message)) = self.messages_to_broadcast_receivers.next() => {
                     self.broadcast_message(message, topic_hash);
                 }
@@ -91,7 +92,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             db_executor,
             header_buffer_size,
             query_results_router: StreamCollection::new(),
-            sync_subscriber_channels: None,
+            sqmr_query_receivers: StreamHashMap::new(HashMap::new()),
+            sqmr_response_senders: HashMap::new(),
             messages_to_broadcast_receivers: StreamHashMap::new(HashMap::new()),
             broadcasted_messages_senders: HashMap::new(),
             query_id_to_inbound_session_id: HashMap::new(),
@@ -103,15 +105,40 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    pub fn register_sqmr_subscriber(
+    /// Register a new subscriber for sending a single query and receiving multiple responses.
+    /// Panics if the given protocol is already subscribed.
+    pub fn register_sqmr_subscriber<Response: TryFrom<Bytes>>(
         &mut self,
-        protocols: Vec<Protocol>,
-    ) -> (Sender<(Query, DataType)>, ResponseReceivers) {
-        let (sender, query_receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
-        let mut router = Router::new(protocols, self.header_buffer_size);
-        let response_receiver = ResponseReceivers::new(router.get_recievers());
-        self.sync_subscriber_channels = Some((query_receiver, router));
-        (sender, response_receiver)
+        protocol: Protocol,
+    ) -> SqmrSubscriberChannels<Response> {
+        // TODO(shahak): Remove header_buffer_size from config and add buffer_size as an argument
+        // to this function.
+        let (query_sender, query_receiver) =
+            futures::channel::mpsc::channel(self.header_buffer_size);
+        let (response_sender, response_receiver) =
+            futures::channel::mpsc::channel(self.header_buffer_size);
+
+        let insert_result = self.sqmr_query_receivers.insert(protocol, query_receiver);
+        if insert_result.is_some() {
+            panic!("Protocol '{}' has already been registered.", protocol);
+        }
+        let insert_result = self.sqmr_response_senders.insert(protocol, response_sender);
+        if insert_result.is_some() {
+            panic!("Protocol '{}' has already been registered.", protocol);
+        }
+
+        // TODO(shahak): Remove specific protocol from this code.
+        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> = match protocol {
+            Protocol::SignedBlockHeader => |x| ready(Ok(Bytes::from(HeaderQuery(x)))),
+            Protocol::StateDiff => |x| ready(Ok(Bytes::from(StateDiffQuery(x)))),
+        };
+        let query_sender = query_sender.with(query_fn);
+
+        let response_fn: ReceivedMessagesConverterFn<Response> =
+            |(x, report_callback)| (Response::try_from(x), report_callback);
+        let response_receiver = response_receiver.map(response_fn);
+
+        SqmrSubscriberChannels { query_sender, response_receiver }
     }
 
     /// Register a new subscriber for broadcasting and receiving broadcasts for a given topic.
@@ -120,7 +147,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         &mut self,
         topic: Topic,
         buffer_size: usize,
-    ) -> Result<BroadcastSubscriberChannels<T, <T as TryFrom<Bytes>>::Error>, SubscriptionError>
+    ) -> Result<BroadcastSubscriberChannels<T>, SubscriptionError>
     where
         T: TryFrom<Bytes>,
         Bytes: From<T>,
@@ -153,10 +180,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         let messages_to_broadcast_sender =
             messages_to_broadcast_sender.with(messages_to_broadcast_fn);
 
-        let broadcasted_messages_fn: BroadcastedMessagesConverterFn<
-            T,
-            <T as TryFrom<Bytes>>::Error,
-        > = |(x, report_callback)| (T::try_from(x), report_callback);
+        let broadcasted_messages_fn: ReceivedMessagesConverterFn<T> =
+            |(x, report_callback)| (T::try_from(x), report_callback);
         let broadcasted_messages_receiver =
             broadcasted_messages_receiver.map(broadcasted_messages_fn);
 
@@ -317,29 +342,22 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
                 );
-                if let Some((_, response_senders)) = self.sync_subscriber_channels.as_mut() {
-                    let protocol = self
-                        .outbound_session_id_to_protocol
-                        .get(&outbound_session_id)
-                        .expect("Received data from an unknown session id");
-                    match response_senders.try_send(*protocol, data) {
-                        Err(RouterError::NoSenderForProtocol { protocol }) => {
+                let protocol = self
+                    .outbound_session_id_to_protocol
+                    .get(&outbound_session_id)
+                    .expect("Received data from an unknown session id");
+                if let Some(response_sender) = self.sqmr_response_senders.get_mut(protocol) {
+                    // TODO(shahak): Implement the report callback, while removing code duplication
+                    // with broadcast.
+                    if let Err(error) = response_sender.try_send((data, Box::new(|| {}))) {
+                        if error.is_disconnected() {
+                            panic!("Receiver was dropped. This should never happen.")
+                        } else if error.is_full() {
                             error!(
-                                "The response sender does't support protocol: {protocol:?}. \
-                                 Dropping data. outbound_session_id: {outbound_session_id:?}"
+                                "Receiver buffer is full. Dropping data. outbound_session_id: \
+                                 {outbound_session_id:?}"
                             );
                         }
-                        Err(RouterError::TrySendError(e)) => {
-                            if e.is_disconnected() {
-                                panic!("Receiver was dropped. This should never happen.")
-                            } else if e.is_full() {
-                                error!(
-                                    "Receiver buffer is full. Dropping data. outbound_session_id: \
-                                     {outbound_session_id:?}"
-                                );
-                            }
-                        }
-                        Ok(()) => {}
                     }
                 }
             }
@@ -419,15 +437,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_sync_subscriber_query(&mut self, query: Query, data_type: DataType) {
-        let protocol = data_type.into();
-        let query_bytes = match data_type {
-            DataType::SignedBlockHeader => {
-                protobuf::BlockHeadersRequest::from(query).encode_to_vec()
-            }
-            DataType::StateDiff => protobuf::StateDiffsRequest::from(query).encode_to_vec(),
-        };
-        match self.swarm.send_query(query_bytes, PeerId::random(), protocol) {
+    fn handle_local_sqmr_query(&mut self, protocol: Protocol, query: Bytes) {
+        match self.swarm.send_query(query, PeerId::random(), protocol) {
             Ok(outbound_session_id) => {
                 debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");
                 self.num_active_outbound_sessions += 1;
@@ -514,7 +525,7 @@ impl NetworkManager {
 // TODO(shahak): Change to a wrapper of PeerId if Box dyn becomes an overhead.
 pub type ReportCallback = Box<dyn Fn() + Send>;
 
-pub type MessagesToBroadcastSender<T> = With<
+pub type SubscriberSender<T> = With<
     Sender<Bytes>,
     Bytes,
     T,
@@ -522,13 +533,21 @@ pub type MessagesToBroadcastSender<T> = With<
     fn(T) -> Ready<Result<Bytes, SendError>>,
 >;
 
-pub type BroadcastedMessagesReceiver<T, E> =
-    Map<Receiver<(Bytes, ReportCallback)>, BroadcastedMessagesConverterFn<T, E>>;
+pub type SubscriberReceiver<T> =
+    Map<Receiver<(Bytes, ReportCallback)>, ReceivedMessagesConverterFn<T>>;
 
-type BroadcastedMessagesConverterFn<T, E> =
-    fn((Bytes, ReportCallback)) -> (Result<T, E>, ReportCallback);
+type ReceivedMessagesConverterFn<T> =
+    fn((Bytes, ReportCallback)) -> (Result<T, <T as TryFrom<Bytes>>::Error>, ReportCallback);
 
-pub struct BroadcastSubscriberChannels<T, E> {
-    pub messages_to_broadcast_sender: MessagesToBroadcastSender<T>,
-    pub broadcasted_messages_receiver: BroadcastedMessagesReceiver<T, E>,
+// TODO(shahak): Unite channels to a Sender of Query and Receiver of Responses.
+// TODO(shahak): Change Query to something generic.
+// TODO(shahak): Add channels for DB executor.
+pub struct SqmrSubscriberChannels<Response: TryFrom<Bytes>> {
+    pub query_sender: SubscriberSender<Query>,
+    pub response_receiver: SubscriberReceiver<Response>,
+}
+
+pub struct BroadcastSubscriberChannels<T: TryFrom<Bytes>> {
+    pub messages_to_broadcast_sender: SubscriberSender<T>,
+    pub broadcasted_messages_receiver: SubscriberReceiver<T>,
 }
