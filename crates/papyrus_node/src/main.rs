@@ -22,7 +22,13 @@ use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
-use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
+use papyrus_protobuf::sync::{
+    DataOrFin,
+    HeaderQuery,
+    SignedBlockHeader,
+    StateDiffChunk,
+    StateDiffQuery,
+};
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
@@ -32,7 +38,6 @@ use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::BlockHash;
 use starknet_api::felt;
-use starknet_api::state::ThinStateDiff;
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
@@ -229,7 +234,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
         header_channels: SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-        state_diff_channels: SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
+        state_diff_channels: SqmrSubscriberChannels<StateDiffQuery, DataOrFin<StateDiffChunk>>,
     ) -> Result<(), P2PSyncError> {
         let sync = P2PSync::new(
             p2p_sync_config,
@@ -248,7 +253,7 @@ type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
     Option<(
         SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-        SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
+        SqmrSubscriberChannels<StateDiffQuery, DataOrFin<StateDiffChunk>>,
     )>,
     String,
 );

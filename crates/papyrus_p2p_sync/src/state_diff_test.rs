@@ -2,17 +2,27 @@ use std::time::Duration;
 
 use assert_matches::assert_matches;
 use futures::{FutureExt, SinkExt, StreamExt};
-use indexmap::{indexmap, IndexMap};
-use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
+use indexmap::indexmap;
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    ContractDiff,
+    DataOrFin,
+    DeclaredClass,
+    DeprecatedDeclaredClass,
+    Direction,
+    Query,
+    SignedBlockHeader,
+    StateDiffChunk,
+};
 use papyrus_storage::state::StateStorageReader;
+use rand::RngCore;
+use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
 use starknet_types_core::felt::Felt;
 use static_assertions::const_assert;
-use test_utils::get_rng;
+use test_utils::{get_rng, GetTestInstance};
 
 use crate::test_utils::{
     create_block_hashes_and_signatures,
@@ -25,41 +35,6 @@ use crate::test_utils::{
 use crate::{P2PSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
-
-fn split_state_diff(state_diff: ThinStateDiff) -> Vec<ThinStateDiff> {
-    let mut result = Vec::new();
-    if !state_diff.deployed_contracts.is_empty() {
-        result.push(ThinStateDiff {
-            deployed_contracts: state_diff.deployed_contracts,
-            ..Default::default()
-        })
-    }
-    if !state_diff.storage_diffs.is_empty() {
-        result.push(ThinStateDiff { storage_diffs: state_diff.storage_diffs, ..Default::default() })
-    }
-    if !state_diff.declared_classes.is_empty() {
-        result.push(ThinStateDiff {
-            declared_classes: state_diff.declared_classes,
-            ..Default::default()
-        })
-    }
-    if !state_diff.deprecated_declared_classes.is_empty() {
-        result.push(ThinStateDiff {
-            deprecated_declared_classes: state_diff.deprecated_declared_classes,
-            ..Default::default()
-        })
-    }
-    if !state_diff.nonces.is_empty() {
-        result.push(ThinStateDiff { nonces: state_diff.nonces, ..Default::default() })
-    }
-    if !state_diff.replaced_classes.is_empty() {
-        result.push(ThinStateDiff {
-            replaced_classes: state_diff.replaced_classes,
-            ..Default::default()
-        })
-    }
-    result
-}
 
 #[tokio::test]
 async fn state_diff_basic_flow() {
@@ -83,8 +58,9 @@ async fn state_diff_basic_flow() {
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures(HEADER_QUERY_LENGTH.try_into().unwrap());
     let mut rng = get_rng();
-    let state_diffs =
-        (0..HEADER_QUERY_LENGTH).map(|_| create_random_state_diff(&mut rng)).collect::<Vec<_>>();
+    let state_diffs = (0..HEADER_QUERY_LENGTH)
+        .map(|_| create_random_state_diff_chunk(&mut rng))
+        .collect::<Vec<_>>();
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
@@ -132,21 +108,18 @@ async fn state_diff_basic_flow() {
             );
 
             for block_number in start_block_number..(start_block_number + num_blocks) {
-                let expected_state_diff: &ThinStateDiff =
-                    &state_diffs[usize::try_from(block_number).unwrap()];
-                let state_diff_parts = split_state_diff(expected_state_diff.clone());
+                let state_diff_chunk = state_diffs[usize::try_from(block_number).unwrap()].clone();
 
                 let block_number = BlockNumber(block_number);
-                for state_diff_part in state_diff_parts {
-                    // Check that before we've sent all parts the state diff wasn't written yet.
-                    let txn = storage_reader.begin_ro_txn().unwrap();
-                    assert_eq!(block_number, txn.get_state_marker().unwrap());
 
-                    state_diffs_sender
-                        .send((Ok(DataOrFin(Some(state_diff_part))), Box::new(|| {})))
-                        .await
-                        .unwrap();
-                }
+                // Check that before we've sent all parts the state diff wasn't written yet.
+                let txn = storage_reader.begin_ro_txn().unwrap();
+                assert_eq!(block_number, txn.get_state_marker().unwrap());
+
+                state_diffs_sender
+                    .send((Ok(DataOrFin(Some(state_diff_chunk.clone()))), Box::new(|| {})))
+                    .await
+                    .unwrap();
 
                 tokio::time::sleep(SLEEP_DURATION_TO_LET_SYNC_ADVANCE).await;
 
@@ -155,8 +128,41 @@ async fn state_diff_basic_flow() {
                 // responses.
                 let txn = storage_reader.begin_ro_txn().unwrap();
                 assert_eq!(block_number.unchecked_next(), txn.get_state_marker().unwrap());
-                let state_diff = txn.get_state_diff(block_number).unwrap().unwrap();
-                assert_eq!(state_diff, *expected_state_diff);
+
+                let expected_state_diff = txn.get_state_diff(block_number).unwrap().unwrap();
+                let state_diff = match state_diff_chunk {
+                    StateDiffChunk::ContractDiff(contract_diff) => {
+                        let mut deployed_contracts = indexmap! {};
+                        if let Some(class_hash) = contract_diff.class_hash {
+                            deployed_contracts.insert(contract_diff.contract_address, class_hash);
+                        };
+                        let mut nonces = indexmap! {};
+                        if let Some(nonce) = contract_diff.nonce {
+                            nonces.insert(contract_diff.contract_address, nonce);
+                        }
+                        ThinStateDiff {
+                            deployed_contracts,
+                            nonces,
+                            storage_diffs: indexmap! {
+                                contract_diff.contract_address => contract_diff.storage_diffs
+                            },
+                            ..Default::default()
+                        }
+                    }
+                    StateDiffChunk::DeclaredClass(declared_class) => ThinStateDiff {
+                        declared_classes: indexmap! {
+                            declared_class.class_hash => declared_class.compiled_class_hash
+                        },
+                        ..Default::default()
+                    },
+                    StateDiffChunk::DeprecatedDeclaredClass(deprecated_declared_class) => {
+                        ThinStateDiff {
+                            deprecated_declared_classes: vec![deprecated_declared_class.class_hash],
+                            ..Default::default()
+                        }
+                    }
+                };
+                assert_eq!(expected_state_diff, state_diff);
             }
             state_diffs_sender.send((Ok(DataOrFin(None)), Box::new(|| {}))).await.unwrap();
         }
@@ -173,7 +179,7 @@ async fn state_diff_basic_flow() {
 
 async fn validate_state_diff_fails(
     state_diff_length_in_header: usize,
-    state_diff_parts: Vec<Option<ThinStateDiff>>,
+    state_diff_chunks: Vec<Option<StateDiffChunk>>,
     error_validator: impl Fn(P2PSyncError),
 ) {
     let TestArgs {
@@ -222,13 +228,13 @@ async fn validate_state_diff_fails(
         );
 
         // Send state diffs.
-        for state_diff_part in state_diff_parts {
+        for state_diff_chunk in state_diff_chunks {
             // Check that before we've sent all parts the state diff wasn't written yet.
             let txn = storage_reader.begin_ro_txn().unwrap();
             assert_eq!(0, txn.get_state_marker().unwrap().0);
 
             state_diffs_sender
-                .send((Ok(DataOrFin(state_diff_part)), Box::new(|| {})))
+                .send((Ok(DataOrFin(state_diff_chunk)), Box::new(|| {})))
                 .await
                 .unwrap();
         }
@@ -245,21 +251,31 @@ async fn validate_state_diff_fails(
     }
 }
 
+pub fn create_random_state_diff_chunk(rng: &mut ChaCha8Rng) -> StateDiffChunk {
+    let mut state_diff_chunk = StateDiffChunk::get_test_instance(rng);
+    let contract_address = ContractAddress::from(rng.next_u64());
+    let class_hash = ClassHash(rng.next_u64().into());
+    match &mut state_diff_chunk {
+        StateDiffChunk::ContractDiff(contract_diff) => {
+            contract_diff.contract_address = contract_address;
+            contract_diff.class_hash = Some(class_hash);
+        }
+        StateDiffChunk::DeclaredClass(declared_class) => {
+            declared_class.class_hash = class_hash;
+            declared_class.compiled_class_hash = CompiledClassHash(rng.next_u64().into());
+        }
+        StateDiffChunk::DeprecatedDeclaredClass(deprecated_declared_class) => {
+            deprecated_declared_class.class_hash = class_hash;
+        }
+    }
+    state_diff_chunk
+}
+
 #[tokio::test]
 async fn state_diff_empty_state_diff() {
-    validate_state_diff_fails(1, vec![Some(ThinStateDiff::default())], |error| {
+    validate_state_diff_fails(1, vec![Some(StateDiffChunk::default())], |error| {
         assert_matches!(error, P2PSyncError::EmptyStateDiffPart)
     })
-    .await;
-
-    validate_state_diff_fails(
-        1,
-        vec![Some(ThinStateDiff {
-            storage_diffs: indexmap! {ContractAddress::default() => IndexMap::default()},
-            ..Default::default()
-        })],
-        |error| assert_matches!(error, P2PSyncError::EmptyStateDiffPart),
-    )
     .await;
 }
 
@@ -268,34 +284,10 @@ async fn state_diff_stopped_in_middle() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                deprecated_declared_classes: vec![ClassHash::default()],
-                ..Default::default()
-            }),
+            Some(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass::default())),
             None,
         ],
         |error| assert_matches!(error, P2PSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1]),
-    )
-    .await;
-}
-
-#[tokio::test]
-async fn state_diff_not_splitted_correctly() {
-    validate_state_diff_fails(
-        2,
-        vec![
-            Some(ThinStateDiff {
-                deprecated_declared_classes: vec![ClassHash::default()],
-                ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                deprecated_declared_classes: vec![
-                    ClassHash(StarkHash::ONE), ClassHash(StarkHash::TWO)
-                ],
-                ..Default::default()
-            }),
-        ],
-        |error| assert_matches!(error, P2PSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1, 3]),
     )
     .await;
 }
@@ -305,14 +297,16 @@ async fn state_diff_conflicting() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                deployed_contracts: indexmap! { ContractAddress::default() => ClassHash::default() },
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                class_hash: Some(ClassHash::default()),
                 ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                deployed_contracts: indexmap! { ContractAddress::default() => ClassHash::default() },
+            })),
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                class_hash: Some(ClassHash::default()),
                 ..Default::default()
-            }),
+            })),
         ],
         |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
     )
@@ -320,18 +314,16 @@ async fn state_diff_conflicting() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => Felt::default()
-                }},
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                storage_diffs: indexmap! { StorageKey::default() => Felt::default() },
                 ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => Felt::default()
-                }},
+            })),
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                storage_diffs: indexmap! { StorageKey::default() => Felt::default() },
                 ..Default::default()
-            }),
+            })),
         ],
         |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
     )
@@ -339,18 +331,14 @@ async fn state_diff_conflicting() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                declared_classes: indexmap! {
-                    ClassHash::default() => CompiledClassHash::default()
-                },
-                ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                declared_classes: indexmap! {
-                    ClassHash::default() => CompiledClassHash::default()
-                },
-                ..Default::default()
-            }),
+            Some(StateDiffChunk::DeclaredClass(DeclaredClass {
+                class_hash: ClassHash::default(),
+                compiled_class_hash: CompiledClassHash::default(),
+            })),
+            Some(StateDiffChunk::DeclaredClass(DeclaredClass {
+                class_hash: ClassHash::default(),
+                compiled_class_hash: CompiledClassHash::default(),
+            })),
         ],
         |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
     )
@@ -358,14 +346,12 @@ async fn state_diff_conflicting() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                deprecated_declared_classes: vec![ClassHash::default()],
-                ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                deprecated_declared_classes: vec![ClassHash::default()],
-                ..Default::default()
-            }),
+            Some(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass {
+                class_hash: ClassHash::default(),
+            })),
+            Some(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass {
+                class_hash: ClassHash::default(),
+            })),
         ],
         |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
     )
@@ -373,29 +359,16 @@ async fn state_diff_conflicting() {
     validate_state_diff_fails(
         2,
         vec![
-            Some(ThinStateDiff {
-                nonces: indexmap! { ContractAddress::default() => Nonce::default() },
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                nonce: Some(Nonce::default()),
                 ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                nonces: indexmap! { ContractAddress::default() => Nonce::default() },
+            })),
+            Some(StateDiffChunk::ContractDiff(ContractDiff {
+                contract_address: ContractAddress::default(),
+                nonce: Some(Nonce::default()),
                 ..Default::default()
-            }),
-        ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
-    )
-    .await;
-    validate_state_diff_fails(
-        2,
-        vec![
-            Some(ThinStateDiff {
-                replaced_classes: indexmap! { ContractAddress::default() => ClassHash::default() },
-                ..Default::default()
-            }),
-            Some(ThinStateDiff {
-                replaced_classes: indexmap! { ContractAddress::default() => ClassHash::default() },
-                ..Default::default()
-            }),
+            })),
         ],
         |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
     )

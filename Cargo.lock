@@ -6131,6 +6131,7 @@ dependencies = [
  "papyrus_protobuf",
  "papyrus_storage",
  "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "serde",
  "starknet-types-core",
  "starknet_api",
