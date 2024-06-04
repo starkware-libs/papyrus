@@ -12,13 +12,14 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use futures::channel::mpsc::SendError;
-use futures::{Sink, Stream};
+use futures::future::ready;
+use futures::{Sink, SinkExt, Stream};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_network::network_manager::ReportCallback;
 use papyrus_protobuf::converters::ProtobufConversionError;
-use papyrus_protobuf::sync::{DataOrFin, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
@@ -166,11 +167,9 @@ impl<HeaderQuerySender, HeaderResponseReceiver, StateDiffQuerySender, StateDiffR
         StateDiffResponseReceiver,
     >
 where
-    // TODO(shahak): Change to HeaderQuery.
-    HeaderQuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    HeaderQuerySender: Sink<HeaderQuery, Error = SendError> + Unpin + Send + 'static,
     HeaderResponseReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,
-    // TODO(shahak): Change to StateDiffQuery.
-    StateDiffQuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    StateDiffQuerySender: Sink<StateDiffQuery, Error = SendError> + Unpin + Send + 'static,
     // TODO(shahak): Change to StateDiffChunk.
     StateDiffResponseReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
 {
@@ -197,7 +196,7 @@ where
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
         let header_stream = HeaderStreamFactory::create_stream(
-            self.header_query_sender,
+            self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
             self.header_response_receiver,
             self.storage_reader.clone(),
             self.config.wait_period_for_new_data,
@@ -206,7 +205,7 @@ where
         );
 
         let state_diff_stream = StateDiffStreamFactory::create_stream(
-            self.state_diff_query_sender,
+            self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
             self.state_diff_response_receiver,
             self.storage_reader,
             self.config.wait_period_for_new_data,
