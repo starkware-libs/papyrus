@@ -1,18 +1,18 @@
 use std::collections::HashSet;
-use std::hash::Hash;
 
 use futures::future::BoxFuture;
 use futures::{FutureExt, StreamExt};
-use indexmap::IndexMap;
 use papyrus_proc_macros::latency_histogram;
+use papyrus_protobuf::sync::StateDiffChunk;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
-use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use super::{P2PSyncError, ResponseReceiver, NETWORK_DATA_TIMEOUT};
+use super::ResponseReceiver;
+use crate::client::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use crate::client::{P2PSyncError, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
     #[latency_histogram("p2p_sync_state_diff_write_to_storage_latency_seconds", true)]
@@ -26,8 +26,7 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
 
 pub(crate) struct StateDiffStreamFactory;
 
-// TODO(shahak): Change to StateDiffChunk.
-impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
+impl DataStreamFactory<StateDiffChunk> for StateDiffStreamFactory {
     type Output = (ThinStateDiff, BlockNumber);
 
     const TYPE_DESCRIPTION: &'static str = "state diffs";
@@ -35,7 +34,7 @@ impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
 
     #[latency_histogram("p2p_sync_state_diff_parse_data_for_block_latency_seconds", true)]
     fn parse_data_for_block<'a>(
-        state_diffs_receiver: &'a mut ResponseReceiver<ThinStateDiff>,
+        state_diff_chunks_receiver: &'a mut ResponseReceiver<StateDiffChunk>,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
@@ -54,13 +53,13 @@ impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
                 })?;
 
             while current_state_diff_len < target_state_diff_len {
-                let (maybe_state_diff_part, _report_callback) =
-                    tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diffs_receiver.next())
+                let (maybe_state_diff_chunk, _report_callback) =
+                    tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diff_chunks_receiver.next())
                         .await?
                         .ok_or(P2PSyncError::ReceiverChannelTerminated {
                             type_description: Self::TYPE_DESCRIPTION,
                         })?;
-                let Some(state_diff_part) = maybe_state_diff_part?.0 else {
+                let Some(state_diff_chunk) = maybe_state_diff_chunk?.0 else {
                     if current_state_diff_len == 0 {
                         return Ok(None);
                     } else {
@@ -71,13 +70,13 @@ impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
                     }
                 };
                 prev_result_len = current_state_diff_len;
-                if state_diff_part.is_empty() {
+                if state_diff_chunk.is_empty() {
                     return Err(P2PSyncError::EmptyStateDiffPart);
                 }
                 // It's cheaper to calculate the length of `state_diff_part` than the length of
                 // `result`.
-                current_state_diff_len += state_diff_part.len();
-                unite_state_diffs(&mut result, state_diff_part)?;
+                current_state_diff_len += state_diff_chunk.len();
+                unite_state_diffs(&mut result, state_diff_chunk)?;
             }
 
             if current_state_diff_len != target_state_diff_len {
@@ -103,37 +102,52 @@ impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
 #[latency_histogram("p2p_sync_state_diff_unite_state_diffs_latency_seconds", true)]
 fn unite_state_diffs(
     state_diff: &mut ThinStateDiff,
-    other_state_diff: ThinStateDiff,
+    state_diff_chunk: StateDiffChunk,
 ) -> Result<(), P2PSyncError> {
-    unite_state_diffs_field(
-        &mut state_diff.deployed_contracts,
-        other_state_diff.deployed_contracts,
-    )?;
-    unite_state_diffs_field(&mut state_diff.declared_classes, other_state_diff.declared_classes)?;
-    unite_state_diffs_field(&mut state_diff.nonces, other_state_diff.nonces)?;
-    unite_state_diffs_field(&mut state_diff.replaced_classes, other_state_diff.replaced_classes)?;
-
-    for (other_contract_address, other_storage_diffs) in other_state_diff.storage_diffs {
-        match state_diff.storage_diffs.get_mut(&other_contract_address) {
-            Some(storage_diffs) => unite_state_diffs_field(storage_diffs, other_storage_diffs)?,
-            None => {
-                state_diff.storage_diffs.insert(other_contract_address, other_storage_diffs);
+    match state_diff_chunk {
+        StateDiffChunk::ContractDiff(contract_diff) => {
+            if let Some(class_hash) = contract_diff.class_hash {
+                if state_diff
+                    .deployed_contracts
+                    .insert(contract_diff.contract_address, class_hash)
+                    .is_some()
+                {
+                    return Err(P2PSyncError::ConflictingStateDiffParts);
+                }
+            }
+            if let Some(nonce) = contract_diff.nonce {
+                if state_diff.nonces.insert(contract_diff.contract_address, nonce).is_some() {
+                    return Err(P2PSyncError::ConflictingStateDiffParts);
+                }
+            }
+            if !contract_diff.storage_diffs.is_empty() {
+                match state_diff.storage_diffs.get_mut(&contract_diff.contract_address) {
+                    Some(storage_diffs) => {
+                        for (k, v) in contract_diff.storage_diffs {
+                            if storage_diffs.insert(k, v).is_some() {
+                                return Err(P2PSyncError::ConflictingStateDiffParts);
+                            }
+                        }
+                    }
+                    None => {
+                        state_diff
+                            .storage_diffs
+                            .insert(contract_diff.contract_address, contract_diff.storage_diffs);
+                    }
+                }
             }
         }
-    }
-
-    state_diff.deprecated_declared_classes.extend(other_state_diff.deprecated_declared_classes);
-    Ok(())
-}
-
-fn unite_state_diffs_field<K: Hash + Eq + PartialEq, V>(
-    field: &mut IndexMap<K, V>,
-    other_field: IndexMap<K, V>,
-) -> Result<(), P2PSyncError> {
-    for (k, v) in other_field {
-        let insert_result = field.insert(k, v);
-        if insert_result.is_some() {
-            return Err(P2PSyncError::ConflictingStateDiffParts);
+        StateDiffChunk::DeclaredClass(declared_class) => {
+            if state_diff
+                .declared_classes
+                .insert(declared_class.class_hash, declared_class.compiled_class_hash)
+                .is_some()
+            {
+                return Err(P2PSyncError::ConflictingStateDiffParts);
+            }
+        }
+        StateDiffChunk::DeprecatedDeclaredClass(deprecated_declared_class) => {
+            state_diff.deprecated_declared_classes.push(deprecated_declared_class.class_hash);
         }
     }
     Ok(())
