@@ -19,6 +19,7 @@ use starknet_api::core::{ClassHash, SequencerPublicKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::transaction::TransactionHash;
 use starknet_api::StarknetApiError;
+use starknet_types_core::felt::Felt;
 use tracing::{debug, error, instrument};
 use url::Url;
 
@@ -285,41 +286,21 @@ impl StarknetReader for StarknetFeederGatewayClient {
         // Use default value for CasmConractClass that are malformed in the integration environment.
         // TODO: Make this array a const.
         if [
-            #[allow(clippy::unwrap_used)]
-            ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
-                    "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c",
-                )
-                .unwrap(),
-            ),
-            #[allow(clippy::unwrap_used)]
-            ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
-                    "0x6208b3f9f94e6220f3d6a3562fe06a35a66181a202d946c3522fd28eda9ea1b",
-                )
-                .unwrap(),
-            ),
-            #[allow(clippy::unwrap_used)]
-            ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
-                    "0xd6916ff38c93f834e7223a95b41d4542152d8288ff388b5d3dcdf8126a784a",
-                )
-                .unwrap(),
-            ),
-            #[allow(clippy::unwrap_used)]
-            ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
-                    "0x161354521d46ca89a5b64aa41fa4e77ffeadc0f9796272d9b94227dbbb3840e",
-                )
-                .unwrap(),
-            ),
-            #[allow(clippy::unwrap_used)]
-            ClassHash(
-                starknet_api::hash::StarkFelt::try_from(
-                    "0x6a9eb910b3f83989900c8d65f9d67d67016f2528cc1b834019cf489f4f7d716",
-                )
-                .unwrap(),
-            ),
+            ClassHash(Felt::from_hex_unchecked(
+                "0x4e70b19333ae94bd958625f7b61ce9eec631653597e68645e13780061b2136c",
+            )),
+            ClassHash(Felt::from_hex_unchecked(
+                "0x6208b3f9f94e6220f3d6a3562fe06a35a66181a202d946c3522fd28eda9ea1b",
+            )),
+            ClassHash(Felt::from_hex_unchecked(
+                "0xd6916ff38c93f834e7223a95b41d4542152d8288ff388b5d3dcdf8126a784a",
+            )),
+            ClassHash(Felt::from_hex_unchecked(
+                "0x161354521d46ca89a5b64aa41fa4e77ffeadc0f9796272d9b94227dbbb3840e",
+            )),
+            ClassHash(Felt::from_hex_unchecked(
+                "0x6a9eb910b3f83989900c8d65f9d67d67016f2528cc1b834019cf489f4f7d716",
+            )),
         ]
         .contains(&class_hash)
         {
