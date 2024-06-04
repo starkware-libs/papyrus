@@ -26,13 +26,13 @@ use papyrus_protobuf::sync::{
     HeaderQuery,
     Query,
     SignedBlockHeader,
+    StateDiffChunk,
     StateDiffQuery,
     TransactionQuery,
 };
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
-use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
 use state_diff::StateDiffStreamBuilder;
 use stream_builder::{DataStreamBuilder, DataStreamResult};
@@ -164,7 +164,7 @@ type ResponseReceiver<T> = Box<dyn Stream<Item = Response<T>> + Unpin + Send + '
 type HeaderQuerySender = QuerySender<HeaderQuery>;
 type HeaderResponseReceiver = ResponseReceiver<SignedBlockHeader>;
 type StateDiffQuerySender = QuerySender<StateDiffQuery>;
-type StateDiffResponseReceiver = ResponseReceiver<ThinStateDiff>;
+type StateDiffResponseReceiver = ResponseReceiver<StateDiffChunk>;
 type TransactionQuerySender = QuerySender<TransactionQuery>;
 type TransactionResponseReceiver = ResponseReceiver<(Transaction, TransactionOutput)>;
 
