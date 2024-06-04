@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use mockall::mock;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::hash::StarkFelt;
+use starknet_types_core::felt::Felt;
 
 use crate::types::{ConsensusBlock, ConsensusContext, NodeId};
 
@@ -18,7 +18,7 @@ impl ConsensusBlock for TestBlock {
     type ProposalIter = std::vec::IntoIter<u32>;
 
     fn id(&self) -> BlockHash {
-        BlockHash(StarkFelt::try_from(self.id as u128).unwrap())
+        BlockHash(Felt::from(self.id as u128))
     }
 
     fn proposal_iter(&self) -> Self::ProposalIter {
