@@ -2,13 +2,12 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use lazy_static::lazy_static;
-use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffQuery};
+use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffChunk, StateDiffQuery};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
 use starknet_api::crypto::utils::Signature;
 use starknet_api::hash::StarkHash;
-use starknet_api::state::ThinStateDiff;
 use starknet_types_core::felt::Felt;
 
 use crate::{P2PSync, P2PSyncConfig, Response};
@@ -37,13 +36,13 @@ pub struct TestArgs {
         Sender<HeaderQuery>,
         Receiver<Response<SignedBlockHeader>>,
         Sender<StateDiffQuery>,
-        Receiver<Response<ThinStateDiff>>,
+        Receiver<Response<StateDiffChunk>>,
     >,
     pub storage_reader: StorageReader,
     pub header_query_receiver: Receiver<HeaderQuery>,
     pub state_diff_query_receiver: Receiver<StateDiffQuery>,
     pub headers_sender: Sender<Response<SignedBlockHeader>>,
-    pub state_diffs_sender: Sender<Response<ThinStateDiff>>,
+    pub state_diffs_sender: Sender<Response<StateDiffChunk>>,
 }
 
 pub fn setup() -> TestArgs {

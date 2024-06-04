@@ -7,7 +7,7 @@ use futures::future::BoxFuture;
 use futures::{FutureExt, Sink, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_proc_macros::latency_histogram;
-use papyrus_protobuf::sync::Query;
+use papyrus_protobuf::sync::{Query, StateDiffChunk};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
@@ -32,11 +32,11 @@ pub(crate) struct StateDiffStreamFactory<QuerySender, DataReceiver>(
 );
 
 // TODO(shahak): Change to StateDiffChunk.
-impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, ThinStateDiff>
+impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, StateDiffChunk>
     for StateDiffStreamFactory<QuerySender, DataReceiver>
 where
     QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
-    DataReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
+    DataReceiver: Stream<Item = Response<StateDiffChunk>> + Unpin + Send + 'static,
 {
     type Output = (ThinStateDiff, BlockNumber);
 
@@ -45,7 +45,7 @@ where
 
     #[latency_histogram("p2p_sync_state_diff_parse_data_for_block_latency_seconds", true)]
     fn parse_data_for_block<'a>(
-        state_diffs_receiver: &'a mut DataReceiver,
+        state_diff_chunks_receiver: &'a mut DataReceiver,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
@@ -64,13 +64,13 @@ where
                 })?;
 
             while current_state_diff_len < target_state_diff_len {
-                let (maybe_state_diff_part, _report_callback) =
-                    tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diffs_receiver.next())
+                let (maybe_state_diff_chunk, _report_callback) =
+                    tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diff_chunks_receiver.next())
                         .await?
                         .ok_or(P2PSyncError::ReceiverChannelTerminated {
                             type_description: Self::TYPE_DESCRIPTION,
                         })?;
-                let Some(state_diff_part) = maybe_state_diff_part?.0 else {
+                let Some(state_diff_chunk) = maybe_state_diff_chunk?.0 else {
                     if current_state_diff_len == 0 {
                         return Ok(None);
                     } else {
@@ -81,13 +81,13 @@ where
                     }
                 };
                 prev_result_len = current_state_diff_len;
-                if state_diff_part.is_empty() {
+                if state_diff_chunk.is_empty() {
                     return Err(P2PSyncError::EmptyStateDiffPart);
                 }
-                // It's cheaper to calculate the length of `state_diff_part` than the length of
+                // It's cheaper to calculate the length of `state_diff_chunk` than the length of
                 // `result`.
-                current_state_diff_len += state_diff_part.len();
-                unite_state_diffs(&mut result, state_diff_part)?;
+                current_state_diff_len += state_diff_chunk.len();
+                unite_state_diffs(&mut result, state_diff_chunk)?;
             }
 
             if current_state_diff_len != target_state_diff_len {
@@ -113,26 +113,41 @@ where
 #[latency_histogram("p2p_sync_state_diff_unite_state_diffs_latency_seconds", true)]
 fn unite_state_diffs(
     state_diff: &mut ThinStateDiff,
-    other_state_diff: ThinStateDiff,
+    state_diff_chunk: StateDiffChunk,
 ) -> Result<(), P2PSyncError> {
-    unite_state_diffs_field(
-        &mut state_diff.deployed_contracts,
-        other_state_diff.deployed_contracts,
-    )?;
-    unite_state_diffs_field(&mut state_diff.declared_classes, other_state_diff.declared_classes)?;
-    unite_state_diffs_field(&mut state_diff.nonces, other_state_diff.nonces)?;
-    unite_state_diffs_field(&mut state_diff.replaced_classes, other_state_diff.replaced_classes)?;
-
-    for (other_contract_address, other_storage_diffs) in other_state_diff.storage_diffs {
-        match state_diff.storage_diffs.get_mut(&other_contract_address) {
-            Some(storage_diffs) => unite_state_diffs_field(storage_diffs, other_storage_diffs)?,
-            None => {
-                state_diff.storage_diffs.insert(other_contract_address, other_storage_diffs);
+    match state_diff_chunk {
+        StateDiffChunk::ContractDiff(contract_diff) => {
+            let mut chunk_deployed_contract = IndexMap::new();
+            if let Some(class_hash) = contract_diff.class_hash {
+                chunk_deployed_contract.insert(contract_diff.contract_address, class_hash);
+            }
+            unite_state_diffs_field(&mut state_diff.deployed_contracts, chunk_deployed_contract)?;
+            let mut chunk_nonce = IndexMap::new();
+            if let Some(nonce) = contract_diff.nonce {
+                chunk_nonce.insert(contract_diff.contract_address, nonce);
+            }
+            unite_state_diffs_field(&mut state_diff.nonces, chunk_nonce)?;
+            match state_diff.storage_diffs.get_mut(&contract_diff.contract_address) {
+                Some(storage_diffs) => {
+                    unite_state_diffs_field(storage_diffs, contract_diff.storage_diffs)?
+                }
+                None => {
+                    state_diff
+                        .storage_diffs
+                        .insert(contract_diff.contract_address, contract_diff.storage_diffs);
+                }
             }
         }
+        StateDiffChunk::DeclaredClass(declared_class) => {
+            let mut chunk_declared_class = IndexMap::new();
+            chunk_declared_class
+                .insert(declared_class.class_hash, declared_class.compiled_class_hash);
+            unite_state_diffs_field(&mut state_diff.declared_classes, chunk_declared_class)?;
+        }
+        StateDiffChunk::DeprecatedDeclaredClass(deprecated_declared_class) => {
+            state_diff.deprecated_declared_classes.push(deprecated_declared_class.class_hash);
+        }
     }
-
-    state_diff.deprecated_declared_classes.extend(other_state_diff.deprecated_declared_classes);
     Ok(())
 }
 
