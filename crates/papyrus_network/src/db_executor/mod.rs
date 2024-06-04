@@ -2,6 +2,7 @@ use std::pin::Pin;
 use std::task::Poll;
 use std::vec;
 
+use async_trait::async_trait;
 use bytes::BufMut;
 use derive_more::Display;
 use futures::channel::mpsc::Sender;
@@ -182,17 +183,20 @@ impl DBExecutorError {
     }
 }
 
-/// DBExecutorTrait is a stream of queries. Each result is marks the end of a query fulfillment.
-/// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
-/// The stream is never exhausted, and it is the responsibility of the user to poll it.
-pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
+/// It is the responsibility of the user to periodically call `poll` to ensure that queries
+/// are processed. The executor itself is never exhausted, meaning it can continuously handle
+/// new queries as they are registered.
+#[async_trait]
+pub trait DBExecutorTrait: Unpin {
     // TODO: add writer functionality
     fn register_query(
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        sender: Sender<Vec<Data>>,
+        sender: Sender<Result<Vec<Data>, DBExecutorError>>,
     ) -> QueryId;
+
+    async fn poll(&mut self);
 }
 
 // TODO: currently this executor returns only block headers and signatures.
@@ -208,12 +212,13 @@ impl DBExecutor {
     }
 }
 
+#[async_trait]
 impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        mut sender: Sender<Vec<Data>>,
+        mut sender: Sender<Result<Vec<Data>, DBExecutorError>>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
@@ -245,8 +250,7 @@ impl DBExecutorTrait for DBExecutor {
                         block_counter,
                         query_id,
                     )?);
-                    let data_vec =
-                        data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
+                    let data_vec = data_type.fetch_block_data_from_db(block_number, query_id, &txn);
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
@@ -264,6 +268,12 @@ impl DBExecutorTrait for DBExecutor {
             }
         }));
         query_id
+    }
+
+    async fn poll(&mut self) {
+        loop {
+            futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+        }
     }
 }
 

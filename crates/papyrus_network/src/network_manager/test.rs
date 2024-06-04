@@ -235,7 +235,7 @@ impl DBExecutorTrait for MockDBExecutor {
         &mut self,
         query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Vec<Data>>,
+        mut sender: Sender<Result<Vec<Data>, DBExecutorError>>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
@@ -245,9 +245,9 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(vec![Data::BlockHeaderAndSignature(
+                        if let Err(e) = sender.start_send(Ok(vec![Data::BlockHeaderAndSignature(
                             SignedBlockHeader { block_header: header, signatures: vec![] },
-                        )]) {
+                        )])) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -256,6 +256,11 @@ impl DBExecutorTrait for MockDBExecutor {
             }
         }));
         query_id
+    }
+    async fn poll(&mut self) {
+        loop {
+            futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+        }
     }
 }
 

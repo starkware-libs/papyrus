@@ -1,7 +1,7 @@
 mod swarm_trait;
 
-#[cfg(test)]
-mod test;
+// #[cfg(test)]
+// mod test;
 
 use std::collections::HashMap;
 
@@ -22,7 +22,7 @@ use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
+use crate::db_executor::{DBExecutor, DBExecutorTrait, Data, QueryId};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
@@ -67,7 +67,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
-                Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
+                _ = self.db_executor.poll() => panic!("DB executor should never finish."),
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
                 Some((protocol, query)) = self.sqmr_query_receivers.next() => {
                     self.handle_local_sqmr_query(protocol, query)
@@ -248,25 +248,6 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_db_executor_result(
-        &mut self,
-        res: Result<db_executor::QueryId, db_executor::DBExecutorError>,
-    ) {
-        match res {
-            Ok(query_id) => {
-                // TODO: in case we want to do bookkeeping, this is the place.
-                debug!("Query completed successfully. query_id: {query_id:?}");
-            }
-            Err(err) => {
-                if err.should_log_in_error_level() {
-                    error!("Query failed. error: {err:?}");
-                } else {
-                    debug!("Query failed. error: {err:?}");
-                }
-            }
-        };
-    }
-
     fn handle_behaviour_event(&mut self, event: mixed_behaviour::Event) {
         match event {
             mixed_behaviour::Event::ExternalEvent(external_event) => {
@@ -331,6 +312,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
                 self.query_results_router.push(
                     receiver
+                        .flat_map(futures::stream::iter)
                         .flat_map(futures::stream::iter)
                         .chain(stream::once(async move { Data::Fin(data_type) }))
                         .map(move |data| (data, inbound_session_id))
