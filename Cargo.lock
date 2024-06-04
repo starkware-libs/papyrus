@@ -5938,6 +5938,7 @@ dependencies = [
  "rustc-hex",
  "serde",
  "serde_json",
+ "starknet-types-core",
  "starknet_api",
  "tar",
  "tempfile",
@@ -5975,6 +5976,7 @@ dependencies = [
  "serde_json",
  "sha3",
  "starknet-crypto 0.5.2",
+ "starknet-types-core",
  "starknet_api",
  "test_utils",
  "thiserror",
@@ -8789,6 +8791,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "starknet-types-core",
  "starknet_api",
  "tracing",
 ]

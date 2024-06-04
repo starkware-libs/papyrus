@@ -2,14 +2,14 @@ use indexmap::indexmap;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 
 /// A storage entry in a contract.
 #[derive(Debug, Default, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
 pub struct StorageEntry {
     pub key: StorageKey,
-    pub value: StarkFelt,
+    pub value: Felt,
 }
 
 /// A deployed contract in StarkNet.
@@ -45,16 +45,16 @@ pub fn create_random_state_diff(rng: &mut impl RngCore) -> ThinStateDiff {
         },
         storage_diffs: indexmap! {
             contract0 => indexmap! {
-                1u64.into() => StarkFelt::ONE, 2u64.into() => StarkFelt::TWO
+                1u64.into() => Felt::ONE, 2u64.into() => Felt::TWO
             },
             contract1 => indexmap! {
-                3u64.into() => StarkFelt::TWO, 4u64.into() => StarkFelt::ONE
+                3u64.into() => Felt::TWO, 4u64.into() => Felt::ONE
             },
         },
         declared_classes: indexmap! { class_hash => compiled_class_hash },
         deprecated_declared_classes: vec![deprecated_class_hash],
         nonces: indexmap! {
-            contract0 => Nonce(StarkFelt::ONE), contract2 => Nonce(StarkFelt::TWO)
+            contract0 => Nonce(Felt::ONE), contract2 => Nonce(Felt::TWO)
         },
         replaced_classes: Default::default(),
     }

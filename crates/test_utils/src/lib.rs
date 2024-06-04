@@ -64,7 +64,7 @@ use starknet_api::core::{
     StateDiffCommitment,
     TransactionCommitment,
 };
-use starknet_api::crypto::Signature;
+use starknet_api::crypto::utils::Signature;
 use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
     ConstructorType,
@@ -85,8 +85,8 @@ use starknet_api::deprecated_contract_class::{
     StructType,
     TypedParameter,
 };
-use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
-use starknet_api::stark_felt;
+use starknet_api::felt;
+use starknet_api::hash::{PoseidonHash, StarkHash};
 use starknet_api::state::{
     ContractClass,
     EntryPoint,
@@ -119,6 +119,7 @@ use starknet_api::transaction::{
     EventKey,
     ExecutionResources,
     Fee,
+    GasVector,
     InvokeTransaction,
     InvokeTransactionOutput,
     InvokeTransactionV0,
@@ -144,6 +145,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 //////////////////////////////////////////////////////////////////////////
 // GENERIC TEST UTIL FUNCTIONS
@@ -404,7 +406,7 @@ pub fn get_test_state_diff() -> StateDiff {
     // TODO(anatg): fix StateDiff::get_test_instance so the declared_classes will have different
     // hashes than the deprecated_contract_classes.
     let (_, data) = res.declared_classes.pop().unwrap();
-    res.declared_classes.insert(ClassHash(stark_felt!("0x001")), data);
+    res.declared_classes.insert(ClassHash(felt!("0x001")), data);
     // TODO(yair): Find a way to create replaced classes in a test instance of StateDiff.
     res.replaced_classes.clear();
     res
@@ -419,7 +421,7 @@ pub trait GetTestInstance: Sized {
 }
 
 auto_impl_get_test_instance! {
-    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
+    pub struct AccountDeploymentData(pub Vec<Felt>);
     pub struct BlockHash(pub StarkHash);
     pub struct BlockHeader {
         pub block_hash: BlockHash,
@@ -460,12 +462,12 @@ auto_impl_get_test_instance! {
         SegmentArena = 7,
     }
     pub struct StarknetVersion(pub String);
-    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
+    pub struct Calldata(pub Arc<Vec<Felt>>);
     pub struct ClassHash(pub StarkHash);
     pub struct CompiledClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
     pub struct ContractClass {
-        pub sierra_program: Vec<StarkFelt>,
+        pub sierra_program: Vec<Felt>,
         pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
         pub abi: String,
     }
@@ -608,9 +610,9 @@ auto_impl_get_test_instance! {
         pub keys: Vec<EventKey>,
         pub data: EventData,
     }
-    pub struct EventData(pub Vec<StarkFelt>);
+    pub struct EventData(pub Vec<Felt>);
     pub struct EventIndexInTransactionOutput(pub usize);
-    pub struct EventKey(pub StarkFelt);
+    pub struct EventKey(pub Felt);
     pub enum EventType {
         Event = 0,
     }
@@ -683,8 +685,8 @@ auto_impl_get_test_instance! {
         pub execution_status: TransactionExecutionStatus,
         pub execution_resources: ExecutionResources,
     }
-    pub struct L1ToL2Payload(pub Vec<StarkFelt>);
-    pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+    pub struct L1ToL2Payload(pub Vec<Felt>);
+    pub struct L2ToL1Payload(pub Vec<Felt>);
     pub struct MessageToL1 {
         pub to_address: EthAddress,
         pub payload: L2ToL1Payload,
@@ -694,10 +696,10 @@ auto_impl_get_test_instance! {
         pub from_address: EthAddress,
         pub payload: L1ToL2Payload,
     }
-    pub struct Nonce(pub StarkFelt);
+    pub struct Nonce(pub Felt);
     pub struct TransactionCommitment(pub StarkHash);
-    pub struct PaymasterData(pub Vec<StarkFelt>);
-    pub struct PoseidonHash(pub StarkFelt);
+    pub struct PaymasterData(pub Vec<Felt>);
+    pub struct PoseidonHash(pub Felt);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -722,12 +724,12 @@ auto_impl_get_test_instance! {
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
     pub struct SequencerContractAddress(pub ContractAddress);
     pub struct Signature {
-        pub r: StarkFelt,
-        pub s: StarkFelt,
+        pub r: Felt,
+        pub s: Felt,
     }
     pub struct StateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
         pub declared_classes: IndexMap<ClassHash, (CompiledClassHash, ContractClass)>,
         pub deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
@@ -744,7 +746,7 @@ auto_impl_get_test_instance! {
     }
     pub struct ThinStateDiff {
         pub deployed_contracts: IndexMap<ContractAddress, ClassHash>,
-        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+        pub storage_diffs: IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
         pub declared_classes: IndexMap<ClassHash, CompiledClassHash>,
         pub deprecated_declared_classes: Vec<ClassHash>,
         pub nonces: IndexMap<ContractAddress, Nonce>,
@@ -774,8 +776,8 @@ auto_impl_get_test_instance! {
         Invoke(InvokeTransactionOutput) = 3,
         L1Handler(L1HandlerTransactionOutput) = 4,
     }
-    pub struct TransactionSignature(pub Vec<StarkFelt>);
-    pub struct TransactionVersion(pub StarkFelt);
+    pub struct TransactionSignature(pub Vec<Felt>);
+    pub struct TransactionVersion(pub Felt);
     pub struct TypedParameter {
         pub name: String,
         pub r#type: String,
@@ -1040,9 +1042,15 @@ impl GetTestInstance for ExecutionResources {
             steps: NonZeroU64::get_test_instance(rng).into(),
             builtin_instance_counter: [(builtin, NonZeroU64::get_test_instance(rng).into())].into(),
             memory_holes: NonZeroU64::get_test_instance(rng).into(),
-            da_l1_gas_consumed: rng.next_u64(),
-            da_l1_data_gas_consumed: rng.next_u64(),
+            da_gas_consumed: GasVector::get_test_instance(rng),
+            gas_consumed: GasVector::get_test_instance(rng),
         }
+    }
+}
+
+impl GetTestInstance for GasVector {
+    fn get_test_instance(rng: &mut ChaCha8Rng) -> Self {
+        Self { l1_gas: rng.next_u64(), l1_data_gas: rng.next_u64() }
     }
 }
 

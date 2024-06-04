@@ -9846,8 +9846,14 @@
               "range_check_builtin_applications": 1917
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -9899,8 +9905,14 @@
               "range_check_builtin_applications": 165
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10010,8 +10022,14 @@
               "range_check_builtin_applications": 726
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10053,8 +10071,14 @@
               "range_check_builtin_applications": 216
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10096,8 +10120,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10230,8 +10260,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10338,8 +10374,14 @@
               "pedersen_builtin_applications": 44
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10391,8 +10433,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10492,8 +10540,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10547,8 +10601,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10728,8 +10788,14 @@
               "pedersen_builtin_applications": 80
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10782,8 +10848,14 @@
               "pedersen_builtin_applications": 22
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10837,8 +10909,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -10892,8 +10970,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11015,8 +11099,14 @@
               "range_check_builtin_applications": 1028
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11096,8 +11186,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11194,8 +11290,14 @@
               "pedersen_builtin_applications": 40
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11307,8 +11409,14 @@
               "range_check_builtin_applications": 1223
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11362,8 +11470,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11415,8 +11529,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11538,8 +11658,14 @@
               "pedersen_builtin_applications": 47
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11708,8 +11834,14 @@
               "range_check_builtin_applications": 1932
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11763,8 +11895,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11852,8 +11990,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -11896,8 +12040,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12013,8 +12163,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12066,8 +12222,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12121,8 +12283,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12165,8 +12333,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12279,8 +12453,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12402,8 +12582,14 @@
               "pedersen_builtin_applications": 47
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12492,8 +12678,14 @@
               "pedersen_builtin_applications": 42
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12546,8 +12738,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12599,8 +12797,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12758,8 +12962,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12872,8 +13082,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -12983,8 +13199,14 @@
               "range_check_builtin_applications": 726
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13027,8 +13249,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13125,8 +13353,14 @@
               "range_check_builtin_applications": 1128
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13180,8 +13414,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13233,8 +13473,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13286,8 +13532,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13339,8 +13591,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13393,8 +13651,14 @@
               "range_check_builtin_applications": 177
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13448,8 +13712,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13560,8 +13830,14 @@
               "bitwise_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13673,8 +13949,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13727,8 +14009,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13874,8 +14162,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13918,8 +14212,14 @@
               "range_check_builtin_applications": 123
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -13974,8 +14274,14 @@
               "pedersen_builtin_applications": 27
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14018,8 +14324,14 @@
               "pedersen_builtin_applications": 24
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14071,8 +14383,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14115,8 +14433,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14159,8 +14483,14 @@
               "range_check_builtin_applications": 200
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14212,8 +14542,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14256,8 +14592,14 @@
               "range_check_builtin_applications": 123
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14379,8 +14721,14 @@
               "range_check_builtin_applications": 1028
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14423,8 +14771,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14467,8 +14821,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14580,8 +14940,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14635,8 +15001,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14766,8 +15138,14 @@
               "pedersen_builtin_applications": 55
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14858,8 +15236,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -14913,8 +15297,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15027,8 +15417,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15061,8 +15457,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15220,8 +15622,14 @@
               "pedersen_builtin_applications": 73
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15321,8 +15729,14 @@
               "pedersen_builtin_applications": 155
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15434,8 +15848,14 @@
               "pedersen_builtin_applications": 56
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15478,8 +15898,14 @@
               "range_check_builtin_applications": 123
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15511,8 +15937,14 @@
               "range_check_builtin_applications": 3825
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15672,8 +16104,14 @@
               "pedersen_builtin_applications": 55
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15797,8 +16235,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15886,8 +16330,14 @@
               "bitwise_builtin_applications": 157
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -15940,8 +16390,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16081,8 +16537,14 @@
               "range_check_builtin_applications": 1190
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16134,8 +16596,14 @@
               "range_check_builtin_applications": 165
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16246,8 +16714,14 @@
               "range_check_builtin_applications": 1858
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16290,8 +16764,14 @@
               "range_check_builtin_applications": 123
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16345,8 +16825,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16388,8 +16874,14 @@
               "range_check_builtin_applications": 160
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16421,8 +16913,14 @@
               "pedersen_builtin_applications": 22
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16474,8 +16972,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16555,8 +17059,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16667,8 +17177,14 @@
               "pedersen_builtin_applications": 43
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16770,8 +17286,14 @@
               "range_check_builtin_applications": 964
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16825,8 +17347,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -16938,8 +17466,14 @@
               "range_check_builtin_applications": 982
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17052,8 +17586,14 @@
               "range_check_builtin_applications": 1111
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17106,8 +17646,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17166,8 +17712,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17289,8 +17841,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17470,8 +18028,14 @@
               "range_check_builtin_applications": 1915
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17581,8 +18145,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17625,8 +18195,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17685,8 +18261,14 @@
               "range_check_builtin_applications": 145
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17776,8 +18358,14 @@
               "pedersen_builtin_applications": 48
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17889,8 +18477,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -17949,8 +18543,14 @@
               "pedersen_builtin_applications": 34
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18049,8 +18649,14 @@
               "pedersen_builtin_applications": 40
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18102,8 +18708,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18156,8 +18768,14 @@
               "pedersen_builtin_applications": 24
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18200,8 +18818,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18254,8 +18878,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18320,8 +18950,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18380,8 +19016,14 @@
               "pedersen_builtin_applications": 34
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18424,8 +19066,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18477,8 +19125,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18558,8 +19212,14 @@
               "pedersen_builtin_applications": 37
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18611,8 +19271,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18664,8 +19330,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18778,8 +19450,14 @@
               "range_check_builtin_applications": 1273
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18811,8 +19489,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18864,8 +19548,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18917,8 +19607,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -18960,8 +19656,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19073,8 +19775,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19106,8 +19814,14 @@
               "range_check_builtin_applications": 219
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19161,8 +19875,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19261,8 +19981,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19314,8 +20040,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19428,8 +20160,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19481,8 +20219,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19578,8 +20322,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19727,8 +20477,14 @@
               "pedersen_builtin_applications": 57
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19783,8 +20539,14 @@
               "range_check_builtin_applications": 1344
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -19964,8 +20726,14 @@
               "pedersen_builtin_applications": 80
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20032,8 +20800,14 @@
               "range_check_builtin_applications": 577
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20085,8 +20859,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20208,8 +20988,14 @@
               "range_check_builtin_applications": 1028
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20241,8 +21027,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20295,8 +21087,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20350,8 +21148,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20403,8 +21207,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20531,8 +21341,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20575,8 +21391,14 @@
               "range_check_builtin_applications": 200
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20628,8 +21450,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20739,8 +21567,14 @@
               "pedersen_builtin_applications": 37
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20772,8 +21606,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20885,8 +21725,14 @@
               "range_check_builtin_applications": 1223
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -20983,8 +21829,14 @@
               "range_check_builtin_applications": 1128
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21117,8 +21969,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21160,8 +22018,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21283,8 +22147,14 @@
               "range_check_builtin_applications": 1210
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21338,8 +22208,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21472,8 +22348,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21585,8 +22467,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21666,8 +22554,14 @@
               "pedersen_builtin_applications": 37
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21719,8 +22613,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21900,8 +22800,14 @@
               "range_check_builtin_applications": 1944
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -21979,8 +22885,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22126,8 +23038,14 @@
               "bitwise_builtin_applications": 7
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22169,8 +23087,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22213,8 +23137,14 @@
               "range_check_builtin_applications": 191
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22268,8 +23198,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22323,8 +23259,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22383,8 +23325,14 @@
               "pedersen_builtin_applications": 34
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22436,8 +23384,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22549,8 +23503,14 @@
               "range_check_builtin_applications": 973
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22602,8 +23562,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22685,8 +23651,14 @@
               "range_check_builtin_applications": 1679
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22728,8 +23700,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22781,8 +23759,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22825,8 +23809,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22939,8 +23929,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -22982,8 +23978,14 @@
               "range_check_builtin_applications": 182
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23035,8 +24037,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23089,8 +24097,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23122,8 +24136,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23234,8 +24254,14 @@
               "range_check_builtin_applications": 954
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23277,8 +24303,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23330,8 +24362,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23453,8 +24491,14 @@
               "bitwise_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23506,8 +24550,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23559,8 +24609,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23626,8 +24682,14 @@
               "range_check_builtin_applications": 256
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23761,8 +24823,14 @@
               "range_check_builtin_applications": 1058
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23814,8 +24882,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23882,8 +24956,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -23935,8 +25015,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24105,8 +25191,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24149,8 +25241,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24193,8 +25291,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24306,8 +25410,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24359,8 +25469,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24412,8 +25528,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24466,8 +25588,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24521,8 +25649,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24574,8 +25708,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24687,8 +25827,14 @@
               "range_check_builtin_applications": 973
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24768,8 +25914,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24812,8 +25964,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24926,8 +26084,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -24986,8 +26150,14 @@
               "pedersen_builtin_applications": 34
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25067,8 +26237,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25133,8 +26309,14 @@
               "range_check_builtin_applications": 1327
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25246,8 +26428,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25314,8 +26502,14 @@
               "pedersen_builtin_applications": 39
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25367,8 +26561,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25422,8 +26622,14 @@
               "range_check_builtin_applications": 636
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25475,8 +26681,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25529,8 +26741,14 @@
               "pedersen_builtin_applications": 22
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25584,8 +26802,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25665,8 +26889,14 @@
               "pedersen_builtin_applications": 37
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25791,8 +27021,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25891,8 +27127,14 @@
               "pedersen_builtin_applications": 40
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25934,8 +27176,14 @@
               "range_check_builtin_applications": 160
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -25988,8 +27236,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26043,8 +27297,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26096,8 +27356,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26149,8 +27415,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26203,8 +27475,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26313,8 +27591,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26368,8 +27652,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26421,8 +27711,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26547,8 +27843,14 @@
               "pedersen_builtin_applications": 38
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26706,8 +28008,14 @@
               "bitwise_builtin_applications": 7
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26750,8 +28058,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26805,8 +28119,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26894,8 +28214,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -26961,8 +28287,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27075,8 +28407,14 @@
               "pedersen_builtin_applications": 38
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27189,8 +28527,14 @@
               "pedersen_builtin_applications": 38
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27244,8 +28588,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27334,8 +28684,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27448,8 +28804,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27537,8 +28899,14 @@
               "bitwise_builtin_applications": 85
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27634,8 +29002,14 @@
               "pedersen_builtin_applications": 58
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27702,8 +29076,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27746,8 +29126,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27799,8 +29185,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27843,8 +29235,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27896,8 +29294,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -27951,8 +29355,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28004,8 +29414,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28160,8 +29576,14 @@
               "range_check_builtin_applications": 1173
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28305,8 +29727,14 @@
               "pedersen_builtin_applications": 68
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28358,8 +29786,14 @@
               "range_check_builtin_applications": 165
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28471,8 +29905,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28594,8 +30034,14 @@
               "bitwise_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28647,8 +30093,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28700,8 +30152,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28753,8 +30211,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28806,8 +30270,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28861,8 +30331,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28905,8 +30381,14 @@
               "range_check_builtin_applications": 123
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -28960,8 +30442,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29077,8 +30565,14 @@
               "range_check_builtin_applications": 1051
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29121,8 +30615,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29165,8 +30665,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29255,8 +30761,14 @@
               "pedersen_builtin_applications": 42
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29308,8 +30820,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29363,8 +30881,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29486,8 +31010,14 @@
               "bitwise_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29660,8 +31190,14 @@
               "range_check_builtin_applications": 3991
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29773,8 +31309,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29886,8 +31428,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -29939,8 +31487,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30007,8 +31561,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30051,8 +31611,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30119,8 +31685,14 @@
               "pedersen_builtin_applications": 39
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30174,8 +31746,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30287,8 +31865,14 @@
               "range_check_builtin_applications": 973
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30400,8 +31984,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30497,8 +32087,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30646,8 +32242,14 @@
               "bitwise_builtin_applications": 4
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30758,8 +32360,14 @@
               "pedersen_builtin_applications": 43
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30872,8 +32480,14 @@
               "range_check_builtin_applications": 1054
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30915,8 +32529,14 @@
               "pedersen_builtin_applications": 22
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -30968,8 +32588,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31021,8 +32647,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31065,8 +32697,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31118,8 +32756,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31161,8 +32805,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31242,8 +32892,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31295,8 +32951,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31409,8 +33071,14 @@
               "range_check_builtin_applications": 1111
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31490,8 +33158,14 @@
               "range_check_builtin_applications": 555
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31660,8 +33334,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31727,8 +33407,14 @@
               "bitwise_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31771,8 +33457,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31815,8 +33507,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31859,8 +33557,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31903,8 +33607,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -31947,8 +33657,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32000,8 +33716,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32100,8 +33822,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32153,8 +33881,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32197,8 +33931,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32241,8 +33981,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32285,8 +34031,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32329,8 +34081,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32382,8 +34140,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32426,8 +34190,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32470,8 +34240,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32514,8 +34290,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -32949,8 +34731,14 @@
               "bitwise_builtin_applications": 168
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33004,8 +34792,14 @@
               "pedersen_builtin_applications": 20
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33048,8 +34842,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33092,8 +34892,14 @@
               "ecdsa_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33136,8 +34942,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33189,8 +35001,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33270,8 +35088,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33314,8 +35138,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33358,8 +35188,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33471,8 +35307,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33584,8 +35426,14 @@
               "range_check_builtin_applications": 973
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33628,8 +35476,14 @@
               "pedersen_builtin_applications": 54
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33684,8 +35538,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33728,8 +35588,14 @@
               "pedersen_builtin_applications": 49
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33811,8 +35677,14 @@
               "pedersen_builtin_applications": 112
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33854,8 +35726,14 @@
               "range_check_builtin_applications": 160
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -33907,8 +35785,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34093,8 +35977,14 @@
               "range_check_builtin_applications": 5402
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34146,8 +36036,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34189,8 +36085,14 @@
               "pedersen_builtin_applications": 18
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34249,8 +36151,14 @@
               "range_check_builtin_applications": 145
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34361,8 +36269,14 @@
               "bitwise_builtin_applications": 2
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34421,8 +36335,14 @@
               "pedersen_builtin_applications": 34
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34535,8 +36455,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34588,8 +36514,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34641,8 +36573,14 @@
               "pedersen_builtin_applications": 16
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34685,8 +36623,14 @@
               "range_check_builtin_applications": 250
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34788,8 +36732,14 @@
               "pedersen_builtin_applications": 52
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34832,8 +36782,14 @@
               "pedersen_builtin_applications": 23
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34875,8 +36831,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -34988,8 +36950,14 @@
               "bitwise_builtin_applications": 3
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -35096,8 +37064,14 @@
               "range_check_builtin_applications": 1062
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -35210,8 +37184,14 @@
               "ecdsa_builtin_applications": 1
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -35264,8 +37244,14 @@
               "range_check_builtin_applications": 183
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       },
@@ -35317,8 +37303,14 @@
               "range_check_builtin_applications": 143
             },
             "memory_holes": 0,
-            "da_l1_gas_consumed": 0,
-            "da_l1_data_gas_consumed": 0
+            "da_gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            },
+            "gas_consumed": {
+              "l1_gas": 0,
+              "l1_data_gas": 0
+            }
           }
         }
       }

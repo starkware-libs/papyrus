@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::hash::StarkFelt;
+use starknet_types_core::felt::Felt;
 
 pub mod block_hash;
 pub mod class_hash;
@@ -28,6 +28,6 @@ pub struct TransactionOptions {
     pub only_query: bool,
 }
 
-pub(crate) fn usize_into_felt(u: usize) -> StarkFelt {
+pub(crate) fn usize_into_felt(u: usize) -> Felt {
     u128::try_from(u).expect("Expect at most 128 bits").into()
 }
