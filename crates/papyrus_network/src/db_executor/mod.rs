@@ -1,13 +1,10 @@
-use std::pin::Pin;
-use std::task::Poll;
 use std::vec;
 
+use async_trait::async_trait;
 use bytes::BufMut;
 use derive_more::Display;
 use futures::channel::mpsc::Sender;
-use futures::future::poll_fn;
-use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt};
+use futures::future::{pending, poll_fn};
 #[cfg(test)]
 use mockall::automock;
 use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
@@ -29,7 +26,7 @@ use papyrus_storage::{db, StorageReader, StorageTxn};
 use prost::Message;
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
-use tokio::task::JoinHandle;
+use tracing::error;
 
 use crate::DataType;
 
@@ -182,32 +179,36 @@ impl DBExecutorError {
     }
 }
 
-/// DBExecutorTrait is a stream of queries. Each result is marks the end of a query fulfillment.
-/// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
-/// The stream is never exhausted, and it is the responsibility of the user to poll it.
-pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
-    // TODO: add writer functionality
+/// A DBExecutor receives inbound queries and returns their corresponding data.
+#[async_trait]
+pub trait DBExecutorTrait {
+    /// Send a query to be executed in the DBExecutor. The query will be run concurrently with the
+    /// calling code and the result will be over the given channel.
     fn register_query(
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         sender: Sender<Vec<Data>>,
+        // TODO(shahak): Remove QueryId.
     ) -> QueryId;
+
+    /// Polls incoming queries.
+    // TODO(shahak): Consume self.
+    async fn run(&mut self);
 }
 
-// TODO: currently this executor returns only block headers and signatures.
 pub struct DBExecutor {
     next_query_id: usize,
     storage_reader: StorageReader,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
 impl DBExecutor {
     pub fn new(storage_reader: StorageReader) -> Self {
-        Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
+        Self { next_query_id: 0, storage_reader }
     }
 }
 
+#[async_trait]
 impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
@@ -218,8 +219,8 @@ impl DBExecutorTrait for DBExecutor {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
         let storage_reader_clone = self.storage_reader.clone();
-        self.query_execution_set.push(tokio::task::spawn(async move {
-            {
+        tokio::task::spawn(async move {
+            let result: Result<QueryId, DBExecutorError> = {
                 let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
                     DBExecutorError::DBInternalError { query_id, storage_error: err }
                 })?;
@@ -261,37 +262,21 @@ impl DBExecutorTrait for DBExecutor {
                     }
                 }
                 Ok(query_id)
+            };
+            if let Err(error) = &result {
+                if error.should_log_in_error_level() {
+                    error!("Running inbound query {query:?} failed on {error:?}");
+                }
             }
-        }));
+            result
+        });
         query_id
     }
-}
 
-impl Stream for DBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
-    }
-}
-
-pub(crate) fn poll_query_execution_set(
-    query_execution_set: &mut FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
-    cx: &mut std::task::Context<'_>,
-) -> Poll<Option<Result<QueryId, DBExecutorError>>> {
-    match query_execution_set.poll_next_unpin(cx) {
-        Poll::Ready(Some(join_result)) => {
-            let res = join_result?;
-            Poll::Ready(Some(res))
-        }
-        Poll::Ready(None) => {
-            *query_execution_set = FuturesUnordered::new();
-            Poll::Pending
-        }
-        Poll::Pending => Poll::Pending,
+    async fn run(&mut self) {
+        // TODO(shahak): Parse incoming queries once we receive them through channel instead of
+        // through function.
+        pending::<()>().await
     }
 }
 
