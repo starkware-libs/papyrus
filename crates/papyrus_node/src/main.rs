@@ -22,7 +22,7 @@ use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
-use papyrus_protobuf::sync::{DataOrFin, SignedBlockHeader};
+use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
@@ -224,8 +224,8 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         p2p_sync_config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        header_channels: SqmrSubscriberChannels<DataOrFin<SignedBlockHeader>>,
-        state_diff_channels: SqmrSubscriberChannels<DataOrFin<ThinStateDiff>>,
+        header_channels: SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
+        state_diff_channels: SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
     ) -> Result<(), P2PSyncError> {
         let sync = P2PSync::new(
             p2p_sync_config,
@@ -243,8 +243,8 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
     Option<(
-        SqmrSubscriberChannels<DataOrFin<SignedBlockHeader>>,
-        SqmrSubscriberChannels<DataOrFin<ThinStateDiff>>,
+        SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
+        SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
     )>,
     String,
 );

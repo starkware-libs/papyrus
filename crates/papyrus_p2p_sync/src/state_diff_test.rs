@@ -21,7 +21,7 @@ use crate::test_utils::{
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     STATE_DIFF_QUERY_LENGTH,
 };
-use crate::P2PSyncError;
+use crate::{P2PSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
 
@@ -122,12 +122,12 @@ async fn state_diff_basic_flow() {
             let query = state_diff_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
-                Query {
+                StateDiffQuery(Query {
                     start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: num_blocks,
                     step: 1,
-                }
+                })
             );
 
             for block_number in start_block_number..(start_block_number + num_blocks) {
@@ -212,12 +212,12 @@ async fn validate_state_diff_fails(
         let query = state_diff_query_receiver.next().await.unwrap();
         assert_eq!(
             query,
-            Query {
+            StateDiffQuery(Query {
                 start_block: BlockHashOrNumber::Number(BlockNumber(0)),
                 direction: Direction::Forward,
                 limit: 1,
                 step: 1,
-            }
+            })
         );
 
         // Send state diffs.

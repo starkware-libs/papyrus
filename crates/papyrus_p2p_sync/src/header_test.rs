@@ -1,5 +1,12 @@
 use futures::{SinkExt, StreamExt};
-use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    DataOrFin,
+    Direction,
+    HeaderQuery,
+    Query,
+    SignedBlockHeader,
+};
 use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
@@ -39,12 +46,12 @@ async fn signed_headers_basic_flow() {
             let query = header_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
-                Query {
+                HeaderQuery(Query {
                     start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: HEADER_QUERY_LENGTH,
                     step: 1,
-                }
+                })
             );
 
             for (i, (block_hash, block_signature)) in block_hashes_and_signatures
@@ -146,12 +153,12 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
 
         assert_eq!(
             query,
-            Query {
+            HeaderQuery(Query {
                 start_block: BlockHashOrNumber::Number(BlockNumber(NUM_ACTUAL_RESPONSES.into())),
                 direction: Direction::Forward,
                 limit: HEADER_QUERY_LENGTH,
                 step: 1,
-            }
+            })
         );
     };
 

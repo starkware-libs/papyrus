@@ -1,3 +1,5 @@
+// TODO(shahak): Remove protobuf from these tests.
+
 use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -16,7 +18,14 @@ use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
 use libp2p::{Multiaddr, PeerId};
 use papyrus_protobuf::protobuf;
-use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    DataOrFin,
+    Direction,
+    HeaderQuery,
+    Query,
+    SignedBlockHeader,
+};
 use prost::Message;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::select;
@@ -285,7 +294,7 @@ async fn register_subscriber_and_use_channels() {
 
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_subscriber::<DataOrFin<SignedBlockHeader>>(
+        .register_sqmr_subscriber::<HeaderQuery, DataOrFin<SignedBlockHeader>>(
             crate::Protocol::SignedBlockHeader,
         );
 
@@ -306,7 +315,7 @@ async fn register_subscriber_and_use_channels() {
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()})
+            query_sender.send(HeaderQuery(query)).await.unwrap()})
             .then(|_| async move {
                 *cloned_response_receiver_length.lock().await = response_receiver_collector.await.len();
             }) => {},

@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use lazy_static::lazy_static;
-use papyrus_protobuf::sync::{Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffQuery};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
@@ -33,14 +33,14 @@ lazy_static! {
 pub struct TestArgs {
     #[allow(clippy::type_complexity)]
     pub p2p_sync: P2PSync<
-        Sender<Query>,
+        Sender<HeaderQuery>,
         Receiver<Response<SignedBlockHeader>>,
-        Sender<Query>,
+        Sender<StateDiffQuery>,
         Receiver<Response<ThinStateDiff>>,
     >,
     pub storage_reader: StorageReader,
-    pub header_query_receiver: Receiver<Query>,
-    pub state_diff_query_receiver: Receiver<Query>,
+    pub header_query_receiver: Receiver<HeaderQuery>,
+    pub state_diff_query_receiver: Receiver<StateDiffQuery>,
     pub headers_sender: Sender<Response<SignedBlockHeader>>,
     pub state_diffs_sender: Sender<Response<ThinStateDiff>>,
 }
