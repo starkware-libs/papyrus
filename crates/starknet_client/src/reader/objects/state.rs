@@ -10,8 +10,8 @@ pub use papyrus_common::state::{
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockHash;
 use starknet_api::core::{ClassHash, ContractAddress, GlobalRoot, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
+use starknet_types_core::felt::Felt;
 
 /// A state update derived from a single block as returned by the starknet gateway.
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
@@ -56,7 +56,7 @@ impl StateDiff {
 
 #[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
 pub struct ContractClass {
-    pub sierra_program: Vec<StarkFelt>,
+    pub sierra_program: Vec<Felt>,
     pub entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
     pub contract_class_version: String,
     pub abi: String,

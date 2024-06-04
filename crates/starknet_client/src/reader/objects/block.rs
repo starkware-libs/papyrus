@@ -22,10 +22,11 @@ use starknet_api::core::{
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::hash::{PoseidonHash, StarkFelt};
+use starknet_api::hash::PoseidonHash;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
+use starknet_types_core::felt::Felt;
 
 use crate::reader::objects::transaction::{
     L1ToL2Message,
@@ -471,7 +472,7 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 )]
 pub struct BlockSignatureData {
     pub block_number: BlockNumber,
-    pub signature: [StarkFelt; 2],
+    pub signature: [Felt; 2],
     pub signature_input: BlockSignatureMessage,
 }
 
