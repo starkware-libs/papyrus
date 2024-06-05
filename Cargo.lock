@@ -6359,6 +6359,7 @@ dependencies = [
  "reqwest",
  "serde",
  "simple_logger",
+ "starknet-types-core",
  "starknet_api",
  "starknet_client",
  "test_utils",

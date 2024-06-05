@@ -22,11 +22,11 @@ use starknet_api::core::{
     PatriciaKey,
     SequencerPublicKey,
 };
-use starknet_api::crypto::PublicKey;
+use starknet_api::crypto::utils::PublicKey;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StorageKey, ThinStateDiff};
-use starknet_api::{patricia_key, stark_felt};
+use starknet_api::{felt, patricia_key};
 use starknet_client::reader::objects::block::DeprecatedBlock;
 use starknet_client::reader::{
     BlockOrDeprecated,
@@ -263,20 +263,20 @@ async fn stream_state_updates() {
     const START_BLOCK_NUMBER: u64 = 5;
     const END_BLOCK_NUMBER: u64 = 7;
 
-    let class_hash1 = ClassHash(stark_felt!("0x123"));
-    let class_hash2 = ClassHash(stark_felt!("0x456"));
-    let class_hash3 = ClassHash(stark_felt!("0x789"));
-    let class_hash4 = ClassHash(stark_felt!("0x101112"));
+    let class_hash1 = ClassHash(felt!("0x123"));
+    let class_hash2 = ClassHash(felt!("0x456"));
+    let class_hash3 = ClassHash(felt!("0x789"));
+    let class_hash4 = ClassHash(felt!("0x101112"));
     let contract_address1 = ContractAddress(patricia_key!("0xabc"));
     let contract_address2 = ContractAddress(patricia_key!("0xdef"));
     let contract_address3 = ContractAddress(patricia_key!("0x0abc"));
-    let nonce1 = Nonce(stark_felt!("0x123456789abcdef"));
-    let root1 = GlobalRoot(stark_felt!("0x111"));
-    let root2 = GlobalRoot(stark_felt!("0x222"));
-    let block_hash1 = BlockHash(stark_felt!("0x333"));
-    let block_hash2 = BlockHash(stark_felt!("0x444"));
+    let nonce1 = Nonce(felt!("0x123456789abcdef"));
+    let root1 = GlobalRoot(felt!("0x111"));
+    let root2 = GlobalRoot(felt!("0x222"));
+    let block_hash1 = BlockHash(felt!("0x333"));
+    let block_hash2 = BlockHash(felt!("0x444"));
     let key = StorageKey(patricia_key!("0x555"));
-    let value = stark_felt!("0x666");
+    let value = felt!("0x666");
 
     // TODO(shahak): Fill these contract classes with non-empty data.
     let deprecated_contract_class1 = DeprecatedContractClass::default();
@@ -285,10 +285,10 @@ async fn stream_state_updates() {
 
     let contract_class1 = ContractClass::default();
     let contract_class2 = ContractClass::default();
-    let new_class_hash1 = ClassHash(stark_felt!("0x111"));
-    let new_class_hash2 = ClassHash(stark_felt!("0x222"));
-    let compiled_class_hash1 = CompiledClassHash(stark_felt!("0x00111"));
-    let compiled_class_hash2 = CompiledClassHash(stark_felt!("0x00222"));
+    let new_class_hash1 = ClassHash(felt!("0x111"));
+    let new_class_hash2 = ClassHash(felt!("0x222"));
+    let compiled_class_hash1 = CompiledClassHash(felt!("0x00111"));
+    let compiled_class_hash2 = CompiledClassHash(felt!("0x00222"));
     let class_hash_entry1 = DeclaredClassHashEntry {
         class_hash: new_class_hash1,
         compiled_class_hash: compiled_class_hash1,
@@ -446,8 +446,8 @@ async fn stream_compiled_classes() {
                 deployed_contracts: indexmap! {},
                 storage_diffs: indexmap! {},
                 declared_classes: indexmap! {
-                    ClassHash(stark_felt!("0x0")) => CompiledClassHash(stark_felt!("0x0")),
-                    ClassHash(stark_felt!("0x1")) => CompiledClassHash(stark_felt!("0x1")),
+                    ClassHash(felt!("0x0")) => CompiledClassHash(felt!("0x0")),
+                    ClassHash(felt!("0x1")) => CompiledClassHash(felt!("0x1")),
                 },
                 deprecated_declared_classes: vec![],
                 nonces: indexmap! {},
@@ -461,8 +461,8 @@ async fn stream_compiled_classes() {
                 deployed_contracts: indexmap! {},
                 storage_diffs: indexmap! {},
                 declared_classes: indexmap! {
-                    ClassHash(stark_felt!("0x2")) => CompiledClassHash(stark_felt!("0x2")),
-                    ClassHash(stark_felt!("0x3")) => CompiledClassHash(stark_felt!("0x3")),
+                    ClassHash(felt!("0x2")) => CompiledClassHash(felt!("0x2")),
+                    ClassHash(felt!("0x3")) => CompiledClassHash(felt!("0x3")),
                 },
                 deprecated_declared_classes: vec![],
                 nonces: indexmap! {},
@@ -473,8 +473,8 @@ async fn stream_compiled_classes() {
         .append_classes(
             BlockNumber(0),
             &[
-                (ClassHash(stark_felt!("0x0")), &sn_api_ContractClass::default()),
-                (ClassHash(stark_felt!("0x1")), &sn_api_ContractClass::default()),
+                (ClassHash(felt!("0x0")), &sn_api_ContractClass::default()),
+                (ClassHash(felt!("0x1")), &sn_api_ContractClass::default()),
             ],
             &[],
         )
@@ -482,8 +482,8 @@ async fn stream_compiled_classes() {
         .append_classes(
             BlockNumber(1),
             &[
-                (ClassHash(stark_felt!("0x2")), &sn_api_ContractClass::default()),
-                (ClassHash(stark_felt!("0x3")), &sn_api_ContractClass::default()),
+                (ClassHash(felt!("0x2")), &sn_api_ContractClass::default()),
+                (ClassHash(felt!("0x3")), &sn_api_ContractClass::default()),
             ],
             &[],
         )
@@ -491,7 +491,7 @@ async fn stream_compiled_classes() {
         .commit()
         .unwrap();
 
-    let felts: Vec<_> = (0..4).map(|i| stark_felt!(format!("0x{i}").as_str())).collect();
+    let felts: Vec<_> = (0..4).map(|i| felt!(format!("0x{i}").as_str())).collect();
     let mut mock = MockStarknetReader::new();
     for felt in felts.clone() {
         mock.expect_compiled_class_by_hash()
@@ -603,7 +603,7 @@ async fn get_compiled_class() {
 async fn get_sequencer_pub_key() {
     let mut mock = MockStarknetReader::new();
 
-    let sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x123")));
+    let sequencer_pub_key = SequencerPublicKey(PublicKey(felt!("0x123")));
     mock.expect_sequencer_pub_key().times(1).return_once(move || Ok(sequencer_pub_key));
 
     let ((reader, _), _temp_dir) = get_test_storage();

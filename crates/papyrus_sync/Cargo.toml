@@ -28,6 +28,7 @@ reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 starknet_client = { path = "../starknet_client" }
+starknet-types-core.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing.workspace = true
