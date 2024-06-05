@@ -8,8 +8,9 @@ use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, Sig
 use papyrus_storage::state::StateStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use static_assertions::const_assert;
 use test_utils::get_rng;
 
@@ -321,13 +322,13 @@ async fn state_diff_conflicting() {
         vec![
             Some(ThinStateDiff {
                 storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => StarkFelt::default()
+                    StorageKey::default() => Felt::default()
                 }},
                 ..Default::default()
             }),
             Some(ThinStateDiff {
                 storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => StarkFelt::default()
+                    StorageKey::default() => Felt::default()
                 }},
                 ..Default::default()
             }),

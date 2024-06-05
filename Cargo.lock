@@ -6187,6 +6187,7 @@ dependencies = [
  "papyrus_storage",
  "rand 0.8.5",
  "serde",
+ "starknet-types-core",
  "starknet_api",
  "static_assertions",
  "test_utils",
