@@ -67,7 +67,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
-                _ = self.db_executor.poll() => panic!("DB executor should never finish."),
+                _ = self.db_executor.run() => panic!("DB executor should never finish."),
                 Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
                 Some((protocol, query)) = self.sqmr_query_receivers.next() => {
                     self.handle_local_sqmr_query(protocol, query)

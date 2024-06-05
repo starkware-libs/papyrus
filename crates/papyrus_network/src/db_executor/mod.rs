@@ -1,5 +1,3 @@
-use std::pin::Pin;
-use std::task::Poll;
 use std::vec;
 
 use async_trait::async_trait;
@@ -8,7 +6,7 @@ use derive_more::Display;
 use futures::channel::mpsc::Sender;
 use futures::future::poll_fn;
 use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt};
+use futures::StreamExt;
 #[cfg(test)]
 use mockall::automock;
 use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
@@ -183,23 +181,23 @@ impl DBExecutorError {
     }
 }
 
-/// It is the responsibility of the user to periodically call `poll` to ensure that queries
-/// are processed. The executor itself is never exhausted, meaning it can continuously handle
-/// new queries as they are registered.
+/// A DBExecutor receives inbound queries and returns their corresponding data.
 #[async_trait]
-pub trait DBExecutorTrait: Unpin {
-    // TODO: add writer functionality
+pub trait DBExecutorTrait {
     fn register_query(
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         sender: Sender<Result<Vec<Data>, DBExecutorError>>,
+        // TODO(shahak): Remove QueryId.
     ) -> QueryId;
 
-    async fn poll(&mut self);
+    /// Runs the DBExecutor. Without polling this function, the queries that were register won't
+    /// advance.
+    // TODO(shahak): Consume self.
+    async fn run(&mut self);
 }
 
-// TODO: currently this executor returns only block headers and signatures.
 pub struct DBExecutor {
     next_query_id: usize,
     storage_reader: StorageReader,
@@ -270,38 +268,14 @@ impl DBExecutorTrait for DBExecutor {
         query_id
     }
 
-    async fn poll(&mut self) {
+    async fn run(&mut self) {
         loop {
-            futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+            let result =
+                futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+            if result.is_none() {
+                self.query_execution_set = FuturesUnordered::new();
+            }
         }
-    }
-}
-
-impl Stream for DBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
-
-    fn poll_next(
-        self: Pin<&mut Self>,
-        cx: &mut std::task::Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
-        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
-    }
-}
-
-pub(crate) fn poll_query_execution_set(
-    query_execution_set: &mut FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
-    cx: &mut std::task::Context<'_>,
-) -> Poll<Option<Result<QueryId, DBExecutorError>>> {
-    match query_execution_set.poll_next_unpin(cx) {
-        Poll::Ready(Some(join_result)) => {
-            let res = join_result?;
-            Poll::Ready(Some(res))
-        }
-        Poll::Ready(None) => {
-            *query_execution_set = FuturesUnordered::new();
-            Poll::Pending
-        }
-        Poll::Pending => Poll::Pending,
     }
 }
 
