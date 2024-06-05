@@ -21,7 +21,7 @@ pub fn get_test_config(storage_scope: Option<StorageScope>) -> (StorageConfig, T
         StorageConfig {
             db_config: DbConfig {
                 path_prefix: dir.path().to_path_buf(),
-                chain_id: ChainId("".to_owned()),
+                chain_id: ChainId::Other("".to_owned()),
                 enforce_file_exists: false,
                 min_size: 1 << 20,    // 1MB
                 max_size: 1 << 35,    // 32GB

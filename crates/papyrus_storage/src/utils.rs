@@ -11,8 +11,8 @@ use metrics::{absolute_counter, gauge};
 use serde::Serialize;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ChainId, ClassHash, CompiledClassHash};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{EntryPoint, EntryPointType};
+use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use crate::compiled_class::CasmStorageReader;
@@ -25,7 +25,7 @@ use crate::{open_storage, StorageConfig, StorageError, StorageReader, StorageRes
 struct DumpDeclaredClass {
     class_hash: ClassHash,
     compiled_class_hash: CompiledClassHash,
-    sierra_program: Vec<StarkFelt>,
+    sierra_program: Vec<Felt>,
     entry_points_by_type: HashMap<EntryPointType, Vec<EntryPoint>>,
 }
 
@@ -34,10 +34,10 @@ pub fn dump_declared_classes_table_by_block_range(
     start_block: u64,
     end_block: u64,
     file_path: &str,
-    chain_id: &str,
+    chain_id: ChainId,
 ) -> StorageResult<()> {
     let mut storage_config = StorageConfig::default();
-    storage_config.db_config.chain_id = ChainId(chain_id.to_string());
+    storage_config.db_config.chain_id = chain_id;
     let (storage_reader, _) = open_storage(storage_config)?;
     let txn = storage_reader.begin_ro_txn()?;
     let compiled_class_marker = txn.get_compiled_class_marker()?;

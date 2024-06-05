@@ -6318,6 +6318,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simple_logger",
+ "starknet-types-core",
  "starknet_api",
  "statistical",
  "tempfile",

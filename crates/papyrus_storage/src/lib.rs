@@ -29,7 +29,7 @@
 //! # let dir = dir_handle.path().to_path_buf();
 //! let db_config = DbConfig {
 //!     path_prefix: dir,
-//!     chain_id: ChainId("SN_MAIN".to_owned()),
+//!     chain_id: ChainId::Mainnet,
 //!     enforce_file_exists: false,
 //!     min_size: 1 << 20,    // 1MB
 //!     max_size: 1 << 35,    // 32GB
@@ -131,9 +131,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{Transaction, TransactionHash, TransactionOutput};
+use starknet_types_core::felt::Felt;
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
@@ -518,7 +518,7 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         block_signatures: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockSignature>, SimpleTable>,
         casms: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<Felt>, SimpleTable>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
