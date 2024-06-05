@@ -60,7 +60,7 @@ async-trait = "0.1.56"
 axum = "0.6.12"
 base64 = "0.13.0"
 bitvec = "1.0.1"
-blockifier = { git = "https://github.com/starkware-libs/blockifier.git", rev = "fc62b8b8", features = ["testing"] }
+blockifier = { git = "https://github.com/starkware-libs/blockifier.git", rev = "6babc28a", features = ["testing"] }
 bytes = "1"
 byteorder = "1.4.3"
 cairo-lang-casm = "2.6.0"
@@ -130,7 +130,7 @@ serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api.git", rev = "0f49f20a" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api.git", branch = "main-mempool" }
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
 static_assertions = "1.1.0"
