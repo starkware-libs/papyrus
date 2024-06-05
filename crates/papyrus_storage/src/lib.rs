@@ -114,7 +114,7 @@ use db::serialization::{
     VersionWrapper,
     VersionZeroWrapper,
 };
-use db::table_types::Table;
+use db::table_types::{NoValue, Table};
 use mmap_file::{
     open_file,
     FileHandler,
@@ -133,12 +133,11 @@ use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
-use starknet_api::transaction::{EventContent, Transaction, TransactionHash};
+use starknet_api::transaction::{Transaction, TransactionHash, TransactionOutput};
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
 
-use crate::body::events::ThinTransactionOutput;
 use crate::body::TransactionIndex;
 use crate::db::table_types::SimpleTable;
 use crate::db::{
@@ -188,9 +187,7 @@ pub fn open_storage(
         file_offsets: db_writer.create_simple_table("file_offsets")?,
         state_diffs: db_writer.create_simple_table("state_diffs")?,
         transaction_hash_to_idx: db_writer.create_simple_table("transaction_hash_to_idx")?,
-        transaction_idx_to_hash: db_writer.create_simple_table("transaction_idx_to_hash")?,
-        transaction_outputs: db_writer.create_simple_table("transaction_outputs")?,
-        transactions: db_writer.create_simple_table("transactions")?,
+        transaction_metadata: db_writer.create_simple_table("transaction_metadata")?,
 
         // Version tables
         starknet_version: db_writer.create_simple_table("starknet_version")?,
@@ -498,9 +495,7 @@ impl<'env, Mode: TransactionKind> StorageTxn<'env, Mode> {
             let unused_tables = [
                 self.tables.events.name,
                 self.tables.transaction_hash_to_idx.name,
-                self.tables.transaction_idx_to_hash.name,
-                self.tables.transaction_outputs.name,
-                self.tables.transactions.name,
+                self.tables.transaction_metadata.name,
             ];
             if unused_tables.contains(&table_id.name) {
                 return Err(StorageError::ScopeError {
@@ -528,16 +523,15 @@ struct_field_names! {
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<EventContent>, SimpleTable>,
+        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<NoValue>, SimpleTable>,
         headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
         state_diffs: TableIdentifier<BlockNumber, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         transaction_hash_to_idx: TableIdentifier<TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>,
-        transaction_idx_to_hash: TableIdentifier<TransactionIndex, NoVersionValueWrapper<TransactionHash>, SimpleTable>,
-        transaction_outputs: TableIdentifier<TransactionIndex, VersionZeroWrapper<ThinTransactionOutput>, SimpleTable>,
-        transactions: TableIdentifier<TransactionIndex, VersionZeroWrapper<Transaction>, SimpleTable>,
+        // TODO(dvir): consider not saving transaction hash and calculating it from the transaction on demand.
+        transaction_metadata: TableIdentifier<TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>,
 
         // Version tables
         starknet_version: TableIdentifier<BlockNumber, VersionZeroWrapper<StarknetVersion>, SimpleTable>,
@@ -560,6 +554,13 @@ macro_rules! struct_field_names {
     }
 }
 use struct_field_names;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct TransactionMetadata {
+    tx_hash: TransactionHash,
+    tx_location: LocationInFile,
+    tx_output_location: LocationInFile,
+}
 
 // TODO: sort the variants alphabetically.
 /// Error type for the storage crate.
@@ -670,6 +671,8 @@ struct FileHandlers<Mode: TransactionKind> {
     contract_class: FileHandler<VersionZeroWrapper<ContractClass>, Mode>,
     casm: FileHandler<VersionZeroWrapper<CasmContractClass>, Mode>,
     deprecated_contract_class: FileHandler<VersionZeroWrapper<DeprecatedContractClass>, Mode>,
+    transaction_output: FileHandler<VersionZeroWrapper<TransactionOutput>, Mode>,
+    transaction: FileHandler<VersionZeroWrapper<Transaction>, Mode>,
 }
 
 impl FileHandlers<RW> {
@@ -704,6 +707,16 @@ impl FileHandlers<RW> {
         self.casm.flush();
         self.deprecated_contract_class.flush();
     }
+
+    // Appends a thin transaction output to the corresponding file and returns its location.
+    fn append_transaction_output(&self, transaction_output: &TransactionOutput) -> LocationInFile {
+        self.clone().transaction_output.append(transaction_output)
+    }
+
+    // Appends a transaction to the corresponding file and returns its location.
+    fn append_transaction(&self, transaction: &Transaction) -> LocationInFile {
+        self.clone().transaction.append(transaction)
+    }
 }
 
 impl<Mode: TransactionKind> FileHandlers<Mode> {
@@ -714,6 +727,8 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             ("contract_class".to_string(), self.contract_class.stats()),
             ("casm".to_string(), self.casm.stats()),
             ("deprecated_contract_class".to_string(), self.deprecated_contract_class.stats()),
+            ("transaction_output".to_string(), self.transaction_output.stats()),
+            ("transaction".to_string(), self.transaction.stats()),
         ])
     }
 
@@ -754,6 +769,24 @@ impl<Mode: TransactionKind> FileHandlers<Mode> {
             msg: format!("DeprecatedContractClass at location {:?} not found.", location),
         })
     }
+
+    // Returns the transaction output at the given location or an error in case it doesn't
+    // exist.
+    fn get_transaction_output_unchecked(
+        &self,
+        location: LocationInFile,
+    ) -> StorageResult<TransactionOutput> {
+        self.transaction_output.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("TransactionOutput at location {:?} not found.", location),
+        })
+    }
+
+    // Returns the transaction at the given location or an error in case it doesn't exist.
+    fn get_transaction_unchecked(&self, location: LocationInFile) -> StorageResult<Transaction> {
+        self.transaction.get(location)?.ok_or(StorageError::DBInconsistency {
+            msg: format!("Transaction at location {:?} not found.", location),
+        })
+    }
 }
 
 fn open_storage_files(
@@ -765,6 +798,7 @@ fn open_storage_files(
     let db_transaction = db_reader.begin_ro_txn()?;
     let table = db_transaction.open_table(file_offsets_table)?;
 
+    // TODO(dvir): consider using a loop here to avoid code duplication.
     let thin_state_diff_offset =
         table.get(&db_transaction, &OffsetKind::ThinStateDiff)?.unwrap_or_default();
     let (thin_state_diff_writer, thin_state_diff_reader) = open_file(
@@ -788,10 +822,23 @@ fn open_storage_files(
     let deprecated_contract_class_offset =
         table.get(&db_transaction, &OffsetKind::DeprecatedContractClass)?.unwrap_or_default();
     let (deprecated_contract_class_writer, deprecated_contract_class_reader) = open_file(
-        mmap_file_config,
+        mmap_file_config.clone(),
         db_config.path().join("deprecated_contract_class.dat"),
         deprecated_contract_class_offset,
     )?;
+
+    let transaction_output_offset =
+        table.get(&db_transaction, &OffsetKind::TransactionOutput)?.unwrap_or_default();
+    let (transaction_output_writer, transaction_output_reader) = open_file(
+        mmap_file_config.clone(),
+        db_config.path().join("transaction_output.dat"),
+        transaction_output_offset,
+    )?;
+
+    let transaction_offset =
+        table.get(&db_transaction, &OffsetKind::Transaction)?.unwrap_or_default();
+    let (transaction_writer, transaction_reader) =
+        open_file(mmap_file_config, db_config.path().join("transaction.dat"), transaction_offset)?;
 
     Ok((
         FileHandlers {
@@ -799,12 +846,16 @@ fn open_storage_files(
             contract_class: contract_class_writer,
             casm: casm_writer,
             deprecated_contract_class: deprecated_contract_class_writer,
+            transaction_output: transaction_output_writer,
+            transaction: transaction_writer,
         },
         FileHandlers {
             thin_state_diff: thin_state_diff_reader,
             contract_class: contract_class_reader,
             casm: casm_reader,
             deprecated_contract_class: deprecated_contract_class_reader,
+            transaction_output: transaction_output_reader,
+            transaction: transaction_reader,
         },
     ))
 }
@@ -820,6 +871,10 @@ pub enum OffsetKind {
     Casm,
     /// A deprecated contract class file.
     DeprecatedContractClass,
+    /// A transaction output file.
+    TransactionOutput,
+    /// A transaction file.
+    Transaction,
 }
 
 /// A storage query. Used for benchmarking in the storage_benchmark binary.

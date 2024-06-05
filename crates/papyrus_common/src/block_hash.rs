@@ -5,7 +5,12 @@ mod block_hash_test;
 use std::iter::zip;
 
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader};
-use starknet_api::core::{ChainId, EventCommitment, TransactionCommitment};
+use starknet_api::core::{
+    ChainId,
+    EventCommitment,
+    SequencerContractAddress,
+    TransactionCommitment,
+};
 use starknet_api::hash::{pedersen_hash, StarkFelt, StarkHash};
 use starknet_api::transaction::{
     DeployAccountTransaction,
@@ -93,11 +98,11 @@ fn calculate_block_hash_by_version(
         .chain(&header.state_root.0)
         .chain_if_fn(
             || {
-                if version == BlockHashVersion::V2 {
-                    Some(get_chain_sequencer_address(chain_id))
-                } else {
-                    Some(*header.sequencer.0.key())
+                if header.sequencer != SequencerContractAddress::default() || version != BlockHashVersion::V2 {
+                    return Some(*header.sequencer.0.key());
                 }
+                // V2 block with no sequencer address.
+                Some(get_chain_sequencer_address(chain_id))
             }
         )
         .chain_if_fn(|| {

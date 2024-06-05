@@ -12,7 +12,6 @@ use ethers::core::abi::{encode_packed, Token};
 use ethers::core::utils::keccak256;
 use jsonrpsee::types::ErrorObjectOwned;
 use papyrus_execution::objects::PriceUnit;
-use papyrus_storage::body::events::ThinTransactionOutput;
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::db::TransactionKind;
 use papyrus_storage::StorageTxn;
@@ -983,74 +982,6 @@ impl TransactionOutput {
             TransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
             TransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
             TransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
-        }
-    }
-
-    pub fn from_thin_transaction_output(
-        thin_tx_output: ThinTransactionOutput,
-        tx_version: TransactionVersion,
-        events: Vec<starknet_api::transaction::Event>,
-        message_hash: Option<L1L2MsgHash>,
-    ) -> Self {
-        let actual_fee = match tx_version {
-            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
-                FeePayment { amount: thin_tx_output.actual_fee(), unit: PriceUnit::Wei }
-            }
-            TransactionVersion::THREE => {
-                FeePayment { amount: thin_tx_output.actual_fee(), unit: PriceUnit::Fri }
-            }
-            _ => unreachable!("Invalid transaction version."),
-        };
-        match thin_tx_output {
-            ThinTransactionOutput::Declare(thin_declare) => {
-                TransactionOutput::Declare(DeclareTransactionOutput {
-                    actual_fee,
-                    messages_sent: thin_declare.messages_sent,
-                    events,
-                    execution_status: thin_declare.execution_status,
-                    execution_resources: thin_declare.execution_resources.into(),
-                })
-            }
-            ThinTransactionOutput::Deploy(thin_deploy) => {
-                TransactionOutput::Deploy(DeployTransactionOutput {
-                    actual_fee,
-                    messages_sent: thin_deploy.messages_sent,
-                    events,
-                    contract_address: thin_deploy.contract_address,
-                    execution_status: thin_deploy.execution_status,
-                    execution_resources: thin_deploy.execution_resources.into(),
-                })
-            }
-            ThinTransactionOutput::DeployAccount(thin_deploy) => {
-                TransactionOutput::DeployAccount(DeployAccountTransactionOutput {
-                    actual_fee,
-                    messages_sent: thin_deploy.messages_sent,
-                    events,
-                    contract_address: thin_deploy.contract_address,
-                    execution_status: thin_deploy.execution_status,
-                    execution_resources: thin_deploy.execution_resources.into(),
-                })
-            }
-            ThinTransactionOutput::Invoke(thin_invoke) => {
-                TransactionOutput::Invoke(InvokeTransactionOutput {
-                    actual_fee,
-                    messages_sent: thin_invoke.messages_sent,
-                    events,
-                    execution_status: thin_invoke.execution_status,
-                    execution_resources: thin_invoke.execution_resources.into(),
-                })
-            }
-            ThinTransactionOutput::L1Handler(thin_l1handler) => {
-                TransactionOutput::L1Handler(L1HandlerTransactionOutput {
-                    actual_fee,
-                    messages_sent: thin_l1handler.messages_sent,
-                    events,
-                    execution_status: thin_l1handler.execution_status,
-                    execution_resources: thin_l1handler.execution_resources.into(),
-                    message_hash: message_hash
-                        .expect("Missing message hash to construct L1Handler output."),
-                })
-            }
         }
     }
 }

@@ -21,6 +21,7 @@ futures.workspace = true
 indexmap.workspace = true
 lazy_static.workspace = true
 libp2p = { workspace = true, features = [
+    "gossipsub",
     "identify",
     "kad",
     "macros",
@@ -35,9 +36,9 @@ metrics.workspace = true
 replace_with.workspace = true
 papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
 papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
+papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.2" }
 papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.2" }
 prost.workspace = true
-prost-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 thiserror.workspace = true
@@ -49,9 +50,6 @@ unsigned-varint = { workspace = true, features = ["std"] }
 clap = { workspace = true, optional = true, features = ["derive"] }
 
 
-[build-dependencies]
-prost-build.workspace = true
-
 [dev-dependencies]
 assert_matches.workspace = true
 deadqueue = { workspace = true, features = ["unlimited"] }
@@ -61,5 +59,7 @@ mockall.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 pretty_assertions.workspace = true
 rand.workspace = true
+tokio = { workspace = true, features = ["full", "sync", "test-util"] }
 tokio-stream.workspace = true
 void.workspace = true
+test_utils = { path = "../test_utils" }

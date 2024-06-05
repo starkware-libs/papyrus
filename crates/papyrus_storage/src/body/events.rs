@@ -52,20 +52,18 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
+    Event,
     EventContent,
     EventIndexInTransactionOutput,
-    ExecutionResources,
-    Fee,
-    MessageToL1,
-    TransactionExecutionStatus,
     TransactionOutput,
 };
 
-use crate::body::{EventsTable, EventsTableKey, TransactionIndex};
+use super::TransactionMetadataTable;
+use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursor, DbCursorTrait, SimpleTable, Table};
+use crate::db::table_types::{DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
-use crate::{StorageResult, StorageTxn};
+use crate::{FileHandlers, StorageResult, StorageTxn, TransactionMetadata};
 
 /// An identifier of an event.
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -111,11 +109,14 @@ impl<'txn, 'env> EventsReader<'txn, 'env> for StorageTxn<'env, RO> {
     }
 }
 
+// TODO(dvir): add transaction hash to the return value. In the RPC when returning events this is
+// with the transaction hash. We can do it efficiently here because we anyway read the relevant
+// entry in the transaction_metadata table..
 #[allow(missing_docs)]
 /// A wrapper of two iterators [`EventIterByContractAddress`] and [`EventIterByEventIndex`].
 pub enum EventIter<'txn, 'env> {
-    ByContractAddress(EventIterByContractAddress<'txn>),
-    ByEventIndex(EventIterByEventIndex<'txn, 'env>),
+    ByContractAddress(EventIterByContractAddress<'env, 'txn>),
+    ByEventIndex(EventIterByEventIndex<'txn>),
 }
 
 /// This iterator is a wrapper of two iterators [`EventIterByContractAddress`]
@@ -123,7 +124,7 @@ pub enum EventIter<'txn, 'env> {
 /// With this wrapper we can execute the same code, regardless the
 /// type of iteration used.
 impl Iterator for EventIter<'_, '_> {
-    type Item = EventsTableKeyValue;
+    type Item = (EventsTableKey, EventContent);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -136,20 +137,59 @@ impl Iterator for EventIter<'_, '_> {
 
 /// This iterator goes over the events in the order of the events table key.
 /// That is, the events iterated first by the contract address and then by the event index.
-pub struct EventIterByContractAddress<'txn> {
-    current: Option<EventsTableKeyValue>,
+pub struct EventIterByContractAddress<'env, 'txn> {
+    txn: &'txn DbTransaction<'env, RO>,
+    file_handles: &'txn FileHandlers<RO>,
+    // This value is the next event to return. If it is None there are no more events.
+    current: Option<EventsTableKey>,
+    // The current transaction output. This is None only at the beginning of the iteration and
+    // filled with the first transaction output.
+    current_tx: Option<(TransactionIndex, TransactionOutput)>,
     cursor: EventsTableCursor<'txn>,
+    transaction_metadata_table: TransactionMetadataTable<'env>,
 }
 
-impl EventIterByContractAddress<'_> {
+impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
     /// Returns the next event. If there are no more events, returns None.
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
-        let res = self.current.take();
-        self.current = self.cursor.next()?;
-        Ok(res)
+    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
+        let Some((contract_address, EventIndex(tx_index, event_offset))) = self.current.take()
+        else {
+            return Ok(None);
+        };
+        if self.current_tx.is_none()
+            || tx_index
+                != self.current_tx.as_ref().expect("The None case was checked previously.").0
+        {
+            let Some(tx_metadata) = self.transaction_metadata_table.get(self.txn, &tx_index)?
+            else {
+                return Ok(None);
+            };
+            self.current_tx = Some((
+                tx_index,
+                self.file_handles
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            ));
+        }
+
+        self.current = self.cursor.next()?.map(|(key, _)| key);
+
+        let key = (contract_address, EventIndex(tx_index, event_offset));
+        // TODO(dvir): don't clone here the event content.
+        let content = self
+            .current_tx
+            .as_ref()
+            .expect(
+                "The current transaction was initialized with Some previously in this function.",
+            )
+            .1
+            .events()[event_offset.0]
+            .content
+            .clone();
+
+        Ok(Some((key, content)))
     }
 }
 
@@ -157,32 +197,32 @@ impl EventIterByContractAddress<'_> {
 /// That is, the events are iterated by the order they are emitted.
 /// First by the block number, then by the transaction offset in the block,
 /// and finally, by the event index in the transaction output.
-pub struct EventIterByEventIndex<'txn, 'env> {
-    txn: &'txn DbTransaction<'env, RO>,
-    tx_current: Option<TransactionOutputsKeyValue>,
-    tx_cursor: TransactionOutputsTableCursor<'txn>,
-    events_table: EventsTable<'env>,
+pub struct EventIterByEventIndex<'txn> {
+    file_handlers: &'txn FileHandlers<RO>,
+    tx_current: Option<(TransactionIndex, TransactionOutput)>,
+    tx_cursor: TransactionMetadataTableCursor<'txn>,
     event_index_in_tx_current: EventIndexInTransactionOutput,
     to_block_number: BlockNumber,
 }
 
-impl EventIterByEventIndex<'_, '_> {
+impl EventIterByEventIndex<'_> {
     /// Returns the next event. If there are no more events, returns None.
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<EventsTableKeyValue>> {
+    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
         let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
-        let Some(address) =
-            tx_output.events_contract_addresses_as_ref().get(self.event_index_in_tx_current.0)
+        let Some(Event { from_address, content }) =
+            tx_output.events().get(self.event_index_in_tx_current.0)
         else {
             return Ok(None);
         };
-        let key = (*address, EventIndex(*tx_index, self.event_index_in_tx_current));
-        let Some(content) = self.events_table.get(self.txn, &key)? else { return Ok(None) };
+        let key = (*from_address, EventIndex(*tx_index, self.event_index_in_tx_current));
+        // TODO(dvir): don't clone here the event content.
+        let content = content.clone();
         self.event_index_in_tx_current.0 += 1;
         self.find_next_event_by_event_index()?;
-        Ok(Some((key, content)))
+        Ok(Some((key, content.clone())))
     }
 
     /// Finds the event that corresponds to the first event index greater than or equals to the
@@ -199,14 +239,21 @@ impl EventIterByEventIndex<'_, '_> {
                 break;
             }
             // Checks if there's an event in the current event index.
-            if tx_output.events_contract_addresses_as_ref().len() > self.event_index_in_tx_current.0
-            {
+            if tx_output.events().len() > self.event_index_in_tx_current.0 {
                 break;
             }
 
             // There are no more events in the current transaction, so we go over the rest of the
             // transactions until we find an event.
-            self.tx_current = self.tx_cursor.next()?;
+            let Some((tx_index, tx_metadata)) = self.tx_cursor.next()? else {
+                self.tx_current = None;
+                return Ok(());
+            };
+            self.tx_current = Some((
+                tx_index,
+                self.file_handlers
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            ));
             self.event_index_in_tx_current = EventIndexInTransactionOutput(0);
         }
 
@@ -214,7 +261,10 @@ impl EventIterByEventIndex<'_, '_> {
     }
 }
 
-impl<'txn, 'env> StorageTxn<'env, RO> {
+impl<'txn, 'env> StorageTxn<'env, RO>
+where
+    'env: 'txn,
+{
     /// Returns an events iterator that iterates events by the events table key from the given key.
     ///
     /// # Arguments
@@ -225,11 +275,19 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
     fn iter_events_by_contract_address(
         &'env self,
         key: EventsTableKey,
-    ) -> StorageResult<EventIterByContractAddress<'txn>> {
+    ) -> StorageResult<EventIterByContractAddress<'env, 'txn>> {
+        let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
-        let current = cursor.lower_bound(&key)?;
-        Ok(EventIterByContractAddress { current, cursor })
+        let current = cursor.lower_bound(&key)?.map(|(key, _)| key);
+        Ok(EventIterByContractAddress {
+            txn: &self.txn,
+            file_handles: &self.file_handlers,
+            current,
+            current_tx: None,
+            cursor,
+            transaction_metadata_table,
+        })
     }
 
     /// Returns an events iterator that iterates events by event index from the given event index.
@@ -245,17 +303,23 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
         &'env self,
         event_index: EventIndex,
         to_block_number: BlockNumber,
-    ) -> StorageResult<EventIterByEventIndex<'txn, 'env>> {
-        let transaction_outputs_table = self.open_table(&self.tables.transaction_outputs)?;
-        let mut tx_cursor = transaction_outputs_table.cursor(&self.txn)?;
-        let tx_current = tx_cursor.lower_bound(&event_index.0)?;
-        let events_table = self.open_table(&self.tables.events)?;
+    ) -> StorageResult<EventIterByEventIndex<'txn>> {
+        let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
+        let mut tx_cursor = transaction_metadata_table.cursor(&self.txn)?;
+        let first_txn_location = tx_cursor.lower_bound(&event_index.0)?;
+        let first_relevant_transaction = match first_txn_location {
+            None => None,
+            Some((tx_index, tx_metadata)) => Some((
+                tx_index,
+                self.file_handlers
+                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
+            )),
+        };
 
         let mut it = EventIterByEventIndex {
-            txn: &self.txn,
-            tx_current,
+            file_handlers: &self.file_handlers,
+            tx_current: first_relevant_transaction,
             tx_cursor,
-            events_table,
             event_index_in_tx_current: event_index.1,
             to_block_number,
         };
@@ -264,216 +328,9 @@ impl<'txn, 'env> StorageTxn<'env, RO> {
     }
 }
 
-#[allow(missing_docs)]
-/// Each [`ThinTransactionOutput`] holds a list of event contract addresses so that given a thin
-/// transaction output we can get all its events from the events table (see
-/// [`get_transaction_events`](crate::body::BodyStorageReader::get_transaction_events) in
-/// [`BodyStorageReader`](crate::body::BodyStorageReader)). These events contract addresses are
-/// taken from the events in the order of the events in [`starknet_api`][`TransactionOutput`].
-/// In particular, they are not sorted and with duplicates.
-#[derive(Debug, Clone, Eq, PartialEq, Deserialize, Serialize)]
-pub enum ThinTransactionOutput {
-    Declare(ThinDeclareTransactionOutput),
-    Deploy(ThinDeployTransactionOutput),
-    DeployAccount(ThinDeployAccountTransactionOutput),
-    Invoke(ThinInvokeTransactionOutput),
-    L1Handler(ThinL1HandlerTransactionOutput),
-}
-
-impl ThinTransactionOutput {
-    /// Returns the events contract addresses of the transaction output.
-    pub(crate) fn events_contract_addresses(self) -> Vec<ContractAddress> {
-        match self {
-            ThinTransactionOutput::Declare(tx_output) => tx_output.events_contract_addresses,
-            ThinTransactionOutput::Deploy(tx_output) => tx_output.events_contract_addresses,
-            ThinTransactionOutput::DeployAccount(tx_output) => tx_output.events_contract_addresses,
-            ThinTransactionOutput::Invoke(tx_output) => tx_output.events_contract_addresses,
-            ThinTransactionOutput::L1Handler(tx_output) => tx_output.events_contract_addresses,
-        }
-    }
-    /// Returns the events contract addresses of the transaction output.
-    pub(crate) fn events_contract_addresses_as_ref(&self) -> &Vec<ContractAddress> {
-        match self {
-            ThinTransactionOutput::Declare(tx_output) => &tx_output.events_contract_addresses,
-            ThinTransactionOutput::Deploy(tx_output) => &tx_output.events_contract_addresses,
-            ThinTransactionOutput::DeployAccount(tx_output) => &tx_output.events_contract_addresses,
-            ThinTransactionOutput::Invoke(tx_output) => &tx_output.events_contract_addresses,
-            ThinTransactionOutput::L1Handler(tx_output) => &tx_output.events_contract_addresses,
-        }
-    }
-    /// Returns the execution status.
-    pub fn execution_status(&self) -> &TransactionExecutionStatus {
-        match self {
-            ThinTransactionOutput::Declare(tx_output) => &tx_output.execution_status,
-            ThinTransactionOutput::Deploy(tx_output) => &tx_output.execution_status,
-            ThinTransactionOutput::DeployAccount(tx_output) => &tx_output.execution_status,
-            ThinTransactionOutput::Invoke(tx_output) => &tx_output.execution_status,
-            ThinTransactionOutput::L1Handler(tx_output) => &tx_output.execution_status,
-        }
-    }
-    /// Returns the actual fee.
-    pub fn actual_fee(&self) -> Fee {
-        match self {
-            ThinTransactionOutput::Declare(tx_output) => tx_output.actual_fee,
-            ThinTransactionOutput::Deploy(tx_output) => tx_output.actual_fee,
-            ThinTransactionOutput::DeployAccount(tx_output) => tx_output.actual_fee,
-            ThinTransactionOutput::Invoke(tx_output) => tx_output.actual_fee,
-            ThinTransactionOutput::L1Handler(tx_output) => tx_output.actual_fee,
-        }
-    }
-}
-/// A thin version of
-/// [`InvokeTransactionOutput`](starknet_api::transaction::InvokeTransactionOutput), not holding the
-/// events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ThinInvokeTransactionOutput {
-    /// The actual fee paid for the transaction.
-    pub actual_fee: Fee,
-    /// The messages sent by the transaction to the base layer.
-    pub messages_sent: Vec<MessageToL1>,
-    /// The contract addresses of the events emitted by the transaction.
-    pub events_contract_addresses: Vec<ContractAddress>,
-    /// The execution status of the transaction.
-    pub execution_status: TransactionExecutionStatus,
-    /// The execution resources of the transaction.
-    pub execution_resources: ExecutionResources,
-}
-
-/// A thin version of
-/// [`L1HandlerTransactionOutput`](starknet_api::transaction::L1HandlerTransactionOutput), not
-/// holding the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ThinL1HandlerTransactionOutput {
-    /// The actual fee paid for the transaction.
-    pub actual_fee: Fee,
-    /// The messages sent by the transaction to the base layer.
-    pub messages_sent: Vec<MessageToL1>,
-    /// The contract addresses of the events emitted by the transaction.
-    pub events_contract_addresses: Vec<ContractAddress>,
-    /// The execution status of the transaction.
-    pub execution_status: TransactionExecutionStatus,
-    /// The execution resources of the transaction.
-    pub execution_resources: ExecutionResources,
-}
-
-/// A thin version of
-/// [`DeclareTransactionOutput`](starknet_api::transaction::DeclareTransactionOutput), not holding
-/// the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ThinDeclareTransactionOutput {
-    /// The actual fee paid for the transaction.
-    pub actual_fee: Fee,
-    /// The messages sent by the transaction to the base layer.
-    pub messages_sent: Vec<MessageToL1>,
-    /// The contract addresses of the events emitted by the transaction.
-    pub events_contract_addresses: Vec<ContractAddress>,
-    /// The execution status of the transaction.
-    pub execution_status: TransactionExecutionStatus,
-    /// The execution resources of the transaction.
-    pub execution_resources: ExecutionResources,
-}
-
-/// A thin version of
-/// [`DeployTransactionOutput`](starknet_api::transaction::DeployTransactionOutput), not holding the
-/// events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ThinDeployTransactionOutput {
-    /// The actual fee paid for the transaction.
-    pub actual_fee: Fee,
-    /// The messages sent by the transaction to the base layer.
-    pub messages_sent: Vec<MessageToL1>,
-    /// The contract addresses of the events emitted by the transaction.
-    pub events_contract_addresses: Vec<ContractAddress>,
-    /// The contract address of the deployed contract.
-    pub contract_address: ContractAddress,
-    /// The execution status of the transaction.
-    pub execution_status: TransactionExecutionStatus,
-    /// The execution resources of the transaction.
-    pub execution_resources: ExecutionResources,
-}
-
-/// A thin version of
-/// [`DeployAccountTransactionOutput`](starknet_api::transaction::DeployAccountTransactionOutput),
-/// not holding the events content.
-#[derive(Debug, Clone, Default, Eq, PartialEq, Deserialize, Serialize)]
-pub struct ThinDeployAccountTransactionOutput {
-    /// The actual fee paid for the transaction.
-    pub actual_fee: Fee,
-    /// The messages sent by the transaction to the base layer.
-    pub messages_sent: Vec<MessageToL1>,
-    /// The contract addresses of the events emitted by the transaction.
-    pub events_contract_addresses: Vec<ContractAddress>,
-    /// The contract address of the deployed contract.
-    pub contract_address: ContractAddress,
-    /// The execution status of the transaction.
-    pub execution_status: TransactionExecutionStatus,
-    /// The execution resources of the transaction.
-    pub execution_resources: ExecutionResources,
-}
-
-impl From<TransactionOutput> for ThinTransactionOutput {
-    fn from(transaction_output: TransactionOutput) -> Self {
-        let events_contract_addresses =
-            transaction_output.events().iter().map(|event| event.from_address).collect();
-        match transaction_output {
-            TransactionOutput::Declare(tx_output) => {
-                ThinTransactionOutput::Declare(ThinDeclareTransactionOutput {
-                    actual_fee: tx_output.actual_fee,
-                    messages_sent: tx_output.messages_sent,
-                    events_contract_addresses,
-                    execution_status: tx_output.execution_status,
-                    execution_resources: tx_output.execution_resources,
-                })
-            }
-            TransactionOutput::Deploy(tx_output) => {
-                ThinTransactionOutput::Deploy(ThinDeployTransactionOutput {
-                    actual_fee: tx_output.actual_fee,
-                    messages_sent: tx_output.messages_sent,
-                    events_contract_addresses,
-                    contract_address: tx_output.contract_address,
-                    execution_status: tx_output.execution_status,
-                    execution_resources: tx_output.execution_resources,
-                })
-            }
-            TransactionOutput::DeployAccount(tx_output) => {
-                ThinTransactionOutput::DeployAccount(ThinDeployAccountTransactionOutput {
-                    actual_fee: tx_output.actual_fee,
-                    messages_sent: tx_output.messages_sent,
-                    events_contract_addresses,
-                    contract_address: tx_output.contract_address,
-                    execution_status: tx_output.execution_status,
-                    execution_resources: tx_output.execution_resources,
-                })
-            }
-            TransactionOutput::Invoke(tx_output) => {
-                ThinTransactionOutput::Invoke(ThinInvokeTransactionOutput {
-                    actual_fee: tx_output.actual_fee,
-                    messages_sent: tx_output.messages_sent,
-                    events_contract_addresses,
-                    execution_status: tx_output.execution_status,
-                    execution_resources: tx_output.execution_resources,
-                })
-            }
-            TransactionOutput::L1Handler(tx_output) => {
-                ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput {
-                    actual_fee: tx_output.actual_fee,
-                    messages_sent: tx_output.messages_sent,
-                    events_contract_addresses,
-                    execution_status: tx_output.execution_status,
-                    execution_resources: tx_output.execution_resources,
-                })
-            }
-        }
-    }
-}
-
-/// A key-value pair of the events table.
-type EventsTableKeyValue = (EventsTableKey, EventContent);
 /// A cursor of the events table.
 type EventsTableCursor<'txn> =
-    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<EventContent>, SimpleTable>;
-/// A key-value pair of the transaction outputs table.
-type TransactionOutputsKeyValue = (TransactionIndex, ThinTransactionOutput);
+    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
 /// A cursor of the transaction outputs table.
-type TransactionOutputsTableCursor<'txn> =
-    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<ThinTransactionOutput>, SimpleTable>;
+type TransactionMetadataTableCursor<'txn> =
+    DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>;

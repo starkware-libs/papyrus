@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -17,6 +18,7 @@ use papyrus_execution::{
 };
 use papyrus_storage::body::events::{EventIndex, EventsReader};
 use papyrus_storage::body::{BodyStorageReader, TransactionIndex};
+use papyrus_storage::compiled_class::CasmStorageReader;
 use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
@@ -1429,6 +1431,30 @@ impl JsonRpcServer for JsonRpcServerImpl {
             Err(err) => Err(internal_server_error(err)),
         }
     }
+
+    #[instrument(skip(self), level = "debug", err)]
+    fn get_compiled_contract_class(
+        &self,
+        block_id: BlockId,
+        class_hash: ClassHash,
+    ) -> RpcResult<CasmContractClass> {
+        let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let block_number = get_accepted_block_number(&storage_txn, block_id)?;
+        let class_definition_block_number = storage_txn
+            .get_state_reader()
+            .map_err(internal_server_error)?
+            .get_class_definition_block_number(&class_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
+        if class_definition_block_number > block_number {
+            return Err(ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND));
+        }
+        let casm = storage_txn
+            .get_casm(&class_hash)
+            .map_err(internal_server_error)?
+            .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
+        Ok(casm)
+    }
 }
 
 async fn read_pending_data<Mode: TransactionKind>(
@@ -1535,22 +1561,12 @@ fn get_non_pending_receipt<Mode: TransactionKind>(
     let block_hash =
         get_block_header_by_number(txn, block_number).map_err(internal_server_error)?.block_hash;
 
-    let thin_tx_output = txn
+    let output = txn
         .get_transaction_output(transaction_index)
         .map_err(internal_server_error)?
         .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
 
-    let events = txn
-        .get_transaction_events(transaction_index)
-        .map_err(internal_server_error)?
-        .ok_or_else(|| ErrorObjectOwned::from(TRANSACTION_HASH_NOT_FOUND))?;
-
-    let output = TransactionOutput::from_thin_transaction_output(
-        thin_tx_output,
-        tx_version,
-        events,
-        msg_hash,
-    );
+    let output = TransactionOutput::from((output, tx_version, msg_hash));
 
     Ok(GeneralTransactionReceipt::TransactionReceipt(TransactionReceipt {
         finality_status: status.into(),

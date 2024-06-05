@@ -10,17 +10,28 @@ use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt};
 #[cfg(test)]
 use mockall::automock;
+use papyrus_protobuf::converters::common::volition_domain_to_enum_int;
+use papyrus_protobuf::converters::state_diff::DOMAIN;
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    ContractDiff,
+    DataOrFin,
+    DeclaredClass,
+    DeprecatedDeclaredClass,
+    Query,
+    SignedBlockHeader,
+    StateDiffChunk,
+};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use prost::Message;
-use starknet_api::block::{BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tokio::task::JoinHandle;
 
-use crate::converters::protobuf_conversion::state_diff::StateDiffsResponseVec;
-use crate::protobuf_messages::protobuf;
-use crate::{BlockHashOrNumber, DataType, InternalQuery};
+use crate::DataType;
 
 #[cfg(test)]
 mod test;
@@ -34,11 +45,11 @@ pub struct QueryId(pub usize);
 #[error("Failed to encode data")]
 pub struct DataEncodingError;
 
-#[cfg_attr(test, derive(Debug, Clone, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[derive(Clone)]
 pub enum Data {
-    // TODO(shahak): Consider uniting with SignedBlockHeader.
-    BlockHeaderAndSignature { header: BlockHeader, signatures: Vec<BlockSignature> },
-    StateDiff { state_diff: ThinStateDiff },
+    BlockHeaderAndSignature(SignedBlockHeader),
+    StateDiffChunk(StateDiffChunk),
     Fin(DataType),
 }
 
@@ -59,32 +70,21 @@ impl Data {
         B: BufMut,
     {
         match self {
-            Data::BlockHeaderAndSignature { .. } => self
-                .try_into()
-                .map(|data: protobuf::BlockHeadersResponse| match encode_with_length_prefix_flag {
+            Data::BlockHeaderAndSignature(signed_block_header) => {
+                let data: protobuf::BlockHeadersResponse = Some(signed_block_header).into();
+                match encode_with_length_prefix_flag {
                     true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
                     false => data.encode(buf).map_err(|_| DataEncodingError),
-                })
-                .map_err(|_| DataEncodingError)?,
-            Data::StateDiff { state_diff } => {
-                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
-                let res = state_diffs_response_vec
-                    .0
-                    .iter()
-                    .map(|data| {
-                        let mut buf: Vec<u8> = vec![];
-                        match encode_with_length_prefix_flag {
-                            true => data.encode_length_delimited(&mut buf),
-                            false => data.encode(&mut buf),
-                        }
-                        .map_err(|_| DataEncodingError)
-                        .map(|_| buf)
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                for byte in res.iter().flatten() {
-                    buf.put_u8(*byte);
                 }
-                Ok(())
+            }
+            Data::StateDiffChunk(state_diff) => {
+                let state_diff_chunk = DataOrFin(Some(state_diff));
+                let state_diffs_response = protobuf::StateDiffsResponse::from(state_diff_chunk);
+                match encode_with_length_prefix_flag {
+                    true => state_diffs_response.encode_length_delimited(buf),
+                    false => state_diffs_response.encode(buf),
+                }
+                .map_err(|_| DataEncodingError)
             }
             Data::Fin(data_type) => match data_type {
                 DataType::SignedBlockHeader => {
@@ -139,7 +139,7 @@ pub enum DBExecutorError {
     #[error(
         "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
     )]
-    BlockNumberOutOfRange { query: InternalQuery, counter: u64, query_id: QueryId },
+    BlockNumberOutOfRange { query: Query, counter: u64, query_id: QueryId },
     // TODO: add data type to the error message.
     #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
@@ -182,38 +182,38 @@ impl DBExecutorError {
     }
 }
 
-/// Db executor is a stream of queries. Each result is marks the end of a query fulfillment.
+/// DBExecutorTrait is a stream of queries. Each result is marks the end of a query fulfillment.
 /// A query can either succeed (and return Ok(QueryId)) or fail (and return Err(DBExecutorError)).
 /// The stream is never exhausted, and it is the responsibility of the user to poll it.
-pub trait DBExecutor: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
+pub trait DBExecutorTrait: Stream<Item = Result<QueryId, DBExecutorError>> + Unpin {
     // TODO: add writer functionality
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        sender: Sender<Data>,
+        sender: Sender<Vec<Data>>,
     ) -> QueryId;
 }
 
 // TODO: currently this executor returns only block headers and signatures.
-pub struct BlockHeaderDBExecutor {
+pub struct DBExecutor {
     next_query_id: usize,
     storage_reader: StorageReader,
     query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
-impl BlockHeaderDBExecutor {
+impl DBExecutor {
     pub fn new(storage_reader: StorageReader) -> Self {
         Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
     }
 }
 
-impl DBExecutor for BlockHeaderDBExecutor {
+impl DBExecutorTrait for DBExecutor {
     fn register_query(
         &mut self,
-        query: InternalQuery,
+        query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        mut sender: Sender<Data>,
+        mut sender: Sender<Vec<Data>>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
@@ -240,16 +240,17 @@ impl DBExecutor for BlockHeaderDBExecutor {
                 };
                 for block_counter in 0..query.limit {
                     let block_number = BlockNumber(utils::calculate_block_number(
-                        query,
+                        &query,
                         start_block_number,
                         block_counter,
                         query_id,
                     )?);
-                    let data = data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
+                    let data_vec =
+                        data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
                     // Using poll_fn because Sender::poll_ready is not a future
                     match poll_fn(|cx| sender.poll_ready(cx)).await {
                         Ok(()) => {
-                            if let Err(e) = sender.start_send(data) {
+                            if let Err(e) = sender.start_send(data_vec) {
                                 // TODO: consider implement retry mechanism.
                                 return Err(DBExecutorError::SendError { query_id, send_error: e });
                             };
@@ -266,7 +267,7 @@ impl DBExecutor for BlockHeaderDBExecutor {
     }
 }
 
-impl Stream for BlockHeaderDBExecutor {
+impl Stream for DBExecutor {
     type Item = Result<QueryId, DBExecutorError>;
 
     fn poll_next(
@@ -304,7 +305,7 @@ pub trait FetchBlockDataFromDb {
         block_number: BlockNumber,
         query_id: QueryId,
         txn: &StorageTxn<'a, db::RO>,
-    ) -> Result<Data, DBExecutorError>;
+    ) -> Result<Vec<Data>, DBExecutorError>;
 }
 
 impl FetchBlockDataFromDb for DataType {
@@ -313,7 +314,7 @@ impl FetchBlockDataFromDb for DataType {
         block_number: BlockNumber,
         query_id: QueryId,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Data, DBExecutorError> {
+    ) -> Result<Vec<Data>, DBExecutorError> {
         match self {
             DataType::SignedBlockHeader => {
                 let mut header = txn
@@ -348,10 +349,13 @@ impl FetchBlockDataFromDb for DataType {
                         storage_error: err,
                     })?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
-                Ok(Data::BlockHeaderAndSignature { header, signatures: vec![signature] })
+                Ok(vec![Data::BlockHeaderAndSignature(SignedBlockHeader {
+                    block_header: header,
+                    signatures: vec![signature],
+                })])
             }
             DataType::StateDiff => {
-                let state_diff = txn
+                let thin_state_diff = txn
                     .get_state_diff(block_number)
                     .map_err(|err| DBExecutorError::DBInternalError {
                         query_id,
@@ -361,8 +365,143 @@ impl FetchBlockDataFromDb for DataType {
                         block_hash_or_number: BlockHashOrNumber::Number(block_number),
                         query_id,
                     })?;
-                Ok(Data::StateDiff { state_diff })
+                let vec_data = split_thin_state_diff(thin_state_diff)
+                    .into_iter()
+                    .map(Data::StateDiffChunk)
+                    .collect();
+                Ok(vec_data)
             }
         }
     }
+}
+
+// A wrapper struct for Vec<StateDiffsResponse> so that we can implement traits for it.
+pub struct StateDiffsResponseVec(pub Vec<protobuf::StateDiffsResponse>);
+
+impl From<ThinStateDiff> for StateDiffsResponseVec {
+    fn from(value: ThinStateDiff) -> Self {
+        let mut result = Vec::new();
+
+        for (contract_address, class_hash) in
+            value.deployed_contracts.into_iter().chain(value.replaced_classes.into_iter())
+        {
+            result.push(protobuf::StateDiffsResponse {
+                state_diff_message: Some(
+                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
+                        protobuf::ContractDiff {
+                            address: Some(contract_address.into()),
+                            class_hash: Some(class_hash.0.into()),
+                            domain: volition_domain_to_enum_int(DOMAIN),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+            });
+        }
+        for (contract_address, storage_diffs) in value.storage_diffs {
+            if storage_diffs.is_empty() {
+                continue;
+            }
+            result.push(protobuf::StateDiffsResponse {
+                state_diff_message: Some(
+                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
+                        protobuf::ContractDiff {
+                            address: Some(contract_address.into()),
+                            values: storage_diffs
+                                .into_iter()
+                                .map(|(key, value)| protobuf::ContractStoredValue {
+                                    key: Some((*key.0.key()).into()),
+                                    value: Some(value.into()),
+                                })
+                                .collect(),
+                            domain: volition_domain_to_enum_int(DOMAIN),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+            });
+        }
+        for (contract_address, nonce) in value.nonces {
+            result.push(protobuf::StateDiffsResponse {
+                state_diff_message: Some(
+                    protobuf::state_diffs_response::StateDiffMessage::ContractDiff(
+                        protobuf::ContractDiff {
+                            address: Some(contract_address.into()),
+                            nonce: Some(nonce.0.into()),
+                            domain: volition_domain_to_enum_int(DOMAIN),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+            });
+        }
+
+        for (class_hash, compiled_class_hash) in value.declared_classes {
+            result.push(protobuf::StateDiffsResponse {
+                state_diff_message: Some(
+                    protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
+                        protobuf::DeclaredClass {
+                            class_hash: Some(class_hash.0.into()),
+                            compiled_class_hash: Some(compiled_class_hash.0.into()),
+                        },
+                    ),
+                ),
+            });
+        }
+        for class_hash in value.deprecated_declared_classes {
+            result.push(protobuf::StateDiffsResponse {
+                state_diff_message: Some(
+                    protobuf::state_diffs_response::StateDiffMessage::DeclaredClass(
+                        protobuf::DeclaredClass {
+                            class_hash: Some(class_hash.0.into()),
+                            compiled_class_hash: None,
+                        },
+                    ),
+                ),
+            });
+        }
+
+        Self(result)
+    }
+}
+
+pub fn split_thin_state_diff(thin_state_diff: ThinStateDiff) -> Vec<StateDiffChunk> {
+    let mut state_diff_chunks = Vec::new();
+    let mut contract_addresses = std::collections::HashSet::new();
+
+    contract_addresses.extend(
+        thin_state_diff
+            .deployed_contracts
+            .keys()
+            .chain(thin_state_diff.replaced_classes.keys())
+            .chain(thin_state_diff.nonces.keys())
+            .chain(thin_state_diff.storage_diffs.keys()),
+    );
+    for contract_address in contract_addresses {
+        let class_hash = thin_state_diff
+            .deployed_contracts
+            .get(&contract_address)
+            .or_else(|| thin_state_diff.replaced_classes.get(&contract_address))
+            .cloned();
+        let storage_diffs =
+            thin_state_diff.storage_diffs.get(&contract_address).cloned().unwrap_or_default();
+        let nonce = thin_state_diff.nonces.get(&contract_address).cloned();
+        state_diff_chunks.push(StateDiffChunk::ContractDiff(ContractDiff {
+            contract_address,
+            class_hash,
+            nonce,
+            storage_diffs,
+        }));
+    }
+
+    for (class_hash, compiled_class_hash) in thin_state_diff.declared_classes {
+        state_diff_chunks
+            .push(StateDiffChunk::DeclaredClass(DeclaredClass { class_hash, compiled_class_hash }));
+    }
+
+    for class_hash in thin_state_diff.deprecated_declared_classes {
+        state_diff_chunks
+            .push(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass { class_hash }));
+    }
+    state_diff_chunks
 }

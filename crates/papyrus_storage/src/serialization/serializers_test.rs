@@ -7,6 +7,7 @@ use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::StorageKey;
+use starknet_api::transaction::TransactionOffsetInBlock;
 use test_utils::{get_rng, read_json_file, GetTestInstance};
 
 use crate::db::serialization::StorageSerde;
@@ -54,6 +55,28 @@ create_storage_serde_test!(StarkHash);
 create_storage_serde_test!(StorageKey);
 create_storage_serde_test!(u8);
 create_storage_serde_test!(usize);
+create_storage_serde_test!(BlockNumber);
+create_storage_serde_test!(TransactionOffsetInBlock);
+
+#[test]
+fn transaction_offset_in_block_serialization_order() {
+    let offset_1 = TransactionOffsetInBlock(1);
+    let offset_256 = TransactionOffsetInBlock(256);
+    let mut serialized_1 = Vec::new();
+    offset_1.serialize_into(&mut serialized_1).unwrap();
+    let mut serialized_256 = Vec::new();
+    offset_256.serialize_into(&mut serialized_256).unwrap();
+    assert!(serialized_256 > serialized_1);
+}
+
+#[test]
+fn transaction_offset_in_block_serialization_max_value() {
+    let item = TransactionOffsetInBlock((1 << 24) - 1);
+    let mut buf = Vec::new();
+    item.serialize_into(&mut buf).unwrap();
+    let res = TransactionOffsetInBlock::deserialize_from(&mut buf.as_slice()).unwrap();
+    assert_eq!(res, item);
+}
 
 #[test]
 fn block_number_endianness() {

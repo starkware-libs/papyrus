@@ -11,14 +11,18 @@ mod test_utils;
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use futures::channel::mpsc::{SendError, Sender};
+use futures::channel::mpsc::SendError;
+use futures::{Sink, Stream};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::{DataType, Query, ResponseReceivers};
+use papyrus_network::network_manager::ReportCallback;
+use papyrus_protobuf::converters::ProtobufConversionError;
+use papyrus_protobuf::sync::{DataOrFin, Query, SignedBlockHeader};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
+use starknet_api::state::ThinStateDiff;
 use tokio_stream::StreamExt;
 use tracing::instrument;
 
@@ -26,15 +30,15 @@ use crate::header::HeaderStreamFactory;
 use crate::state_diff::StateDiffStreamFactory;
 use crate::stream_factory::DataStreamFactory;
 
-const STEP: usize = 1;
+const STEP: u64 = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 
 const NETWORK_DATA_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct P2PSyncConfig {
-    pub num_headers_per_query: usize,
-    pub num_block_state_diffs_per_query: usize,
+    pub num_headers_per_query: u64,
+    pub num_block_state_diffs_per_query: u64,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
     pub stop_sync_at_block_number: Option<BlockNumber>,
@@ -111,7 +115,6 @@ pub enum P2PSyncError {
     #[error("Two state diff parts for the same state diff are conflicting.")]
     ConflictingStateDiffParts,
     // TODO(shahak): Remove this and report to network on invalid data once that's possible.
-    // TODO(shahak): Consider moving to network as a variant of ProtobufConversionError.
     #[error(
         "Received an empty state diff part from the network (this is a potential DDoS vector)."
     )]
@@ -119,14 +122,17 @@ pub enum P2PSyncError {
     // TODO(shahak): Remove this and report to network on invalid data once that's possible.
     #[error("Network returned more responses than expected for a query.")]
     TooManyResponses,
+    // TODO(shahak): Remove this and report to network on invalid data once that's possible.
+    #[error(transparent)]
+    ProtobufConversionError(#[from] ProtobufConversionError),
     #[error(
         "Encountered an old header in the storage at {block_number:?} that's missing the field \
          {missing_field}. Re-sync the node from {block_number:?} from a node that provides this \
          field."
     )]
     OldHeaderInStorage { block_number: BlockNumber, missing_field: &'static str },
-    #[error("The sender end of the response receivers for {data_type:?} was closed.")]
-    ReceiverChannelTerminated { data_type: DataType },
+    #[error("The sender end of the response receivers for {type_description:?} was closed.")]
+    ReceiverChannelTerminated { type_description: &'static str },
     #[error(transparent)]
     NetworkTimeout(#[from] tokio::time::error::Elapsed),
     #[error(transparent)]
@@ -135,32 +141,64 @@ pub enum P2PSyncError {
     SendError(#[from] SendError),
 }
 
-pub struct P2PSync {
+type Response<T> = (Result<DataOrFin<T>, ProtobufConversionError>, ReportCallback);
+
+pub struct P2PSync<
+    HeaderQuerySender,
+    HeaderResponseReceiver,
+    StateDiffQuerySender,
+    StateDiffResponseReceiver,
+> {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    query_sender: Sender<Query>,
-    response_receivers: ResponseReceivers,
+    header_query_sender: HeaderQuerySender,
+    header_response_receiver: HeaderResponseReceiver,
+    state_diff_query_sender: StateDiffQuerySender,
+    state_diff_response_receiver: StateDiffResponseReceiver,
 }
 
-impl P2PSync {
+impl<HeaderQuerySender, HeaderResponseReceiver, StateDiffQuerySender, StateDiffResponseReceiver>
+    P2PSync<
+        HeaderQuerySender,
+        HeaderResponseReceiver,
+        StateDiffQuerySender,
+        StateDiffResponseReceiver,
+    >
+where
+    // TODO(shahak): Change to HeaderQuery.
+    HeaderQuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    HeaderResponseReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,
+    // TODO(shahak): Change to StateDiffQuery.
+    StateDiffQuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    // TODO(shahak): Change to StateDiffChunk.
+    StateDiffResponseReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
+{
     pub fn new(
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
-        response_receivers: ResponseReceivers,
+        header_query_sender: HeaderQuerySender,
+        header_response_receiver: HeaderResponseReceiver,
+        state_diff_query_sender: StateDiffQuerySender,
+        state_diff_response_receiver: StateDiffResponseReceiver,
     ) -> Self {
-        Self { config, storage_reader, storage_writer, query_sender, response_receivers }
+        Self {
+            config,
+            storage_reader,
+            storage_writer,
+            header_query_sender,
+            header_response_receiver,
+            state_diff_query_sender,
+            state_diff_response_receiver,
+        }
     }
 
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
         let header_stream = HeaderStreamFactory::create_stream(
-            self.response_receivers
-                .signed_headers_receiver
-                .expect("p2p sync needs a signed headers receiver"),
-            self.query_sender.clone(),
+            self.header_query_sender,
+            self.header_response_receiver,
             self.storage_reader.clone(),
             self.config.wait_period_for_new_data,
             self.config.num_headers_per_query,
@@ -168,10 +206,8 @@ impl P2PSync {
         );
 
         let state_diff_stream = StateDiffStreamFactory::create_stream(
-            self.response_receivers
-                .state_diffs_receiver
-                .expect("p2p sync needs a state diffs receiver"),
-            self.query_sender,
+            self.state_diff_query_sender,
+            self.state_diff_response_receiver,
             self.storage_reader,
             self.config.wait_period_for_new_data,
             self.config.num_block_state_diffs_per_query,

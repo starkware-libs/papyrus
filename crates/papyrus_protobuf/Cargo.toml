@@ -1,0 +1,18 @@
+[package]
+name = "papyrus_protobuf"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+license-file.workspace = true
+
+[dependencies]
+bytes.workspace = true
+indexmap.workspace = true
+primitive-types.workspace = true
+prost.workspace = true
+prost-types.workspace = true
+starknet_api.workspace = true
+thiserror.workspace = true
+
+[build-dependencies]
+prost-build.workspace = true

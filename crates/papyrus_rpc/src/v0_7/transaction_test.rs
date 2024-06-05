@@ -1,13 +1,3 @@
-use assert_matches::assert_matches;
-use camelpaste::paste;
-use papyrus_storage::body::events::{
-    ThinDeclareTransactionOutput,
-    ThinDeployAccountTransactionOutput,
-    ThinDeployTransactionOutput,
-    ThinInvokeTransactionOutput,
-    ThinL1HandlerTransactionOutput,
-    ThinTransactionOutput,
-};
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::data_availability::DataAvailabilityMode;
@@ -38,7 +28,6 @@ use super::{
     InvokeTransactionV1,
     InvokeTransactionV3,
     ResourceBoundsMapping,
-    TransactionOutput,
     TransactionVersion0,
     TransactionVersion1,
     TransactionVersion3,
@@ -139,39 +128,6 @@ auto_impl_get_test_instance! {
     pub enum TransactionVersion3 {
         Version3 = 0,
     }
-}
-
-macro_rules! gen_test_from_thin_transaction_output_macro {
-    ($variant: ident) => {
-        paste! {
-            #[tokio::test]
-            async fn [<from_thin_transaction_output_ $variant:lower>]() {
-                    for tx_version in [TransactionVersion::ZERO, TransactionVersion::ONE, TransactionVersion::THREE] {
-                    let thin_output = ThinTransactionOutput::$variant([<Thin $variant TransactionOutput>]::default());
-                    let output = TransactionOutput::from_thin_transaction_output(thin_output, tx_version, vec![], None);
-                    assert_matches!(output, TransactionOutput::$variant(_));
-                }
-            }
-        }
-    };
-}
-
-gen_test_from_thin_transaction_output_macro!(Declare);
-gen_test_from_thin_transaction_output_macro!(Deploy);
-gen_test_from_thin_transaction_output_macro!(DeployAccount);
-gen_test_from_thin_transaction_output_macro!(Invoke);
-
-#[tokio::test]
-async fn from_thin_transaction_output_l1handler() {
-    let thin_output = ThinTransactionOutput::L1Handler(ThinL1HandlerTransactionOutput::default());
-    let msg_hash = L1L2MsgHash::default();
-    let output = TransactionOutput::from_thin_transaction_output(
-        thin_output,
-        TransactionVersion::ZERO,
-        vec![],
-        Some(msg_hash),
-    );
-    assert_matches!(output, TransactionOutput::L1Handler(_));
 }
 
 // TODO: check the conversion against the expected GW transaction.

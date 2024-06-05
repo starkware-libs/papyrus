@@ -5,9 +5,12 @@ mod flow_test;
 pub mod identify_impl;
 pub mod kad_impl;
 
-use std::task::{Context, Poll, Waker};
+use std::task::{ready, Context, Poll, Waker};
+use std::time::Duration;
 
-use kad_impl::KadFromOtherBehaviourEvent;
+use futures::future::BoxFuture;
+use futures::{pin_mut, Future, FutureExt};
+use kad_impl::KadToOtherBehaviourEvent;
 use libp2p::core::Endpoint;
 use libp2p::swarm::behaviour::ConnectionEstablished;
 use libp2p::swarm::dial_opts::{DialOpts, PeerCondition};
@@ -25,8 +28,11 @@ use libp2p::swarm::{
 };
 use libp2p::{Multiaddr, PeerId};
 
-use crate::mixed_behaviour;
 use crate::mixed_behaviour::BridgedBehaviour;
+use crate::{mixed_behaviour, peer_manager};
+
+// TODO(shahak): Consider adding to config.
+const DIAL_SLEEP: Duration = Duration::from_secs(5);
 
 pub struct Behaviour {
     is_paused: bool,
@@ -35,20 +41,18 @@ pub struct Behaviour {
     bootstrap_peer_address: Multiaddr,
     bootstrap_peer_id: PeerId,
     is_dialing_to_bootstrap_peer: bool,
+    // This needs to be boxed to allow polling it from a &mut.
+    sleep_future_for_dialing_bootstrap_peer: Option<BoxFuture<'static, ()>>,
     is_connected_to_bootstrap_peer: bool,
     is_bootstrap_in_kad_routing_table: bool,
     wakers: Vec<Waker>,
 }
 
 #[derive(Debug)]
-pub enum FromOtherBehaviourEvent {
-    KadQueryFinished,
-    PauseDiscovery,
-    ResumeDiscovery,
+pub enum ToOtherBehaviourEvent {
+    RequestKadQuery(PeerId),
+    FoundListenAddresses { peer_id: PeerId, listen_addresses: Vec<Multiaddr> },
 }
-
-#[derive(Debug)]
-pub struct ToOtherBehaviourEvent(KadFromOtherBehaviourEvent);
 
 impl NetworkBehaviour for Behaviour {
     type ConnectionHandler = dummy::ConnectionHandler;
@@ -80,6 +84,12 @@ impl NetworkBehaviour for Behaviour {
                 if peer_id == self.bootstrap_peer_id =>
             {
                 self.is_dialing_to_bootstrap_peer = false;
+                // For the case that the reason for failure is consistent (e.g the bootstrap peer
+                // is down), we sleep before redialing
+                // TODO(shahak): Consider increasing the time after each failure, the same way we
+                // do in starknet client.
+                self.sleep_future_for_dialing_bootstrap_peer =
+                    Some(tokio::time::sleep(DIAL_SLEEP).boxed());
             }
             FromSwarm::ConnectionEstablished(ConnectionEstablished { peer_id, .. })
                 if peer_id == self.bootstrap_peer_id =>
@@ -118,7 +128,12 @@ impl NetworkBehaviour for Behaviour {
     ) -> Poll<ToSwarm<Self::ToSwarm, <Self::ConnectionHandler as ConnectionHandler>::FromBehaviour>>
     {
         if !self.is_dialing_to_bootstrap_peer && !self.is_connected_to_bootstrap_peer {
+            if let Some(sleep_future) = &mut self.sleep_future_for_dialing_bootstrap_peer {
+                pin_mut!(sleep_future);
+                ready!(sleep_future.poll(cx));
+            }
             self.is_dialing_to_bootstrap_peer = true;
+            self.sleep_future_for_dialing_bootstrap_peer = None;
             return Poll::Ready(ToSwarm::Dial {
                 opts: DialOpts::peer_id(self.bootstrap_peer_id)
                     .addresses(vec![self.bootstrap_peer_address.clone()])
@@ -136,18 +151,18 @@ impl NetworkBehaviour for Behaviour {
         }
         if !self.is_bootstrap_in_kad_routing_table {
             self.is_bootstrap_in_kad_routing_table = true;
-            return Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
-                KadFromOtherBehaviourEvent::FoundListenAddresses {
+            return Poll::Ready(ToSwarm::GenerateEvent(
+                ToOtherBehaviourEvent::FoundListenAddresses {
                     peer_id: self.bootstrap_peer_id,
                     listen_addresses: vec![self.bootstrap_peer_address.clone()],
                 },
-            )));
+            ));
         }
 
         if !self.is_paused && !self.is_query_running {
             self.is_query_running = true;
-            Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent(
-                KadFromOtherBehaviourEvent::RequestKadQuery(libp2p::identity::PeerId::random()),
+            Poll::Ready(ToSwarm::GenerateEvent(ToOtherBehaviourEvent::RequestKadQuery(
+                libp2p::identity::PeerId::random(),
             )))
         } else {
             self.wakers.push(cx.waker().clone());
@@ -166,6 +181,7 @@ impl Behaviour {
             bootstrap_peer_id,
             bootstrap_peer_address,
             is_dialing_to_bootstrap_peer: false,
+            sleep_future_for_dialing_bootstrap_peer: None,
             is_connected_to_bootstrap_peer: false,
             is_bootstrap_in_kad_routing_table: false,
             wakers: Vec::new(),
@@ -185,29 +201,35 @@ impl Behaviour {
 
 impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
     fn from(event: ToOtherBehaviourEvent) -> Self {
-        mixed_behaviour::Event::InternalEvent(mixed_behaviour::InternalEvent::NotifyKad(event.0))
+        mixed_behaviour::Event::ToOtherBehaviourEvent(
+            mixed_behaviour::ToOtherBehaviourEvent::Discovery(event),
+        )
     }
 }
 
 impl BridgedBehaviour for Behaviour {
-    fn on_other_behaviour_event(&mut self, event: mixed_behaviour::InternalEvent) {
-        let mixed_behaviour::InternalEvent::NotifyDiscovery(event) = event else {
-            return;
-        };
+    fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
         match event {
-            FromOtherBehaviourEvent::PauseDiscovery => self.is_paused = true,
-            FromOtherBehaviourEvent::ResumeDiscovery => {
+            mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+                peer_manager::ToOtherBehaviourEvent::PauseDiscovery,
+            ) => self.is_paused = true,
+            mixed_behaviour::ToOtherBehaviourEvent::PeerManager(
+                peer_manager::ToOtherBehaviourEvent::ResumeDiscovery,
+            ) => {
                 for waker in self.wakers.drain(..) {
                     waker.wake();
                 }
                 self.is_paused = false;
             }
-            FromOtherBehaviourEvent::KadQueryFinished => {
+            mixed_behaviour::ToOtherBehaviourEvent::Kad(
+                KadToOtherBehaviourEvent::KadQueryFinished,
+            ) => {
                 for waker in self.wakers.drain(..) {
                     waker.wake();
                 }
                 self.is_query_running = false;
             }
+            _ => {}
         }
     }
 }

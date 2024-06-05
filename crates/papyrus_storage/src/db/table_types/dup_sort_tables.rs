@@ -274,6 +274,61 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         Ok(())
     }
 
+    // TODO(dvir): consider first checking if the key is equal to the last key, delete the last key,
+    // and then append instead of optimistically append.
+    fn append(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let main_key = T::get_main_key(key)?;
+        let sub_key_and_value = T::get_sub_key_and_value(key, value)?;
+
+        let mut cursor = txn.txn.cursor(&self.database)?;
+        match cursor.put(&main_key, &sub_key_and_value, WriteFlags::APPEND_DUP | WriteFlags::APPEND)
+        {
+            Err(libmdbx::Error::KeyMismatch) => {
+                // This case can happen if the appended sub_key_and_value is smaller than the last
+                // entry value, but the sub key itself is equal.
+                // For example: append (0,0) -> 1, old last entry: (0,0) -> 2.
+                let (last_main_key_bytes, last_key_suffix_and_value_bytes) =
+                    cursor.last::<DbKeyType<'_>, DbValueType<'_>>()?.expect(
+                        "Should have a last key. otherwise the previous put operation would \
+                         succeed.",
+                    );
+
+                // If the appended key is equal to the last key in the table, we can append it. To
+                // do that we first need to delete the old entry.
+                if last_main_key_bytes == main_key.as_slice()
+                    && last_key_suffix_and_value_bytes.starts_with(&T::get_sub_key(key)?)
+                {
+                    cursor.del(WriteFlags::empty())?;
+                    cursor.put(
+                        &main_key,
+                        &sub_key_and_value,
+                        WriteFlags::APPEND_DUP | WriteFlags::APPEND,
+                    )?;
+
+                    Ok(())
+                } else {
+                    Err(DbError::Append)
+                }
+            }
+            Ok(()) => {
+                // In the case of overriding the last key with a bigger value, we need to delete the
+                // old entry.
+                if let Some(prev) = cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()? {
+                    if prev.1.starts_with(&T::get_sub_key(key)?) {
+                        cursor.del(WriteFlags::empty())?;
+                    }
+                }
+                Ok(())
+            }
+            Err(err) => Err(err.into()),
+        }
+    }
+
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()> {
         let main_key = T::get_main_key(key)?;
         let first_sub_key = T::get_sub_key_lower_bound(key)?;
@@ -287,6 +342,47 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         if bytes.starts_with(&sub_key) {
             cursor.del(WriteFlags::empty())?;
         }
+        Ok(())
+    }
+}
+
+// TODO(dvir): consider adding unchecked version of the append function.
+#[allow(private_bounds)]
+impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + DupSortUtils<K, V>>
+    TableHandle<'env, K, V, T>
+{
+    // Append a new value to the given key. The sub key must be bigger than the last sub key for the
+    // given main key, otherwise an error will be returned.
+    // In contrast to the append function in the Table trait, this function will return an error if
+    // The sub key is equal to the last sub key of the given main key.
+    #[allow(dead_code)]
+    pub(crate) fn append_greater_sub_key(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &K,
+        value: &<V as ValueSerde>::Value,
+    ) -> DbResult<()> {
+        let main_key = T::get_main_key(key)?;
+        let sub_key_and_value = T::get_sub_key_and_value(key, value)?;
+
+        let mut cursor = txn.txn.cursor(&self.database)?;
+        cursor.put(&main_key, &sub_key_and_value, WriteFlags::APPEND_DUP).map_err(
+            |err| match err {
+                libmdbx::Error::KeyMismatch => DbError::Append,
+                _ => err.into(),
+            },
+        )?;
+
+        // This checks the case where the the sub key is already the last in the sub tree; in this
+        // case, we revert the last put and return an error.
+        if let Some(prev) = cursor.prev_dup::<DbKeyType<'_>, DbValueType<'_>>()? {
+            if prev.1.starts_with(&T::get_sub_key(key)?) {
+                cursor.next_dup::<DbKeyType<'_>, DbValueType<'_>>()?;
+                cursor.del(WriteFlags::empty())?;
+                return Err(DbError::Append);
+            }
+        }
+
         Ok(())
     }
 }

@@ -4674,6 +4674,7 @@ dependencies = [
  "futures",
  "instant",
  "libp2p-core",
+ "libp2p-gossipsub",
  "libp2p-identify",
  "libp2p-identity",
  "libp2p-kad",
@@ -5829,6 +5830,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "papyrus_block_builder"
+version = "0.4.0-dev.2"
+dependencies = [
+ "papyrus_storage",
+ "pretty_assertions",
+ "starknet_api",
+ "test_utils",
+ "thiserror",
+ "tracing",
+]
+
+[[package]]
 name = "papyrus_common"
 version = "0.4.0-dev.2"
 dependencies = [
@@ -5836,8 +5849,10 @@ dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
+ "indexmap 2.1.0",
  "lazy_static",
  "pretty_assertions",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "sha3",
@@ -5862,6 +5877,18 @@ dependencies = [
  "test_utils",
  "thiserror",
  "validator",
+]
+
+[[package]]
+name = "papyrus_consensus"
+version = "0.4.0-dev.2"
+dependencies = [
+ "async-trait",
+ "futures",
+ "mockall",
+ "starknet_api",
+ "thiserror",
+ "tokio",
 ]
 
 [[package]]
@@ -5957,15 +5984,15 @@ dependencies = [
  "mockall",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_protobuf",
  "papyrus_storage",
  "pretty_assertions",
  "prost",
- "prost-build",
- "prost-types",
  "rand 0.8.5",
  "replace_with",
  "serde",
  "starknet_api",
+ "test_utils",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -5992,12 +6019,14 @@ dependencies = [
  "lazy_static",
  "libmdbx",
  "metrics-exporter-prometheus",
+ "once_cell",
  "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
  "papyrus_monitoring_gateway",
  "papyrus_network",
  "papyrus_p2p_sync",
+ "papyrus_protobuf",
  "papyrus_rpc",
  "papyrus_storage",
  "papyrus_sync",
@@ -6033,6 +6062,7 @@ dependencies = [
  "papyrus_config",
  "papyrus_network",
  "papyrus_proc_macros",
+ "papyrus_protobuf",
  "papyrus_storage",
  "rand 0.8.5",
  "serde",
@@ -6056,6 +6086,20 @@ dependencies = [
  "quote",
  "syn 2.0.39",
  "test_utils",
+]
+
+[[package]]
+name = "papyrus_protobuf"
+version = "0.4.0-dev.2"
+dependencies = [
+ "bytes",
+ "indexmap 2.1.0",
+ "primitive-types",
+ "prost",
+ "prost-build",
+ "prost-types",
+ "starknet_api",
+ "thiserror",
 ]
 
 [[package]]

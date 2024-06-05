@@ -20,8 +20,11 @@ const Configuration = {
     rules: {
         'scope-enum': [2, 'always', [
             'base_layer',
+            'block_builder',
+            'ci',
             'common',
             'config',
+            'consensus',
             'execution',
             'helm',
             'JSON-RPC',
@@ -29,6 +32,7 @@ const Configuration = {
             'monitoring',
             'network',
             'node',
+            'protobuf',
             'release',
             'starknet_client',
             'storage',

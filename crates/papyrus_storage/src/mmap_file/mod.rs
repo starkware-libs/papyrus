@@ -27,7 +27,7 @@ use thiserror::Error;
 use tracing::{debug, instrument, trace};
 use validator::{Validate, ValidationError};
 
-use crate::db::serialization::{StorageSerde, ValueSerde};
+use crate::db::serialization::{StorageSerde, StorageSerdeError, ValueSerde};
 use crate::db::{TransactionKind, RO, RW};
 
 type MmapFileResult<V> = result::Result<V, MMapFileError>;
@@ -285,20 +285,24 @@ impl<V: ValueSerde, Mode: TransactionKind> FileHandler<V, Mode> {
     }
 }
 
-// TODO(dan): use varint serialization.
+// This serialization writes the offset as 6 bytes and the length as 4 bytes.
+// This means the size of the file is limited to  256TB (1<<48 bits) and the length of the data
+// is limited to 4GB (1<<32 bits).
 impl StorageSerde for LocationInFile {
-    fn serialize_into(
-        &self,
-        res: &mut impl std::io::Write,
-    ) -> Result<(), crate::db::serialization::StorageSerdeError> {
-        self.offset.serialize_into(res)?;
-        self.len.serialize_into(res)?;
+    fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError> {
+        let bytes = &self.len.to_be_bytes();
+        res.write_all(&bytes[4..])?;
+        let bytes = &self.offset.to_be_bytes();
+        res.write_all(&bytes[2..])?;
         Ok(())
     }
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
-        let offset = usize::deserialize_from(bytes)?;
-        let len = usize::deserialize_from(bytes)?;
+        let mut arr = [0u8; 8];
+        bytes.read_exact(&mut arr[4..]).ok()?;
+        let len = usize::from_be_bytes(arr);
+        bytes.read_exact(&mut arr[2..]).ok()?;
+        let offset = usize::from_be_bytes(arr);
         Some(Self { offset, len })
     }
 }

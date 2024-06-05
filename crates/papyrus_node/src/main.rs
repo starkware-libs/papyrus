@@ -7,7 +7,6 @@ use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures::channel::mpsc::Sender;
 use futures::future::BoxFuture;
 use futures::FutureExt;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
@@ -18,11 +17,12 @@ use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_network::network_manager::NetworkError;
-use papyrus_network::{network_manager, NetworkConfig, Protocol, Query, ResponseReceivers};
+use papyrus_network::network_manager::{NetworkError, SqmrSubscriberChannels};
+use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+use papyrus_protobuf::sync::{DataOrFin, SignedBlockHeader};
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
@@ -33,6 +33,7 @@ use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::BlockHash;
 use starknet_api::hash::{StarkFelt, GENESIS_HASH};
 use starknet_api::stark_felt;
+use starknet_api::state::ThinStateDiff;
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
@@ -223,15 +224,17 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         p2p_sync_config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        query_sender: Sender<Query>,
-        response_receivers: ResponseReceivers,
+        header_channels: SqmrSubscriberChannels<DataOrFin<SignedBlockHeader>>,
+        state_diff_channels: SqmrSubscriberChannels<DataOrFin<ThinStateDiff>>,
     ) -> Result<(), P2PSyncError> {
         let sync = P2PSync::new(
             p2p_sync_config,
             storage_reader,
             storage_writer,
-            query_sender,
-            response_receivers,
+            header_channels.query_sender,
+            header_channels.response_receiver,
+            state_diff_channels.query_sender,
+            state_diff_channels.response_receiver,
         );
         sync.run().await
     }
@@ -239,7 +242,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
 type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
-    Option<(Sender<Query>, ResponseReceivers)>,
+    Option<(
+        SqmrSubscriberChannels<DataOrFin<SignedBlockHeader>>,
+        SqmrSubscriberChannels<DataOrFin<ThinStateDiff>>,
+    )>,
     String,
 );
 
@@ -248,9 +254,9 @@ fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> 
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     let own_peer_id = network_manager.get_own_peer_id();
-    let (query_sender, response_receivers) =
-        network_manager.register_subscriber(vec![Protocol::SignedBlockHeader, Protocol::StateDiff]);
-    (network_manager.run().boxed(), Some((query_sender, response_receivers)), own_peer_id)
+    let header_channels = network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
+    let state_diff_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+    (network_manager.run().boxed(), Some((header_channels, state_diff_channels)), own_peer_id)
 }
 
 // TODO(yair): add dynamic level filtering.

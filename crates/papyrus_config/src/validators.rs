@@ -27,6 +27,14 @@ pub fn validate_path_exists(file_path: &Path) -> Result<(), ValidationError> {
     Ok(())
 }
 
+/// Custom validation for a 32 byte vector representation.
+pub fn validate_vec_u256(vec: &[u8]) -> Result<(), ValidationError> {
+    if vec.len() != 32 {
+        return Err(ValidationError::new("The value is not a 32 byte vector"));
+    }
+    Ok(())
+}
+
 /// Struct for parsing a validation error.
 #[derive(Debug)]
 pub struct ParsedValidationError {

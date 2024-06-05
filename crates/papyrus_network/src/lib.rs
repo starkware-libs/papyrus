@@ -3,35 +3,34 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
-mod converters;
 mod db_executor;
 mod discovery;
+mod gossipsub_impl;
 pub mod mixed_behaviour;
 pub mod network_manager;
 mod peer_manager;
-pub mod protobuf_messages;
-pub mod streamed_bytes;
+pub mod sqmr;
 #[cfg(test)]
 mod test_utils;
+mod utils;
+
 use std::collections::{BTreeMap, HashMap};
-use std::pin::Pin;
 use std::time::Duration;
 use std::usize;
 
-use bytes::BufMut;
 use derive_more::Display;
 use enum_iterator::Sequence;
-use futures::Stream;
 use lazy_static::lazy_static;
 use libp2p::{Multiaddr, StreamProtocol};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use prost::{EncodeError, Message};
-use protobuf_messages::protobuf;
+use papyrus_protobuf::protobuf;
+use papyrus_protobuf::sync::Query;
+use prost::Message;
 use serde::{Deserialize, Serialize};
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::state::ThinStateDiff;
+
+pub use crate::network_manager::SqmrSubscriberChannels;
 
 // TODO: add peer manager config to the network config
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
@@ -75,83 +74,10 @@ impl From<DataType> for Protocol {
     }
 }
 
-/// This struct represents a query that can be sent to a peer.
-#[derive(Default, Debug, PartialEq, Eq)]
-pub struct Query {
-    pub start_block: BlockNumber,
-    pub direction: Direction,
-    pub limit: usize,
-    pub step: usize,
-    pub data_type: DataType,
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to encode query")]
-pub struct QueryEncodingError;
-
-impl Query {
-    pub fn encode<B>(self, buf: &mut B) -> Result<(), QueryEncodingError>
-    where
-        B: BufMut,
-    {
-        match self.data_type {
-            DataType::SignedBlockHeader => {
-                <Query as Into<protobuf::BlockHeadersRequest>>::into(self).encode(buf)
-            }
-            DataType::StateDiff => {
-                <Query as Into<protobuf::StateDiffsRequest>>::into(self).encode(buf)
-            }
-        }
-        .map_err(|_: EncodeError| QueryEncodingError)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
-#[cfg_attr(test, derive(Hash))]
-pub enum Direction {
-    #[default]
-    Forward,
-    Backward,
-}
-
-#[derive(Debug)]
-#[cfg_attr(test, derive(Clone))]
-pub struct SignedBlockHeader {
-    pub block_header: BlockHeader,
-    pub signatures: Vec<BlockSignature>,
-}
-
-// TODO(shahak): Internalize this when we have a mixed behaviour.
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(test, derive(Hash))]
-pub struct InternalQuery {
-    pub start_block: BlockHashOrNumber,
-    pub direction: Direction,
-    pub limit: u64,
-    pub step: u64,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-#[cfg_attr(test, derive(Hash))]
-pub enum BlockHashOrNumber {
-    Hash(BlockHash),
-    Number(BlockNumber),
-}
-
-pub type SignedBlockHeaderStream = Pin<Box<dyn Stream<Item = Option<SignedBlockHeader>> + Send>>;
-pub type StateDiffStream = Pin<Box<dyn Stream<Item = Option<ThinStateDiff>> + Send>>;
-
-/// This struct represents the receiver end of the response streams for a network subscriber.
-/// It is created by the network manager and passed to the subscriber when calling
-/// register_subscriber.
-pub struct ResponseReceivers {
-    pub signed_headers_receiver: Option<SignedBlockHeaderStream>,
-    pub state_diffs_receiver: Option<StateDiffStream>,
-}
-
 /// This is a part of the exposed API of the network manager.
 /// This is meant to represent the different underlying p2p protocols the network manager supports.
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
+// TODO(shahak): Change protocol to a wrapper of string.
+#[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
 pub enum Protocol {
     SignedBlockHeader,
     StateDiff,
@@ -165,7 +91,7 @@ impl Protocol {
         }
     }
 
-    pub fn bytes_query_to_protobuf_request(&self, query: Vec<u8>) -> InternalQuery {
+    pub fn bytes_query_to_protobuf_request(&self, query: Vec<u8>) -> Query {
         // TODO: make this function return errors instead of panicking.
         match self {
             Protocol::SignedBlockHeader => protobuf::BlockHeadersRequest::decode(&query[..])
@@ -261,17 +187,6 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(120),
             header_buffer_size: 100000,
             bootstrap_peer_multiaddr: None,
-        }
-    }
-}
-
-impl From<Query> for InternalQuery {
-    fn from(query: Query) -> InternalQuery {
-        InternalQuery {
-            start_block: BlockHashOrNumber::Number(query.start_block),
-            direction: query.direction,
-            limit: query.limit as u64,
-            step: query.step as u64,
         }
     }
 }

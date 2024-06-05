@@ -23,11 +23,22 @@ RUN find /app \! -name "Cargo.toml" -type f -delete ; \
     # In order for cargo init to work, we need to not have a Cargo.toml file. In each crate, we rename
     # Cargo.toml to another name and after running `cargo init` we override the auto-generated
     # Cargo.toml with the original.
-    mv Cargo.toml _Cargo.toml && for dir in crates/*; do \
-    mv $dir/Cargo.toml $dir/_Cargo.toml \
-    && cargo init --lib --vcs none $dir \
-    && mv -f $dir/_Cargo.toml $dir/Cargo.toml; \
-    done && mv _Cargo.toml Cargo.toml
+    mv Cargo.toml _Cargo.toml && \
+    # TODO: Consider moving to a script.
+    for dir in crates/*; do \
+        if [ -f "$dir/Cargo.toml" ]; then \
+            mv $dir/Cargo.toml $dir/_Cargo.toml \
+            && cargo init --lib --vcs none $dir \
+            && mv -f $dir/_Cargo.toml $dir/Cargo.toml; \
+        else \
+            for subdir in $dir/*; do \
+                mv $subdir/Cargo.toml $subdir/_Cargo.toml \
+                && cargo init --lib --vcs none $subdir \
+                && mv -f $subdir/_Cargo.toml $subdir/Cargo.toml; \
+            done; \
+        fi; \
+    done && \
+    mv _Cargo.toml Cargo.toml
 
 COPY Cargo.lock /app/
 

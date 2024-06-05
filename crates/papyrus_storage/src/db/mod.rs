@@ -42,7 +42,7 @@ use self::table_types::{DbCursor, DbCursorTrait};
 use crate::db::table_types::TableType;
 
 // Maximum number of Sub-Databases.
-const MAX_DBS: usize = 20;
+const MAX_DBS: usize = 18;
 
 // Note that NO_TLS mode is used by default.
 type EnvironmentKind = WriteMap;
@@ -159,6 +159,11 @@ pub enum DbError {
     /// An error that occurred when trying to open a db file that does not exist.
     #[error("The file '{0}' does not exist.")]
     FileDoesNotExist(PathBuf),
+    // TODO(dvir): consider adding more details about the error, table name, key, value and last
+    // key in the tree.
+    /// An error that occurred when trying to append a key when it is not the last.
+    #[error("Append error. The key is not the last in the table.")]
+    Append,
 }
 
 type DbResult<V> = result::Result<V, DbError>;

@@ -6,15 +6,9 @@ use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, StreamProtocol, Swarm};
 use papyrus_network::bin_utils::{build_swarm, dial};
-use papyrus_network::streamed_bytes::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
-use papyrus_network::streamed_bytes::messages::with_length_prefix;
-use papyrus_network::streamed_bytes::{
-    Bytes,
-    Config,
-    InboundSessionId,
-    OutboundSessionId,
-    SessionId,
-};
+use papyrus_network::sqmr::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
+use papyrus_network::sqmr::messages::with_length_prefix;
+use papyrus_network::sqmr::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 
 const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/papyrus/bench/1");
 const CONST_BYTE: u8 = 1;

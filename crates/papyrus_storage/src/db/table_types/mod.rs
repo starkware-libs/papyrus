@@ -14,6 +14,9 @@ pub(crate) use simple_table::SimpleTable;
 #[cfg(test)]
 pub(crate) mod test_utils;
 
+// TODO(dvir): consider adding the create_table method to the Table trait.
+// TODO(dvir): add some documentation to the Table and the cursor traits.
+// TODO(dvir): consider adding unchecked version of the those functions.
 pub(crate) trait Table<'env> {
     type Key: KeyTrait + Debug;
     type Value: ValueSerde + Debug;
@@ -46,9 +49,21 @@ pub(crate) trait Table<'env> {
         value: &<Self::Value as ValueSerde>::Value,
     ) -> DbResult<()>;
 
+    // Append a key value pair to the end of the table. The key must be bigger than or equal to
+    // the last key in the table; otherwise, an error will be returned.
+    #[allow(dead_code)]
+    fn append(
+        &'env self,
+        txn: &DbTransaction<'env, RW>,
+        key: &Self::Key,
+        value: &<Self::Value as ValueSerde>::Value,
+    ) -> DbResult<()>;
+
     fn delete(&'env self, txn: &DbTransaction<'env, RW>, key: &Self::Key) -> DbResult<()>;
 }
 
+// TODO(dvir): consider adding append functionality using a cursor. It should be more efficient for
+// more than a single append operation (also for other table types).
 pub(crate) trait DbCursorTrait {
     type Key: KeyTrait + Debug;
     type Value: ValueSerde + Debug;
@@ -72,3 +87,7 @@ pub(crate) struct DbCursor<'txn, Mode: TransactionKind, K: KeyTrait, V: ValueSer
 }
 
 pub(crate) trait TableType {}
+
+// A value place holder for tables where we don't need a value.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
+pub(crate) struct NoValue;

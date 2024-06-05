@@ -1,14 +1,15 @@
-use std::pin::Pin;
+use std::marker::PhantomData;
 
+use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
-use futures::{FutureExt, Stream, StreamExt};
-use papyrus_network::{DataType, SignedBlockHeader};
+use futures::{FutureExt, Sink, Stream, StreamExt};
+use papyrus_protobuf::sync::{Query, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
+use crate::{P2PSyncError, Response, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
     fn write_to_storage(
@@ -32,29 +33,35 @@ impl BlockData for SignedBlockHeader {
     }
 }
 
-pub(crate) struct HeaderStreamFactory;
+pub(crate) struct HeaderStreamFactory<QuerySender, DataReceiver>(
+    PhantomData<(QuerySender, DataReceiver)>,
+);
 
-impl DataStreamFactory for HeaderStreamFactory {
-    type InputFromNetwork = SignedBlockHeader;
+impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, SignedBlockHeader>
+    for HeaderStreamFactory<QuerySender, DataReceiver>
+where
+    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
+    DataReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,
+{
     type Output = SignedBlockHeader;
 
-    const DATA_TYPE: DataType = DataType::SignedBlockHeader;
+    const TYPE_DESCRIPTION: &'static str = "headers";
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit = BlockNumberLimit::Unlimited;
 
     fn parse_data_for_block<'a>(
-        signed_headers_receiver: &'a mut Pin<
-            Box<dyn Stream<Item = Option<Self::InputFromNetwork>> + Send>,
-        >,
+        signed_headers_receiver: &'a mut DataReceiver,
         block_number: BlockNumber,
         _storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
         async move {
-            let maybe_signed_header_stream_result =
-                tokio::time::timeout(NETWORK_DATA_TIMEOUT, signed_headers_receiver.next()).await?;
-            let Some(maybe_signed_header) = maybe_signed_header_stream_result else {
-                return Err(P2PSyncError::ReceiverChannelTerminated { data_type: Self::DATA_TYPE });
-            };
-            let Some(signed_block_header) = maybe_signed_header else {
+            // TODO(shahak): Use the report callback.
+            let (maybe_signed_header, _report_callback) =
+                tokio::time::timeout(NETWORK_DATA_TIMEOUT, signed_headers_receiver.next())
+                    .await?
+                    .ok_or(P2PSyncError::ReceiverChannelTerminated {
+                    type_description: Self::TYPE_DESCRIPTION,
+                })?;
+            let Some(signed_block_header) = maybe_signed_header?.0 else {
                 return Ok(None);
             };
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
