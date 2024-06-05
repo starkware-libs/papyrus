@@ -34,7 +34,7 @@ use blockifier::execution::entry_point::{
     CallType as BlockifierCallType,
     EntryPointExecutionContext,
 };
-use blockifier::state::cached_state::{CachedState, GlobalContractCache};
+use blockifier::state::cached_state::CachedState;
 use blockifier::transaction::errors::TransactionExecutionError as BlockifierTransactionExecutionError;
 use blockifier::transaction::objects::{
     DeprecatedTransactionInfo,
@@ -45,6 +45,7 @@ use blockifier::transaction::transaction_execution::Transaction as BlockifierTra
 use blockifier::transaction::transactions::ExecutableTransaction;
 use blockifier::versioned_constants::VersionedConstants;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
+use cairo_vm::types::builtin_name::BuiltinName;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources;
 use execution_utils::{get_trace_constructor, induced_state_diff};
 use objects::{PriceUnit, TransactionSimulationOutput};
@@ -64,7 +65,6 @@ use starknet_api::deprecated_contract_class::{
     ContractClass as DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::hash::StarkHash;
 use starknet_api::state::{StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
@@ -80,14 +80,11 @@ use starknet_api::transaction::{
     TransactionHash,
     TransactionVersion,
 };
-use starknet_api::{contract_address, patricia_key, StarknetApiError};
+use starknet_api::{contract_address, felt, patricia_key, StarknetApiError};
 use state_reader::ExecutionStateReader;
 use tracing::trace;
 
 use crate::objects::{tx_execution_output_to_fee_estimation, FeeEstimation, PendingData};
-
-// TODO(yair): understand what it is and whether the use of this constant should change.
-const GLOBAL_CONTRACT_CACHE_SIZE: usize = 100;
 
 const STARKNET_VERSION_O_13_0: &str = "0.13.0";
 const STARKNET_VERSION_O_13_1: &str = "0.13.1";
@@ -197,7 +194,7 @@ pub enum ExecutionError {
     #[error("Failed to calculate transaction hash.")]
     TransactionHashCalculationFailed(StarknetApiError),
     #[error("Unknown builtin name: {builtin_name}")]
-    UnknownBuiltin { builtin_name: String },
+    UnknownBuiltin { builtin_name: BuiltinName },
 }
 
 /// Whether the only-query bit of the transaction version is on.
@@ -240,15 +237,12 @@ pub fn execute_call(
         initial_gas: execution_config.initial_gas_cost,
     };
 
-    let mut cached_state = CachedState::new(
-        ExecutionStateReader {
-            storage_reader: storage_reader.clone(),
-            state_number,
-            maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: Cell::new(None),
-        },
-        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
-    );
+    let mut cached_state = CachedState::new(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+        maybe_pending_data: maybe_pending_data.clone(),
+        missing_compiled_class: Cell::new(None),
+    });
 
     let block_context = create_block_context(
         &mut cached_state,
@@ -388,6 +382,7 @@ fn create_block_context(
         block_info,
         chain_info,
         versioned_constants.clone(),
+        false, // concurrency_mode, TODO: check if this is the correct value.
     )?)
 }
 
@@ -606,15 +601,12 @@ fn execute_transactions(
     override_kzg_da_to_false: bool,
 ) -> ExecutionResult<(Vec<TransactionExecutionOutput>, BlockContext)> {
     // The starknet state will be from right before the block in which the transactions should run.
-    let mut cached_state = CachedState::new(
-        ExecutionStateReader {
-            storage_reader: storage_reader.clone(),
-            state_number,
-            maybe_pending_data: maybe_pending_data.clone(),
-            missing_compiled_class: Cell::new(None),
-        },
-        GlobalContractCache::new(GLOBAL_CONTRACT_CACHE_SIZE),
-    );
+    let mut cached_state = CachedState::new(ExecutionStateReader {
+        storage_reader: storage_reader.clone(),
+        state_number,
+        maybe_pending_data: maybe_pending_data.clone(),
+        missing_compiled_class: Cell::new(None),
+    });
 
     let block_context = create_block_context(
         &mut cached_state,
@@ -638,12 +630,15 @@ fn execute_transactions(
     let mut res = vec![];
     for (transaction_index, (tx, tx_hash)) in txs.into_iter().zip(tx_hashes.into_iter()).enumerate()
     {
-        let price_unit = match tx.transaction_version() {
-            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
-                PriceUnit::Wei
-            }
-            // From V3 all transactions are priced in Fri.
-            _ => PriceUnit::Fri,
+        let transaction_version = tx.transaction_version();
+        // TODO: consider supporting match instead.
+        let price_unit = if transaction_version == TransactionVersion::ZERO
+            || transaction_version == TransactionVersion::ONE
+            || transaction_version == TransactionVersion::TWO
+        {
+            PriceUnit::Wei
+        } else {
+            PriceUnit::Fri
         };
         let mut transactional_state = CachedState::create_transactional(&mut cached_state);
         let deprecated_declared_class_hash = match &tx {

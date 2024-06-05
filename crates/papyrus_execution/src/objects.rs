@@ -10,17 +10,7 @@ use blockifier::execution::call_info::{
 };
 use blockifier::execution::entry_point::CallType as BlockifierCallType;
 use blockifier::transaction::objects::{GasVector, TransactionExecutionInfo};
-use cairo_vm::vm::runners::builtin_runner::{
-    BITWISE_BUILTIN_NAME,
-    EC_OP_BUILTIN_NAME,
-    HASH_BUILTIN_NAME,
-    KECCAK_BUILTIN_NAME,
-    OUTPUT_BUILTIN_NAME,
-    POSEIDON_BUILTIN_NAME,
-    RANGE_CHECK_BUILTIN_NAME,
-    SEGMENT_ARENA_BUILTIN_NAME,
-    SIGNATURE_BUILTIN_NAME,
-};
+use cairo_vm::types::builtin_name::BuiltinName;
 use cairo_vm::vm::runners::cairo_runner::ExecutionResources as VmExecutionResources;
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -42,7 +32,6 @@ use starknet_api::core::{
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{
     Builtin,
@@ -50,8 +39,10 @@ use starknet_api::transaction::{
     EventContent,
     ExecutionResources,
     Fee,
+    GasVector as StarknetApiGasVector,
     MessageToL1,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::{ExecutionError, ExecutionResult, TransactionExecutionOutput};
 
@@ -102,11 +93,11 @@ pub struct InvokeTransactionTrace {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct FeeEstimation {
     /// Gas consumed by this transaction. This includes gas for DA in calldata mode.
-    pub gas_consumed: StarkFelt,
+    pub gas_consumed: Felt,
     /// The gas price for execution and calldata DA.
     pub gas_price: GasPrice,
     /// Gas consumed by DA in blob mode.
-    pub data_gas_consumed: StarkFelt,
+    pub data_gas_consumed: Felt,
     /// The gas price for DA blob.
     pub data_gas_price: GasPrice,
     /// The total amount of fee. This is equal to:
@@ -365,20 +356,22 @@ fn vm_resources_to_execution_resources(
             continue;
         }
         let count: u64 = count as u64;
-        match builtin_name.as_str() {
-            OUTPUT_BUILTIN_NAME => {
-                continue;
-            }
-            HASH_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Pedersen, count),
-            RANGE_CHECK_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::RangeCheck, count),
-            SIGNATURE_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Ecdsa, count),
-            BITWISE_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Bitwise, count),
-            EC_OP_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::EcOp, count),
-            KECCAK_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Keccak, count),
-            POSEIDON_BUILTIN_NAME => builtin_instance_counter.insert(Builtin::Poseidon, count),
-            SEGMENT_ARENA_BUILTIN_NAME => {
+        match builtin_name {
+            BuiltinName::output => continue,
+            BuiltinName::pedersen => builtin_instance_counter.insert(Builtin::Pedersen, count),
+            BuiltinName::range_check => builtin_instance_counter.insert(Builtin::RangeCheck, count),
+            BuiltinName::ecdsa => builtin_instance_counter.insert(Builtin::Ecdsa, count),
+            BuiltinName::bitwise => builtin_instance_counter.insert(Builtin::Bitwise, count),
+            BuiltinName::ec_op => builtin_instance_counter.insert(Builtin::EcOp, count),
+            BuiltinName::keccak => builtin_instance_counter.insert(Builtin::Keccak, count),
+            BuiltinName::poseidon => builtin_instance_counter.insert(Builtin::Poseidon, count),
+            BuiltinName::segment_arena => {
                 builtin_instance_counter.insert(Builtin::SegmentArena, count)
             }
+            // TODO: what about the following?
+            // BuiltinName::range_check96 => todo!(),
+            // BuiltinName::add_mod => todo!(),
+            // BuiltinName::mul_mod => todo!(),
             _ => {
                 return Err(ExecutionError::UnknownBuiltin { builtin_name });
             }
@@ -388,10 +381,13 @@ fn vm_resources_to_execution_resources(
         steps: vm_resources.n_steps as u64,
         builtin_instance_counter,
         memory_holes: vm_resources.n_memory_holes as u64,
-        da_l1_gas_consumed: l1_gas.try_into().map_err(|_| ExecutionError::GasConsumedOutOfRange)?,
-        da_l1_data_gas_consumed: l1_data_gas
-            .try_into()
-            .map_err(|_| ExecutionError::GasConsumedOutOfRange)?,
+        da_gas_consumed: StarknetApiGasVector {
+            l1_gas: l1_gas.try_into().map_err(|_| ExecutionError::GasConsumedOutOfRange)?,
+            l1_data_gas: l1_data_gas
+                .try_into()
+                .map_err(|_| ExecutionError::GasConsumedOutOfRange)?,
+        },
+        gas_consumed: StarknetApiGasVector::default(),
     })
 }
 
@@ -415,7 +411,7 @@ impl From<BlockifierCallType> for CallType {
 
 /// The return data of a function call.
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Retdata(pub Vec<StarkFelt>);
+pub struct Retdata(pub Vec<Felt>);
 
 impl From<BlockifierRetdata> for Retdata {
     fn from(retdata: BlockifierRetdata) -> Self {
