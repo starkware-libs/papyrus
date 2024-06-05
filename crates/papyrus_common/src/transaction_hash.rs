@@ -684,8 +684,8 @@ fn get_tx_version(
     // If only_query is true, set the 128-th bit.
     if transaction_options.only_query {
         let query_only_bit: Felt = Felt::from_hex_unchecked("0x100000000000000000000000000000000");
-        let fe: Felt = version.0.into();
-        version = TransactionVersion(Felt::from(fe + query_only_bit));
+        let fe: Felt = version.0;
+        version = TransactionVersion(fe + query_only_bit);
     }
     version
 }
