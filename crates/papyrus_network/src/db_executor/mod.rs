@@ -1,3 +1,4 @@
+use std::task::{ready, Poll, Waker};
 use std::vec;
 
 use async_trait::async_trait;
@@ -201,12 +202,18 @@ pub trait DBExecutorTrait {
 pub struct DBExecutor {
     next_query_id: usize,
     storage_reader: StorageReader,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+    query_execution_set: Option<FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>>,
+    wakers_waiting_for_task: Vec<Waker>,
 }
 
 impl DBExecutor {
     pub fn new(storage_reader: StorageReader) -> Self {
-        Self { next_query_id: 0, storage_reader, query_execution_set: FuturesUnordered::new() }
+        Self {
+            next_query_id: 0,
+            storage_reader,
+            query_execution_set: None,
+            wakers_waiting_for_task: Vec::new(),
+        }
     }
 }
 
@@ -221,61 +228,81 @@ impl DBExecutorTrait for DBExecutor {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
         let storage_reader_clone = self.storage_reader.clone();
-        self.query_execution_set.push(tokio::task::spawn(async move {
-            {
-                let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
-                    DBExecutorError::DBInternalError { query_id, storage_error: err }
-                })?;
-                let start_block_number = match query.start_block {
-                    BlockHashOrNumber::Number(BlockNumber(num)) => num,
-                    BlockHashOrNumber::Hash(block_hash) => {
-                        txn.get_block_number_by_hash(&block_hash)
-                            .map_err(|err| DBExecutorError::DBInternalError {
-                                query_id,
-                                storage_error: err,
-                            })?
-                            .ok_or(DBExecutorError::BlockNotFound {
-                                block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
-                                query_id,
-                            })?
-                            .0
-                    }
-                };
-                for block_counter in 0..query.limit {
-                    let block_number = BlockNumber(utils::calculate_block_number(
-                        &query,
-                        start_block_number,
-                        block_counter,
-                        query_id,
-                    )?);
-                    let data_vec = data_type.fetch_block_data_from_db(block_number, query_id, &txn);
-                    // Using poll_fn because Sender::poll_ready is not a future
-                    match poll_fn(|cx| sender.poll_ready(cx)).await {
-                        Ok(()) => {
-                            if let Err(e) = sender.start_send(data_vec) {
-                                // TODO: consider implement retry mechanism.
-                                return Err(DBExecutorError::SendError { query_id, send_error: e });
-                            };
-                        }
-                        Err(e) => {
-                            return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        }
-                    }
-                }
-                Ok(query_id)
+        if self.query_execution_set.is_none() {
+            self.query_execution_set = Some(FuturesUnordered::new());
+            for waker in self.wakers_waiting_for_task.drain(..) {
+                waker.wake();
             }
-        }));
+        }
+        self.query_execution_set
+            .as_mut()
+            .expect("query_execution_set is None after it was just set to Some")
+            .push(tokio::task::spawn(async move {
+                {
+                    let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
+                        DBExecutorError::DBInternalError { query_id, storage_error: err }
+                    })?;
+                    let start_block_number = match query.start_block {
+                        BlockHashOrNumber::Number(BlockNumber(num)) => num,
+                        BlockHashOrNumber::Hash(block_hash) => {
+                            txn.get_block_number_by_hash(&block_hash)
+                                .map_err(|err| DBExecutorError::DBInternalError {
+                                    query_id,
+                                    storage_error: err,
+                                })?
+                                .ok_or(DBExecutorError::BlockNotFound {
+                                    block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
+                                    query_id,
+                                })?
+                                .0
+                        }
+                    };
+                    for block_counter in 0..query.limit {
+                        let block_number = BlockNumber(utils::calculate_block_number(
+                            &query,
+                            start_block_number,
+                            block_counter,
+                            query_id,
+                        )?);
+                        let data_vec =
+                            data_type.fetch_block_data_from_db(block_number, query_id, &txn);
+                        // Using poll_fn because Sender::poll_ready is not a future
+                        match poll_fn(|cx| sender.poll_ready(cx)).await {
+                            Ok(()) => {
+                                if let Err(e) = sender.start_send(data_vec) {
+                                    // TODO: consider implement retry mechanism.
+                                    return Err(DBExecutorError::SendError {
+                                        query_id,
+                                        send_error: e,
+                                    });
+                                };
+                            }
+                            Err(e) => {
+                                return Err(DBExecutorError::SendError { query_id, send_error: e });
+                            }
+                        }
+                    }
+                    Ok(query_id)
+                }
+            }));
         query_id
     }
 
     async fn run(&mut self) {
-        loop {
-            let result =
-                futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
-            if result.is_none() {
-                self.query_execution_set = FuturesUnordered::new();
+        futures::future::poll_fn(|cx| -> Poll<()> {
+            loop {
+                if let Some(query_execution_set) = self.query_execution_set.as_mut() {
+                    let result = ready!(query_execution_set.poll_next_unpin(cx));
+                    if result.is_some() {
+                        continue;
+                    }
+                }
+                self.query_execution_set = None;
+                self.wakers_waiting_for_task.push(cx.waker().clone());
+                return Poll::Pending;
             }
-        }
+        })
+        .await;
     }
 }
 
