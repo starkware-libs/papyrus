@@ -9,43 +9,45 @@ use crate::sync::{BlockHashOrNumber, Direction, Query};
 #[allow(dead_code)]
 pub const PATRICIA_HEIGHT: u32 = 251;
 
-impl TryFrom<protobuf::Felt252> for starknet_api::hash::StarkFelt {
+impl TryFrom<protobuf::Felt252> for starknet_types_core::felt::Felt {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::Felt252) -> Result<Self, Self::Error> {
         let mut felt = [0; 32];
         felt.copy_from_slice(&value.elements);
-        if let Ok(stark_felt) = Self::new(felt) {
-            Ok(stark_felt)
-        } else {
-            Err(ProtobufConversionError::OutOfRangeValue {
-                type_description: "Felt252",
-                value_as_str: format!("{felt:?}"),
-            })
-        }
+        // TODO: use from_bytes_checked once it's available.
+        Ok(Self::from_bytes_be(&felt))
+        // if let Ok(stark_felt) = Self::from_bytes_be(&felt) {
+        //     Ok(stark_felt)
+        // } else {
+        //     Err(ProtobufConversionError::OutOfRangeValue {
+        //         type_description: "Felt252",
+        //         value_as_str: format!("{felt:?}"),
+        //     })
+        // }
     }
 }
 
-impl From<starknet_api::hash::StarkFelt> for protobuf::Felt252 {
-    fn from(value: starknet_api::hash::StarkFelt) -> Self {
-        Self { elements: value.bytes().to_vec() }
+impl From<starknet_types_core::felt::Felt> for protobuf::Felt252 {
+    fn from(value: starknet_types_core::felt::Felt) -> Self {
+        Self { elements: value.to_bytes_be().to_vec() }
     }
 }
 
 impl From<starknet_api::block::BlockHash> for protobuf::Hash {
     fn from(value: starknet_api::block::BlockHash) -> Self {
-        Self { elements: value.0.bytes().to_vec() }
+        Self { elements: value.0.to_bytes_be().to_vec() }
     }
 }
 
 impl From<starknet_api::hash::StarkHash> for protobuf::Hash {
     fn from(value: starknet_api::hash::StarkHash) -> Self {
-        Self { elements: value.bytes().to_vec() }
+        Self { elements: value.to_bytes_be().to_vec() }
     }
 }
 
 impl From<starknet_api::core::ContractAddress> for protobuf::Address {
     fn from(value: starknet_api::core::ContractAddress) -> Self {
-        Self { elements: value.0.key().bytes().to_vec() }
+        Self { elements: value.0.key().to_bytes_be().to_vec() }
     }
 }
 
@@ -73,14 +75,16 @@ impl TryFrom<protobuf::Hash> for starknet_api::hash::StarkHash {
             });
         }
         felt.copy_from_slice(&value.elements);
-        if let Ok(stark_hash) = Self::new(felt) {
-            Ok(stark_hash)
-        } else {
-            Err(ProtobufConversionError::OutOfRangeValue {
-                type_description: "Hash",
-                value_as_str: format!("{felt:?}"),
-            })
-        }
+        // TODO: use from_bytes_checked once it's available.
+        Ok(Self::from_bytes_be(&felt))
+        // if let Ok(stark_hash) = Self::new(felt) {
+        //     Ok(stark_hash)
+        // } else {
+        //     Err(ProtobufConversionError::OutOfRangeValue {
+        //         type_description: "Hash",
+        //         value_as_str: format!("{felt:?}"),
+        //     })
+        // }
     }
 }
 
@@ -96,21 +100,23 @@ impl TryFrom<protobuf::Address> for starknet_api::core::ContractAddress {
             });
         }
         felt.copy_from_slice(&value.elements);
-        if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
-            if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
-                Ok(starknet_api::core::ContractAddress(stark_felt))
-            } else {
-                Err(ProtobufConversionError::OutOfRangeValue {
-                    type_description: "Address",
-                    value_as_str: format!("{felt:?}"),
-                })
-            }
+        // TODO: use from_bytes_checked once it's available.
+        let hash = starknet_types_core::felt::Felt::from_bytes_be(&felt);
+        // if let Ok(hash) = starknet_api::hash::StarkHash::new(felt) {
+        if let Ok(stark_felt) = starknet_api::core::PatriciaKey::try_from(hash) {
+            Ok(starknet_api::core::ContractAddress(stark_felt))
         } else {
             Err(ProtobufConversionError::OutOfRangeValue {
                 type_description: "Address",
                 value_as_str: format!("{felt:?}"),
             })
         }
+        // } else {
+        //     Err(ProtobufConversionError::OutOfRangeValue {
+        //         type_description: "Address",
+        //         value_as_str: format!("{felt:?}"),
+        //     })
+        // }
     }
 }
 
@@ -255,10 +261,11 @@ impl From<Query> for protobuf::Iteration {
 
 // TODO: use the conversion in Starknet api once its upgraded
 pub(super) fn try_from_starkfelt_to_u128(
-    felt: starknet_api::hash::StarkFelt,
+    felt: starknet_types_core::felt::Felt,
 ) -> Result<u128, &'static str> {
     const COMPLIMENT_OF_U128: usize = 16; // 32 - 16
-    let (rest, u128_bytes) = felt.bytes().split_at(COMPLIMENT_OF_U128);
+    let felt_be_bytes = felt.to_bytes_be();
+    let (rest, u128_bytes) = felt_be_bytes.split_at(COMPLIMENT_OF_U128);
     if rest != [0u8; COMPLIMENT_OF_U128] {
         return Err("Value out of range");
     }
@@ -272,10 +279,11 @@ pub(super) fn try_from_starkfelt_to_u128(
 }
 // TODO: use the conversion in Starknet api once its upgraded
 pub(super) fn try_from_starkfelt_to_u32(
-    felt: starknet_api::hash::StarkFelt,
+    felt: starknet_types_core::felt::Felt,
 ) -> Result<u32, &'static str> {
     const COMPLIMENT_OF_U32: usize = 28; // 32 - 4
-    let (rest, u32_bytes) = felt.bytes().split_at(COMPLIMENT_OF_U32);
+    let felt_be_bytes = felt.to_bytes_be();
+    let (rest, u32_bytes) = felt_be_bytes.split_at(COMPLIMENT_OF_U32);
     if rest != [0u8; COMPLIMENT_OF_U32] {
         return Err("Value out of range");
     }

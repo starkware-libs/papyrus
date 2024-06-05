@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use starknet_api::core::{ContractAddress, EthAddress, PatriciaKey};
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     Builtin,
     DeclareTransactionOutput,
@@ -9,6 +8,7 @@ use starknet_api::transaction::{
     DeployTransactionOutput,
     ExecutionResources,
     Fee,
+    GasVector,
     InvokeTransactionOutput,
     L1HandlerTransactionOutput,
     L2ToL1Payload,
@@ -17,6 +17,7 @@ use starknet_api::transaction::{
     TransactionExecutionStatus,
     TransactionOutput,
 };
+use starknet_types_core::felt::Felt;
 
 use super::common::try_from_starkfelt_to_u128;
 use super::ProtobufConversionError;
@@ -85,7 +86,7 @@ impl TryFrom<protobuf::receipt::DeployAccount> for DeployAccountTransactionOutpu
             value.contract_address.ok_or(ProtobufConversionError::MissingField {
                 field_description: "DeployAccount::contract_address",
             })?;
-        let felt = StarkFelt::try_from(contract_address)?;
+        let felt = Felt::try_from(contract_address)?;
         let contract_address = ContractAddress(PatriciaKey::try_from(felt).map_err(|_| {
             ProtobufConversionError::OutOfRangeValue {
                 type_description: "PatriciaKey",
@@ -117,7 +118,7 @@ impl From<DeployAccountTransactionOutput> for protobuf::receipt::DeployAccount {
 
         protobuf::receipt::DeployAccount {
             common: Some(common),
-            contract_address: Some(StarkFelt::from(value.contract_address).into()),
+            contract_address: Some(Felt::from(value.contract_address).into()),
         }
     }
 }
@@ -135,7 +136,7 @@ impl TryFrom<protobuf::receipt::Deploy> for DeployTransactionOutput {
             value.contract_address.ok_or(ProtobufConversionError::MissingField {
                 field_description: "Deploy::contract_address",
             })?;
-        let felt = StarkFelt::try_from(contract_address)?;
+        let felt = Felt::try_from(contract_address)?;
         let contract_address = ContractAddress(PatriciaKey::try_from(felt).map_err(|_| {
             ProtobufConversionError::OutOfRangeValue {
                 type_description: "PatriciaKey",
@@ -167,7 +168,7 @@ impl From<DeployTransactionOutput> for protobuf::receipt::Deploy {
 
         protobuf::receipt::Deploy {
             common: Some(common),
-            contract_address: Some(StarkFelt::from(value.contract_address).into()),
+            contract_address: Some(Felt::from(value.contract_address).into()),
         }
     }
 }
@@ -307,37 +308,33 @@ impl TryFrom<protobuf::receipt::ExecutionResources> for ExecutionResources {
         let builtin_instance_counter = HashMap::<Builtin, u64>::try_from(builtin_instance_counter)?;
 
         // TODO: remove all non-da gas consumed
-        let da_l1_gas_consumed_felt =
-            StarkFelt::try_from(value.l1_gas.ok_or(ProtobufConversionError::MissingField {
-                field_description: "ExecutionResources::l1_gas",
-            })?)?;
-        let da_l1_gas_consumed = da_l1_gas_consumed_felt.try_into().map_err(|_| {
-            ProtobufConversionError::OutOfRangeValue {
-                type_description: "u64",
-                value_as_str: format!("{da_l1_gas_consumed_felt:?}"),
-            }
-        })?;
-
-        let da_l1_data_gas_consumed_felt = StarkFelt::try_from(value.l1_data_gas.ok_or(
-            ProtobufConversionError::MissingField {
-                field_description: "ExecutionResources::l1_data_gas",
-            },
-        )?)?;
-        let da_l1_data_gas_consumed = da_l1_data_gas_consumed_felt.try_into().map_err(|_| {
-            ProtobufConversionError::OutOfRangeValue {
-                type_description: "u64",
-                value_as_str: format!("{da_l1_data_gas_consumed_felt:?}"),
-            }
-        })?;
+        let gas_consumed = value
+            .gas_consumed
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "ExecutionResources::gas_consumed",
+            })?
+            .into();
+        let da_gas_consumed = value
+            .da_gas_consumed
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "ExecutionResources::da_gas_consumed",
+            })?
+            .into();
 
         let execution_resources = ExecutionResources {
             steps: u64::from(value.steps),
             builtin_instance_counter,
             memory_holes: u64::from(value.memory_holes),
-            da_l1_gas_consumed,
-            da_l1_data_gas_consumed,
+            gas_consumed,
+            da_gas_consumed,
         };
         Ok(execution_resources)
+    }
+}
+
+impl From<protobuf::receipt::execution_resources::GasVector> for GasVector {
+    fn from(value: protobuf::receipt::execution_resources::GasVector) -> Self {
+        GasVector { l1_gas: value.l1_gas, l1_data_gas: value.l1_data_gas }
     }
 }
 
@@ -345,8 +342,8 @@ impl From<ExecutionResources> for protobuf::receipt::ExecutionResources {
     fn from(value: ExecutionResources) -> Self {
         let builtin_instance_counter = ProtobufBuiltinCounter::from(value.builtin_instance_counter);
         // TODO: add all l1 gas consumed, not just da
-        let l1_gas = StarkFelt::from(value.da_l1_gas_consumed).into();
-        let l1_data_gas = StarkFelt::from(value.da_l1_data_gas_consumed).into();
+        let gas_consumed = value.gas_consumed.into();
+        let da_gas_consumed = value.da_gas_consumed.into();
         // TODO: should not panic
         let steps = u32::try_from(value.steps).expect("Failed to convert u64 to u32");
         let memory_holes = u32::try_from(value.memory_holes).expect("Failed to convert u64 to u32");
@@ -355,8 +352,17 @@ impl From<ExecutionResources> for protobuf::receipt::ExecutionResources {
             builtins: Some(builtin_instance_counter),
             steps,
             memory_holes,
-            l1_gas: Some(l1_gas),
-            l1_data_gas: Some(l1_data_gas),
+            gas_consumed: Some(gas_consumed),
+            da_gas_consumed: Some(da_gas_consumed),
+        }
+    }
+}
+
+impl From<GasVector> for protobuf::receipt::execution_resources::GasVector {
+    fn from(value: GasVector) -> Self {
+        protobuf::receipt::execution_resources::GasVector {
+            l1_gas: value.l1_gas,
+            l1_data_gas: value.l1_data_gas,
         }
     }
 }
@@ -386,20 +392,19 @@ impl From<EthAddress> for protobuf::EthereumAddress {
 impl TryFrom<protobuf::MessageToL1> for MessageToL1 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::MessageToL1) -> Result<Self, Self::Error> {
-        let from_address_felt = StarkFelt::try_from(value.from_address.ok_or(
-            ProtobufConversionError::MissingField {
+        let from_address_felt =
+            Felt::try_from(value.from_address.ok_or(ProtobufConversionError::MissingField {
                 field_description: "MessageToL1::from_address",
-            },
-        )?)?;
+            })?)?;
         let from_address = ContractAddress::try_from(from_address_felt)
-            .expect("Converting ContractAddress from StarkFelt failed");
+            .expect("Converting ContractAddress from Felt failed");
 
         let to_address = EthAddress::try_from(value.to_address.ok_or(
             ProtobufConversionError::MissingField { field_description: "MessageToL1::to_address" },
         )?)?;
 
         let payload = L2ToL1Payload(
-            value.payload.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?,
+            value.payload.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?,
         );
 
         Ok(MessageToL1 { from_address, to_address, payload })
@@ -408,7 +413,7 @@ impl TryFrom<protobuf::MessageToL1> for MessageToL1 {
 
 impl From<MessageToL1> for protobuf::MessageToL1 {
     fn from(value: MessageToL1) -> Self {
-        let from_address = StarkFelt::from(value.from_address).into();
+        let from_address = Felt::from(value.from_address).into();
         let to_address = value.to_address.into();
         let payload = value.payload.0.into_iter().map(protobuf::Felt252::from).collect();
         protobuf::MessageToL1 {
@@ -428,7 +433,7 @@ fn parse_common_receipt_fields(
     let common =
         common.ok_or(ProtobufConversionError::MissingField { field_description: "Common" })?;
     let actual_fee_felt =
-        StarkFelt::try_from(common.actual_fee.ok_or(ProtobufConversionError::MissingField {
+        Felt::try_from(common.actual_fee.ok_or(ProtobufConversionError::MissingField {
             field_description: "Common::actual_fee",
         })?)?;
     let actual_fee = Fee(try_from_starkfelt_to_u128(actual_fee_felt).map_err(|_| {
@@ -460,7 +465,7 @@ fn create_proto_receipt_common_from_txn_output_fields(
     execution_resources: ExecutionResources,
     execution_status: TransactionExecutionStatus,
 ) -> protobuf::receipt::Common {
-    let actual_fee = StarkFelt::from(actual_fee).into();
+    let actual_fee = Felt::from(actual_fee).into();
     let messages_sent = messages_sent.into_iter().map(protobuf::MessageToL1::from).collect();
     let execution_resources = execution_resources.into();
     let revert_reason =

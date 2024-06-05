@@ -18,7 +18,7 @@ use starknet_api::core::{
     SequencerContractAddress,
     TransactionCommitment,
 };
-use starknet_api::crypto::Signature;
+use starknet_api::crypto::utils::Signature;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
 use super::ProtobufConversionError;
