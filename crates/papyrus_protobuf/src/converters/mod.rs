@@ -1,4 +1,5 @@
 // TODO(shahak): Internalize this once network doesn't depend on protobuf.
+mod class;
 pub mod common;
 pub mod consensus;
 mod header;
