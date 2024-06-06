@@ -35,6 +35,10 @@ pub enum ApiContractClass {
     DeprecatedContractClass(DeprecatedContractClass),
     ContractClass(ContractClass),
 }
+// pub struct Class {
+//     pub domain: DataAvailabilityMode,
+//     pub class: ApiContractClass,
+// }
 
 impl ApiContractClass {
     pub fn into_cairo0(self) -> Option<DeprecatedContractClass> {
