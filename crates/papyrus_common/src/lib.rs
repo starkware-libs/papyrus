@@ -6,7 +6,6 @@ pub mod block_hash;
 pub mod class_hash;
 pub mod deprecated_class_abi;
 pub mod metrics;
-pub mod patricia_hash_tree;
 pub mod pending_classes;
 pub mod state;
 pub mod state_diff_commitment;
