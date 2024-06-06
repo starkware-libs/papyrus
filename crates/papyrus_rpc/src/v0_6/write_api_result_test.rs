@@ -1,7 +1,6 @@
 use serde::Serialize;
 use starknet_api::core::{ClassHash, ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
+use starknet_api::felt;
 use starknet_api::transaction::TransactionHash;
 use starknet_client::writer::objects::response::{
     DeclareResponse,
@@ -55,7 +54,7 @@ fn add_deploy_account_ok_result_fits_rpc() {
 
 #[test]
 fn add_invoke_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
+    let transaction_hash = TransactionHash(felt!("0x12345"));
     let ok_result = AddInvokeOkResult::from(InvokeResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,
@@ -66,8 +65,8 @@ fn add_invoke_ok_result_from_response() {
 
 #[test]
 fn add_declare_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
-    let class_hash = ClassHash(stark_felt!("0xabcde"));
+    let transaction_hash = TransactionHash(felt!("0x12345"));
+    let class_hash = ClassHash(felt!("0xabcde"));
     let ok_result = AddDeclareOkResult::from(DeclareResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,
@@ -79,8 +78,8 @@ fn add_declare_ok_result_from_response() {
 
 #[test]
 fn add_deploy_account_ok_result_from_response() {
-    let transaction_hash = TransactionHash(stark_felt!("0x12345"));
-    let contract_address = ContractAddress(PatriciaKey::try_from(stark_felt!("0xabcde")).unwrap());
+    let transaction_hash = TransactionHash(felt!("0x12345"));
+    let contract_address = ContractAddress(PatriciaKey::try_from(felt!("0xabcde")).unwrap());
     let ok_result = AddDeployAccountOkResult::from(DeployAccountResponse {
         code: SuccessfulStarknetErrorCode::default(),
         transaction_hash,

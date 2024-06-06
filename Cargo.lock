@@ -6205,6 +6205,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-core",
+ "starknet-types-core",
  "starknet_api",
  "starknet_client",
  "strum 0.25.0",

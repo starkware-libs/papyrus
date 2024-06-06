@@ -1,7 +1,6 @@
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -14,7 +13,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
-use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, contract_address, felt, patricia_key};
 use starknet_client::writer::objects::transaction as client_transaction;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, get_rng, GetTestInstance};
 
@@ -37,20 +36,20 @@ lazy_static::lazy_static! {
     // A transaction from MAINNET with tx hash 0x439e12f67962c353182d72b4af12c3f11eaba4b36e552aebcdcd6db66971bdb.
     static ref L1_HANDLER_TX: L1HandlerTransaction = L1HandlerTransaction {
         version: TransactionVersion::ZERO,
-        nonce: Nonce(stark_felt!("0x18e94d")),
+        nonce: Nonce(felt!("0x18e94d")),
         contract_address: contract_address!(
             "0x73314940630fd6dcda0d772d4c972c4e0a9946bef9dabf4ef84eda8ef542b82"
         ),
-        entry_point_selector: EntryPointSelector(stark_felt!(
+        entry_point_selector: EntryPointSelector(felt!(
             "0x1b64b1b3b690b43b9b514fb81377518f4039cd3e4f4914d8a6bdf01d679fb19"
         )),
         calldata: calldata![
-            stark_felt!("0xae0ee0a63a2ce6baeeffe56e7714fb4efe48d419"),
-            stark_felt!("0x455448"),
-            stark_felt!("0xc27947400e26e534e677afc2e9b2ec1bab14fc89"),
-            stark_felt!("0x4af4754baf89f1b8b449215a8ea7ce558824a33a5393eaa3829658549f2bfa2"),
-            stark_felt!("0x9184e72a000"),
-            stark_felt!("0x0")
+            felt!("0xae0ee0a63a2ce6baeeffe56e7714fb4efe48d419"),
+            felt!("0x455448"),
+            felt!("0xc27947400e26e534e677afc2e9b2ec1bab14fc89"),
+            felt!("0x4af4754baf89f1b8b449215a8ea7ce558824a33a5393eaa3829658549f2bfa2"),
+            felt!("0x9184e72a000"),
+            felt!("0x0")
         ],
     };
 }
