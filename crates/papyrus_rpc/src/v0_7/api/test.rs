@@ -52,6 +52,7 @@ use starknet_api::core::{
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
+    ContractClass as StarknetApiDeprecatedContractClass,
     ContractClassAbiEntry,
     FunctionAbiEntry,
     FunctionStateMutability,
@@ -191,6 +192,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
+use crate::v0_7::api::CompiledContractClass;
 use crate::version_config::VERSION_0_7 as VERSION;
 use crate::{
     internal_server_error,
@@ -3565,39 +3567,55 @@ async fn get_deprecated_class_state_mutability() {
 
 #[tokio::test]
 async fn get_compiled_contract_class() {
+    let casm_class_hash = ClassHash(felt!("0x1"));
+    let deprecated_class_hash = ClassHash(felt!("0x2"));
+    let invalid_class_hash = ClassHash(felt!("0x3"));
+
     let method_name = "starknet_V0_7_getCompiledContractClass";
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
         JsonRpcServerImpl,
     >(None, None, None, None, None);
-    let class_hash = ClassHash(felt!("0x1"));
     let casm_contract_class = CasmContractClass::get_test_instance(&mut get_rng());
+    let deprecated_contract_class =
+        StarknetApiDeprecatedContractClass::get_test_instance(&mut get_rng());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_state_diff(
             BlockNumber(0),
             starknet_api::state::ThinStateDiff {
-                declared_classes: IndexMap::from([(class_hash, CompiledClassHash::default())]),
+                declared_classes: IndexMap::from([(casm_class_hash, CompiledClassHash::default())]),
                 ..Default::default()
             },
         )
         .unwrap()
-        .append_casm(&class_hash, &casm_contract_class)
+        .append_casm(&casm_class_hash, &casm_contract_class)
+        .unwrap()
+        .append_classes(BlockNumber(0), &[], &[(deprecated_class_hash, &deprecated_contract_class)])
         .unwrap()
         .commit()
         .unwrap();
 
     let res = module
-        .call::<_, CasmContractClass>(method_name, (BlockId::Tag(Tag::Latest), class_hash))
+        .call::<_, CompiledContractClass>(method_name, (BlockId::Tag(Tag::Latest), casm_class_hash))
         .await
         .unwrap();
-    assert_eq!(res, casm_contract_class);
+    assert_eq!(res, CompiledContractClass::V1(casm_contract_class));
+
+    let res = module
+        .call::<_, CompiledContractClass>(
+            method_name,
+            (BlockId::Tag(Tag::Latest), deprecated_class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, CompiledContractClass::V0(deprecated_contract_class));
 
     // Ask for an invalid class hash.
     let err = module
-        .call::<_, CasmContractClass>(
+        .call::<_, CompiledContractClass>(
             method_name,
-            (BlockId::Tag(Tag::Latest), ClassHash(felt!("0x2"))),
+            (BlockId::Tag(Tag::Latest), invalid_class_hash),
         )
         .await
         .unwrap_err();
