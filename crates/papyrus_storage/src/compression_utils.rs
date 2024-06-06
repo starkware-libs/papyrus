@@ -2,14 +2,16 @@
 #[path = "compression_utils_test.rs"]
 mod compression_utils_test;
 
-use std::io::Read;
-
-use flate2::bufread::{GzDecoder, GzEncoder};
-use flate2::Compression;
-
 use crate::db::serialization::{StorageSerde, StorageSerdeError};
 
-// TODO: consider changing the compression hyperparameters: compression level and algorithm.
+// TODO(dvir): create one compressor/decompressor only once (maybe only once per thread) to prevent
+// buffer reallocation.
+// TODO: fine tune the compression hyperparameters (and maybe even the compression algorithm).
+
+// The maximum size of the decompressed data.
+const MAX_DECOMPRESSED_SIZE: usize = 1 << 20; // 1MB
+// The compression level to use. Higher levels are slower but compress better.
+const COMPRESSION_LEVEL: i32 = zstd::DEFAULT_COMPRESSION_LEVEL;
 
 /// Returns the compressed data in a vector.
 ///
@@ -19,10 +21,7 @@ use crate::db::serialization::{StorageSerde, StorageSerdeError};
 /// # Errors
 /// Returns [`std::io::Error`] if any read error is encountered.
 pub fn compress(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-    let mut encoder = GzEncoder::new(data, Compression::default());
-    let mut compressed_data = Vec::new();
-    encoder.read_to_end(&mut compressed_data)?;
-    Ok(compressed_data)
+    zstd::bulk::compress(data, COMPRESSION_LEVEL)
 }
 
 /// Serialized and then compress object.
@@ -42,14 +41,11 @@ pub fn serialize_and_compress(object: &impl StorageSerde) -> Result<Vec<u8>, Sto
 ///
 /// # Arguments
 /// * data - bytes to decompress.
-///
+
 /// # Errors
 /// Returns [`std::io::Error`] if any read error is encountered.
 pub fn decompress(data: &[u8]) -> Result<Vec<u8>, std::io::Error> {
-    let mut decoder = GzDecoder::new(data);
-    let mut uncompressed = Vec::new();
-    decoder.read_to_end(&mut uncompressed)?;
-    Ok(uncompressed)
+    zstd::bulk::decompress(data, MAX_DECOMPRESSED_SIZE)
 }
 
 /// Decompress a vector directly from a reader.
