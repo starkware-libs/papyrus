@@ -31,8 +31,7 @@ use papyrus_sync::sources::central::{CentralError, CentralSource, CentralSourceC
 use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::BlockHash;
-use starknet_api::hash::{StarkFelt, GENESIS_HASH};
-use starknet_api::stark_felt;
+use starknet_api::felt;
 use starknet_api::state::ThinStateDiff;
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
@@ -45,6 +44,11 @@ use tracing_subscriber::{fmt, EnvFilter};
 
 // TODO(yair): Add to config.
 const DEFAULT_LEVEL: LevelFilter = LevelFilter::INFO;
+
+// TODO(shahak): Consider adding genesis hash to the config to support chains that have
+// different genesis hash.
+// TODO: Consider moving to a more general place.
+const GENESIS_HASH: &str = "0x0";
 
 // TODO(dvir): add this to config.
 // Duration between updates to the storage metrics (those in the collect_storage_metrics function).
@@ -112,7 +116,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         // The pending data might change later to DeprecatedPendingBlock, depending on the response
         // from the feeder gateway.
         block: PendingBlockOrDeprecated::Current(PendingBlock {
-            parent_block_hash: BlockHash(stark_felt!(GENESIS_HASH)),
+            parent_block_hash: BlockHash(felt!(GENESIS_HASH)),
             ..Default::default()
         }),
         ..Default::default()
