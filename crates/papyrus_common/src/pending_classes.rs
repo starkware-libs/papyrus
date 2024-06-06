@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use starknet_api::core::ClassHash;
+use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::ContractClass;
 
@@ -34,6 +35,10 @@ pub struct PendingClasses {
 pub enum ApiContractClass {
     DeprecatedContractClass(DeprecatedContractClass),
     ContractClass(ContractClass),
+}
+pub struct Class {
+    pub domain: DataAvailabilityMode,
+    pub class: ApiContractClass,
 }
 
 impl ApiContractClass {

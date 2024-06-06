@@ -6155,6 +6155,7 @@ version = "0.4.0-dev.2"
 dependencies = [
  "bytes",
  "indexmap 2.2.6",
+ "papyrus_common",
  "primitive-types",
  "prost",
  "prost-build",
