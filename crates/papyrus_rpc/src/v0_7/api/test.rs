@@ -52,6 +52,7 @@ use starknet_api::core::{
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
 use starknet_api::deprecated_contract_class::{
+    ContractClass as StarknetApiDeprecatedContractClass,
     ContractClassAbiEntry,
     FunctionAbiEntry,
     FunctionStateMutability,
@@ -191,6 +192,7 @@ use crate::test_utils::{
     validate_schema,
     SpecFile,
 };
+use crate::v0_7::api::CompiledContractClass;
 use crate::version_config::VERSION_0_7 as VERSION;
 use crate::{
     internal_server_error,
@@ -3564,40 +3566,66 @@ async fn get_deprecated_class_state_mutability() {
 }
 
 #[tokio::test]
+// TODO (Yael 16/06/2024): Add a test case for block_number which is not the latest.
 async fn get_compiled_contract_class() {
+    let cairo1_class_hash = ClassHash(Felt::ONE);
+    let cairo0_class_hash = ClassHash(Felt::TWO);
+    let invalid_class_hash = ClassHash(Felt::THREE);
+
     let method_name = "starknet_V0_7_getCompiledContractClass";
     let (module, mut storage_writer) = get_test_rpc_server_and_storage_writer_from_params::<
         JsonRpcServerImpl,
     >(None, None, None, None, None);
-    let class_hash = ClassHash(felt!("0x1"));
-    let casm_contract_class = CasmContractClass::get_test_instance(&mut get_rng());
+    let cairo1_contract_class = CasmContractClass::get_test_instance(&mut get_rng());
+    let cairo0_contract_class =
+        StarknetApiDeprecatedContractClass::get_test_instance(&mut get_rng());
     storage_writer
         .begin_rw_txn()
         .unwrap()
         .append_state_diff(
             BlockNumber(0),
             starknet_api::state::ThinStateDiff {
-                declared_classes: IndexMap::from([(class_hash, CompiledClassHash::default())]),
+                declared_classes: IndexMap::from([(
+                    cairo1_class_hash,
+                    CompiledClassHash::default(),
+                )]),
+                deprecated_declared_classes: vec![cairo0_class_hash],
                 ..Default::default()
             },
         )
         .unwrap()
-        .append_casm(&class_hash, &casm_contract_class)
+        .append_casm(&cairo1_class_hash, &cairo1_contract_class)
+        .unwrap()
+        // Note: there is no need to write the cairo1 contract class here because the
+        // declared_classes_table is not used in the rpc method.
+        .append_classes(BlockNumber(0), &[], &[(cairo0_class_hash, &cairo0_contract_class)])
         .unwrap()
         .commit()
         .unwrap();
 
     let res = module
-        .call::<_, CasmContractClass>(method_name, (BlockId::Tag(Tag::Latest), class_hash))
+        .call::<_, CompiledContractClass>(
+            method_name,
+            (BlockId::Tag(Tag::Latest), cairo1_class_hash),
+        )
         .await
         .unwrap();
-    assert_eq!(res, casm_contract_class);
+    assert_eq!(res, CompiledContractClass::V1(cairo1_contract_class));
 
-    // Ask for an invalid class hash.
-    let err = module
-        .call::<_, CasmContractClass>(
+    let res = module
+        .call::<_, CompiledContractClass>(
             method_name,
-            (BlockId::Tag(Tag::Latest), ClassHash(felt!("0x2"))),
+            (BlockId::Tag(Tag::Latest), cairo0_class_hash),
+        )
+        .await
+        .unwrap();
+    assert_eq!(res, CompiledContractClass::V0(cairo0_contract_class));
+
+    // Ask for an invalid class hash, which does no exist in the table.
+    let err = module
+        .call::<_, CompiledContractClass>(
+            method_name,
+            (BlockId::Tag(Tag::Latest), invalid_class_hash),
         )
         .await
         .unwrap_err();
