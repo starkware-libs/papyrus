@@ -189,7 +189,7 @@ pub trait DBExecutorTrait {
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        sender: Sender<Result<Vec<Data>, DBExecutorError>>,
+        sender: Sender<Vec<Data>>,
         // TODO(shahak): Remove QueryId.
     ) -> QueryId;
 
@@ -223,7 +223,7 @@ impl DBExecutorTrait for DBExecutor {
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        mut sender: Sender<Result<Vec<Data>, DBExecutorError>>,
+        mut sender: Sender<Vec<Data>>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
@@ -265,7 +265,7 @@ impl DBExecutorTrait for DBExecutor {
                             query_id,
                         )?);
                         let data_vec =
-                            data_type.fetch_block_data_from_db(block_number, query_id, &txn);
+                            data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
                         // Using poll_fn because Sender::poll_ready is not a future
                         match poll_fn(|cx| sender.poll_ready(cx)).await {
                             Ok(()) => {

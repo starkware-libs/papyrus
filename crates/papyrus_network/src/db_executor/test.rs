@@ -32,7 +32,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    type ReceiversType = Vec<(Receiver<Result<Vec<Data>, DBExecutorError>>, DataType)>;
+    type ReceiversType = Vec<(Receiver<Vec<Data>>, DataType)>;
     let mut receivers: ReceiversType = enum_iterator::all::<DataType>()
         .map(|data_type| {
             let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
@@ -62,7 +62,6 @@ async fn header_db_executor_can_register_and_run_a_query() {
                 let (data, requested_data_type) = res.await;
                 assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
                 for (i, data) in data.into_iter().enumerate() {
-                    let data = data.unwrap();
                     for data in data.iter() {
                         match data {
                             Data::BlockHeaderAndSignature(SignedBlockHeader { block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, .. }) => {
@@ -118,7 +117,6 @@ async fn header_db_executor_start_block_given_by_hash() {
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in res.into_iter().enumerate() {
-                let data = data.unwrap();
                 for data in data.iter() {
                     match data {
                         Data::BlockHeaderAndSignature(
@@ -138,8 +136,8 @@ async fn header_db_executor_start_block_given_by_hash() {
         }
     }
 }
-// #[tokio::test]
-#[allow(dead_code)]
+
+#[tokio::test]
 async fn header_db_executor_query_of_missing_block() {
     let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let mut db_executor = super::DBExecutor::new(storage_reader);
