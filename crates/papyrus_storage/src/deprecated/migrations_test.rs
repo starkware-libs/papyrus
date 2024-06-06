@@ -2,8 +2,7 @@ use std::fmt::Debug;
 
 use starknet_api::block::{BlockNumber, StarknetVersion};
 use starknet_api::core::{EventCommitment, TransactionCommitment};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
+use starknet_api::felt;
 use test_log::test;
 use test_utils::{get_rng, GetTestInstance};
 
@@ -42,8 +41,8 @@ fn header_v0_to_current() {
     // Insert a headers V0 to the db.
     let header_without_commitments = StorageBlockHeaderV0::default();
     let header_with_commitments = StorageBlockHeaderV0 {
-        transaction_commitment: TransactionCommitment(stark_felt!("0x1")),
-        event_commitment: EventCommitment(stark_felt!("0x2")),
+        transaction_commitment: TransactionCommitment(felt!("0x1")),
+        event_commitment: EventCommitment(felt!("0x2")),
         n_transactions: 3,
         n_events: 4,
         ..StorageBlockHeaderV0::default()
@@ -80,11 +79,11 @@ fn header_v0_to_current() {
     assert!(header_current_with_commitments.state_diff_commitment.is_none());
     assert_eq!(
         header_current_with_commitments.transaction_commitment,
-        Some(TransactionCommitment(stark_felt!("0x1")))
+        Some(TransactionCommitment(felt!("0x1")))
     );
     assert_eq!(
         header_current_with_commitments.event_commitment,
-        Some(EventCommitment(stark_felt!("0x2")))
+        Some(EventCommitment(felt!("0x2")))
     );
     assert_eq!(header_current_with_commitments.n_transactions, Some(3));
     assert_eq!(header_current_with_commitments.n_events, Some(4));

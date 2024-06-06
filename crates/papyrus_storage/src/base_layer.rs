@@ -19,7 +19,7 @@
 //! # let dir = dir_handle.path().to_path_buf();
 //! # let db_config = DbConfig {
 //! #     path_prefix: dir,
-//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     chain_id: ChainId::Mainnet,
 //! #     enforce_file_exists: false,
 //! #     min_size: 1 << 20,    // 1MB
 //! #     max_size: 1 << 35,    // 32GB

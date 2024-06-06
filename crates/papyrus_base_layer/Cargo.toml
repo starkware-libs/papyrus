@@ -21,6 +21,7 @@ url.workspace = true
 ethers-core = { version = "2.0.3" }
 pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
+starknet-types-core.workspace = true
 tar = { version = "0.4.38" }
 tempfile.workspace = true
 test-with = { version = "0.9.3", default-features = false, features = [

@@ -16,8 +16,8 @@ use papyrus_common::state::DeclaredClassHashEntry;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey};
+use starknet_types_core::felt::Felt;
 
 use crate::execution_utils;
 use crate::execution_utils::{get_contract_class, ExecutionUtilsError};
@@ -38,7 +38,7 @@ impl BlockifierStateReader for ExecutionStateReader {
         &self,
         contract_address: ContractAddress,
         key: StorageKey,
-    ) -> StateResult<StarkFelt> {
+    ) -> StateResult<Felt> {
         execution_utils::get_storage_at(
             &self.storage_reader.begin_ro_txn().map_err(storage_err_to_state_err)?,
             self.state_number,

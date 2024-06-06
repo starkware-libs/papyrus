@@ -24,6 +24,7 @@ use starknet_api::transaction::{
     DeployTransactionOutput,
     Event,
     Fee,
+    GasVector,
     InvokeTransactionOutput,
     L1HandlerTransactionOutput,
     L1ToL2Payload,
@@ -204,17 +205,24 @@ pub struct IntermediateDeclareTransaction {
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
     type Error = ReaderClientError;
 
+    // TODO: Consider using match instead.
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
-        match declare_tx.version {
-            TransactionVersion::ZERO => Ok(Self::V0(declare_tx.try_into()?)),
-            TransactionVersion::ONE => Ok(Self::V1(declare_tx.try_into()?)),
-            TransactionVersion::TWO => Ok(Self::V2(declare_tx.try_into()?)),
-            TransactionVersion::THREE => Ok(Self::V3(declare_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
-                tx_hash: declare_tx.transaction_hash,
-                msg: format!("Declare version {:?} is not supported.", declare_tx.version),
-            }),
+        if declare_tx.version == TransactionVersion::ZERO {
+            return Ok(Self::V0(declare_tx.try_into()?));
         }
+        if declare_tx.version == TransactionVersion::ONE {
+            return Ok(Self::V1(declare_tx.try_into()?));
+        }
+        if declare_tx.version == TransactionVersion::TWO {
+            return Ok(Self::V2(declare_tx.try_into()?));
+        }
+        if declare_tx.version == TransactionVersion::THREE {
+            return Ok(Self::V3(declare_tx.try_into()?));
+        }
+        Err(ReaderClientError::BadTransaction {
+            tx_hash: declare_tx.transaction_hash,
+            msg: format!("Declare version {:?} is not supported.", declare_tx.version),
+        })
     }
 }
 
@@ -372,19 +380,16 @@ impl TryFrom<IntermediateDeployAccountTransaction>
     fn try_from(
         deploy_account_tx: IntermediateDeployAccountTransaction,
     ) -> Result<Self, ReaderClientError> {
-        match deploy_account_tx.version {
-            TransactionVersion::ONE => Ok(Self::V1(deploy_account_tx.try_into()?)),
-            // Since v3 transactions, all transaction types are aligned with respect to the version,
-            // v2 was skipped in the Deploy Account type.
-            TransactionVersion::THREE => Ok(Self::V3(deploy_account_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
-                tx_hash: deploy_account_tx.transaction_hash,
-                msg: format!(
-                    "DeployAccount version {:?} is not supported.",
-                    deploy_account_tx.version
-                ),
-            }),
+        if deploy_account_tx.version == TransactionVersion::ONE {
+            return Ok(Self::V1(deploy_account_tx.try_into()?));
         }
+        if deploy_account_tx.version == TransactionVersion::THREE {
+            return Ok(Self::V3(deploy_account_tx.try_into()?));
+        }
+        Err(ReaderClientError::BadTransaction {
+            tx_hash: deploy_account_tx.transaction_hash,
+            msg: format!("DeployAccount version {:?} is not supported.", deploy_account_tx.version),
+        })
     }
 }
 
@@ -498,17 +503,19 @@ impl TryFrom<IntermediateInvokeTransaction> for starknet_api::transaction::Invok
     type Error = ReaderClientError;
 
     fn try_from(invoke_tx: IntermediateInvokeTransaction) -> Result<Self, ReaderClientError> {
-        match invoke_tx.version {
-            TransactionVersion::ZERO => Ok(Self::V0(invoke_tx.try_into()?)),
-            TransactionVersion::ONE => Ok(Self::V1(invoke_tx.try_into()?)),
-            // Since v3 transactions, all transaction types are aligned with respect to the version,
-            // v2 was skipped in the Invoke type.
-            TransactionVersion::THREE => Ok(Self::V3(invoke_tx.try_into()?)),
-            _ => Err(ReaderClientError::BadTransaction {
-                tx_hash: invoke_tx.transaction_hash,
-                msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
-            }),
+        if invoke_tx.version == TransactionVersion::ZERO {
+            return Ok(Self::V0(invoke_tx.try_into()?));
         }
+        if invoke_tx.version == TransactionVersion::ONE {
+            return Ok(Self::V1(invoke_tx.try_into()?));
+        }
+        if invoke_tx.version == TransactionVersion::THREE {
+            return Ok(Self::V3(invoke_tx.try_into()?));
+        }
+        Err(ReaderClientError::BadTransaction {
+            tx_hash: invoke_tx.transaction_hash,
+            msg: format!("Invoke version {:?} is not supported.", invoke_tx.version),
+        })
     }
 }
 
@@ -682,16 +689,19 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
                 })
                 .collect(),
             memory_holes: execution_resources.n_memory_holes,
-            da_l1_gas_consumed: execution_resources
-                .data_availability
-                .as_ref()
-                .map(|data_availability| data_availability.l1_gas)
-                .unwrap_or_default(),
-            da_l1_data_gas_consumed: execution_resources
-                .data_availability
-                .as_ref()
-                .map(|data_availability| data_availability.l1_data_gas)
-                .unwrap_or_default(),
+            da_gas_consumed: GasVector {
+                l1_gas: execution_resources
+                    .data_availability
+                    .as_ref()
+                    .map(|data_availability| data_availability.l1_gas)
+                    .unwrap_or_default(),
+                l1_data_gas: execution_resources
+                    .data_availability
+                    .as_ref()
+                    .map(|data_availability| data_availability.l1_data_gas)
+                    .unwrap_or_default(),
+            },
+            gas_consumed: GasVector { l1_gas: 0, l1_data_gas: 0 },
         }
     }
 }

@@ -32,7 +32,7 @@ pub fn main() {
     println!("Opening storage");
     let db_config = DbConfig {
         path_prefix: cli_params.db_path.into(),
-        chain_id: ChainId(cli_params.chain_id),
+        chain_id: cli_params.chain_id,
         ..Default::default()
     };
     let config = StorageConfig { db_config, ..Default::default() };
@@ -162,7 +162,7 @@ struct CliParams {
     queries_file_path: String,
     db_path: String,
     output_file_path: String,
-    chain_id: String,
+    chain_id: ChainId,
 }
 
 fn get_cli_params() -> CliParams {
@@ -209,5 +209,5 @@ fn get_cli_params() -> CliParams {
     let chain_id =
         matches.get_one::<String>("chain_id").expect("Missing parse chain_id").to_string();
 
-    CliParams { queries_file_path, db_path, output_file_path, chain_id }
+    CliParams { queries_file_path, db_path, output_file_path, chain_id: chain_id.into() }
 }

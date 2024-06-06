@@ -1,8 +1,7 @@
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
+use starknet_api::felt;
 
 use crate::header::{HeaderStorageReader, HeaderStorageWriter, StarknetVersion};
 use crate::test_utils::get_test_storage;
@@ -110,7 +109,7 @@ async fn get_reverted_block_number_by_hash_returns_none() {
     let ((reader, mut writer), _temp_dir) = get_test_storage();
     append_2_headers(&mut writer);
 
-    let block_hash = BlockHash(stark_felt!("0x1"));
+    let block_hash = BlockHash(felt!("0x1"));
 
     // Verify that we can get block 1 by hash before the revert.
     assert!(
@@ -129,12 +128,12 @@ fn append_2_headers(writer: &mut StorageWriter) {
         .unwrap()
         .append_header(
             BlockNumber(0),
-            &BlockHeader { block_hash: BlockHash(stark_felt!("0x0")), ..BlockHeader::default() },
+            &BlockHeader { block_hash: BlockHash(felt!("0x0")), ..BlockHeader::default() },
         )
         .unwrap()
         .append_header(
             BlockNumber(1),
-            &BlockHeader { block_hash: BlockHash(stark_felt!("0x1")), ..BlockHeader::default() },
+            &BlockHeader { block_hash: BlockHash(felt!("0x1")), ..BlockHeader::default() },
         )
         .unwrap()
         .commit()
@@ -145,7 +144,7 @@ fn append_2_headers(writer: &mut StorageWriter) {
 async fn starknet_version() {
     fn block_header(hash: u8, starknet_version: StarknetVersion) -> BlockHeader {
         BlockHeader {
-            block_hash: BlockHash(stark_felt!(hash)),
+            block_hash: BlockHash(felt!(hash)),
             starknet_version,
             ..BlockHeader::default()
         }

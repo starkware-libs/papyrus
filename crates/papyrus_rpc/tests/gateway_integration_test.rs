@@ -12,12 +12,12 @@ use papyrus_rpc::{
     TransactionVersion1RPC0_6,
 };
 use starknet_api::core::{ChainId, ContractAddress, EntryPointSelector, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Calldata, Fee, Transaction, TransactionSignature};
-use starknet_api::{calldata, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, contract_address, felt, patricia_key};
 use starknet_client::writer::objects::transaction::InvokeTransaction as SNClientInvokeTransaction;
 use starknet_core::crypto::ecdsa_sign;
 use starknet_core::types::FieldElement;
+use starknet_types_core::felt::Felt;
 
 const ETH_TO_WEI: u128 = u128::pow(10, 18);
 const MAX_FEE: u128 = ETH_TO_WEI / 1000;
@@ -32,14 +32,14 @@ const USER_A_ADDRESS: &str = "0x2eda087f4edf190224eac3fdf7f762d83052f7c83fdda674
 const USER_B_ADDRESS: &str = "0x02d23bb72da2a2c7cce1577a013c3139b4f51d2b32be2ee7825f33428f572a9d";
 
 // Returns the eth balance for the given account via the given node client.
-async fn get_eth_balance(client: &HttpClient, account: ContractAddress) -> StarkFelt {
+async fn get_eth_balance(client: &HttpClient, account: ContractAddress) -> Felt {
     let balance = client
-        .request::<Vec<StarkFelt>, _>(
+        .request::<Vec<Felt>, _>(
             "starknet_call",
             rpc_params!(
                 (
                     L2_ETH_CONTRACT_ADDRESS,
-                    EntryPointSelector(stark_felt!(BALANCE_OF_ENTRY_POINT_SELECTOR)),
+                    EntryPointSelector(felt!(BALANCE_OF_ENTRY_POINT_SELECTOR)),
                     calldata![*account.0.key()],
                 ),
                 "latest"
@@ -84,26 +84,26 @@ async fn test_gw_integration_testnet() {
         sender_address,
         version: TransactionVersion1RPC0_6::default(),
         calldata: calldata![
-            stark_felt!(1_u8), // OpenZeppelin call array len (number of calls in this tx).
+            felt!(1_u8), // OpenZeppelin call array len (number of calls in this tx).
             // Call Array (4 elements per array struct element).
-            stark_felt!(L2_ETH_CONTRACT_ADDRESS), // to
-            EntryPointSelector(stark_felt!(TRANSFER_ENTRY_POINT_SELECTOR)).0, // selector.
-            stark_felt!(0_u8),                    // data offset (in the calldata array)
-            stark_felt!(3_u8),                    /* data len (of this call in the entire
-                                                   * calldata array) */
+            felt!(L2_ETH_CONTRACT_ADDRESS), // to
+            EntryPointSelector(felt!(TRANSFER_ENTRY_POINT_SELECTOR)).0, // selector.
+            felt!(0_u8),                    // data offset (in the calldata array)
+            felt!(3_u8),                    /* data len (of this call in the entire
+                                             * calldata array) */
             // Call data.
-            stark_felt!(3_u8), // Call data len.
+            felt!(3_u8), // Call data len.
             // calldata for transfer - receiver and amount (uint256  = 2 felts).
             *receiver_address.0.key(),
-            stark_felt![1_u8], // LSB
-            stark_felt![0_u8]
+            felt![1_u8], // LSB
+            felt![0_u8]
         ],
     };
 
     // Update the signature.
     let hash = get_transaction_hash(
         &Transaction::Invoke(InvokeTransactionRPC0_6::Version1(invoke_tx.clone()).into()),
-        &ChainId("SN_GOERLI".to_string()),
+        &ChainId::Sepolia,
         &TransactionOptions::default(),
     )
     .unwrap();
@@ -112,10 +112,13 @@ async fn test_gw_integration_testnet() {
             "Sender private key must be given in SENDER_PRIVATE_KEY environment variable.",
         ))
         .unwrap(),
-        &hash.0.into(),
+        &FieldElement::from_bytes_be(&hash.0.to_bytes_be()).unwrap(),
     )
     .unwrap();
-    invoke_tx.signature = TransactionSignature(vec![signature.r.into(), signature.s.into()]);
+    invoke_tx.signature = TransactionSignature(vec![
+        Felt::from_bytes_be(&signature.r.to_bytes_be()),
+        Felt::from_bytes_be(&signature.s.to_bytes_be()),
+    ]);
 
     let invoke_res = client
         .request::<AddInvokeOkResultRPC0_6, _>(

@@ -3,9 +3,8 @@ use std::vec;
 use assert_matches::assert_matches;
 use pretty_assertions::assert_eq;
 use starknet_api::core::{ContractAddress, PatriciaKey};
-use starknet_api::hash::StarkHash;
-use starknet_api::patricia_key;
 use starknet_api::transaction::{EventIndexInTransactionOutput, TransactionOffsetInBlock};
+use starknet_api::{felt, patricia_key};
 use test_utils::get_test_block;
 
 use crate::body::events::{EventIndex, EventsReader};

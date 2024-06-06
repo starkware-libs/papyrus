@@ -25,9 +25,10 @@ use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce, PatriciaKey};
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
-use starknet_api::{patricia_key, stark_felt};
+use starknet_api::{felt, patricia_key};
+use starknet_types_core::felt::Felt;
 
 use crate::objects::PendingData;
 use crate::state_reader::ExecutionStateReader;
@@ -43,8 +44,8 @@ fn read_state() {
     let class_hash0 = ClassHash(2u128.into());
     let address0 = ContractAddress(patricia_key!(CONTRACT_ADDRESS));
     let storage_key0 = StorageKey(patricia_key!("0x0"));
-    let storage_value0 = stark_felt!(777_u128);
-    let storage_value1 = stark_felt!(888_u128);
+    let storage_value0 = felt!(777_u128);
+    let storage_value1 = felt!(888_u128);
     // The class is not used in the execution, so it can be default.
     let class0 = ContractClass::default();
     let casm0 = get_test_casm();
@@ -55,17 +56,17 @@ fn read_state() {
     let class_hash1 = ClassHash(1u128.into());
     let class1 = get_test_deprecated_contract_class();
     let address1 = ContractAddress(patricia_key!(DEPRECATED_CONTRACT_ADDRESS));
-    let nonce0 = Nonce(stark_felt!(1_u128));
+    let nonce0 = Nonce(felt!(1_u128));
 
     let address2 = ContractAddress(patricia_key!("0x123"));
-    let storage_value2 = stark_felt!(999_u128);
+    let storage_value2 = felt!(999_u128);
     let class_hash2 = ClassHash(1234u128.into());
     let compiled_class_hash2 = CompiledClassHash(StarkHash::TWO);
     let mut casm1 = get_test_casm();
     casm1.bytecode[0] = BigUintAsHex { value: 12345u32.into() };
     let blockifier_casm1 =
         BlockifierContractClass::V1(ContractClassV1::try_from(casm1.clone()).unwrap());
-    let nonce1 = Nonce(stark_felt!(2_u128));
+    let nonce1 = Nonce(felt!(2_u128));
     let class_hash3 = ClassHash(567_u128.into());
     let class_hash4 = ClassHash(89_u128.into());
     let class_hash5 = ClassHash(98765_u128.into());
@@ -84,7 +85,7 @@ fn read_state() {
         .append_header(
             BlockNumber(1),
             &BlockHeader {
-                block_hash: BlockHash(stark_felt!(1_u128)),
+                block_hash: BlockHash(felt!(1_u128)),
                 block_number: BlockNumber(1),
                 ..Default::default()
             },
@@ -128,7 +129,7 @@ fn read_state() {
         .append_header(
             BlockNumber(2),
             &BlockHeader {
-                block_hash: BlockHash(stark_felt!(2_u128)),
+                block_hash: BlockHash(felt!(2_u128)),
                 block_number: BlockNumber(2),
                 ..Default::default()
             },
@@ -151,7 +152,7 @@ fn read_state() {
         missing_compiled_class: Cell::new(None),
     };
     let storage_after_block_0 = state_reader0.get_storage_at(address0, storage_key0).unwrap();
-    assert_eq!(storage_after_block_0, StarkFelt::default());
+    assert_eq!(storage_after_block_0, Felt::default());
     let nonce_after_block_0 = state_reader0.get_nonce_at(address0).unwrap();
     assert_eq!(nonce_after_block_0, Nonce::default());
     let class_hash_after_block_0 = state_reader0.get_class_hash_at(address0).unwrap();

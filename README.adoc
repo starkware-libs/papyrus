@@ -44,7 +44,7 @@ Use it at your own risk.
 [discrete]
 ==== Prerequisites
 
-* https://www.rust-lang.org/tools/install[Rust] must be installed.
+* https://www.rust-lang.org/tools/install[Rust] must be installed. Minimum supported version is `1.76`.
 * You must have access to an Ethereum node. For example, you can use a node provider such as Infura.
 
 [discrete]

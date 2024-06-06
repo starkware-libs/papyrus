@@ -9,7 +9,7 @@ use blockifier::execution::contract_class::{
     ContractClassV0,
     ContractClassV1,
 };
-use blockifier::state::cached_state::{CachedState, MutRefState};
+use blockifier::state::cached_state::{CachedState, CommitmentStateDiff, MutRefState};
 use blockifier::state::state_api::StateReader;
 use blockifier::transaction::objects::TransactionExecutionInfo;
 use cairo_vm::types::errors::program_errors::ProgramError;
@@ -20,8 +20,8 @@ use papyrus_storage::db::{TransactionKind, RO};
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageResult, StorageTxn};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StateNumber, StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use thiserror::Error;
 
 use crate::objects::TransactionTrace;
@@ -120,8 +120,7 @@ pub fn induced_state_diff(
     transactional_state: &mut CachedState<MutRefState<'_, CachedState<ExecutionStateReader>>>,
     deprecated_declared_class_hash: Option<ClassHash>,
 ) -> ExecutionResult<ThinStateDiff> {
-    let blockifier_state_diff = transactional_state.to_state_diff();
-
+    let blockifier_state_diff = CommitmentStateDiff::from(transactional_state.to_state_diff()?);
     // Determine which contracts were deployed and which were replaced by comparing their
     // previous class hash (default value suggests it didn't exist before).
     let mut deployed_contracts = IndexMap::new();
@@ -157,7 +156,7 @@ pub fn get_storage_at<Mode: TransactionKind>(
     pending_storage_diffs: Option<&IndexMap<ContractAddress, Vec<StorageEntry>>>,
     contract_address: ContractAddress,
     key: StorageKey,
-) -> StorageResult<StarkFelt> {
+) -> StorageResult<Felt> {
     if let Some(pending_storage_diffs) = pending_storage_diffs {
         if let Some(storage_entries) = pending_storage_diffs.get(&contract_address) {
             if let Some(StorageEntry { key: _, value }) = storage_entries

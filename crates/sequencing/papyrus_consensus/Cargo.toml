@@ -10,6 +10,7 @@ description = "Reach consensus for Starknet"
 async-trait.workspace = true
 futures.workspace = true
 starknet_api.workspace = true
+starknet-types-core.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full"] }
 

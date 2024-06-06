@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use indexmap::IndexMap;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::StorageKey;
+use starknet_types_core::felt::Felt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default, Hash)]
 pub enum Direction {
@@ -56,7 +56,7 @@ pub struct ContractDiff {
     pub class_hash: Option<ClassHash>,
     // Has value only if the nonce was updated in this block.
     pub nonce: Option<Nonce>,
-    pub storage_diffs: IndexMap<StorageKey, StarkFelt>,
+    pub storage_diffs: IndexMap<StorageKey, Felt>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

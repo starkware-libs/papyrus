@@ -43,7 +43,7 @@ use starknet_api::core::{
     StateDiffCommitment,
     TransactionCommitment,
 };
-use starknet_api::crypto::Signature;
+use starknet_api::crypto::utils::Signature;
 use starknet_api::data_availability::{DataAvailabilityMode, L1DataAvailabilityMode};
 use starknet_api::deprecated_contract_class::{
     ConstructorType,
@@ -64,7 +64,7 @@ use starknet_api::deprecated_contract_class::{
     StructType,
     TypedParameter,
 };
-use starknet_api::hash::{PoseidonHash, StarkFelt, StarkHash};
+use starknet_api::hash::{PoseidonHash, StarkHash};
 use starknet_api::state::{
     ContractClass,
     EntryPoint,
@@ -96,6 +96,7 @@ use starknet_api::transaction::{
     EventKey,
     ExecutionResources,
     Fee,
+    GasVector,
     InvokeTransaction,
     InvokeTransactionOutput,
     InvokeTransactionV0,
@@ -121,6 +122,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 use crate::body::events::EventIndex;
 use crate::body::TransactionIndex;
@@ -145,7 +147,7 @@ use crate::{MarkerKind, OffsetKind, TransactionMetadata};
 const COMPRESSION_THRESHOLD_BYTES: usize = 384;
 
 auto_storage_serde! {
-    pub struct AccountDeploymentData(pub Vec<StarkFelt>);
+    pub struct AccountDeploymentData(pub Vec<Felt>);
     pub struct BlockHash(pub StarkHash);
     pub struct StorageBlockHeader {
         pub block_hash: BlockHash,
@@ -173,7 +175,7 @@ auto_storage_serde! {
         Rejected = 3,
     }
     pub struct BlockTimestamp(pub u64);
-    pub struct Calldata(pub Arc<Vec<StarkFelt>>);
+    pub struct Calldata(pub Arc<Vec<Felt>>);
     pub struct CompiledClassHash(pub StarkHash);
     pub struct ClassHash(pub StarkHash);
     pub struct ContractAddressSalt(pub StarkHash);
@@ -264,10 +266,10 @@ auto_storage_serde! {
         pub data: EventData,
     }
     pub struct EventCommitment(pub StarkHash);
-    pub struct EventData(pub Vec<StarkFelt>);
+    pub struct EventData(pub Vec<Felt>);
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
     pub struct EventIndexInTransactionOutput(pub usize);
-    pub struct EventKey(pub StarkFelt);
+    pub struct EventKey(pub Felt);
     pub enum EventType {
         Event = 0,
     }
@@ -279,6 +281,10 @@ auto_storage_serde! {
     pub struct GasPricePerToken {
         pub price_in_fri: GasPrice,
         pub price_in_wei: GasPrice,
+    }
+    pub struct GasVector {
+        pub l1_gas: u64,
+        pub l1_data_gas: u64,
     }
     pub struct GlobalRoot(pub StarkHash);
     pub struct H160(pub [u8; 20]);
@@ -299,8 +305,8 @@ auto_storage_serde! {
         Calldata = 0,
         Blob = 1,
     }
-    pub struct L1ToL2Payload(pub Vec<StarkFelt>);
-    pub struct L2ToL1Payload(pub Vec<StarkFelt>);
+    pub struct L1ToL2Payload(pub Vec<Felt>);
+    pub struct L2ToL1Payload(pub Vec<Felt>);
     enum MarkerKind {
         Header = 0,
         Body = 1,
@@ -323,7 +329,7 @@ auto_storage_serde! {
         Leaf(usize) = 0,
         Node(Vec<NestedIntList>) = 1,
     }
-    pub struct Nonce(pub StarkFelt);
+    pub struct Nonce(pub Felt);
     pub enum OffsetKind {
         ThinStateDiff = 0,
         ContractClass = 1,
@@ -332,8 +338,8 @@ auto_storage_serde! {
         TransactionOutput = 4,
         Transaction = 5,
     }
-    pub struct PaymasterData(pub Vec<StarkFelt>);
-    pub struct PoseidonHash(pub StarkFelt);
+    pub struct PaymasterData(pub Vec<Felt>);
+    pub struct PoseidonHash(pub Felt);
     pub struct Program {
         pub attributes: serde_json::Value,
         pub builtins: serde_json::Value,
@@ -358,8 +364,8 @@ auto_storage_serde! {
     pub struct ResourceBoundsMapping(pub BTreeMap<Resource, ResourceBounds>);
     pub struct SequencerContractAddress(pub ContractAddress);
     pub struct Signature {
-        pub r: StarkFelt,
-        pub s: StarkFelt,
+        pub r: Felt,
+        pub s: Felt,
     }
     pub struct StructAbiEntry {
         pub members: Vec<StructMember>,
@@ -411,8 +417,8 @@ auto_storage_serde! {
         Invoke(InvokeTransactionOutput) = 3,
         L1Handler(L1HandlerTransactionOutput) = 4,
     }
-    pub struct TransactionSignature(pub Vec<StarkFelt>);
-    pub struct TransactionVersion(pub StarkFelt);
+    pub struct TransactionSignature(pub Vec<Felt>);
+    pub struct TransactionVersion(pub Felt);
     pub struct Version{
         pub major: u32,
         pub minor: u32,
@@ -438,9 +444,10 @@ auto_storage_serde! {
         pub steps: u64,
         pub builtin_instance_counter: HashMap<Builtin, u64>,
         pub memory_holes: u64,
-        pub da_l1_gas_consumed: u64,
-        pub da_l1_data_gas_consumed: u64,
+        pub da_gas_consumed: GasVector,
+        pub gas_consumed: GasVector,
     }
+
     pub enum Builtin {
         RangeCheck = 0,
         Pedersen = 1,
@@ -935,7 +942,7 @@ impl StorageSerde for ContractClass {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         Some(Self {
-            sierra_program: Vec::<StarkFelt>::deserialize_from(
+            sierra_program: Vec::<Felt>::deserialize_from(
                 &mut decompress_from_reader(bytes)?.as_slice(),
             )?,
             entry_points_by_type: HashMap::<EntryPointType, Vec<EntryPoint>>::deserialize_from(

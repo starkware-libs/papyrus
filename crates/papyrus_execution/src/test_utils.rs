@@ -30,7 +30,6 @@ use starknet_api::core::{
     SequencerContractAddress,
 };
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::state::{ContractClass, StateNumber, ThinStateDiff};
 use starknet_api::transaction::{
     Calldata,
@@ -43,7 +42,8 @@ use starknet_api::transaction::{
     InvokeTransactionV1,
     TransactionHash,
 };
-use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, class_hash, contract_address, felt, patricia_key};
+use starknet_types_core::felt::Felt;
 use test_utils::read_json_file;
 
 use crate::execution_utils::selector_from_name;
@@ -52,7 +52,7 @@ use crate::testing_instances::get_test_execution_config;
 use crate::{simulate_transactions, ExecutableTransactionInput, OnlyQuery, SierraSize};
 
 lazy_static! {
-    pub static ref CHAIN_ID: ChainId = ChainId(String::from("TEST_CHAIN_ID"));
+    pub static ref CHAIN_ID: ChainId = ChainId::Other(String::from("TEST_CHAIN_ID"));
     pub static ref GAS_PRICE: GasPricePerToken = GasPricePerToken{
         price_in_wei: GasPrice(100 * u128::pow(10, 9)),
         // TODO(yair): add value and tests.
@@ -71,7 +71,7 @@ lazy_static! {
         contract_address!("0x0153ade9ef510502c4f3b879c049dcc3ad5866706cae665f0d9df9b01e794fdb");
     pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!("0x1010");
     pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
-    pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
+    pub static ref ACCOUNT_INITIAL_BALANCE: Felt = felt!(2 * MAX_FEE.0);
 }
 
 // Sierra size must be > 0.
@@ -177,8 +177,8 @@ pub fn prepare_storage(mut storage_writer: StorageWriter) {
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!(1_u128)),
-                parent_hash: BlockHash(stark_felt!(0_u128)),
+                block_hash: BlockHash(felt!(1_u128)),
+                parent_hash: BlockHash(felt!(0_u128)),
                 ..Default::default()
             },
         )
@@ -201,7 +201,7 @@ pub fn execute_simulate_transactions(
     charge_fee: bool,
     validate: bool,
 ) -> Vec<TransactionSimulationOutput> {
-    let chain_id = ChainId(CHAIN_ID.to_string());
+    let chain_id = ChainId::Other(CHAIN_ID.to_string());
 
     simulate_transactions(
         txs,
@@ -251,14 +251,14 @@ impl TxsScenarioBuilder {
         let calldata = calldata![
             *contract_address.0.key(),             // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ];
         let nonce = match nonce {
             None => self.next_nonce(sender_address),
             Some(nonce) => {
                 let override_next_nonce: u128 =
-                    u64::try_from(nonce.0).expect("Nonce should fit in u64.").into();
+                    u64::try_from(nonce.0.to_biguint()).expect("Nonce should fit in u64.").into();
                 self.sender_to_nonce.insert(sender_address, override_next_nonce + 1);
                 nonce
             }
@@ -316,7 +316,7 @@ impl TxsScenarioBuilder {
         let tx = ExecutableTransactionInput::DeployAccount(
             DeployAccountTransaction::V1(DeployAccountTransactionV1 {
                 max_fee: *MAX_FEE,
-                nonce: Nonce(stark_felt!(0_u128)),
+                nonce: Nonce(felt!(0_u128)),
                 class_hash: *ACCOUNT_CLASS_HASH,
                 ..Default::default()
             }),
@@ -331,13 +331,13 @@ impl TxsScenarioBuilder {
     fn next_nonce(&mut self, sender_address: ContractAddress) -> Nonce {
         match self.sender_to_nonce.get_mut(&sender_address) {
             Some(current) => {
-                let res = Nonce(stark_felt!(*current));
+                let res = Nonce(felt!(*current));
                 *current += 1;
                 res
             }
             None => {
                 self.sender_to_nonce.insert(sender_address, 1);
-                Nonce(stark_felt!(0_u128))
+                Nonce(felt!(0_u128))
             }
         }
     }

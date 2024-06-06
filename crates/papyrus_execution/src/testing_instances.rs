@@ -6,9 +6,9 @@ pub use blockifier::abi::abi_utils::get_storage_var_address;
 use starknet_api::block::GasPrice;
 use starknet_api::core::{ClassHash, ContractAddress, EntryPointSelector, PatriciaKey};
 use starknet_api::deprecated_contract_class::EntryPointType;
-use starknet_api::hash::{StarkFelt, StarkHash};
 use starknet_api::transaction::{Calldata, EventContent, ExecutionResources, Fee, MessageToL1};
-use starknet_api::{contract_address, patricia_key};
+use starknet_api::{contract_address, felt, patricia_key};
+use starknet_types_core::felt::Felt;
 use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestInstance};
 
 use crate::objects::{
@@ -64,9 +64,9 @@ auto_impl_get_test_instance! {
         pub function_invocation: FunctionInvocation,
     }
     pub struct FeeEstimation {
-        pub gas_consumed: StarkFelt,
+        pub gas_consumed: Felt,
         pub gas_price: GasPrice,
-        pub data_gas_consumed: StarkFelt,
+        pub data_gas_consumed: Felt,
         pub data_gas_price: GasPrice,
         pub overall_fee: Fee,
         pub unit: PriceUnit,
@@ -79,7 +79,7 @@ auto_impl_get_test_instance! {
         Call = 0,
         LibraryCall = 1,
     }
-    pub struct Retdata(pub Vec<StarkFelt>);
+    pub struct Retdata(pub Vec<Felt>);
     pub struct OrderedEvent {
         pub order: usize,
         pub event: EventContent,

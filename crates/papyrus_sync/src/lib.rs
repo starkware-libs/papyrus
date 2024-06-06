@@ -47,6 +47,11 @@ use crate::sources::base_layer::{BaseLayerSourceTrait, EthereumBaseLayerSource};
 use crate::sources::central::{CentralError, CentralSource, CentralSourceTrait};
 use crate::sources::pending::{PendingError, PendingSource, PendingSourceTrait};
 
+// TODO(shahak): Consider adding genesis hash to the config to support chains that have
+// different genesis hash.
+// TODO: Consider moving to a more general place.
+const GENESIS_HASH: &str = "0x0";
+
 // TODO(dvir): add to config.
 // Sleep duration between polling for pending data.
 const PENDING_SLEEP_DURATION: Duration = Duration::from_millis(500);

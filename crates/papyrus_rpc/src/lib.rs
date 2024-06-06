@@ -58,6 +58,11 @@ pub use crate::v0_6::transaction::{
 };
 pub use crate::v0_6::write_api_result::AddInvokeOkResult as AddInvokeOkResultRPC0_6;
 
+// TODO(shahak): Consider adding genesis hash to the config to support chains that have
+// different genesis hash.
+// TODO: Consider moving to a more general place.
+const GENESIS_HASH: &str = "0x0";
+
 /// Maximum size of a supported transaction body - 10MB.
 pub const SERVER_MAX_BODY_SIZE: u32 = 10 * 1024 * 1024;
 
@@ -77,7 +82,7 @@ pub struct RpcConfig {
 impl Default for RpcConfig {
     fn default() -> Self {
         RpcConfig {
-            chain_id: ChainId("SN_MAIN".to_string()),
+            chain_id: ChainId::Mainnet,
             server_address: String::from("0.0.0.0:8080"),
             max_events_chunk_size: 1000,
             max_events_keys: 100,
