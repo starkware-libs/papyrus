@@ -207,6 +207,7 @@ impl HashChain {
     }
 
     // Returns the poseidon hash of the chained felts.
+    // TODO: add tests for this function.
     pub fn get_poseidon_hash(&self) -> StarkHash {
         Poseidon::hash_array(self.elements.as_slice())
     }

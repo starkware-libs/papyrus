@@ -7,7 +7,7 @@ use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::PoseidonHash;
 use starknet_api::state::ThinStateDiff;
 use starknet_types_core::felt::Felt;
-use starknet_types_core::hash::{Poseidon, StarkHash as CoreStarkHash};
+use starknet_types_core::hash::{Poseidon, StarkHash};
 
 const SUPPORTED_DA_MODES_STATE_DIFF_V0: [DataAvailabilityMode; 1] = [DataAvailabilityMode::L1];
 

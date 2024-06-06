@@ -205,6 +205,7 @@ pub struct IntermediateDeclareTransaction {
 impl TryFrom<IntermediateDeclareTransaction> for starknet_api::transaction::DeclareTransaction {
     type Error = ReaderClientError;
 
+    // TODO: Consider using match instead.
     fn try_from(declare_tx: IntermediateDeclareTransaction) -> Result<Self, ReaderClientError> {
         if declare_tx.version == TransactionVersion::ZERO {
             return Ok(Self::V0(declare_tx.try_into()?));

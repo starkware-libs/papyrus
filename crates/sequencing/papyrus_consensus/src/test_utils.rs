@@ -18,7 +18,7 @@ impl ConsensusBlock for TestBlock {
     type ProposalIter = std::vec::IntoIter<u32>;
 
     fn id(&self) -> BlockHash {
-        BlockHash(Felt::from(self.id as u128))
+        BlockHash(Felt::from(self.id))
     }
 
     fn proposal_iter(&self) -> Self::ProposalIter {

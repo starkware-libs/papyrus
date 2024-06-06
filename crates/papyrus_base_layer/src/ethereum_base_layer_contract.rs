@@ -111,6 +111,7 @@ impl BaseLayerContract for EthereumBaseLayerContract {
 
         Ok(Some((
             BlockNumber(state_block_number.as_u64()),
+            // TODO: use safe conversion.
             BlockHash(StarkHash::from_hex_unchecked(state_block_hash.encode_hex().as_str())),
         )))
     }
