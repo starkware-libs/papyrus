@@ -5,10 +5,11 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use std::vec;
 
+use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
 use futures::channel::oneshot;
-use futures::future::{poll_fn, FutureExt};
+use futures::future::{pending, poll_fn, FutureExt};
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, SinkExt, StreamExt};
 use libp2p::core::ConnectedPoint;
@@ -26,14 +27,7 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::{GenericNetworkManager, SqmrSubscriberChannels};
-use crate::db_executor::{
-    poll_query_execution_set,
-    DBExecutorError,
-    DBExecutorTrait,
-    Data,
-    FetchBlockDataFromDb,
-    QueryId,
-};
+use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb, QueryId};
 use crate::gossipsub_impl::{self, Topic};
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
@@ -221,21 +215,14 @@ struct MockDBExecutor {
     query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
 }
 
-impl Stream for MockDBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
-    }
-}
-
+#[async_trait]
 impl DBExecutorTrait for MockDBExecutor {
     // TODO(shahak): Consider fixing code duplication with DBExecutor.
     fn register_query(
         &mut self,
         query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Result<Vec<Data>, DBExecutorError>>,
+        mut sender: Sender<Vec<Data>>,
     ) -> QueryId {
         let query_id = QueryId(self.next_query_id);
         self.next_query_id += 1;
@@ -245,9 +232,9 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(Ok(vec![Data::BlockHeaderAndSignature(
+                        if let Err(e) = sender.start_send(vec![Data::BlockHeaderAndSignature(
                             SignedBlockHeader { block_header: header, signatures: vec![] },
-                        )])) {
+                        )]) {
                             return Err(DBExecutorError::SendError { query_id, send_error: e });
                         };
                     }
@@ -257,9 +244,15 @@ impl DBExecutorTrait for MockDBExecutor {
         }));
         query_id
     }
-    async fn poll(&mut self) {
+    async fn run(&mut self) {
         loop {
-            futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+            let result =
+                futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+            if result.is_none() {
+                // We assume that if all queries are finished then there won't come any new
+                // queries.
+                return pending().await;
+            }
         }
     }
 }
