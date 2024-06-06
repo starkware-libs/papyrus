@@ -259,7 +259,7 @@ impl From<Query> for protobuf::Iteration {
     }
 }
 
-// TODO: use the conversion in Starknet api once its upgraded
+// TODO: Consider add this functionality to the Felt itself.
 pub(super) fn try_from_starkfelt_to_u128(
     felt: starknet_types_core::felt::Felt,
 ) -> Result<u128, &'static str> {
@@ -277,7 +277,8 @@ pub(super) fn try_from_starkfelt_to_u128(
 
     Ok(u128::from_be_bytes(bytes))
 }
-// TODO: use the conversion in Starknet api once its upgraded
+
+// TODO: Consider add this functionality to the Felt itself.
 pub(super) fn try_from_starkfelt_to_u32(
     felt: starknet_types_core::felt::Felt,
 ) -> Result<u32, &'static str> {
