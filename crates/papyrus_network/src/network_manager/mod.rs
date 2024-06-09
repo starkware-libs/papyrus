@@ -22,7 +22,7 @@ use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::db_executor::{DBExecutor, DBExecutorTrait, Data, QueryId};
+use crate::db_executor::{DBExecutor, DBExecutorTrait, Data};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
@@ -52,7 +52,6 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
     messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
     broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
-    query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     reported_peer_receiver: UnboundedReceiver<PeerId>,
     // We keep this just for giving a clone of it for subscribers.
@@ -96,7 +95,6 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             sqmr_response_senders: HashMap::new(),
             messages_to_broadcast_receivers: StreamHashMap::new(HashMap::new()),
             broadcasted_messages_senders: HashMap::new(),
-            query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
             reported_peer_sender,
             reported_peer_receiver,
@@ -308,8 +306,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     Protocol::try_from(protocol_name).expect("Encountered unknown protocol");
                 let internal_query = protocol.bytes_query_to_protobuf_request(query);
                 let data_type = DataType::from(protocol);
-                let query_id = self.db_executor.register_query(internal_query, data_type, sender);
-                self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
+                self.db_executor.register_query(internal_query, data_type, sender);
                 self.query_results_router.push(
                     receiver
                         .flat_map(futures::stream::iter)

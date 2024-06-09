@@ -156,18 +156,17 @@ async fn header_db_executor_query_of_missing_block() {
     };
     let mut mock_data_type = MockFetchBlockDataFromDb::new();
     mock_data_type.expect_fetch_block_data_from_db().times((BLOCKS_DELTA + 1) as usize).returning(
-        |block_number, query_id, _| {
+        |block_number, _| {
             if block_number.0 == NUM_OF_BLOCKS {
                 Err(DBExecutorError::BlockNotFound {
                     block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                    query_id,
                 })
             } else {
                 Ok(vec![Data::default()])
             }
         },
     );
-    let _query_id = db_executor.register_query(query, mock_data_type, sender);
+    db_executor.register_query(query, mock_data_type, sender);
 
     tokio::select! {
         _ = db_executor.run() => {
