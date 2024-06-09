@@ -1,12 +1,11 @@
 use papyrus_protobuf::sync::{Direction, Query};
 
-use super::{DBExecutorError, QueryId};
+use super::DBExecutorError;
 
 pub(crate) fn calculate_block_number(
     query: &Query,
     start_block: u64,
     read_blocks_counter: u64,
-    query_id: QueryId,
 ) -> Result<u64, DBExecutorError> {
     let direction_factor: i128 = match query.direction {
         Direction::Forward => 1,
@@ -19,7 +18,6 @@ pub(crate) fn calculate_block_number(
         return Err(DBExecutorError::BlockNumberOutOfRange {
             query: query.clone(),
             counter: read_blocks_counter,
-            query_id,
         });
     }
     Ok(block_number as u64)
