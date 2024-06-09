@@ -153,11 +153,11 @@ async fn validate_received_data_event(
         ConnectionHandlerEvent::NotifyBehaviour(
             RequestToBehaviourEvent::GenerateEvent(
                 GenericEvent::ReceivedData {
-                    data: event_data, outbound_session_id: event_outbound_session_id
+                    data: event_data, outbound_session_id: event_outbound_session_id, peer_id : event_peer_id
 
                 }
             )
-        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id
+        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id && event_peer_id == handler.peer_id
     );
 }
 

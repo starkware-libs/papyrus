@@ -126,6 +126,7 @@ impl MockSwarm {
                 mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
                     data: data_bytes,
                     outbound_session_id,
+                    peer_id: PeerId::random(),
                 }),
             )));
         }
