@@ -54,6 +54,7 @@ pub enum GenericEvent<SessionError> {
     ReceivedData {
         outbound_session_id: OutboundSessionId,
         data: Bytes,
+        peer_id: PeerId,
     },
     SessionFailed {
         session_id: SessionId,

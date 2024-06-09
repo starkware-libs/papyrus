@@ -140,10 +140,18 @@ fn check_received_data_event(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data }) = event else {
+    let Event::External(ExternalEvent::ReceivedData {
+        outbound_session_id: _outbound_session_id,
+        data,
+        peer_id: inbound_peer_id,
+    }) = event
+    else {
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
-    let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
+    assert_eq!(
+        outbound_session_id_to_peer_id[&(outbound_peer_id, _outbound_session_id)],
+        inbound_peer_id
+    );
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
     assert_eq!(data, get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, message_index),);
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);
