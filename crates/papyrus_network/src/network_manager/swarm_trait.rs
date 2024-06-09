@@ -14,7 +14,7 @@ use crate::{mixed_behaviour, Protocol};
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
 pub trait SwarmTrait: Stream<Item = Event> + Unpin {
-    fn send_length_prefixed_data(
+    fn send_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
@@ -47,13 +47,27 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     fn report_peer(&mut self, peer_id: PeerId);
 }
 
+<<<<<<< HEAD
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
     fn send_length_prefixed_data(
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+impl SwarmTrait for Swarm<Behaviour> {
+    fn send_length_prefixed_data(
+=======
+impl SwarmTrait for Swarm<Behaviour> {
+    fn send_data(
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
+<<<<<<< HEAD
         self.behaviour_mut().sqmr.send_length_prefixed_data(data, inbound_session_id)
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+        self.behaviour_mut().send_length_prefixed_data(data, inbound_session_id)
+=======
+        self.behaviour_mut().send_data(data, inbound_session_id)
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
     }
 
     // TODO: change this function signature

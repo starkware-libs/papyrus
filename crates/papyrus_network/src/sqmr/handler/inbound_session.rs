@@ -10,7 +10,7 @@ use futures::{AsyncWriteExt, FutureExt};
 use libp2p::swarm::Stream;
 use replace_with::replace_with_or_abort;
 
-use super::super::messages::write_length_prefixed_message;
+use super::super::messages::write_message;
 use super::super::Bytes;
 
 pub(super) struct InboundSession {
@@ -68,7 +68,7 @@ impl InboundSession {
                 };
                 WriteMessageTask::Running(
                     async move {
-                        write_length_prefixed_message(&data, &mut write_stream).await?;
+                        write_message(&data, &mut write_stream).await?;
                         Ok(write_stream)
                     }
                     .boxed(),

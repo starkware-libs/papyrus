@@ -124,11 +124,12 @@ impl MockSwarm {
 }
 
 impl SwarmTrait for MockSwarm {
-    fn send_length_prefixed_data(
+    fn send_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
+<<<<<<< HEAD
         let data_sender = self.inbound_session_id_to_data_sender.get(&inbound_session_id).expect(
             "Called send_length_prefixed_data without calling get_data_sent_to_inbound_session \
              first",
@@ -144,6 +145,25 @@ impl SwarmTrait for MockSwarm {
             }
             None => (Data::Fin(DataType::SignedBlockHeader), true),
         };
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+        let data_sender = self.inbound_session_id_to_data_sender.get(&inbound_session_id).expect(
+            "Called send_length_prefixed_data without calling get_data_sent_to_inbound_session \
+             first",
+        );
+        // TODO(shahak): Add tests for state diff.
+        let data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let is_fin = matches!(data, Data::Fin(DataType::SignedBlockHeader));
+=======
+        let data_sender = self
+            .inbound_session_id_to_data_sender
+            .get(&inbound_session_id)
+            .expect("Called send_data without calling get_data_sent_to_inbound_session first");
+        let data = protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
+        let is_fin = matches!(data, Data::Fin(DataType::SignedBlockHeader));
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
         data_sender.unbounded_send(data).unwrap();
         if is_fin {
             data_sender.close_channel();

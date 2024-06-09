@@ -58,20 +58,68 @@ impl Default for Data {
 }
 
 impl Data {
+<<<<<<< HEAD
     fn encode_template<B>(
         self,
         buf: &mut B,
         encode_with_length_prefix_flag: bool,
     ) -> Result<(), DataEncodingError>
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+    pub fn encode_with_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+=======
+    pub fn encode<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
     where
         B: BufMut,
     {
         match self {
+<<<<<<< HEAD
             Data::BlockHeaderAndSignature(signed_block_header) => {
                 let data: protobuf::BlockHeadersResponse = Some(signed_block_header).into();
                 match encode_with_length_prefix_flag {
                     true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
                     false => data.encode(buf).map_err(|_| DataEncodingError),
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+            Data::BlockHeaderAndSignature { .. } => self
+                .try_into()
+                .map(|data: protobuf::BlockHeadersResponse| {
+                    data.encode_length_delimited(buf).map_err(|_| DataEncodingError)
+                })
+                .map_err(|_| DataEncodingError)?,
+            Data::StateDiff { state_diff } => {
+                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
+                let res = state_diffs_response_vec
+                    .0
+                    .iter()
+                    .map(|data| {
+                        let mut buf = vec![];
+                        data.encode_length_delimited(&mut buf)
+                            .map_err(|_| DataEncodingError)
+                            .map(|_| buf)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                for byte in res.iter().flatten() {
+                    buf.put_u8(*byte);
+=======
+            Data::BlockHeaderAndSignature { .. } => self
+                .try_into()
+                .map(|data: protobuf::BlockHeadersResponse| {
+                    data.encode(buf).map_err(|_| DataEncodingError)
+                })
+                .map_err(|_| DataEncodingError)?,
+            Data::StateDiff { state_diff } => {
+                let state_diffs_response_vec = Into::<StateDiffsResponseVec>::into(state_diff);
+                let res = state_diffs_response_vec
+                    .0
+                    .iter()
+                    .map(|data| {
+                        let mut buf = vec![];
+                        data.encode(&mut buf).map_err(|_| DataEncodingError).map(|_| buf)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                for byte in res.iter().flatten() {
+                    buf.put_u8(*byte);
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
                 }
             }
             Data::StateDiffChunk(state_diff) => {
@@ -96,6 +144,7 @@ impl Data {
                     }
                     .map_err(|_| DataEncodingError)
                 }
+<<<<<<< HEAD
                 DataType::StateDiff => {
                     let state_diff_response = protobuf::StateDiffsResponse {
                         state_diff_message: Some(
@@ -107,7 +156,30 @@ impl Data {
                         false => state_diff_response.encode(buf),
                     }
                     .map_err(|_| DataEncodingError)
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+                .encode_length_delimited(buf)
+                .map_err(|_| DataEncodingError),
+                DataType::StateDiff => protobuf::StateDiffsResponse {
+                    state_diff_message: Some(
+                        protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+                    ),
+=======
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+                DataType::StateDiff => protobuf::StateDiffsResponse {
+                    state_diff_message: Some(
+                        protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
+                    ),
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
                 }
+<<<<<<< HEAD
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+                .encode_length_delimited(buf)
+                .map_err(|_| DataEncodingError),
+=======
+                .encode(buf)
+                .map_err(|_| DataEncodingError),
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
             },
         }
     }
