@@ -140,7 +140,8 @@ fn check_received_data_event(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data }) = event else {
+    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data, .. }) = event
+    else {
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
     let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];

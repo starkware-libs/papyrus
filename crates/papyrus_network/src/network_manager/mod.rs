@@ -281,7 +281,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
         match event {
             mixed_behaviour::ExternalEvent::Sqmr(event) => {
-                self.handle_stream_bytes_behaviour_event(event);
+                self.handle_sqmr_behaviour_event(event);
             }
             mixed_behaviour::ExternalEvent::GossipSub(event) => {
                 self.handle_gossipsub_behaviour_event(event);
@@ -304,7 +304,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         self.swarm.behaviour_mut().gossipsub.on_other_behaviour_event(&event);
     }
 
-    fn handle_stream_bytes_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
+    fn handle_sqmr_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
         match event {
             sqmr::behaviour::ExternalEvent::NewInboundSession {
                 query,
@@ -337,7 +337,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                         .boxed(),
                 );
             }
-            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data } => {
+            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data, peer_id } => {
                 trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -349,7 +349,13 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 if let Some(response_sender) = self.sqmr_response_senders.get_mut(protocol) {
                     // TODO(shahak): Implement the report callback, while removing code duplication
                     // with broadcast.
-                    if let Err(error) = response_sender.try_send((data, Box::new(|| {}))) {
+                    if let Err(error) = response_sender.try_send((
+                        data,
+                        create_external_callback_for_received_data(
+                            self.reported_peer_sender.clone(),
+                            peer_id,
+                        ),
+                    )) {
                         if error.is_disconnected() {
                             panic!("Receiver was dropped. This should never happen.")
                         } else if error.is_full() {
@@ -389,13 +395,12 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     );
                     return;
                 };
-                let reported_peer_sender = self.reported_peer_sender.clone();
                 let send_result = sender.try_send((
                     message,
-                    Box::new(move || {
-                        // TODO(shahak): Check if we can panic in case of error.
-                        let _ = reported_peer_sender.unbounded_send(originated_peer_id);
-                    }),
+                    create_external_callback_for_received_data(
+                        self.reported_peer_sender.clone(),
+                        originated_peer_id,
+                    ),
                 ));
                 if let Err(e) = send_result {
                     if e.is_disconnected() {
@@ -479,6 +484,16 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             }
         }
     }
+}
+
+fn create_external_callback_for_received_data(
+    reported_peer_sender: UnboundedSender<PeerId>,
+    originated_peer_id: PeerId,
+) -> Box<impl Fn()> {
+    Box::new(move || {
+        // TODO(shahak): Check if we can panic in case of error.
+        let _ = reported_peer_sender.unbounded_send(originated_peer_id);
+    })
 }
 
 pub type NetworkManager = GenericNetworkManager<DBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
