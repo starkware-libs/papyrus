@@ -48,6 +48,8 @@
 #[path = "events_test.rs"]
 mod events_test;
 
+use std::collections::VecDeque;
+
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::ContractAddress;
@@ -124,7 +126,7 @@ pub enum EventIter<'txn, 'env> {
 /// With this wrapper we can execute the same code, regardless the
 /// type of iteration used.
 impl Iterator for EventIter<'_, '_> {
-    type Item = (EventsTableKey, EventContent);
+    type Item = ((ContractAddress, EventIndex), EventContent);
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
@@ -140,11 +142,12 @@ impl Iterator for EventIter<'_, '_> {
 pub struct EventIterByContractAddress<'env, 'txn> {
     txn: &'txn DbTransaction<'env, RO>,
     file_handles: &'txn FileHandlers<RO>,
-    // This value is the next event to return. If it is None there are no more events.
-    current: Option<EventsTableKey>,
-    // The current transaction output. This is None only at the beginning of the iteration and
-    // filled with the first transaction output.
-    current_tx: Option<(TransactionIndex, TransactionOutput)>,
+    // This value is the next entry in the events table to search for relevant events. If it is
+    // None there are no more events.
+    next_entry_in_event_table: Option<EventsTableKey>,
+    // Queue of events to return from the iterator. When this queue is empty, we need to fetch more
+    // events.
+    events_queue: VecDeque<((ContractAddress, EventIndex), EventContent)>,
     cursor: EventsTableCursor<'txn>,
     transaction_metadata_table: TransactionMetadataTable<'env>,
 }
@@ -154,42 +157,27 @@ impl<'env, 'txn> EventIterByContractAddress<'env, 'txn> {
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
-        let Some((contract_address, EventIndex(tx_index, event_offset))) = self.current.take()
-        else {
-            return Ok(None);
-        };
-        if self.current_tx.is_none()
-            || tx_index
-                != self.current_tx.as_ref().expect("The None case was checked previously.").0
-        {
-            let Some(tx_metadata) = self.transaction_metadata_table.get(self.txn, &tx_index)?
-            else {
+    fn next(&mut self) -> StorageResult<Option<((ContractAddress, EventIndex), EventContent)>> {
+        // Here we make sure that the events_queue is not empty. If it does we fill it with new
+        // relevant events.
+        if self.events_queue.is_empty() {
+            let Some((contract_address, tx_index)) = self.next_entry_in_event_table.take() else {
                 return Ok(None);
             };
-            self.current_tx = Some((
-                tx_index,
-                self.file_handles
-                    .get_transaction_output_unchecked(tx_metadata.tx_output_location)?,
-            ));
+            let tx_metadata =
+                self.transaction_metadata_table.get(self.txn, &tx_index)?.unwrap_or_else(|| {
+                    panic!("Transaction metadata not found for transaction index: {tx_index:?}")
+                });
+            let tx_output = self
+                .file_handles
+                .get_transaction_output_unchecked(tx_metadata.tx_output_location)?;
+            // TODO(dvir): don't clone the events here.
+            self.events_queue =
+                get_events_from_tx(tx_output.events().into(), tx_index, contract_address, 0);
+            self.next_entry_in_event_table = self.cursor.next()?.map(|(key, _)| key);
         }
 
-        self.current = self.cursor.next()?.map(|(key, _)| key);
-
-        let key = (contract_address, EventIndex(tx_index, event_offset));
-        // TODO(dvir): don't clone here the event content.
-        let content = self
-            .current_tx
-            .as_ref()
-            .expect(
-                "The current transaction was initialized with Some previously in this function.",
-            )
-            .1
-            .events()[event_offset.0]
-            .content
-            .clone();
-
-        Ok(Some((key, content)))
+        Ok(Some(self.events_queue.pop_front().expect("events_queue should not be empty.")))
     }
 }
 
@@ -210,7 +198,7 @@ impl EventIterByEventIndex<'_> {
     ///
     /// # Errors
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
-    fn next(&mut self) -> StorageResult<Option<(EventsTableKey, EventContent)>> {
+    fn next(&mut self) -> StorageResult<Option<((ContractAddress, EventIndex), EventContent)>> {
         let Some((tx_index, tx_output)) = &self.tx_current else { return Ok(None) };
         let Some(Event { from_address, content }) =
             tx_output.events().get(self.event_index_in_tx_current.0)
@@ -274,17 +262,42 @@ where
     /// Returns [`StorageError`](crate::StorageError) if there was an error.
     fn iter_events_by_contract_address(
         &'env self,
-        key: EventsTableKey,
+        key: (ContractAddress, EventIndex),
     ) -> StorageResult<EventIterByContractAddress<'env, 'txn>> {
         let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
         let events_table = self.open_table(&self.tables.events)?;
         let mut cursor = events_table.cursor(&self.txn)?;
-        let current = cursor.lower_bound(&key)?.map(|(key, _)| key);
+        let events_queue = if let Some((contract_address, tx_index)) =
+            cursor.lower_bound(&(key.0, key.1.0))?.map(|(key, _)| key)
+        {
+            let tx_metadata =
+                transaction_metadata_table.get(&self.txn, &tx_index)?.unwrap_or_else(|| {
+                    panic!("Transaction metadata not found for transaction index: {tx_index:?}")
+                });
+            let tx_output = self
+                .file_handlers
+                .get_transaction_output_unchecked(tx_metadata.tx_output_location)?;
+
+            // In case of we get tx_index different from the key, it means we need to start a new
+            // transaction which means the first event.
+            let start_event_index = if tx_index == key.1.0 { key.1.1.0 } else { 0 };
+            // TODO(dvir): don't clone the events here.
+            get_events_from_tx(
+                tx_output.events().into(),
+                tx_index,
+                contract_address,
+                start_event_index,
+            )
+        } else {
+            VecDeque::new()
+        };
+        let next_entry_in_event_table = cursor.next()?.map(|(key, _)| key);
+
         Ok(EventIterByContractAddress {
             txn: &self.txn,
             file_handles: &self.file_handlers,
-            current,
-            current_tx: None,
+            next_entry_in_event_table,
+            events_queue,
             cursor,
             transaction_metadata_table,
         })
@@ -326,6 +339,22 @@ where
         it.find_next_event_by_event_index()?;
         Ok(it)
     }
+}
+
+fn get_events_from_tx(
+    events_list: Vec<Event>,
+    tx_index: TransactionIndex,
+    contract_address: ContractAddress,
+    start_index: usize,
+) -> VecDeque<((ContractAddress, EventIndex), EventContent)> {
+    let mut events = VecDeque::new();
+    for (i, event) in events_list.into_iter().enumerate().skip(start_index) {
+        if event.from_address == contract_address {
+            let key = (contract_address, EventIndex(tx_index, EventIndexInTransactionOutput(i)));
+            events.push_back((key, event.content));
+        }
+    }
+    events
 }
 
 /// A cursor of the events table.
