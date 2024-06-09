@@ -34,10 +34,10 @@ libp2p = { workspace = true, features = [
 ] }
 metrics.workspace = true
 replace_with.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
-papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.2" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.2" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
+papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.3" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.3" }
 prost.workspace = true
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
