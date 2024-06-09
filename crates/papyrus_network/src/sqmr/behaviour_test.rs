@@ -19,7 +19,6 @@ use libp2p::swarm::{
 use libp2p::{Multiaddr, PeerId};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
-use super::super::messages::with_length_prefix;
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use super::{Behaviour, Event, ExternalEvent, SessionError};
 use crate::test_utils::dummy_data;
@@ -294,7 +293,7 @@ async fn process_inbound_session() {
 
     let dummy_data_vec = dummy_data();
     for data in &dummy_data_vec {
-        behaviour.send_length_prefixed_data(data.clone(), inbound_session_id).unwrap();
+        behaviour.send_data(data.clone(), inbound_session_id).unwrap();
     }
 
     for data in &dummy_data_vec {
@@ -461,10 +460,8 @@ fn close_non_existing_session_fails() {
 #[test]
 fn send_data_non_existing_session_fails() {
     let mut behaviour = Behaviour::new(Config::get_test_config());
-    for data in &dummy_data() {
-        behaviour
-            .send_length_prefixed_data(with_length_prefix(data), InboundSessionId::default())
-            .unwrap_err();
+    for data in dummy_data() {
+        behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
     }
 }
 

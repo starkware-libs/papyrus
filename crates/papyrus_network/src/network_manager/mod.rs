@@ -398,6 +398,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         let (data, inbound_session_id) = res;
         let is_fin = matches!(data, Data::Fin(_));
         let mut data_bytes = vec![];
+<<<<<<< HEAD
         data.encode_with_length_prefix(&mut data_bytes).expect("failed to encode data");
         self.swarm.send_length_prefixed_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
             error!(
@@ -413,6 +414,17 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 )
             });
         }
+||||||| ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
+        data.encode_with_length_prefix(&mut data_bytes).expect("failed to encode data");
+        self.swarm.send_length_prefixed_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
+            error!("Failed to send data to peer. Session id not found error: {e:?}");
+        })
+=======
+        data.encode(&mut data_bytes).expect("failed to encode data");
+        self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
+            error!("Failed to send data to peer. Session id not found error: {e:?}");
+        })
+>>>>>>> parent of ad8e8f65 (fix(network): add prefix to data in network manager instead of behaviour (#1824))
     }
 
     fn handle_local_sqmr_query(&mut self, protocol: Protocol, query: Bytes) {
