@@ -260,7 +260,7 @@ impl<'env> HeaderStorageWriter for StorageTxn<'env, RW> {
             n_events: block_header.n_events,
         };
 
-        headers_table.insert(&self.txn, &block_number, &storage_block_header)?;
+        headers_table.append(&self.txn, &block_number, &storage_block_header)?;
 
         update_hash_mapping(
             &self.txn,

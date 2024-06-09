@@ -58,7 +58,7 @@ use starknet_api::transaction::{
 use tracing::debug;
 
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursorTrait, NoValue, SimpleTable, Table};
+use crate::db::table_types::{CommonPrefix, DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 use crate::{
     FileHandlers,
@@ -77,7 +77,7 @@ type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
 type EventsTableKey = (ContractAddress, TransactionIndex);
 type EventsTable<'env> =
-    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
+    TableHandle<'env, EventsTableKey, NoVersionValueWrapper<NoValue>, CommonPrefix>;
 
 /// The index of a transaction in a block.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Deserialize, Serialize, PartialOrd, Ord)]
@@ -449,7 +449,7 @@ fn write_transactions<'env>(
         let tx_output_location = file_handlers.append_transaction_output(tx_output);
         write_events(tx_output, txn, events_table, transaction_index)?;
         transaction_hash_to_idx_table.insert(txn, tx_hash, &transaction_index)?;
-        transaction_metadata_table.insert(
+        transaction_metadata_table.append(
             txn,
             &transaction_index,
             &TransactionMetadata { tx_location, tx_output_location, tx_hash: *tx_hash },
@@ -472,7 +472,7 @@ fn write_events<'env>(
 
     for contract_address in contract_addresses_set {
         let key = (contract_address, transaction_index);
-        events_table.insert(txn, &key, &NoValue)?;
+        events_table.append_greater_sub_key(txn, &key, &NoValue)?;
     }
     Ok(())
 }
