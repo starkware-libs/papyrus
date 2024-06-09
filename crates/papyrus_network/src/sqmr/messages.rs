@@ -6,15 +6,17 @@ use std::io;
 
 use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
+use unsigned_varint::encode::usize_buffer;
 
 use super::Bytes;
 
 pub const MAX_MESSAGE_SIZE: usize = 1 << 20;
 
-pub async fn write_length_prefixed_message<Stream: AsyncWrite + Unpin>(
+pub async fn write_message<Stream: AsyncWrite + Unpin>(
     message: &Bytes,
     io: &mut Stream,
 ) -> Result<(), io::Error> {
+    write_usize(io, message.len()).await?;
     io.write_all(message).await?;
     Ok(())
 }
@@ -95,12 +97,14 @@ async fn read_usize<Stream: AsyncRead + Unpin>(
     }
 }
 
-pub fn with_length_prefix(bytes: &Bytes) -> Bytes {
-    let mut buffer = unsigned_varint::encode::usize_buffer();
-    let encoded_len = unsigned_varint::encode::usize(bytes.len(), &mut buffer).len();
+// This code is based on write_varint from libp2p v0.52 which was erased in v0.53.
+async fn write_usize<Stream: AsyncWrite + Unpin>(
+    io: &mut Stream,
+    num: usize,
+) -> Result<(), io::Error> {
+    let mut buffer = usize_buffer();
+    let encoded_len = unsigned_varint::encode::usize(num, &mut buffer).len();
+    io.write_all(&buffer[..encoded_len]).await?;
 
-    let mut buffer = buffer.to_vec();
-    buffer.truncate(encoded_len);
-
-    buffer.into_iter().chain(bytes.iter().copied()).collect()
+    Ok(())
 }
