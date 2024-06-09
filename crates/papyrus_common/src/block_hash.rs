@@ -11,6 +11,7 @@ use starknet_api::core::{
     SequencerContractAddress,
     TransactionCommitment,
 };
+use starknet_api::crypto::patricia_hash::calculate_root;
 use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     DeployAccountTransaction,
@@ -23,7 +24,6 @@ use starknet_api::StarknetApiError;
 use starknet_types_core::felt::Felt;
 use starknet_types_core::hash::{Pedersen, StarkHash as CoreStarkHash};
 
-use crate::patricia_hash_tree::calculate_root;
 use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
 use crate::usize_into_felt;
 
@@ -139,7 +139,7 @@ fn calculate_transaction_commitment_by_version(
                 get_transaction_leaf(transaction, transaction_hash, version)
             })
             .collect::<Result<Vec<_>, _>>()?;
-    let transactions_patricia_root = calculate_root(transaction_patricia_leaves);
+    let transactions_patricia_root = calculate_root::<Pedersen>(transaction_patricia_leaves);
     Ok(TransactionCommitment(transactions_patricia_root))
 }
 
@@ -189,7 +189,7 @@ fn calculate_event_commitment_by_version(
     }
     let event_patricia_leaves: Vec<_> =
         transaction_outputs.iter().flat_map(|output| output.events()).map(get_event_leaf).collect();
-    let event_patricia_root = calculate_root(event_patricia_leaves);
+    let event_patricia_root = calculate_root::<Pedersen>(event_patricia_leaves);
     EventCommitment(event_patricia_root)
 }
 

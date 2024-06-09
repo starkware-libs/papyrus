@@ -2,6 +2,8 @@
 #[path = "single_height_consensus_test.rs"]
 mod single_height_consensus_test;
 
+use std::cell::RefCell;
+use std::ops::DerefMut;
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
@@ -26,7 +28,9 @@ where
     validators: Vec<NodeId>,
     id: NodeId,
     to_peering_sender: mpsc::Sender<PeeringConsensusMessage<BlockT::ProposalChunk>>,
-    from_peering_receiver: mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
+    // This is a RefCell since peering sends to the same receiver permanently, but a new SHC runs
+    // for each height.
+    from_peering_receiver: RefCell<mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>>,
 }
 
 impl<BlockT> SingleHeightConsensus<BlockT>
@@ -38,7 +42,9 @@ where
         context: Arc<dyn ConsensusContext<Block = BlockT>>,
         id: NodeId,
         to_peering_sender: mpsc::Sender<PeeringConsensusMessage<BlockT::ProposalChunk>>,
-        from_peering_receiver: mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
+        from_peering_receiver: RefCell<
+            mpsc::Receiver<PeeringConsensusMessage<BlockT::ProposalChunk>>,
+        >,
     ) -> Self {
         let validators = context.validators(height).await;
         Self { height, context, validators, id, to_peering_sender, from_peering_receiver }
@@ -71,8 +77,12 @@ where
     }
 
     async fn validate(&mut self, proposer_id: NodeId) -> Result<BlockT, ConsensusError> {
+        let mut receiver = self
+            .from_peering_receiver
+            .try_borrow_mut()
+            .expect("Couldn't get exclusive access to Peering receiver.");
         // Peering is a permanent component, so if receiving from it fails we cannot continue.
-        let msg = self.from_peering_receiver.next().await.expect("Cannot receive from Peering");
+        let msg = receiver.deref_mut().next().await.expect("Cannot receive from Peering");
         let (init, content_receiver, fin_receiver) = match msg {
             PeeringConsensusMessage::Proposal((init, content_receiver, block_hash_receiver)) => {
                 (init, content_receiver, block_hash_receiver)
