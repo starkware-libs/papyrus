@@ -135,15 +135,18 @@ fn check_received_data_event(
     outbound_peer_id: PeerId,
     swarm_event: SwarmEventAlias<Behaviour>,
     current_message: &mut DefaultHashMap<(PeerId, PeerId), usize>,
-    outbound_session_id_to_peer_id: &HashMap<(PeerId, OutboundSessionId), PeerId>,
 ) -> Option<(PeerId, ())> {
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data }) = event else {
+    let Event::External(ExternalEvent::ReceivedData {
+        outbound_session_id: _outbound_session_id,
+        data,
+        peer_id: inbound_peer_id,
+    }) = event
+    else {
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
-    let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
     assert_eq!(data, get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, message_index),);
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);
@@ -223,14 +226,7 @@ async fn everyone_sends_to_everyone() {
     let mut current_message = DefaultHashMap::<(PeerId, PeerId), usize>::new(0);
     collect_events_from_swarms(
         &mut swarms_stream,
-        |peer_id, event| {
-            check_received_data_event(
-                peer_id,
-                event,
-                &mut current_message,
-                &outbound_session_id_to_peer_id,
-            )
-        },
+        |peer_id, event| check_received_data_event(peer_id, event, &mut current_message),
         false,
     )
     .await;

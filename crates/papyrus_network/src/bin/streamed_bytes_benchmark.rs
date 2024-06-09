@@ -287,6 +287,7 @@ async fn main() {
             SwarmEvent::Behaviour(Event::External(ExternalEvent::ReceivedData {
                 outbound_session_id,
                 data,
+                peer_id: _,
             })) => {
                 if data[0] != CONST_BYTE {
                     outbound_session_measurements
