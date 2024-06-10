@@ -447,6 +447,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             block_number,
             &deployed_contracts_table,
             &nonces_table,
+            &thin_state_diff.nonces,
         )?;
         write_storage_diffs(
             &thin_state_diff.storage_diffs,
@@ -637,21 +638,18 @@ fn write_deployed_contracts<'env>(
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
     nonces_table: &'env NoncesTable<'env>,
+    nonces: &IndexMap<ContractAddress, Nonce>,
 ) -> StorageResult<()> {
     for (address, class_hash) in deployed_contracts {
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
-        nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
-            if matches!(err, DbError::KeyAlreadyExists(..)) {
-                StorageError::NonceReWrite {
-                    contract_address: *address,
-                    nonce: Nonce::default(),
-                    block_number,
-                }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
+        if !nonces.contains_key(address) {
+            nonces_table.append_greater_sub_key(
+                txn,
+                &(*address, block_number),
+                &Nonce::default(),
+            )?;
+        }
     }
     Ok(())
 }

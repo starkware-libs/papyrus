@@ -124,7 +124,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         let bin_key = key.serialize()?;
         txn.txn.put(&self.database, bin_key, data, WriteFlags::APPEND).map_err(
             |err| match err {
-                libmdbx::Error::KeyMismatch => DbError::Append,
+                libmdbx::Error::KeyMismatch => {
+                    println!("1. table: {:?}, key: {:?}, value: {:?}", self.name, key, value);
+                    DbError::Append
+                }
                 _ => err.into(),
             },
         )?;

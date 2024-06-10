@@ -312,6 +312,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
 
                     Ok(())
                 } else {
+                    println!("4. table: {:?}, key: {:?}, value: {:?}", self.name, key, value);
                     Err(DbError::Append)
                 }
             }
@@ -368,7 +369,10 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
         let mut cursor = txn.txn.cursor(&self.database)?;
         cursor.put(&main_key, &sub_key_and_value, WriteFlags::APPEND_DUP).map_err(
             |err| match err {
-                libmdbx::Error::KeyMismatch => DbError::Append,
+                libmdbx::Error::KeyMismatch => {
+                    println!("3. table: {:?}, key: {:?}, value: {:?}", self.name, key, value);
+                    DbError::Append
+                }
                 _ => err.into(),
             },
         )?;
@@ -379,6 +383,7 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug, T: DupSortTableType + Dup
             if prev.1.starts_with(&T::get_sub_key(key)?) {
                 cursor.next_dup::<DbKeyType<'_>, DbValueType<'_>>()?;
                 cursor.del(WriteFlags::empty())?;
+                println!("2. table: {:?}, key: {:?}, value: {:?}", self.name, key, value);
                 return Err(DbError::Append);
             }
         }
