@@ -513,7 +513,7 @@ impl NetworkManager {
         Self::generic_new(swarm, db_executor, header_buffer_size)
     }
 
-    pub fn get_own_peer_id(&self) -> String {
+    pub fn get_local_peer_id(&self) -> String {
         self.swarm.local_peer_id().to_string()
     }
 }
