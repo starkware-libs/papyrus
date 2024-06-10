@@ -106,6 +106,7 @@ fn simulate_received_data(
         RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
             data,
             outbound_session_id,
+            peer_id,
         }),
     );
 }
@@ -193,13 +194,15 @@ async fn validate_received_data_event(
     behaviour: &mut Behaviour,
     data: &Bytes,
     outbound_session_id: OutboundSessionId,
+    peer_id: PeerId,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
         ToSwarm::GenerateEvent(Event::External(ExternalEvent::ReceivedData {
-            data: event_data, outbound_session_id: event_outbound_session_id
-        })) if event_data == *data && event_outbound_session_id == outbound_session_id
+            data: event_data, outbound_session_id: event_outbound_session_id,
+            peer_id: event_peer_id,
+        })) if event_data == *data && event_outbound_session_id == outbound_session_id && peer_id == event_peer_id
     );
 }
 
@@ -333,7 +336,7 @@ async fn create_and_process_outbound_session() {
     }
 
     for data in &dummy_data_vec {
-        validate_received_data_event(&mut behaviour, data, outbound_session_id).await;
+        validate_received_data_event(&mut behaviour, data, outbound_session_id, peer_id).await;
     }
     validate_no_events(&mut behaviour);
 
