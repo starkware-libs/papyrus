@@ -469,9 +469,9 @@ auto_storage_serde! {
     (ContractAddress, BlockHash);
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
-    (ContractAddress, EventIndex);
     (ContractAddress, StorageKey, BlockHash);
     (ContractAddress, StorageKey, BlockNumber);
+    (ContractAddress, TransactionIndex);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
 }
