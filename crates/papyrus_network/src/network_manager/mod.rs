@@ -15,7 +15,6 @@ use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
-use papyrus_protobuf::sync::{HeaderQuery, StateDiffQuery};
 use papyrus_storage::StorageReader;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
@@ -27,7 +26,7 @@ use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol, Query};
+use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol};
 
 type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
 
@@ -107,10 +106,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
 
     /// Register a new subscriber for sending a single query and receiving multiple responses.
     /// Panics if the given protocol is already subscribed.
-    pub fn register_sqmr_subscriber<Response: TryFrom<Bytes>>(
+    pub fn register_sqmr_subscriber<Query, Response>(
         &mut self,
         protocol: Protocol,
-    ) -> SqmrSubscriberChannels<Response> {
+    ) -> SqmrSubscriberChannels<Query, Response>
+    where
+        Bytes: From<Query>,
+        Response: TryFrom<Bytes>,
+    {
         // TODO(shahak): Remove header_buffer_size from config and add buffer_size as an argument
         // to this function.
         let (query_sender, query_receiver) =
@@ -127,11 +130,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             panic!("Protocol '{}' has already been registered.", protocol);
         }
 
-        // TODO(shahak): Remove specific protocol from this code.
-        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> = match protocol {
-            Protocol::SignedBlockHeader => |x| ready(Ok(Bytes::from(HeaderQuery(x)))),
-            Protocol::StateDiff => |x| ready(Ok(Bytes::from(StateDiffQuery(x)))),
-        };
+        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> =
+            |query| ready(Ok(Bytes::from(query)));
         let query_sender = query_sender.with(query_fn);
 
         let response_fn: ReceivedMessagesConverterFn<Response> =
@@ -542,7 +542,7 @@ type ReceivedMessagesConverterFn<T> =
 // TODO(shahak): Unite channels to a Sender of Query and Receiver of Responses.
 // TODO(shahak): Change Query to something generic.
 // TODO(shahak): Add channels for DB executor.
-pub struct SqmrSubscriberChannels<Response: TryFrom<Bytes>> {
+pub struct SqmrSubscriberChannels<Query: Into<Bytes>, Response: TryFrom<Bytes>> {
     pub query_sender: SubscriberSender<Query>,
     pub response_receiver: SubscriberReceiver<Response>,
 }
