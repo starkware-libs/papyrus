@@ -3,7 +3,6 @@ import json
 import subprocess
 import sys
 
-GRAFANA_NAMESPACE = "Papyrus"
 GRAFANA_DASHBOARD_TEMPLATE_FILE_PATH = "monitoring/templates/grafana_dashboard.json"
 GRAFANA_ALERTS_TEMPLATE_FILE_PATH = "monitoring/templates/grafana_alerts.json"
 GRAFANA_DASHBOARD_DESTINATION_FILE_PATH = "helm/Monitoring/grafana_dashboard.json"
@@ -50,13 +49,13 @@ def main():
     if args.with_alerts:
         assert args.prometheus_uid is not None, "Must provide Prometheus UID when deploying with Grafana."
         generate_grafana_tokens(
-            grafana_namespace=GRAFANA_NAMESPACE, 
+            grafana_namespace=args.namespace, 
             prometheus_uid=args.prometheus_uid, 
             template_path=GRAFANA_DASHBOARD_TEMPLATE_FILE_PATH, 
             destination_path=GRAFANA_DASHBOARD_DESTINATION_FILE_PATH
         )
         generate_grafana_tokens(
-            grafana_namespace=GRAFANA_NAMESPACE, 
+            grafana_namespace=args.namespace, 
             prometheus_uid=args.prometheus_uid, 
             template_path=GRAFANA_ALERTS_TEMPLATE_FILE_PATH, 
             destination_path=GRAFANA_ALERTS_DESTINATION_FILE_PATH
