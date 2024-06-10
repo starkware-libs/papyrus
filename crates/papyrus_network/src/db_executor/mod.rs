@@ -2,7 +2,6 @@ use std::vec;
 
 use async_trait::async_trait;
 use bytes::BufMut;
-use derive_more::Display;
 use futures::channel::mpsc::Sender;
 use futures::future::{pending, poll_fn};
 #[cfg(test)]
@@ -34,9 +33,6 @@ use crate::DataType;
 mod test;
 
 mod utils;
-
-#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy, Display)]
-pub struct QueryId(pub usize);
 
 #[derive(thiserror::Error, Debug)]
 #[error("Failed to encode data")]
@@ -127,48 +123,25 @@ impl Data {
 
 #[derive(thiserror::Error, Debug)]
 pub enum DBExecutorError {
-    #[error("Storage error. Query id: {query_id}, error: {storage_error:?}")]
-    DBInternalError {
-        query_id: QueryId,
-        #[source]
-        storage_error: papyrus_storage::StorageError,
-    },
-    #[error(
-        "Block number is out of range. Query: {query:?}, counter: {counter}, query_id: {query_id}"
-    )]
-    BlockNumberOutOfRange { query: Query, counter: u64, query_id: QueryId },
+    #[error(transparent)]
+    DBInternalError(#[from] papyrus_storage::StorageError),
+    #[error("Block number is out of range. Query: {query:?}, counter: {counter}")]
+    BlockNumberOutOfRange { query: Query, counter: u64 },
     // TODO: add data type to the error message.
-    #[error("Block not found. Block: {block_hash_or_number:?}, query_id: {query_id}")]
-    BlockNotFound { block_hash_or_number: BlockHashOrNumber, query_id: QueryId },
+    #[error("Block not found. Block: {block_hash_or_number:?}")]
+    BlockNotFound { block_hash_or_number: BlockHashOrNumber },
     // This error should be non recoverable.
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
     // TODO: remove this error, use BlockNotFound instead.
     // This error should be non recoverable.
-    #[error(
-        "Block {block_number:?} is in the storage but its signature isn't. query_id: {query_id}"
-    )]
-    SignatureNotFound { block_number: BlockNumber, query_id: QueryId },
-    #[error("Send error. Query id: {query_id}, error: {send_error:?}")]
-    SendError {
-        query_id: QueryId,
-        #[source]
-        send_error: futures::channel::mpsc::SendError,
-    },
+    #[error("Block {block_number:?} is in the storage but its signature isn't.")]
+    SignatureNotFound { block_number: BlockNumber },
+    #[error(transparent)]
+    SendError(#[from] futures::channel::mpsc::SendError),
 }
 
 impl DBExecutorError {
-    pub fn query_id(&self) -> Option<QueryId> {
-        match self {
-            Self::DBInternalError { query_id, .. }
-            | Self::BlockNumberOutOfRange { query_id, .. }
-            | Self::BlockNotFound { query_id, .. }
-            | Self::SignatureNotFound { query_id, .. }
-            | Self::SendError { query_id, .. } => Some(*query_id),
-            Self::JoinError(_) => None,
-        }
-    }
-
     pub fn should_log_in_error_level(&self) -> bool {
         match self {
             Self::JoinError(_) | Self::SignatureNotFound { .. } | Self::SendError { .. }
@@ -189,8 +162,7 @@ pub trait DBExecutorTrait {
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         sender: Sender<Vec<Data>>,
-        // TODO(shahak): Remove QueryId.
-    ) -> QueryId;
+    );
 
     /// Polls incoming queries.
     // TODO(shahak): Consume self.
@@ -198,13 +170,12 @@ pub trait DBExecutorTrait {
 }
 
 pub struct DBExecutor {
-    next_query_id: usize,
     storage_reader: StorageReader,
 }
 
 impl DBExecutor {
     pub fn new(storage_reader: StorageReader) -> Self {
-        Self { next_query_id: 0, storage_reader }
+        Self { storage_reader }
     }
 }
 
@@ -215,26 +186,17 @@ impl DBExecutorTrait for DBExecutor {
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
         mut sender: Sender<Vec<Data>>,
-    ) -> QueryId {
-        let query_id = QueryId(self.next_query_id);
-        self.next_query_id += 1;
+    ) {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
-            let result: Result<QueryId, DBExecutorError> = {
-                let txn = storage_reader_clone.begin_ro_txn().map_err(|err| {
-                    DBExecutorError::DBInternalError { query_id, storage_error: err }
-                })?;
+            let result: Result<(), DBExecutorError> = {
+                let txn = storage_reader_clone.begin_ro_txn()?;
                 let start_block_number = match query.start_block {
                     BlockHashOrNumber::Number(BlockNumber(num)) => num,
                     BlockHashOrNumber::Hash(block_hash) => {
-                        txn.get_block_number_by_hash(&block_hash)
-                            .map_err(|err| DBExecutorError::DBInternalError {
-                                query_id,
-                                storage_error: err,
-                            })?
+                        txn.get_block_number_by_hash(&block_hash)?
                             .ok_or(DBExecutorError::BlockNotFound {
                                 block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
-                                query_id,
                             })?
                             .0
                     }
@@ -244,24 +206,14 @@ impl DBExecutorTrait for DBExecutor {
                         &query,
                         start_block_number,
                         block_counter,
-                        query_id,
                     )?);
-                    let data_vec =
-                        data_type.fetch_block_data_from_db(block_number, query_id, &txn)?;
+                    let data_vec = data_type.fetch_block_data_from_db(block_number, &txn)?;
                     // Using poll_fn because Sender::poll_ready is not a future
-                    match poll_fn(|cx| sender.poll_ready(cx)).await {
-                        Ok(()) => {
-                            if let Err(e) = sender.start_send(data_vec) {
-                                // TODO: consider implement retry mechanism.
-                                return Err(DBExecutorError::SendError { query_id, send_error: e });
-                            };
-                        }
-                        Err(e) => {
-                            return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        }
-                    }
+                    poll_fn(|cx| sender.poll_ready(cx)).await?;
+                    // TODO: consider implement retry mechanism.
+                    sender.start_send(data_vec)?;
                 }
-                Ok(query_id)
+                Ok(())
             };
             if let Err(error) = &result {
                 if error.should_log_in_error_level() {
@@ -270,7 +222,6 @@ impl DBExecutorTrait for DBExecutor {
             }
             result
         });
-        query_id
     }
 
     async fn run(&mut self) {
@@ -288,7 +239,6 @@ pub trait FetchBlockDataFromDb {
     fn fetch_block_data_from_db<'a>(
         &self,
         block_number: BlockNumber,
-        query_id: QueryId,
         txn: &StorageTxn<'a, db::RO>,
     ) -> Result<Vec<Data>, DBExecutorError>;
 }
@@ -297,58 +247,36 @@ impl FetchBlockDataFromDb for DataType {
     fn fetch_block_data_from_db(
         &self,
         block_number: BlockNumber,
-        query_id: QueryId,
         txn: &StorageTxn<'_, db::RO>,
     ) -> Result<Vec<Data>, DBExecutorError> {
         match self {
             DataType::SignedBlockHeader => {
-                let mut header = txn
-                    .get_block_header(block_number)
-                    .map_err(|err| DBExecutorError::DBInternalError {
-                        query_id,
-                        storage_error: err,
-                    })?
-                    .ok_or(DBExecutorError::BlockNotFound {
+                let mut header =
+                    txn.get_block_header(block_number)?.ok_or(DBExecutorError::BlockNotFound {
                         block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                        query_id,
                     })?;
                 // TODO(shahak) Remove this once central sync fills the state_diff_length field.
                 if header.state_diff_length.is_none() {
                     header.state_diff_length = Some(
-                        txn.get_state_diff(block_number)
-                            .map_err(|err| DBExecutorError::DBInternalError {
-                                query_id,
-                                storage_error: err,
-                            })?
+                        txn.get_state_diff(block_number)?
                             .ok_or(DBExecutorError::BlockNotFound {
                                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                                query_id,
                             })?
                             .len(),
                     );
                 }
                 let signature = txn
-                    .get_block_signature(block_number)
-                    .map_err(|err| DBExecutorError::DBInternalError {
-                        query_id,
-                        storage_error: err,
-                    })?
-                    .ok_or(DBExecutorError::SignatureNotFound { block_number, query_id })?;
+                    .get_block_signature(block_number)?
+                    .ok_or(DBExecutorError::SignatureNotFound { block_number })?;
                 Ok(vec![Data::BlockHeaderAndSignature(SignedBlockHeader {
                     block_header: header,
                     signatures: vec![signature],
                 })])
             }
             DataType::StateDiff => {
-                let thin_state_diff = txn
-                    .get_state_diff(block_number)
-                    .map_err(|err| DBExecutorError::DBInternalError {
-                        query_id,
-                        storage_error: err,
-                    })?
-                    .ok_or(DBExecutorError::BlockNotFound {
+                let thin_state_diff =
+                    txn.get_state_diff(block_number)?.ok_or(DBExecutorError::BlockNotFound {
                         block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                        query_id,
                     })?;
                 let vec_data = split_thin_state_diff(thin_state_diff)
                     .into_iter()

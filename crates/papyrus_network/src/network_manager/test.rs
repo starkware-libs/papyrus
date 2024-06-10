@@ -36,7 +36,7 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::{GenericNetworkManager, SqmrSubscriberChannels};
-use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb, QueryId};
+use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb};
 use crate::gossipsub_impl::{self, Topic};
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
@@ -219,9 +219,8 @@ impl SwarmTrait for MockSwarm {
 
 #[derive(Default)]
 struct MockDBExecutor {
-    next_query_id: usize,
     pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+    query_execution_set: FuturesUnordered<JoinHandle<Result<(), DBExecutorError>>>,
 }
 
 #[async_trait]
@@ -232,26 +231,21 @@ impl DBExecutorTrait for MockDBExecutor {
         query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
         mut sender: Sender<Vec<Data>>,
-    ) -> QueryId {
-        let query_id = QueryId(self.next_query_id);
-        self.next_query_id += 1;
+    ) {
         let headers = self.query_to_headers.get(&query).unwrap().clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
             {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(vec![Data::BlockHeaderAndSignature(
+                        sender.start_send(vec![Data::BlockHeaderAndSignature(
                             SignedBlockHeader { block_header: header, signatures: vec![] },
-                        )]) {
-                            return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        };
+                        )])?;
                     }
                 }
-                Ok(query_id)
+                Ok(())
             }
         }));
-        query_id
     }
     async fn run(&mut self) {
         loop {
