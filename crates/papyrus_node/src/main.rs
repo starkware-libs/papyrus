@@ -95,7 +95,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     };
 
     // P2P network.
-    let (network_future, maybe_query_sender_and_response_receivers, own_peer_id) =
+    let (network_future, maybe_query_sender_and_response_receivers, local_peer_id) =
         run_network(config.network.clone(), storage_reader.clone());
     let network_handle = tokio::spawn(network_future);
 
@@ -106,7 +106,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         get_config_presentation(&config, false)?,
         storage_reader.clone(),
         VERSION_FULL,
-        own_peer_id,
+        local_peer_id,
     )?;
     let monitoring_server_handle = monitoring_server.spawn_server().await;
 
@@ -257,10 +257,10 @@ fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> 
     let Some(network_config) = config else { return (pending().boxed(), None, "".to_string()) };
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
-    let own_peer_id = network_manager.get_own_peer_id();
+    let local_peer_id = network_manager.get_local_peer_id();
     let header_channels = network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
     let state_diff_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
-    (network_manager.run().boxed(), Some((header_channels, state_diff_channels)), own_peer_id)
+    (network_manager.run().boxed(), Some((header_channels, state_diff_channels)), local_peer_id)
 }
 
 // TODO(yair): add dynamic level filtering.
