@@ -72,7 +72,6 @@ impl<'env, K: KeyTrait + Debug, V: ValueSerde + Debug> Table<'env>
         txn: &'env DbTransaction<'env, Mode>,
         key: &Self::Key,
     ) -> DbResult<Option<<Self::Value as ValueSerde>::Value>> {
-        // TODO: Support zero-copy. This might require a return type of Cow<'env, ValueType>.
         let bin_key = key.serialize()?;
         let Some(bytes) = txn.txn.get::<Cow<'env, [u8]>>(&self.database, &bin_key)? else {
             return Ok(None);
@@ -172,7 +171,6 @@ impl<'txn, Mode: TransactionKind, K: KeyTrait + Debug, V: ValueSerde + Debug> Db
         }
     }
 
-    /// Position at first key greater than or equal to specified key.
     fn lower_bound(
         &mut self,
         key: &K,
