@@ -228,7 +228,7 @@ impl DBExecutorTrait for MockDBExecutor {
         &mut self,
         query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Vec<Data>>,
+        mut sender: Sender<Data>,
     ) {
         let headers = self.query_to_headers.get(&query).unwrap().clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
@@ -236,9 +236,10 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        sender.start_send(vec![Data::BlockHeaderAndSignature(
-                            SignedBlockHeader { block_header: header, signatures: vec![] },
-                        )])?;
+                        sender.start_send(Data::BlockHeaderAndSignature(SignedBlockHeader {
+                            block_header: header,
+                            signatures: vec![],
+                        }))?;
                     }
                 }
                 Ok(())
