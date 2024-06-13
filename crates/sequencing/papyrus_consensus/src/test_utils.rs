@@ -3,7 +3,7 @@ use futures::channel::{mpsc, oneshot};
 use mockall::mock;
 use starknet_api::block::{BlockHash, BlockNumber};
 
-use crate::types::{ConsensusBlock, ConsensusContext, ValidatorId};
+use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
 /// Define a consensus block which can be used to enable auto mocking Context.
 #[derive(Debug, PartialEq, Clone)]
@@ -37,12 +37,22 @@ mock! {
             mpsc::Receiver<u32>,
             oneshot::Receiver<TestBlock>
         );
+
         async fn validate_proposal(
             &self,
             height: BlockNumber,
             content: mpsc::Receiver<u32>
         ) -> oneshot::Receiver<TestBlock>;
+
         async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
+
         fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
+
+        async fn propose(
+            &self,
+            init: ProposalInit,
+            content_receiver: mpsc::Receiver<u32>,
+            fin_receiver: oneshot::Receiver<BlockHash>,
+        ) -> Result<(), ConsensusError>;
     }
 }
