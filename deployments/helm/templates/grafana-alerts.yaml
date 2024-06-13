@@ -1,0 +1,12 @@
+{{- if .Values.grafanaAlerts.enabled }}
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: {{ .Release.Namespace }}-alerts
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: grafana-dashboard
+spec:
+  json: |
+    {{- (.Files.Get "Monitoring/grafana_alerts.json") | nindent 4 }}
+{{- end }}

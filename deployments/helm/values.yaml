@@ -34,6 +34,8 @@ deployment:
     requests:
       cpu: 500m
       memory: 1Gi
+  extraArgs: {} # Optional additional deployment args
+    # collect_metrics: "true"
 
 # Service variables for a papyrus pod.
 services:
@@ -73,12 +75,14 @@ ingress:
   # Ingress path type.
   pathType:
   # Annotations to apply to the node ingress.
-  annotations:
+  annotations: {}
 
 # GrafanaDashboad CRD configuration
 # This is relevant for Grafana Operator users https://grafana.github.io/grafana-operator/docs/
-grafanadashboard:
+grafanaDashboard:
   # Should the GrafanaDashboard object be installed
+  enabled: false
+grafanaAlerts:
   enabled: false
 
 # Backup mode
