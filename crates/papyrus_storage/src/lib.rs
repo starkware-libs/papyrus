@@ -480,6 +480,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
+    #[latency_histogram("commit_latency_seconds", false)]
     pub fn commit(self) -> StorageResult<()> {
         self.file_handlers.flush();
         Ok(self.txn.commit()?)
@@ -518,7 +519,7 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         block_signatures: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockSignature>, SimpleTable>,
         casms: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        contract_storage: TableIdentifier<((ContractAddress, StorageKey), BlockNumber), NoVersionValueWrapper<Felt>, CommonPrefix>,
+        contract_storage: TableIdentifier<(ContractAddress, (StorageKey, BlockNumber)), NoVersionValueWrapper<Felt>, CommonPrefix>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,

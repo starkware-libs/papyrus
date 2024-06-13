@@ -475,6 +475,8 @@ auto_storage_serde! {
     (usize, Vec<Hint>);
     (usize, Vec<String>);
     ((ContractAddress, StorageKey), BlockNumber);
+    (ContractAddress, (StorageKey, BlockNumber));
+    (StorageKey, BlockNumber);
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -1115,7 +1117,7 @@ macro_rules! auto_storage_serde_conditionally_compressed {
 }
 
 // The following transactions have variable length Calldata and are conditionally compressed.
-auto_storage_serde_conditionally_compressed! {
+auto_storage_serde! {
     pub struct DeployAccountTransactionV1 {
         pub max_fee: Fee,
         pub signature: TransactionSignature,

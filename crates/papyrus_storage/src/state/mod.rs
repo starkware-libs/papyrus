@@ -98,7 +98,7 @@ pub(crate) type DeployedContractsTable<'env> =
     TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, CommonPrefix>;
 pub(crate) type ContractStorageTable<'env> = TableHandle<
     'env,
-    ((ContractAddress, StorageKey), BlockNumber),
+    (ContractAddress, (StorageKey, BlockNumber)),
     NoVersionValueWrapper<Felt>,
     CommonPrefix,
 >;
@@ -321,14 +321,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = ((*address, *key), first_irrelevant_block);
+        let db_key = (*address, (*key, first_irrelevant_block));
         // Find the previous db item.
         let mut cursor = self.storage_table.cursor(self.txn)?;
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
             None => Ok(Felt::default()),
-            Some((((got_address, got_key), _got_block_number), value)) => {
+            Some(((got_address, (got_key, _got_block_number)), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
@@ -693,7 +693,7 @@ fn write_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
-            storage_table.append_greater_sub_key(txn, &((*address, *key), block_number), value)?;
+            storage_table.upsert(txn, &(*address, (*key, block_number)), value)?;
         }
     }
     Ok(())
@@ -807,7 +807,7 @@ fn delete_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in &thin_state_diff.storage_diffs {
         for (key, _) in storage_entries {
-            storage_table.delete(txn, &((*address, *key), block_number))?;
+            storage_table.delete(txn, &(*address, (*key, block_number)))?;
         }
     }
     Ok(())
