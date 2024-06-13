@@ -9,7 +9,6 @@ use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event, ExternalEvent};
-use super::messages::with_length_prefix;
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::test_utils::create_fully_connected_swarms_stream;
 use crate::utils::StreamHashMap;
@@ -86,12 +85,8 @@ fn send_data(
     for i in 0..NUM_MESSAGES_PER_SESSION {
         inbound_swarm
             .behaviour_mut()
-            .send_length_prefixed_data(
-                with_length_prefix(&get_bytes_from_data_indices(
-                    inbound_peer_id,
-                    outbound_peer_id,
-                    i,
-                )),
+            .send_data(
+                get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, i),
                 inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
             )
             .unwrap();

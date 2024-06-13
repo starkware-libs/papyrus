@@ -7,7 +7,6 @@ use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, StreamProtocol, Swarm};
 use papyrus_network::bin_utils::{build_swarm, dial};
 use papyrus_network::sqmr::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
-use papyrus_network::sqmr::messages::with_length_prefix;
 use papyrus_network::sqmr::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 
 const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/papyrus/bench/1");
@@ -26,7 +25,7 @@ fn pretty_size(mut size: f64) -> String {
 fn encode_inbound_session_metadata(num_messages: usize, message_size: usize) -> Bytes {
     let mut result = num_messages.to_be_bytes().to_vec();
     result.extend_from_slice(&message_size.to_be_bytes());
-    with_length_prefix(&result)
+    result
 }
 
 fn decode_inbound_session_metadata(mut bytes: Bytes) -> (usize, usize) {
@@ -112,7 +111,7 @@ fn send_data_to_inbound_sessions(
     for inbound_session_id in inbound_session_to_messages.keys() {
         swarm
             .behaviour_mut()
-            .send_length_prefixed_data(
+            .send_data(
                 encode_inbound_session_metadata(args.num_messages_per_session, args.message_size),
                 *inbound_session_id,
             )
@@ -123,12 +122,9 @@ fn send_data_to_inbound_sessions(
     while !inbound_session_to_messages.is_empty() {
         inbound_session_to_messages.retain(|inbound_session_id, messages| match messages.pop() {
             Some(message) => {
-                swarm
-                    .behaviour_mut()
-                    .send_length_prefixed_data(with_length_prefix(&message), *inbound_session_id)
-                    .unwrap_or_else(|_| {
-                        panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id)
-                    });
+                swarm.behaviour_mut().send_data(message, *inbound_session_id).unwrap_or_else(
+                    |_| panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id),
+                );
 
                 true
             }

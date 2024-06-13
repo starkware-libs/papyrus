@@ -3,7 +3,7 @@ use libp2p::core::UpgradeInfo;
 use libp2p::swarm::StreamProtocol;
 use pretty_assertions::assert_eq;
 
-use super::super::messages::{read_message, with_length_prefix, write_length_prefixed_message};
+use super::super::messages::{read_message, write_message};
 use super::{InboundProtocol, OutboundProtocol};
 use crate::test_utils::{dummy_data, get_connected_streams};
 
@@ -37,10 +37,8 @@ async fn positive_flow() {
                 inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap();
             assert_eq!(query, received_query);
             assert_eq!(protocol_name, PROTOCOL_NAME);
-            for response in &dummy_data() {
-                write_length_prefixed_message(&with_length_prefix(response), &mut stream)
-                    .await
-                    .unwrap();
+            for response in dummy_data() {
+                write_message(&response, &mut stream).await.unwrap();
             }
         },
         async move {

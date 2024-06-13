@@ -186,7 +186,7 @@ impl Behaviour {
     }
 
     /// Send a data message to an open inbound session.
-    pub fn send_length_prefixed_data(
+    pub fn send_data(
         &mut self,
         data: Bytes,
         inbound_session_id: InboundSessionId,

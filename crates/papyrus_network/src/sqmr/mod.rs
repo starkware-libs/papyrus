@@ -1,6 +1,6 @@
 pub mod behaviour;
 pub mod handler;
-pub mod messages;
+mod messages;
 pub mod protocol;
 
 #[cfg(test)]

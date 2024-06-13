@@ -134,20 +134,17 @@ impl MockSwarm {
 }
 
 impl SwarmTrait for MockSwarm {
-    fn send_length_prefixed_data(
+    fn send_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let data_sender = self.inbound_session_id_to_data_sender.get(&inbound_session_id).expect(
-            "Called send_length_prefixed_data without calling get_data_sent_to_inbound_session \
-             first",
-        );
-        let decoded_data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
-            .unwrap()
-            .try_into()
-            .unwrap();
-        // TODO(shahak): Add tests for state diff.
+        let data_sender = self
+            .inbound_session_id_to_data_sender
+            .get(&inbound_session_id)
+            .expect("Called send_data without calling get_data_sent_to_inbound_session first");
+        let decoded_data =
+            protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
         let (data, is_fin) = match decoded_data {
             Some(signed_block_header) => {
                 (Data::BlockHeaderAndSignature(signed_block_header), false)

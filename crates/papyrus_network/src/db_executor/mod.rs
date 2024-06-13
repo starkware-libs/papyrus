@@ -54,30 +54,19 @@ impl Default for Data {
 }
 
 impl Data {
-    fn encode_template<B>(
-        self,
-        buf: &mut B,
-        encode_with_length_prefix_flag: bool,
-    ) -> Result<(), DataEncodingError>
+    pub fn encode<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
     where
         B: BufMut,
     {
         match self {
             Data::BlockHeaderAndSignature(signed_block_header) => {
                 let data: protobuf::BlockHeadersResponse = Some(signed_block_header).into();
-                match encode_with_length_prefix_flag {
-                    true => data.encode_length_delimited(buf).map_err(|_| DataEncodingError),
-                    false => data.encode(buf).map_err(|_| DataEncodingError),
-                }
+                data.encode(buf).map_err(|_| DataEncodingError)
             }
             Data::StateDiffChunk(state_diff) => {
                 let state_diff_chunk = DataOrFin(Some(state_diff));
                 let state_diffs_response = protobuf::StateDiffsResponse::from(state_diff_chunk);
-                match encode_with_length_prefix_flag {
-                    true => state_diffs_response.encode_length_delimited(buf),
-                    false => state_diffs_response.encode(buf),
-                }
-                .map_err(|_| DataEncodingError)
+                state_diffs_response.encode(buf).map_err(|_| DataEncodingError)
             }
             Data::Fin(data_type) => match data_type {
                 DataType::SignedBlockHeader => {
@@ -86,11 +75,7 @@ impl Data {
                             protobuf::Fin {},
                         )),
                     };
-                    match encode_with_length_prefix_flag {
-                        true => block_header_response.encode_length_delimited(buf),
-                        false => block_header_response.encode(buf),
-                    }
-                    .map_err(|_| DataEncodingError)
+                    block_header_response.encode(buf).map_err(|_| DataEncodingError)
                 }
                 DataType::StateDiff => {
                     let state_diff_response = protobuf::StateDiffsResponse {
@@ -98,26 +83,10 @@ impl Data {
                             protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
                         ),
                     };
-                    match encode_with_length_prefix_flag {
-                        true => state_diff_response.encode_length_delimited(buf),
-                        false => state_diff_response.encode(buf),
-                    }
-                    .map_err(|_| DataEncodingError)
+                    state_diff_response.encode(buf).map_err(|_| DataEncodingError)
                 }
             },
         }
-    }
-    pub fn encode_with_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
-    where
-        B: BufMut,
-    {
-        self.encode_template(buf, true)
-    }
-    pub fn encode_without_length_prefix<B>(self, buf: &mut B) -> Result<(), DataEncodingError>
-    where
-        B: BufMut,
-    {
-        self.encode_template(buf, false)
     }
 }
 
