@@ -63,28 +63,6 @@ pub trait ConsensusBlock: Send {
     fn proposal_iter(&self) -> Self::ProposalIter;
 }
 
-/// This represents a thin layer between components of consensus and sending to the actual network.
-/// It's purposes:
-/// 1. For early milestones allows the rest of consensus to pretend that there is network streaming
-///    for proposals.
-/// 2. Keep papyrus_network details out of consensus.
-// TODO(matan): Reasses if we should delete this and just use `SubscriberSender` when streaming is
-// supported.
-#[cfg_attr(test, mockall::automock(type ProposalChunk=u32;))]
-#[async_trait]
-pub(crate) trait NetworkSender {
-    type ProposalChunk;
-
-    // This should be non-blocking. Meaning it returns immediately and waits to receive from the
-    // input channels in parallel (ie on a separate task).
-    async fn propose(
-        &mut self,
-        init: ProposalInit,
-        content_receiver: mpsc::Receiver<Self::ProposalChunk>,
-        fin_receiver: oneshot::Receiver<BlockHash>,
-    ) -> Result<(), ConsensusError>;
-}
-
 /// Interface for consensus to call out to the node.
 // Why `Send + Sync`?
 // 1. We expect multiple components within consensus to concurrently access the context.
@@ -150,10 +128,20 @@ pub trait ConsensusContext: Send + Sync {
 
     /// Calculates the ID of the Proposer based on the inputs.
     fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
+
+    /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
+    /// input channels in parallel (ie on a separate task).
+    // TODO(matan): change to just be a generic broadcast function.
+    async fn propose(
+        &self,
+        init: ProposalInit,
+        content_receiver: mpsc::Receiver<<Self::Block as ConsensusBlock>::ProposalChunk>,
+        fin_receiver: oneshot::Receiver<BlockHash>,
+    ) -> Result<(), ConsensusError>;
 }
 
 #[derive(PartialEq, Debug)]
-pub(crate) struct ProposalInit {
+pub struct ProposalInit {
     pub height: BlockNumber,
     pub proposer: ValidatorId,
 }

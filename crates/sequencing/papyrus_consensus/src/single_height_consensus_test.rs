@@ -7,12 +7,11 @@ use tokio;
 
 use super::SingleHeightConsensus;
 use crate::test_utils::{MockTestContext, TestBlock};
-use crate::types::{ConsensusBlock, MockNetworkSender, ProposalInit, ValidatorId};
+use crate::types::{ConsensusBlock, ProposalInit, ValidatorId};
 
 #[tokio::test]
 async fn proposer() {
     let mut context = MockTestContext::new();
-    let mut network_sender = MockNetworkSender::new();
 
     let node_id: ValidatorId = 1_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
@@ -31,7 +30,7 @@ async fn proposer() {
 
     let fin_receiver = Arc::new(OnceLock::new());
     let fin_receiver_clone = Arc::clone(&fin_receiver);
-    network_sender.expect_propose().return_once(move |init, _, fin_receiver| {
+    context.expect_propose().return_once(move |init, _, fin_receiver| {
         // Ignore content receiver, since this is the context's responsibility.
         assert_eq!(init.height, BlockNumber(0));
         assert_eq!(init.proposer, node_id);
@@ -39,13 +38,7 @@ async fn proposer() {
         Ok(())
     });
 
-    let mut shc = SingleHeightConsensus::new(
-        BlockNumber(0),
-        Arc::new(context),
-        node_id,
-        Box::new(network_sender),
-    )
-    .await;
+    let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
 
     let decision = shc.start().await.unwrap().unwrap();
     assert_eq!(decision, block);
@@ -76,13 +69,7 @@ async fn validator() {
     });
 
     // Creation calls to `context.validators`.
-    let mut shc = SingleHeightConsensus::new(
-        BlockNumber(0),
-        Arc::new(context),
-        node_id,
-        Box::new(MockNetworkSender::new()),
-    )
-    .await;
+    let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
 
     // Send the proposal from the peer.
     let (fin_sender, fin_receiver) = oneshot::channel();
@@ -97,6 +84,5 @@ async fn validator() {
         .unwrap()
         .unwrap();
 
-    // This calls to `context.proposer` and `context.build_proposal`.
     assert_eq!(decision, block);
 }
