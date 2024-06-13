@@ -1,3 +1,6 @@
+#[cfg(test)]
+#[path = "transaction_test.rs"]
+mod transaction_test;
 use std::convert::{TryFrom, TryInto};
 
 use prost::Message;
