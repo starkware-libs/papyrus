@@ -60,8 +60,9 @@ async fn header_db_executor_can_register_and_run_a_query() {
         _ = async {
             while let Some(res) = receivers_stream.next().await {
                 let (data, requested_data_type) = res.await;
+                let len = data.len();
                 if matches!(requested_data_type, DataType::SignedBlockHeader) {
-                    assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
+                    assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
                 }
                 for (i, data) in data.into_iter().enumerate() {
                     match data {
@@ -73,7 +74,10 @@ async fn header_db_executor_can_register_and_run_a_query() {
                             // TODO: check the state diff.
                             assert_eq!(*requested_data_type, DataType::StateDiff);
                         }
-                        _ => panic!("Unexpected data type"),
+                        Data::Fin(data_type) => {
+                            assert_eq!(data_type, *requested_data_type);
+                            assert_eq!(i, len - 1);
+                        }
                     }
                 }
             }
@@ -115,12 +119,16 @@ async fn header_db_executor_start_block_given_by_hash() {
             panic!("DB executor should never finish its run.");
         },
         res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
+            let len = res.len();
+            assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
             for (i, data) in res.into_iter().enumerate() {
-                let Data::BlockHeaderAndSignature(signed_header) = data else {
-                    panic!("Unexpected data type");
+                match data {
+                    Data::BlockHeaderAndSignature(signed_header) => {
+                        assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                    }
+                    Data::Fin(DataType::SignedBlockHeader) => assert_eq!(i, len - 1),
+                    _ => panic!("Unexpected data type"),
                 };
-                assert_eq!(signed_header.block_header.block_number.0, i as u64);
             }
         }
     }
@@ -155,6 +163,7 @@ async fn header_db_executor_query_of_missing_block() {
             }
         },
     );
+    mock_data_type.expect_fin().times(1).returning(|| Data::default());
     db_executor.register_query(query, mock_data_type, sender);
 
     tokio::select! {
@@ -162,7 +171,7 @@ async fn header_db_executor_query_of_missing_block() {
             panic!("DB executor should never finish its run.");
         },
         res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), (BLOCKS_DELTA) as usize);
+            assert_eq!(res.len(), (BLOCKS_DELTA + 1) as usize);
         }
     }
 }
