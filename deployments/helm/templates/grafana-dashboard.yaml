@@ -1,0 +1,12 @@
+{{- if .Values.grafanaDashboard.enabled }}
+apiVersion: integreatly.org/v1alpha1
+kind: GrafanaDashboard
+metadata:
+  name: {{ .Release.Namespace }}-dashboard
+  namespace: {{ .Release.Namespace | quote }}
+  labels:
+    app: grafana-dashboard
+spec:
+  json: |
+    {{- (.Files.Get "Monitoring/grafana_dashboard.json") | nindent 4 }}
+{{- end }}
