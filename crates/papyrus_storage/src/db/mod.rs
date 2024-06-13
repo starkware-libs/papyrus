@@ -206,9 +206,12 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
             })
             .set_max_tables(MAX_DBS)
             .set_max_readers(MAX_READERS)
-            .set_flags(DatabaseFlags { no_rdahead: true, liforeclaim: true, 
+            .set_flags(DatabaseFlags {
+                no_rdahead: true,
+                liforeclaim: true,
                 mode: libmdbx::Mode::ReadWrite { sync_mode: libmdbx::SyncMode::SafeNoSync },
-                ..Default::default() })
+                ..Default::default()
+            })
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
