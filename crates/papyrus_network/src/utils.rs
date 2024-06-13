@@ -60,6 +60,7 @@ impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> Stream for StreamHashMap<K
             }
         }
         if finished {
+            // TODO(shahak): Make StreamHashMap not end in order to accept new inserted streams.
             return Poll::Ready(None);
         }
         Poll::Pending
