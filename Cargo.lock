@@ -5943,6 +5943,8 @@ dependencies = [
  "async-trait",
  "futures",
  "mockall",
+ "papyrus_network",
+ "papyrus_protobuf",
  "starknet-types-core",
  "starknet_api",
  "thiserror",
