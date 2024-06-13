@@ -15,6 +15,7 @@ use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
+use papyrus_protobuf::sync::DataOrFin;
 use papyrus_storage::StorageReader;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
@@ -387,7 +388,10 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             self.query_results_router = StreamCollection::new();
         }
         let (data, inbound_session_id) = res;
-        let is_fin = matches!(data, Data::Fin(_));
+        let is_fin = matches!(
+            data,
+            Data::BlockHeaderAndSignature(DataOrFin(None)) | Data::StateDiffChunk(DataOrFin(None))
+        );
         let mut data_bytes = vec![];
         data.encode(&mut data_bytes).expect("failed to encode data");
         self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {

@@ -38,9 +38,9 @@ use super::swarm_trait::{Event, SwarmTrait};
 use super::{GenericNetworkManager, SqmrSubscriberChannels};
 use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb};
 use crate::gossipsub_impl::{self, Topic};
+use crate::mixed_behaviour;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
@@ -143,15 +143,12 @@ impl SwarmTrait for MockSwarm {
             .inbound_session_id_to_data_sender
             .get(&inbound_session_id)
             .expect("Called send_data without calling get_data_sent_to_inbound_session first");
-        let decoded_data =
-            protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
-        let (data, is_fin) = match decoded_data {
-            Some(signed_block_header) => {
-                (Data::BlockHeaderAndSignature(signed_block_header), false)
-            }
-            None => (Data::Fin(DataType::SignedBlockHeader), true),
-        };
-        data_sender.unbounded_send(data).unwrap();
+        let data = DataOrFin::<SignedBlockHeader>::try_from(
+            protobuf::BlockHeadersResponse::decode(&data[..]).unwrap(),
+        )
+        .unwrap();
+        let is_fin = data.0.is_none();
+        data_sender.unbounded_send(Data::BlockHeaderAndSignature(data)).unwrap();
         if is_fin {
             data_sender.close_channel();
         }
@@ -236,13 +233,12 @@ impl DBExecutorTrait for MockDBExecutor {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        sender.start_send(Data::BlockHeaderAndSignature(SignedBlockHeader {
-                            block_header: header,
-                            signatures: vec![],
-                        }))?;
+                        sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(Some(
+                            SignedBlockHeader { block_header: header, signatures: vec![] },
+                        ))))?;
                     }
                 }
-                sender.start_send(Data::Fin(DataType::SignedBlockHeader))?;
+                sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(None)))?;
                 Ok(())
             }
         }));
@@ -372,12 +368,12 @@ async fn process_incoming_query() {
             let mut expected_data = headers
                 .into_iter()
                 .map(|header| {
-                    Data::BlockHeaderAndSignature(SignedBlockHeader {
+                    Data::BlockHeaderAndSignature(DataOrFin(Some(SignedBlockHeader {
                         block_header: header, signatures: vec![]
-                    })
+                    })))
                 })
                 .collect::<Vec<_>>();
-            expected_data.push(Data::Fin(DataType::SignedBlockHeader));
+            expected_data.push(Data::BlockHeaderAndSignature(DataOrFin(None)));
             assert_eq!(inbound_session_data, expected_data);
         }
         _ = network_manager.run() => {
