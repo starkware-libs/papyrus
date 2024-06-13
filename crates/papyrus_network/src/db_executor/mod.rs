@@ -39,15 +39,14 @@ pub struct DataEncodingError;
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[derive(Clone)]
 pub enum Data {
-    BlockHeaderAndSignature(SignedBlockHeader),
-    StateDiffChunk(StateDiffChunk),
-    Fin(DataType),
+    BlockHeaderAndSignature(DataOrFin<SignedBlockHeader>),
+    StateDiffChunk(DataOrFin<StateDiffChunk>),
 }
 
 impl Default for Data {
     fn default() -> Self {
         // TODO: consider this default data type.
-        Data::Fin(DataType::SignedBlockHeader)
+        Self::BlockHeaderAndSignature(DataOrFin(None))
     }
 }
 
@@ -57,33 +56,16 @@ impl Data {
         B: BufMut,
     {
         match self {
-            Data::BlockHeaderAndSignature(signed_block_header) => {
-                let data: protobuf::BlockHeadersResponse = Some(signed_block_header).into();
-                data.encode(buf).map_err(|_| DataEncodingError)
+            Data::BlockHeaderAndSignature(maybe_signed_block_header) => {
+                let block_headers_response =
+                    protobuf::BlockHeadersResponse::from(maybe_signed_block_header);
+                block_headers_response.encode(buf).map_err(|_| DataEncodingError)
             }
-            Data::StateDiffChunk(state_diff) => {
-                let state_diff_chunk = DataOrFin(Some(state_diff));
-                let state_diffs_response = protobuf::StateDiffsResponse::from(state_diff_chunk);
+            Data::StateDiffChunk(maybe_state_diff_chunk) => {
+                let state_diffs_response =
+                    protobuf::StateDiffsResponse::from(maybe_state_diff_chunk);
                 state_diffs_response.encode(buf).map_err(|_| DataEncodingError)
             }
-            Data::Fin(data_type) => match data_type {
-                DataType::SignedBlockHeader => {
-                    let block_header_response = protobuf::BlockHeadersResponse {
-                        header_message: Some(protobuf::block_headers_response::HeaderMessage::Fin(
-                            protobuf::Fin {},
-                        )),
-                    };
-                    block_header_response.encode(buf).map_err(|_| DataEncodingError)
-                }
-                DataType::StateDiff => {
-                    let state_diff_response = protobuf::StateDiffsResponse {
-                        state_diff_message: Some(
-                            protobuf::state_diffs_response::StateDiffMessage::Fin(protobuf::Fin {}),
-                        ),
-                    };
-                    state_diff_response.encode(buf).map_err(|_| DataEncodingError)
-                }
-            },
         }
     }
 }
@@ -215,10 +197,10 @@ impl FetchBlockDataFromDb for DataType {
                 let signature = txn
                     .get_block_signature(block_number)?
                     .ok_or(DBExecutorError::SignatureNotFound { block_number })?;
-                Ok(vec![Data::BlockHeaderAndSignature(SignedBlockHeader {
+                Ok(vec![Data::BlockHeaderAndSignature(DataOrFin(Some(SignedBlockHeader {
                     block_header: header,
                     signatures: vec![signature],
-                })])
+                })))])
             }
             DataType::StateDiff => {
                 let thin_state_diff =
@@ -227,7 +209,7 @@ impl FetchBlockDataFromDb for DataType {
                     })?;
                 let vec_data = split_thin_state_diff(thin_state_diff)
                     .into_iter()
-                    .map(Data::StateDiffChunk)
+                    .map(|state_diff_chunk| Data::StateDiffChunk(DataOrFin(Some(state_diff_chunk))))
                     .collect();
                 Ok(vec_data)
             }
@@ -235,7 +217,10 @@ impl FetchBlockDataFromDb for DataType {
     }
 
     fn fin(&self) -> Data {
-        Data::Fin(*self)
+        match self {
+            DataType::SignedBlockHeader => Data::BlockHeaderAndSignature(DataOrFin(None)),
+            DataType::StateDiff => Data::StateDiffChunk(DataOrFin(None)),
+        }
     }
 }
 
