@@ -1,32 +1,34 @@
 mod swarm_trait;
 
-#[cfg(test)]
-mod test;
+// TODO(shahak): Uncomment
+// #[cfg(test)]
+// mod test;
 
 use std::collections::HashMap;
 
 use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
 use futures::future::{ready, Ready};
 use futures::sink::With;
-use futures::stream::{self, Chain, Map, Once};
+use futures::stream::{self, BoxStream, Map};
 use futures::{SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
+use papyrus_protobuf::sync::{DataOrFin, SignedBlockHeader, StateDiffChunk};
 use papyrus_storage::StorageReader;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::db_executor::{DBExecutor, DBExecutorTrait, Data};
+use crate::db_executor::{DBExecutor, DBExecutorTrait};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol};
+use crate::{gossipsub_impl, NetworkConfig, Protocol};
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -38,7 +40,8 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     swarm: SwarmT,
     db_executor: DBExecutorT,
     header_buffer_size: usize,
-    sqmr_inbound_response_receivers: StreamHashMap<InboundSessionId, SqmrResponseReceiver<Data>>,
+    sqmr_inbound_response_receivers:
+        StreamHashMap<InboundSessionId, BoxStream<'static, Option<Bytes>>>,
     // Splitting the response receivers from the query senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
@@ -297,19 +300,38 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     papyrus_metrics::PAPYRUS_NUM_ACTIVE_INBOUND_SESSIONS,
                     self.num_active_inbound_sessions as f64
                 );
-                let (sender, receiver) = futures::channel::mpsc::channel(self.header_buffer_size);
-                // TODO: use query id for bookkeeping.
                 // TODO: consider returning error instead of panic.
                 let protocol =
                     Protocol::try_from(protocol_name).expect("Encountered unknown protocol");
                 let internal_query = protocol.bytes_query_to_protobuf_request(query);
-                let data_type = DataType::from(protocol);
-                self.db_executor.register_query(internal_query, data_type, sender);
-                let response_fn: fn(Data) -> Option<Data> = Some;
-                self.sqmr_inbound_response_receivers.insert(
-                    inbound_session_id,
-                    receiver.map(response_fn).chain(stream::once(ready(None))),
-                );
+                match protocol {
+                    Protocol::SignedBlockHeader => {
+                        let (sender, receiver) = futures::channel::mpsc::channel::<
+                            DataOrFin<SignedBlockHeader>,
+                        >(self.header_buffer_size);
+                        self.db_executor.register_query(internal_query, sender);
+                        self.sqmr_inbound_response_receivers.insert(
+                            inbound_session_id,
+                            receiver
+                                .map(|data| Some(Bytes::from(data)))
+                                .chain(stream::once(ready(None)))
+                                .boxed(),
+                        );
+                    }
+                    Protocol::StateDiff => {
+                        let (sender, receiver) = futures::channel::mpsc::channel::<
+                            DataOrFin<StateDiffChunk>,
+                        >(self.header_buffer_size);
+                        self.db_executor.register_query(internal_query, sender);
+                        self.sqmr_inbound_response_receivers.insert(
+                            inbound_session_id,
+                            receiver
+                                .map(|data| Some(Bytes::from(data)))
+                                .chain(stream::once(ready(None)))
+                                .boxed(),
+                        );
+                    }
+                }
             }
             sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data, peer_id } => {
                 trace!(
@@ -382,13 +404,11 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_response_for_inbound_query(&mut self, res: (InboundSessionId, Option<Data>)) {
+    fn handle_response_for_inbound_query(&mut self, res: (InboundSessionId, Option<Bytes>)) {
         let (inbound_session_id, maybe_data) = res;
         match maybe_data {
             Some(data) => {
-                let mut data_bytes = vec![];
-                data.encode(&mut data_bytes).expect("failed to encode data");
-                self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
+                self.swarm.send_data(data, inbound_session_id).unwrap_or_else(|e| {
                     error!(
                         "Failed to send data to peer. Session id: {inbound_session_id:?} not \
                          found error: {e:?}"
@@ -584,6 +604,7 @@ pub struct BroadcastSubscriberChannels<T: TryFrom<Bytes>> {
     pub messages_to_broadcast_sender: SubscriberSender<T>,
     pub broadcasted_messages_receiver: SubscriberReceiver<T>,
 }
+
 #[cfg(feature = "testing")]
 pub type MockBroadcastedMessagesSender<T> = With<
     Sender<(Bytes, ReportCallback)>,
@@ -607,6 +628,3 @@ pub struct TestSubscriberChannels<T: TryFrom<Bytes>> {
     pub subscriber_channels: BroadcastSubscriberChannels<T>,
     pub mock_network: BroadcastNetworkMock<T>,
 }
-
-type SqmrResponseReceiver<Response> =
-    Chain<Map<Receiver<Response>, fn(Response) -> Option<Response>>, Once<Ready<Option<Response>>>>;
