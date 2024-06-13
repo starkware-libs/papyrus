@@ -22,18 +22,24 @@ use derive_more::Display;
 use enum_iterator::Sequence;
 use lazy_static::lazy_static;
 use libp2p::{Multiaddr, StreamProtocol};
-use papyrus_config::converters::deserialize_seconds_to_duration;
+use papyrus_config::converters::{
+    deserialize_optional_vec_u8,
+    deserialize_seconds_to_duration,
+    serialize_optional_vec_u8,
+};
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
+use papyrus_config::validators::validate_vec_u256;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_protobuf::protobuf;
 use papyrus_protobuf::sync::Query;
 use prost::Message;
 use serde::{Deserialize, Serialize};
+use validator::Validate;
 
 pub use crate::network_manager::SqmrSubscriberChannels;
 
 // TODO: add peer manager config to the network config
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]
 pub struct NetworkConfig {
     pub tcp_port: u16,
     pub quic_port: u16,
@@ -43,6 +49,9 @@ pub struct NetworkConfig {
     pub idle_connection_timeout: Duration,
     pub header_buffer_size: usize,
     pub bootstrap_peer_multiaddr: Option<Multiaddr>,
+    #[validate(custom = "validate_vec_u256")]
+    #[serde(deserialize_with = "deserialize_optional_vec_u8")]
+    pub(crate) secret_key: Option<Vec<u8>>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Clone, Copy, Display)]
@@ -174,6 +183,13 @@ impl SerializeConfig for NetworkConfig {
             "The multiaddress of the peer node. It should include the peer's id. For more info: https://docs.libp2p.io/concepts/fundamentals/peers/",
             ParamPrivacyInput::Public,
         ));
+        config.extend([ser_param(
+            "secret_key",
+            &serialize_optional_vec_u8(&self.secret_key),
+            "The secret key used for building the peer id. If it's an empty string a random one \
+             will be used.",
+            ParamPrivacyInput::Private,
+        )]);
         config
     }
 }
@@ -187,6 +203,7 @@ impl Default for NetworkConfig {
             idle_connection_timeout: Duration::from_secs(120),
             header_buffer_size: 100000,
             bootstrap_peer_multiaddr: None,
+            secret_key: None,
         }
     }
 }

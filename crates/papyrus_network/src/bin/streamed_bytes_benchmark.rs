@@ -218,9 +218,11 @@ fn dial_if_requested(swarm: &mut Swarm<Behaviour>, args: &Args) {
 async fn main() {
     let args = Args::parse();
 
+    // TODO: add secret key to the args and replace None with it.
     let mut swarm = build_swarm(
         vec![args.listen_address.clone()],
         Duration::from_secs(args.idle_connection_timeout),
+        None,
         |_| {
             Behaviour::new(Config {
                 session_timeout: Duration::from_secs(3600),
@@ -287,6 +289,7 @@ async fn main() {
             SwarmEvent::Behaviour(Event::External(ExternalEvent::ReceivedData {
                 outbound_session_id,
                 data,
+                peer_id: _,
             })) => {
                 if data[0] != CONST_BYTE {
                     outbound_session_measurements

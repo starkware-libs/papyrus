@@ -5865,7 +5865,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_base_layer"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "async-trait",
  "ethers",
@@ -5887,7 +5887,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_block_builder"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "papyrus_storage",
  "pretty_assertions",
@@ -5899,7 +5899,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_common"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "bitvec",
@@ -5921,7 +5921,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_config"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "clap",
@@ -5938,7 +5938,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_consensus"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "async-trait",
  "futures",
@@ -5951,7 +5951,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_execution"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -5981,7 +5981,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_load_test"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -5998,7 +5998,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_monitoring_gateway"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "axum",
  "futures-util",
@@ -6023,7 +6023,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_network"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -6058,12 +6058,13 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "unsigned-varint 0.8.0",
+ "validator",
  "void",
 ]
 
 [[package]]
 name = "papyrus_node"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -6110,7 +6111,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_p2p_sync"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -6138,7 +6139,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_proc_macros"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
@@ -6151,7 +6152,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_protobuf"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "bytes",
  "indexmap 2.2.6",
@@ -6167,7 +6168,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_rpc"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -6224,7 +6225,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_storage"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "byteorder",
@@ -6275,7 +6276,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_sync"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -8401,7 +8402,7 @@ dependencies = [
 
 [[package]]
 name = "starknet_client"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "async-trait",
@@ -8723,7 +8724,7 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.4.0-dev.2"
+version = "0.4.0-dev.3"
 dependencies = [
  "cairo-lang-casm",
  "cairo-lang-starknet-classes",
