@@ -14,6 +14,7 @@ prost-types.workspace = true
 starknet_api.workspace = true
 starknet-types-core.workspace = true
 thiserror.workspace = true
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
 
 [build-dependencies]
 prost-build.workspace = true
