@@ -6165,6 +6165,7 @@ dependencies = [
  "prost-types",
  "starknet-types-core",
  "starknet_api",
+ "test_utils",
  "thiserror",
 ]
 
