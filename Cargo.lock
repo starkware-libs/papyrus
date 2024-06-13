@@ -5949,6 +5949,7 @@ dependencies = [
  "starknet_api",
  "thiserror",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

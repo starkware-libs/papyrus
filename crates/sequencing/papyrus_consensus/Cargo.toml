@@ -9,12 +9,13 @@ description = "Reach consensus for Starknet"
 [dependencies]
 async-trait.workspace = true
 futures.workspace = true
+papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
+papyrus_protobuf = { path = "../../papyrus_protobuf", version = "0.4.0-dev.2" }
 starknet_api.workspace = true
 starknet-types-core.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full"] }
-papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
-papyrus_protobuf = { path = "../../papyrus_protobuf", version = "0.4.0-dev.2" }
+tracing.workspace = true
 
 [dev-dependencies]
 mockall.workspace = true
