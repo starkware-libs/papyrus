@@ -7,14 +7,7 @@ use std::sync::Arc;
 use futures::channel::{mpsc, oneshot};
 use starknet_api::block::{BlockHash, BlockNumber};
 
-use crate::types::{
-    ConsensusBlock,
-    ConsensusContext,
-    ConsensusError,
-    NetworkSender,
-    ProposalInit,
-    ValidatorId,
-};
+use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
 /// Struct which represents a single height of consensus. Each height is expected to be begun with a
 /// call to `start`, which is relevant if we are the proposer for this height's first round. SHC
@@ -28,7 +21,6 @@ where
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     validators: Vec<ValidatorId>,
     id: ValidatorId,
-    to_network_sender: Box<dyn NetworkSender<ProposalChunk = BlockT::ProposalChunk>>,
 }
 
 impl<BlockT> SingleHeightConsensus<BlockT>
@@ -39,10 +31,9 @@ where
         height: BlockNumber,
         context: Arc<dyn ConsensusContext<Block = BlockT>>,
         id: ValidatorId,
-        to_network_sender: Box<dyn NetworkSender<ProposalChunk = BlockT::ProposalChunk>>,
     ) -> Self {
         let validators = context.validators(height).await;
-        Self { height, context, validators, id, to_network_sender }
+        Self { height, context, validators, id }
     }
 
     pub(crate) async fn start(&mut self) -> Result<Option<BlockT>, ConsensusError> {
@@ -55,7 +46,7 @@ where
         let (fin_sender, fin_receiver) = oneshot::channel();
         let init = ProposalInit { height: self.height, proposer: self.id };
         // Peering is a permanent component, so if sending to it fails we cannot continue.
-        self.to_network_sender
+        self.context
             .propose(init, content_receiver, fin_receiver)
             .await
             .expect("Failed sending Proposal to Peering");
