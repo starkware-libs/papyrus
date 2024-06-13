@@ -39,7 +39,6 @@ impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<ThinStateDiff> {
     }
 }
 auto_impl_try_from_vec_u8!(DataOrFin<ThinStateDiff>, protobuf::StateDiffsResponse);
-auto_impl_try_from_vec_u8!(DataOrFin<StateDiffChunk>, protobuf::StateDiffsResponse);
 
 impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<StateDiffChunk> {
     type Error = ProtobufConversionError;
@@ -87,6 +86,7 @@ impl From<DataOrFin<StateDiffChunk>> for protobuf::StateDiffsResponse {
         protobuf::StateDiffsResponse { state_diff_message: Some(state_diff_message) }
     }
 }
+auto_impl_into_and_try_from_vec_u8!(DataOrFin<StateDiffChunk>, protobuf::StateDiffsResponse);
 
 impl TryFrom<protobuf::ContractDiff> for ThinStateDiff {
     type Error = ProtobufConversionError;
