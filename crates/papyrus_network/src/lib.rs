@@ -16,7 +16,6 @@ mod utils;
 
 use std::collections::{BTreeMap, HashMap};
 use std::time::Duration;
-use std::usize;
 
 use derive_more::Display;
 use enum_iterator::Sequence;

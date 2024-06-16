@@ -1,3 +1,6 @@
+#[cfg(test)]
+#[path = "event_test.rs"]
+mod event_test;
 use prost::Message;
 use starknet_api::core::{ContractAddress, PatriciaKey};
 use starknet_api::transaction::{Event, EventContent, EventData, EventKey, TransactionHash};
