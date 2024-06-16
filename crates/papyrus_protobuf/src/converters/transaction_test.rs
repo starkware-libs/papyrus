@@ -32,59 +32,59 @@ macro_rules! create_transaction_output {
 }
 
 #[test]
-fn test_l1_handler_transaction() {
+fn convert_l1_handler_transaction_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction = starknet_api::transaction::L1HandlerTransaction::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::L1Handler(transaction);
 
     let transaction_output = create_transaction_output!(L1HandlerTransactionOutput, L1Handler);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_deploy_transaction() {
+fn convert_deploy_transaction_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction = starknet_api::transaction::DeployTransaction::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Deploy(transaction);
 
     let transaction_output = create_transaction_output!(DeployTransactionOutput, Deploy);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_declare_transaction_v0() {
+fn convert_declare_transaction_v0_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction =
         starknet_api::transaction::DeclareTransactionV0V1::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Declare(DeclareTransaction::V0(transaction));
 
     let transaction_output = create_transaction_output!(DeclareTransactionOutput, Declare);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_declare_transaction_v1() {
+fn convert_declare_transaction_v1_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction =
         starknet_api::transaction::DeclareTransactionV0V1::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Declare(DeclareTransaction::V1(transaction));
 
     let transaction_output = create_transaction_output!(DeclareTransactionOutput, Declare);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_declare_transaction_v2() {
+fn convert_declare_transaction_v2_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction = starknet_api::transaction::DeclareTransactionV2::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Declare(DeclareTransaction::V2(transaction));
 
     let transaction_output = create_transaction_output!(DeclareTransactionOutput, Declare);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_declare_transaction_v3() {
+fn convert_declare_transaction_v3_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let mut transaction =
         starknet_api::transaction::DeclareTransactionV3::get_test_instance(&mut rng);
@@ -92,31 +92,31 @@ fn test_declare_transaction_v3() {
     let transaction = StarknetApiTransaction::Declare(DeclareTransaction::V3(transaction));
 
     let transaction_output = create_transaction_output!(DeclareTransactionOutput, Declare);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_invoke_transaction_v0() {
+fn convert_invoke_transaction_v0_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction = starknet_api::transaction::InvokeTransactionV0::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Invoke(InvokeTransaction::V0(transaction));
 
     let transaction_output = create_transaction_output!(InvokeTransactionOutput, Invoke);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_invoke_transaction_v1() {
+fn convert_invoke_transaction_v1_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction = starknet_api::transaction::InvokeTransactionV1::get_test_instance(&mut rng);
     let transaction = StarknetApiTransaction::Invoke(InvokeTransaction::V1(transaction));
 
     let transaction_output = create_transaction_output!(InvokeTransactionOutput, Invoke);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_invoke_transaction_v3() {
+fn convert_invoke_transaction_v3_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let mut transaction =
         starknet_api::transaction::InvokeTransactionV3::get_test_instance(&mut rng);
@@ -124,11 +124,11 @@ fn test_invoke_transaction_v3() {
     let transaction = StarknetApiTransaction::Invoke(InvokeTransaction::V3(transaction));
 
     let transaction_output = create_transaction_output!(InvokeTransactionOutput, Invoke);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_deploy_account_transaction_v1() {
+fn convert_deploy_account_transaction_v1_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let transaction =
         starknet_api::transaction::DeployAccountTransactionV1::get_test_instance(&mut rng);
@@ -137,11 +137,11 @@ fn test_deploy_account_transaction_v1() {
 
     let transaction_output =
         create_transaction_output!(DeployAccountTransactionOutput, DeployAccount);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
 #[test]
-fn test_deploy_account_transaction_v3() {
+fn convert_deploy_account_transaction_v3_to_vec_u8_and_back() {
     let mut rng = get_rng();
     let mut transaction =
         starknet_api::transaction::DeployAccountTransactionV3::get_test_instance(&mut rng);
@@ -151,10 +151,23 @@ fn test_deploy_account_transaction_v3() {
 
     let transaction_output =
         create_transaction_output!(DeployAccountTransactionOutput, DeployAccount);
-    transaction_test(transaction, transaction_output);
+    convert_transaction_to_vec_u8_and_back(transaction, transaction_output);
 }
 
-fn transaction_test(transaction: StarknetApiTransaction, transaction_output: TransactionOutput) {
+#[test]
+fn fin_transaction_to_bytes_and_back() {
+    let bytes_data =
+        Vec::<u8>::from(DataOrFin::<(StarknetApiTransaction, TransactionOutput)>(None));
+
+    let res_data =
+        DataOrFin::<(StarknetApiTransaction, TransactionOutput)>::try_from(bytes_data).unwrap();
+    assert!(res_data.0.is_none());
+}
+
+fn convert_transaction_to_vec_u8_and_back(
+    transaction: StarknetApiTransaction,
+    transaction_output: TransactionOutput,
+) {
     let data = DataOrFin(Some((transaction, transaction_output)));
     let bytes_data = Vec::<u8>::from(data.clone());
     let res_data = DataOrFin::try_from(bytes_data).unwrap();
