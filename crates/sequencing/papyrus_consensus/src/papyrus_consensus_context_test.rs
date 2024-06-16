@@ -19,7 +19,7 @@ const TEST_CHANNEL_SIZE: usize = 10;
 
 #[tokio::test]
 async fn build_proposal() {
-    let (block, papyrus_context, _network_receiver) = get_storage_with_block_and_papyrus_context();
+    let (block, papyrus_context, _network_receiver) = test_setup();
     let block_number = block.header.block_number;
 
     let (mut proposal_receiver, fin_receiver) = papyrus_context.build_proposal(block_number).await;
@@ -37,7 +37,7 @@ async fn build_proposal() {
 
 #[tokio::test]
 async fn validate_proposal_success() {
-    let (block, papyrus_context, _network_receiver) = get_storage_with_block_and_papyrus_context();
+    let (block, papyrus_context, _network_receiver) = test_setup();
     let block_number = block.header.block_number;
 
     let (mut validate_sender, validate_receiver) = mpsc::channel(TEST_CHANNEL_SIZE);
@@ -55,7 +55,7 @@ async fn validate_proposal_success() {
 
 #[tokio::test]
 async fn validate_proposal_fail() {
-    let (block, papyrus_context, _network_receiver) = get_storage_with_block_and_papyrus_context();
+    let (block, papyrus_context, _network_receiver) = test_setup();
     let block_number = block.header.block_number;
 
     let different_block = get_test_block(4, None, None, None);
@@ -71,8 +71,7 @@ async fn validate_proposal_fail() {
 
 #[tokio::test]
 async fn propose() {
-    let (block, papyrus_context, mut network_receiver) =
-        get_storage_with_block_and_papyrus_context();
+    let (block, papyrus_context, mut network_receiver) = test_setup();
     let block_number = block.header.block_number;
 
     let (mut content_sender, content_receiver) = mpsc::channel(TEST_CHANNEL_SIZE);
@@ -97,8 +96,7 @@ async fn propose() {
     assert_eq!(network_receiver.next().await.unwrap(), expected_proposal);
 }
 
-fn get_storage_with_block_and_papyrus_context()
--> (Block, PapyrusConsensusContext, mpsc::Receiver<Proposal>) {
+fn test_setup() -> (Block, PapyrusConsensusContext, mpsc::Receiver<Proposal>) {
     let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
     let block = get_test_block(5, None, None, None);
     let block_number = block.header.block_number;

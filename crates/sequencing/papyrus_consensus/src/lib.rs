@@ -29,7 +29,7 @@ where
 {
     let mut current_height = start_height;
     loop {
-        info!("Starting consensus for height {start_height}");
+        info!("Starting consensus for height {current_height}");
         let mut shc =
             SingleHeightConsensus::new(current_height, context.clone(), validator_id).await;
 

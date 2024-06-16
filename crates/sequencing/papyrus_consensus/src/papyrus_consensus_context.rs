@@ -1,6 +1,6 @@
 #[cfg(test)]
-#[path = "papyrus_context_test.rs"]
-mod papyrus_context_test;
+#[path = "papyrus_consensus_context_test.rs"]
+mod papyrus_consensus_context_test;
 
 use core::panic;
 use std::sync::Arc;
@@ -14,6 +14,7 @@ use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::block_hash;
 use starknet_api::transaction::Transaction;
 use tokio::sync::Mutex;
 use tracing::debug;
@@ -71,14 +72,14 @@ impl ConsensusContext for PapyrusConsensusContext {
         tokio::spawn(async move {
             // TODO(dvir): consider fix this for the case of reverts. If between the check that the
             // block in storage and to getting the transaction was a revert this flow will fail.
-            wait_to_block(&storage_reader, height).await.expect("Failed to wait to block");
+            wait_for_block(&storage_reader, height).await.expect("Failed to wait to block");
 
             let txn = storage_reader.begin_ro_txn().expect("Failed to begin ro txn");
             let transactions = txn
                 .get_block_transactions(height)
                 .expect("Get transactions from storage failed")
                 .expect(&format!(
-                    "Block in {height} was no found in storage although waiting for it"
+                    "Block in {height} was not found in storage despite waiting for it"
                 ));
 
             for tx in transactions.clone() {
@@ -86,17 +87,15 @@ impl ConsensusContext for PapyrusConsensusContext {
             }
             sender.close_channel();
 
+            let block_hash = txn
+                .get_block_header(height)
+                .expect("Get header from storage failed")
+                .expect(&format!(
+                    "Block in {height} was not found in storage despite waiting for it"
+                ))
+                .block_hash;
             fin_sender
-                .send(PapyrusConsensusBlock {
-                    content: transactions,
-                    id: txn
-                        .get_block_header(height)
-                        .expect("Get header from storage failed")
-                        .expect(&format!(
-                            "Block in {height} was no found in storage although waiting for it"
-                        ))
-                        .block_hash,
-                })
+                .send(PapyrusConsensusBlock { content: transactions, id: block_hash })
                 .expect("Send should succeed");
         });
 
@@ -114,39 +113,35 @@ impl ConsensusContext for PapyrusConsensusContext {
         tokio::spawn(async move {
             // TODO(dvir): consider fix this for the case of reverts. If between the check that the
             // block in storage and to getting the transaction was a revert this flow will fail.
-            wait_to_block(&storage_reader, height).await.expect("Failed to wait to block");
+            wait_for_block(&storage_reader, height).await.expect("Failed to wait to block");
 
             let txn = storage_reader.begin_ro_txn().expect("Failed to begin ro txn");
             let transactions = txn
                 .get_block_transactions(height)
                 .expect("Get transactions from storage failed")
                 .expect(&format!(
-                    "Block in {height} was no found in storage although waiting for it"
+                    "Block in {height} was not found in storage despite waiting for it"
                 ));
 
             for tx in transactions.iter() {
-                let recived_tx = content
+                let received_tx = content
                     .next()
                     .await
-                    .expect(&format!("Not recived transaction equals to {tx:?}"));
-                if tx != &recived_tx {
-                    panic!(
-                        "Transactions are not equal. In storage: {tx:?}, recived: {recived_tx:?}"
-                    );
+                    .expect(&format!("Not received transaction equals to {tx:?}"));
+                if tx != &received_tx {
+                    panic!("Transactions are not equal. In storage: {tx:?}, : {received_tx:?}");
                 }
             }
 
+            let block_hash = txn
+                .get_block_header(height)
+                .expect("Get header from storage failed")
+                .expect(&format!(
+                    "Block in {height} was not found in storage despite waiting for it"
+                ))
+                .block_hash;
             fin_sender
-                .send(PapyrusConsensusBlock {
-                    content: transactions,
-                    id: txn
-                        .get_block_header(height)
-                        .expect("Get header from storage failed")
-                        .expect(&format!(
-                            "Block in {height} was no found in storage although waiting for it"
-                        ))
-                        .block_hash,
-                })
+                .send(PapyrusConsensusBlock { content: transactions, id: block_hash })
                 .expect("Send should succeed");
         });
 
@@ -192,7 +187,7 @@ impl ConsensusContext for PapyrusConsensusContext {
 
 const SLEEP_BETWEEN_CHECK_FOR_BLOCK: Duration = Duration::from_secs(10);
 
-async fn wait_to_block(
+async fn wait_for_block(
     storage_reader: &StorageReader,
     height: BlockNumber,
 ) -> Result<(), StorageError> {
