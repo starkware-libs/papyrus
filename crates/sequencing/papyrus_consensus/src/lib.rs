@@ -14,6 +14,7 @@ pub mod single_height_consensus;
 pub(crate) mod test_utils;
 #[allow(dead_code)]
 pub mod types;
+pub mod papyrus_consensus_context;
 
 // TODO(dvir): add test for this.
 pub async fn run_consensus<BlockT: ConsensusBlock>(
