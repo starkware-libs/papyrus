@@ -242,6 +242,7 @@ impl DBExecutorTrait for MockDBExecutor {
                         }))?;
                     }
                 }
+                sender.start_send(Data::Fin(DataType::SignedBlockHeader))?;
                 Ok(())
             }
         }));

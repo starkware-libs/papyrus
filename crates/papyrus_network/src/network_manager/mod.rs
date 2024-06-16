@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
 use futures::future::{ready, Ready};
 use futures::sink::With;
-use futures::stream::{self, BoxStream, Map, SelectAll};
+use futures::stream::{BoxStream, Map, SelectAll};
 use futures::{SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
@@ -307,12 +307,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 let internal_query = protocol.bytes_query_to_protobuf_request(query);
                 let data_type = DataType::from(protocol);
                 self.db_executor.register_query(internal_query, data_type, sender);
-                self.query_results_router.push(
-                    receiver
-                        .chain(stream::once(async move { Data::Fin(data_type) }))
-                        .map(move |data| (data, inbound_session_id))
-                        .boxed(),
-                );
+                self.query_results_router
+                    .push(receiver.map(move |data| (data, inbound_session_id)).boxed());
             }
             sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data, peer_id } => {
                 trace!(
