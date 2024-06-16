@@ -140,7 +140,7 @@ pub trait ConsensusContext: Send + Sync {
     ) -> Result<(), ConsensusError>;
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct ProposalInit {
     pub height: BlockNumber,
     pub proposer: ValidatorId,

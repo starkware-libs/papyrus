@@ -8,6 +8,7 @@ use tracing::info;
 use types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
 // TODO(matan): Remove dead code allowance at the end of milestone 1.
+pub mod papyrus_consensus_context;
 #[allow(dead_code)]
 pub mod single_height_consensus;
 #[cfg(test)]
@@ -29,7 +30,8 @@ where
     let mut current_height = start_height;
     loop {
         info!("Starting consensus for height {start_height}");
-        let mut shc = SingleHeightConsensus::new(start_height, context.clone(), validator_id).await;
+        let mut shc =
+            SingleHeightConsensus::new(current_height, context.clone(), validator_id).await;
 
         let block = if let Some(block) = shc.start().await? {
             info!("Proposer flow height {current_height}");
