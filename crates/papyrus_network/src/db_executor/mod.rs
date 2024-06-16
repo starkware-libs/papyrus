@@ -1,17 +1,19 @@
 use std::vec;
 
 use async_trait::async_trait;
-use futures::channel::mpsc::Sender;
-use futures::future::{pending, poll_fn};
+use futures::future::pending;
+use futures::{FutureExt, Sink, SinkExt, StreamExt};
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
     ContractDiff,
     DataOrFin,
     DeclaredClass,
     DeprecatedDeclaredClass,
+    HeaderQuery,
     Query,
     SignedBlockHeader,
     StateDiffChunk,
+    StateDiffQuery,
 };
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
@@ -19,6 +21,8 @@ use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tracing::error;
+
+use crate::network_manager::SqmrQueryReceiver;
 
 #[cfg(test)]
 mod test;
@@ -59,12 +63,14 @@ impl DBExecutorError {
 /// A DBExecutor receives inbound queries and returns their corresponding data.
 #[async_trait]
 pub trait DBExecutorTrait {
-    /// Send a query to be executed in the DBExecutor. The query will be run concurrently with the
-    /// calling code and the result will be over the given channel.
-    fn register_query<Data: FetchBlockDataFromDb + Send + 'static>(
-        &self,
-        query: Query,
-        sender: Sender<DataOrFin<Data>>,
+    fn set_header_queries_receiver(
+        &mut self,
+        receiver: SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
+    );
+
+    fn set_state_diff_queries_receiver(
+        &mut self,
+        receiver: SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
     );
 
     /// Polls incoming queries.
@@ -74,21 +80,73 @@ pub trait DBExecutorTrait {
 
 pub struct DBExecutor {
     storage_reader: StorageReader,
-}
-
-impl DBExecutor {
-    pub fn new(storage_reader: StorageReader) -> Self {
-        Self { storage_reader }
-    }
+    // TODO(shahak): Make this non-option.
+    header_queries_receiver: Option<SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>>,
+    // TODO(shahak): Make this non-option.
+    state_diff_queries_receiver:
+        Option<SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>>,
 }
 
 #[async_trait]
 impl DBExecutorTrait for DBExecutor {
-    fn register_query<Data: FetchBlockDataFromDb + Send + 'static>(
-        &self,
-        query: Query,
-        sender: Sender<DataOrFin<Data>>,
+    fn set_header_queries_receiver(
+        &mut self,
+        receiver: SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
     ) {
+        self.header_queries_receiver = Some(receiver);
+    }
+
+    fn set_state_diff_queries_receiver(
+        &mut self,
+        receiver: SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
+    ) {
+        self.state_diff_queries_receiver = Some(receiver);
+    }
+
+    async fn run(&mut self) {
+        loop {
+            let header_queries_receiver_future =
+                if let Some(header_queries_receiver) = self.header_queries_receiver.as_mut() {
+                    header_queries_receiver.next().boxed()
+                } else {
+                    pending().boxed()
+                };
+            let state_diff_queries_receiver_future = if let Some(state_diff_queries_receiver) =
+                self.state_diff_queries_receiver.as_mut()
+            {
+                state_diff_queries_receiver.next().boxed()
+            } else {
+                pending().boxed()
+            };
+
+            tokio::select! {
+                Some((query_result, response_sender)) = header_queries_receiver_future => {
+                // TODO(shahak): Report if query_result is Err.
+                    if let Ok(query) = query_result {
+                        self.register_query(query.0, response_sender);
+                    }
+                }
+                Some((query_result, response_sender)) = state_diff_queries_receiver_future => {
+                    if let Ok(query) = query_result {
+                        self.register_query(query.0, response_sender);
+                    }
+                }
+            };
+        }
+    }
+}
+
+impl DBExecutor {
+    pub fn new(storage_reader: StorageReader) -> Self {
+        Self { storage_reader, header_queries_receiver: None, state_diff_queries_receiver: None }
+    }
+
+    fn register_query<Data, Sender>(&self, query: Query, sender: Sender)
+    where
+        Data: FetchBlockDataFromDb + Send + 'static,
+        Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
+        DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+    {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
             let result = send_data_for_query(storage_reader_clone, query.clone(), sender).await;
@@ -101,12 +159,6 @@ impl DBExecutorTrait for DBExecutor {
                 Ok(())
             }
         });
-    }
-
-    async fn run(&mut self) {
-        // TODO(shahak): Parse incoming queries once we receive them through channel instead of
-        // through function.
-        pending::<()>().await
     }
 }
 
@@ -197,23 +249,32 @@ pub fn split_thin_state_diff(thin_state_diff: ThinStateDiff) -> Vec<StateDiffChu
     state_diff_chunks
 }
 
-async fn send_data_for_query<Data: FetchBlockDataFromDb + Send + 'static>(
+async fn send_data_for_query<Data, Sender>(
     storage_reader: StorageReader,
     query: Query,
-    mut sender: Sender<DataOrFin<Data>>,
-) -> Result<(), DBExecutorError> {
+    mut sender: Sender,
+) -> Result<(), DBExecutorError>
+where
+    Data: FetchBlockDataFromDb + Send + 'static,
+    Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
+    DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+{
     // If this function fails, we still want to send fin before failing.
     let result = send_data_without_fin_for_query(&storage_reader, query, &mut sender).await;
-    poll_fn(|cx| sender.poll_ready(cx)).await?;
-    sender.start_send(DataOrFin(None))?;
+    sender.feed(DataOrFin(None)).await?;
     result
 }
 
-async fn send_data_without_fin_for_query<Data: FetchBlockDataFromDb + Send + 'static>(
+async fn send_data_without_fin_for_query<Data, Sender>(
     storage_reader: &StorageReader,
     query: Query,
-    sender: &mut Sender<DataOrFin<Data>>,
-) -> Result<(), DBExecutorError> {
+    sender: &mut Sender,
+) -> Result<(), DBExecutorError>
+where
+    Data: FetchBlockDataFromDb + Send + 'static,
+    Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
+    DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+{
     let txn = storage_reader.begin_ro_txn()?;
     let start_block_number = match query.start_block {
         BlockHashOrNumber::Number(BlockNumber(num)) => num,
@@ -229,11 +290,9 @@ async fn send_data_without_fin_for_query<Data: FetchBlockDataFromDb + Send + 'st
         let block_number =
             BlockNumber(utils::calculate_block_number(&query, start_block_number, block_counter)?);
         let data_vec = Data::fetch_block_data_from_db(block_number, &txn)?;
-        // Using poll_fn because Sender::poll_ready is not a future
-        poll_fn(|cx| sender.poll_ready(cx)).await?;
         for data in data_vec {
             // TODO: consider implement retry mechanism.
-            sender.start_send(DataOrFin(Some(data)))?;
+            sender.feed(DataOrFin(Some(data))).await?;
         }
     }
     Ok(())
