@@ -32,7 +32,7 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    type ReceiversType = Vec<(Receiver<Vec<Data>>, DataType)>;
+    type ReceiversType = Vec<(Receiver<Data>, DataType)>;
     let mut receivers: ReceiversType = enum_iterator::all::<DataType>()
         .map(|data_type| {
             let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
@@ -60,20 +60,20 @@ async fn header_db_executor_can_register_and_run_a_query() {
         _ = async {
             while let Some(res) = receivers_stream.next().await {
                 let (data, requested_data_type) = res.await;
-                assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
+                if matches!(requested_data_type, DataType::SignedBlockHeader) {
+                    assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
+                }
                 for (i, data) in data.into_iter().enumerate() {
-                    for data in data.iter() {
-                        match data {
-                            Data::BlockHeaderAndSignature(signed_header) => {
-                                assert_eq!(signed_header.block_header.block_number.0, i as u64);
-                                assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
-                            }
-                            Data::StateDiffChunk (_state_diff)  => {
-                                // TODO: check the state diff.
-                                assert_eq!(*requested_data_type, DataType::StateDiff);
-                            }
-                            _ => panic!("Unexpected data type"),
+                    match data {
+                        Data::BlockHeaderAndSignature(signed_header) => {
+                            assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                            assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
                         }
+                        Data::StateDiffChunk (_state_diff)  => {
+                            // TODO: check the state diff.
+                            assert_eq!(*requested_data_type, DataType::StateDiff);
+                        }
+                        _ => panic!("Unexpected data type"),
                     }
                 }
             }
@@ -117,12 +117,10 @@ async fn header_db_executor_start_block_given_by_hash() {
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
             for (i, data) in res.into_iter().enumerate() {
-                for data in data.iter() {
-                    let Data::BlockHeaderAndSignature(signed_header) = data else {
-                        panic!("Unexpected data type");
-                    };
-                    assert_eq!(signed_header.block_header.block_number.0, i as u64);
-                }
+                let Data::BlockHeaderAndSignature(signed_header) = data else {
+                    panic!("Unexpected data type");
+                };
+                assert_eq!(signed_header.block_header.block_number.0, i as u64);
             }
         }
     }

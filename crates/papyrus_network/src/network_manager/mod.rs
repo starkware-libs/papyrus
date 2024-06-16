@@ -309,7 +309,6 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                 self.db_executor.register_query(internal_query, data_type, sender);
                 self.query_results_router.push(
                     receiver
-                        .flat_map(futures::stream::iter)
                         .chain(stream::once(async move { Data::Fin(data_type) }))
                         .map(move |data| (data, inbound_session_id))
                         .boxed(),

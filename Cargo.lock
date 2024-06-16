@@ -6159,6 +6159,7 @@ version = "0.4.0-dev.3"
 dependencies = [
  "bytes",
  "indexmap 2.2.6",
+ "lazy_static",
  "papyrus_common",
  "primitive-types",
  "prost",
@@ -6166,6 +6167,7 @@ dependencies = [
  "prost-types",
  "starknet-types-core",
  "starknet_api",
+ "test_utils",
  "thiserror",
 ]
 

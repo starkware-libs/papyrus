@@ -130,7 +130,7 @@ pub trait DBExecutorTrait {
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        sender: Sender<Vec<Data>>,
+        sender: Sender<Data>,
     );
 
     /// Polls incoming queries.
@@ -154,7 +154,7 @@ impl DBExecutorTrait for DBExecutor {
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        mut sender: Sender<Vec<Data>>,
+        mut sender: Sender<Data>,
     ) {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
@@ -179,8 +179,10 @@ impl DBExecutorTrait for DBExecutor {
                     let data_vec = data_type.fetch_block_data_from_db(block_number, &txn)?;
                     // Using poll_fn because Sender::poll_ready is not a future
                     poll_fn(|cx| sender.poll_ready(cx)).await?;
-                    // TODO: consider implement retry mechanism.
-                    sender.start_send(data_vec)?;
+                    for data in data_vec {
+                        // TODO: consider implement retry mechanism.
+                        sender.start_send(data)?;
+                    }
                 }
                 Ok(())
             };
