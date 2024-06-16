@@ -157,7 +157,7 @@ impl<V: ValueSerde> MMapFile<V> {
 
     /// Flushes the mmap to the file.
     fn flush(&mut self) {
-        debug!("Flushing mmap to file");
+        trace!("Flushing mmap to file");
         self.mmap.flush().expect("Failed to flush the mmap");
         self.should_flush = false;
     }
@@ -231,7 +231,7 @@ impl<V: ValueSerde + Debug> Writer<V> for FileHandler<V, RW> {
         {
             let mut mmap_file = self.mmap_file.lock().expect("Lock should not be poisoned");
             offset = mmap_file.offset;
-            debug!("Inserting object at offset: {}", offset);
+            trace!("Inserting object at offset: {}", offset);
             let mmap_slice = &mut mmap_file.mmap[offset..];
             mmap_slice[..len].copy_from_slice(&serialized);
             mmap_file

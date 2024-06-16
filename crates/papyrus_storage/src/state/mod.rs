@@ -682,7 +682,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
-#[latency_histogram("storage_write_storage_diffs_latency_seconds", true)]
+#[latency_histogram("storage_write_storage_diffs_latency_seconds", false)]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
     txn: &DbTransaction<'env, RW>,
