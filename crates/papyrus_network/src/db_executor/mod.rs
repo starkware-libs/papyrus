@@ -152,44 +152,20 @@ impl DBExecutorTrait for DBExecutor {
         &mut self,
         query: Query,
         data_type: impl FetchBlockDataFromDb + Send + 'static,
-        mut sender: Sender<Data>,
+        sender: Sender<Data>,
     ) {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
-            let result: Result<(), DBExecutorError> = {
-                let txn = storage_reader_clone.begin_ro_txn()?;
-                let start_block_number = match query.start_block {
-                    BlockHashOrNumber::Number(BlockNumber(num)) => num,
-                    BlockHashOrNumber::Hash(block_hash) => {
-                        txn.get_block_number_by_hash(&block_hash)?
-                            .ok_or(DBExecutorError::BlockNotFound {
-                                block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
-                            })?
-                            .0
-                    }
-                };
-                for block_counter in 0..query.limit {
-                    let block_number = BlockNumber(utils::calculate_block_number(
-                        &query,
-                        start_block_number,
-                        block_counter,
-                    )?);
-                    let data_vec = data_type.fetch_block_data_from_db(block_number, &txn)?;
-                    // Using poll_fn because Sender::poll_ready is not a future
-                    poll_fn(|cx| sender.poll_ready(cx)).await?;
-                    for data in data_vec {
-                        // TODO: consider implement retry mechanism.
-                        sender.start_send(data)?;
-                    }
-                }
-                Ok(())
-            };
-            if let Err(error) = &result {
+            let result =
+                send_data_for_query(storage_reader_clone, query.clone(), data_type, sender).await;
+            if let Err(error) = result {
                 if error.should_log_in_error_level() {
                     error!("Running inbound query {query:?} failed on {error:?}");
                 }
+                Err(error)
+            } else {
+                Ok(())
             }
-            result
         });
     }
 
@@ -210,6 +186,8 @@ pub trait FetchBlockDataFromDb {
         block_number: BlockNumber,
         txn: &StorageTxn<'a, db::RO>,
     ) -> Result<Vec<Data>, DBExecutorError>;
+
+    fn fin(&self) -> Data;
 }
 
 impl FetchBlockDataFromDb for DataType {
@@ -255,6 +233,10 @@ impl FetchBlockDataFromDb for DataType {
             }
         }
     }
+
+    fn fin(&self) -> Data {
+        Data::Fin(*self)
+    }
 }
 
 pub fn split_thin_state_diff(thin_state_diff: ThinStateDiff) -> Vec<StateDiffChunk> {
@@ -296,4 +278,50 @@ pub fn split_thin_state_diff(thin_state_diff: ThinStateDiff) -> Vec<StateDiffChu
             .push(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass { class_hash }));
     }
     state_diff_chunks
+}
+
+async fn send_data_for_query(
+    storage_reader: StorageReader,
+    query: Query,
+    data_type: impl FetchBlockDataFromDb + Send + 'static,
+    mut sender: Sender<Data>,
+) -> Result<(), DBExecutorError> {
+    let fin = data_type.fin();
+    // If this function fails, we still want to send fin before failing.
+    let result =
+        send_data_without_fin_for_query(&storage_reader, query, data_type, &mut sender).await;
+    poll_fn(|cx| sender.poll_ready(cx)).await?;
+    sender.start_send(fin)?;
+    result
+}
+
+async fn send_data_without_fin_for_query(
+    storage_reader: &StorageReader,
+    query: Query,
+    data_type: impl FetchBlockDataFromDb + Send + 'static,
+    sender: &mut Sender<Data>,
+) -> Result<(), DBExecutorError> {
+    let txn = storage_reader.begin_ro_txn()?;
+    let start_block_number = match query.start_block {
+        BlockHashOrNumber::Number(BlockNumber(num)) => num,
+        BlockHashOrNumber::Hash(block_hash) => {
+            txn.get_block_number_by_hash(&block_hash)?
+                .ok_or(DBExecutorError::BlockNotFound {
+                    block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
+                })?
+                .0
+        }
+    };
+    for block_counter in 0..query.limit {
+        let block_number =
+            BlockNumber(utils::calculate_block_number(&query, start_block_number, block_counter)?);
+        let data_vec = data_type.fetch_block_data_from_db(block_number, &txn)?;
+        // Using poll_fn because Sender::poll_ready is not a future
+        poll_fn(|cx| sender.poll_ready(cx)).await?;
+        for data in data_vec {
+            // TODO: consider implement retry mechanism.
+            sender.start_send(data)?;
+        }
+    }
+    Ok(())
 }
