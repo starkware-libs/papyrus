@@ -29,9 +29,6 @@ use papyrus_config::converters::{
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::validators::validate_vec_u256;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_protobuf::protobuf;
-use papyrus_protobuf::sync::Query;
-use prost::Message;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
@@ -96,20 +93,6 @@ impl Protocol {
         match self {
             Protocol::SignedBlockHeader => "/starknet/headers/1",
             Protocol::StateDiff => "/starknet/state_diffs/1",
-        }
-    }
-
-    pub fn bytes_query_to_protobuf_request(&self, query: Vec<u8>) -> Query {
-        // TODO: make this function return errors instead of panicking.
-        match self {
-            Protocol::SignedBlockHeader => protobuf::BlockHeadersRequest::decode(&query[..])
-                .expect("failed to decode protobuf BlockHeadersRequest")
-                .try_into()
-                .expect("failed to convert BlockHeadersRequest"),
-            Protocol::StateDiff => protobuf::StateDiffsRequest::decode(&query[..])
-                .expect("failed to decode protobuf StateDiffsRequest")
-                .try_into()
-                .expect("failed to convert StateDiffsRequest"),
         }
     }
 }
