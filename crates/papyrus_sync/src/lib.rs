@@ -19,14 +19,15 @@ use chrono::{TimeZone, Utc};
 use futures_util::{pin_mut, select, Stream, StreamExt};
 use indexmap::IndexMap;
 use papyrus_common::pending_classes::PendingClasses;
-use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber};
+use papyrus_common::state_diff_commitment::StateDiffVersion;
+use papyrus_common::{metrics as papyrus_metrics, BlockHashAndNumber, TransactionOptions};
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
 use papyrus_storage::body::BodyStorageWriter;
-use papyrus_storage::class::ClassStorageWriter;
+use papyrus_storage::class::{ClassStorageReader, ClassStorageWriter};
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::db::DbError;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
@@ -34,8 +35,15 @@ use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use sources::base_layer::BaseLayerSourceError;
-use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, CompiledClassHash, SequencerPublicKey};
+use starknet_api::block::{
+    verify_block_signature,
+    Block,
+    BlockHash,
+    BlockNumber,
+    BlockSignature,
+    StarknetVersion,
+};
+use starknet_api::core::{ChainId, ClassHash, CompiledClassHash, GlobalRoot, SequencerPublicKey};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::{StateDiff, ThinStateDiff};
 use starknet_client::reader::PendingData;
@@ -185,6 +193,10 @@ pub enum StateSyncError {
     },
     #[error("Sequencer public key changed from {old:?} to {new:?}.")]
     SequencerPubKeyChanged { old: SequencerPublicKey, new: SequencerPublicKey },
+    #[error("Bad starknet version: {0}")]
+    BadStarknetVersion(StarknetVersion),
+    #[error("Verification of block failed.")]
+    BlockVerificationFailed,
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -259,7 +271,9 @@ impl<
                 | StateSyncError::ParentBlockHashMismatch { .. }
                 | StateSyncError::BaseLayerHashMismatch { .. }
                 | StateSyncError::BaseLayerBlockWithoutMatchingHeader { .. } => true,
-                StateSyncError::SequencerPubKeyChanged { .. } => false,
+                StateSyncError::SequencerPubKeyChanged { .. }
+                | StateSyncError::BadStarknetVersion { .. }
+                | StateSyncError::BlockVerificationFailed => false,
             }
         }
     }
@@ -359,10 +373,96 @@ impl<
         unreachable!("Fetching data loop should never return.");
     }
 
+    fn should_verify(sn_version: &StarknetVersion) -> bool {
+        if sn_version.0.is_empty() {
+            return false;
+        }
+        let check_from_sn_version = vec![0, 13, 1];
+        for (block_version, check_from) in
+            sn_version.0.split('.').take(3).zip(check_from_sn_version)
+        {
+            let Ok(block_version) = block_version.parse::<u32>() else {
+                return false;
+            };
+            if block_version < check_from {
+                return false;
+            }
+        }
+        true
+    }
+
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block, signature } => {
+                if self.config.verify_blocks && Self::should_verify(&block.header.starknet_version)
+                {
+                    info!("Verifying block {}.", block_number);
+                    let state_diff_commitment = GlobalRoot(
+                        block
+                            .header
+                            .state_diff_commitment
+                            .as_ref()
+                            .expect("Expecting state diff commitment.")
+                            .0
+                            .0,
+                    );
+                    match verify_block_signature(
+                        &self.sequencer_pub_key.unwrap_or_default(),
+                        &signature,
+                        &state_diff_commitment,
+                        &block.header.block_hash,
+                    ) {
+                        Ok(true) => (),
+                        Ok(false) => {
+                            error!("Block {} signature verification failed.", block_number);
+                            return Err(StateSyncError::BlockVerificationFailed);
+                        }
+                        Err(err) => {
+                            panic!("Error verifying block signature: {err}");
+                        }
+                    };
+                    let chain_id = ChainId::Mainnet;
+                    if !papyrus_common::block_hash::validate_header(&block.header, &chain_id)
+                        .expect("Error validating block header")
+                    {
+                        error!("Block {} header verification failed.", block_number);
+                        return Err(StateSyncError::BlockVerificationFailed);
+                    }
+                    if !papyrus_common::block_hash::validate_body(
+                        &block.body,
+                        block
+                            .header
+                            .transaction_commitment
+                            .as_ref()
+                            .expect("Expecting transaction commitment."),
+                        block.header.event_commitment.as_ref().expect("Expecting event commitment"),
+                    )
+                    .expect("Error validating block body")
+                    {
+                        error!("Block {} body verification failed.", block_number);
+                        return Err(StateSyncError::BlockVerificationFailed);
+                    }
+                    for (tx, tx_hash) in
+                        block.body.transactions.iter().zip(block.body.transaction_hashes.iter())
+                    {
+                        if !papyrus_common::transaction_hash::validate_transaction_hash(
+                            tx,
+                            &block_number,
+                            &chain_id,
+                            *tx_hash,
+                            &TransactionOptions { only_query: false },
+                        )
+                        .expect("Error validating transaction hash")
+                        {
+                            error!(
+                                "Block {} transaction hash verification failed {}.",
+                                block_number, tx_hash
+                            );
+                            return Err(StateSyncError::BlockVerificationFailed);
+                        }
+                    }
+                }
                 self.store_block(block_number, block, &signature)
             }
             SyncEvent::StateDiffAvailable {
@@ -370,12 +470,46 @@ impl<
                 block_hash,
                 state_diff,
                 deployed_contract_class_definitions,
-            } => self.store_state_diff(
-                block_number,
-                block_hash,
-                state_diff,
-                deployed_contract_class_definitions,
-            ),
+            } => {
+
+                self.store_state_diff(
+                    block_number,
+                    block_hash,
+                    state_diff,
+                    deployed_contract_class_definitions,
+                )?;
+                                                    let sn_version = self
+                    .reader
+                    .begin_ro_txn()?
+                    .get_starknet_version(block_number)?.unwrap_or_default();
+                if Self::should_verify(&sn_version) {
+                    info!("Verifying state diff for block {}.", block_number);
+                    let thin_state_diff = self.reader.begin_ro_txn()?.get_state_diff(block_number)?.expect("State diff not found.");
+                    let calculated_state_diff_commitment = papyrus_common::state_diff_commitment::calculate_state_diff_commitment(&thin_state_diff, StateDiffVersion::V0);
+                    let header = self.reader.begin_ro_txn()?.get_block_header(block_number)?.expect("Header not found.");
+                    if calculated_state_diff_commitment != header.state_diff_commitment.expect("State diff commitment not found.") {
+                        error!("State diff commitment verification failed for block {}.", block_number);
+                        return Err(StateSyncError::BlockVerificationFailed);
+                    }
+                    for class_hash in thin_state_diff.declared_classes.keys() {
+                        let class = self.reader.begin_ro_txn()?.get_class(class_hash)?.expect("Class not found.");
+                        let calculated_class_hash = papyrus_common::class_hash::calculate_class_hash(&class);
+                        if calculated_class_hash != *class_hash {
+                            error!("Class hash verification failed for class {} in block {}.", class_hash, block_number);
+                            return Err(StateSyncError::BlockVerificationFailed);
+                        }
+                    }
+                    for deprecated_class_hash in thin_state_diff.deprecated_declared_classes {
+                        let mut deprecated_class = self.reader.begin_ro_txn()?.get_deprecated_class(&deprecated_class_hash)?.expect("Deprecated class not found.");
+                        let calculated_class_hash = papyrus_common::class_hash::calculate_deprecated_class_hash(&mut deprecated_class).expect("Error calculating deprecated class hash.");
+                        if calculated_class_hash != deprecated_class_hash {
+                            error!("Deprecated class hash verification failed for class {} in block {}.", deprecated_class_hash, block_number);
+                            return Err(StateSyncError::BlockVerificationFailed);
+                        }
+                    }
+                }
+                Ok(())
+            }
             SyncEvent::CompiledClassAvailable {
                 class_hash,
                 compiled_class_hash,
