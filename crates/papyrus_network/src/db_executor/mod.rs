@@ -156,7 +156,12 @@ impl DBExecutorTrait for DBExecutor {
     ) {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
-            let result: Result<(), DBExecutorError> = {
+            let mut sender_clone = sender.clone();
+            let fin = data_type.fin();
+            let query_clone = query.clone();
+            // Using async block so that we can use the ? operator inside it without it
+            // returning the error to the main async block.
+            let data_result: Result<(), DBExecutorError> = async move {
                 let txn = storage_reader_clone.begin_ro_txn()?;
                 let start_block_number = match query.start_block {
                     BlockHashOrNumber::Number(BlockNumber(num)) => num,
@@ -183,13 +188,24 @@ impl DBExecutorTrait for DBExecutor {
                     }
                 }
                 Ok(())
-            };
-            if let Err(error) = &result {
-                if error.should_log_in_error_level() {
-                    error!("Running inbound query {query:?} failed on {error:?}");
-                }
             }
-            result
+            .await;
+            // Using async block so that we can use the ? operator inside it without it
+            // returning the error to the main async block.
+            let fin_result: Result<(), DBExecutorError> = async move {
+                poll_fn(|cx| sender_clone.poll_ready(cx)).await?;
+                sender_clone.start_send(fin)?;
+                Ok(())
+            }
+            .await;
+            if let (Err(error), _) | (Ok(()), Err(error)) = (data_result, fin_result) {
+                if error.should_log_in_error_level() {
+                    error!("Running inbound query {query_clone:?} failed on {error:?}");
+                }
+                Err(error)
+            } else {
+                Ok(())
+            }
         });
     }
 
@@ -210,6 +226,8 @@ pub trait FetchBlockDataFromDb {
         block_number: BlockNumber,
         txn: &StorageTxn<'a, db::RO>,
     ) -> Result<Vec<Data>, DBExecutorError>;
+
+    fn fin(&self) -> Data;
 }
 
 impl FetchBlockDataFromDb for DataType {
@@ -254,6 +272,10 @@ impl FetchBlockDataFromDb for DataType {
                 Ok(vec_data)
             }
         }
+    }
+
+    fn fin(&self) -> Data {
+        Data::Fin(*self)
     }
 }
 
