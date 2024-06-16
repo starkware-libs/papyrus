@@ -31,7 +31,7 @@ async fn header_query_positive_flow() {
         step: 1,
     };
     let (sender, data_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    db_executor.register_query::<SignedBlockHeader>(query.clone(), sender);
+    db_executor.register_query::<SignedBlockHeader, _>(query.clone(), sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -79,7 +79,7 @@ async fn header_query_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    db_executor.register_query::<SignedBlockHeader>(query, sender);
+    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -118,7 +118,7 @@ async fn header_query_some_blocks_are_missing() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    db_executor.register_query::<SignedBlockHeader>(query, sender);
+    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
 
     tokio::select! {
         _ = db_executor.run() => {
