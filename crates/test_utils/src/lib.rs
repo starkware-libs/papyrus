@@ -376,7 +376,7 @@ pub fn get_test_block(
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> Block {
     let mut rng = get_rng();
-    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
+    let events_per_tx = events_per_tx.unwrap_or_default();
     get_rand_test_block_with_events(
         &mut rng,
         transaction_count,
@@ -394,7 +394,7 @@ pub fn get_test_body(
     keys: Option<Vec<Vec<EventKey>>>,
 ) -> BlockBody {
     let mut rng = get_rng();
-    let events_per_tx = if let Some(events_per_tx) = events_per_tx { events_per_tx } else { 0 };
+    let events_per_tx = events_per_tx.unwrap_or_default();
     get_rand_test_body_with_events(&mut rng, transaction_count, events_per_tx, from_addresses, keys)
 }
 
