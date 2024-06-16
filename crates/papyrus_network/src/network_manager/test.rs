@@ -1,5 +1,3 @@
-// TODO(shahak): Remove protobuf from these tests.
-
 use std::collections::{HashMap, HashSet};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -120,8 +118,7 @@ impl MockSwarm {
                 },
                 signatures: vec![],
             };
-            let data_bytes =
-                protobuf::BlockHeadersResponse::from(Some(signed_header)).encode_to_vec();
+            let data_bytes = Vec::<u8>::from(DataOrFin(Some(signed_header)));
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
                 mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
                     data: data_bytes,
@@ -143,8 +140,7 @@ impl SwarmTrait for MockSwarm {
             .inbound_session_id_to_data_sender
             .get(&inbound_session_id)
             .expect("Called send_data without calling get_data_sent_to_inbound_session first");
-        let decoded_data =
-            protobuf::BlockHeadersResponse::decode(&data[..]).unwrap().try_into().unwrap();
+        let decoded_data = DataOrFin::try_from(data).unwrap().0;
         let (data, is_fin) = match decoded_data {
             Some(signed_block_header) => {
                 (Data::BlockHeaderAndSignature(signed_block_header), false)
@@ -164,10 +160,7 @@ impl SwarmTrait for MockSwarm {
         peer_id: PeerId,
         _protocol: crate::Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        let query: Query = protobuf::BlockHeadersRequest::decode(&query[..])
-            .expect("failed to decode protobuf BlockHeadersRequest")
-            .try_into()
-            .expect("failed to convert BlockHeadersRequest");
+        let query: Query = HeaderQuery::try_from(query).expect("failed to decode query").0;
         self.sent_queries.push((query.clone(), peer_id));
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_received_data_events_for_query(query, outbound_session_id);
