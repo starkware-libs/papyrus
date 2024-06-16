@@ -4413,8 +4413,7 @@ checksum = "4ec2a862134d2a7d32d7983ddcdd1c4923530833c9f2ea1a44fc5fa473989058"
 [[package]]
 name = "libmdbx"
 version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f0bee397dc9a7003e7bd34fffc1dc2d4c4fdc96530a0c439a5f98c9402bc7bf"
+source = "git+https://github.com/DvirYo-starkware/libmdbx-rs.git?rev=a6a4956#a6a49563b8f0911893ee1991e0ffde29de99849f"
 dependencies = [
  "bitflags 2.4.1",
  "byteorder",
@@ -5024,8 +5023,7 @@ dependencies = [
 [[package]]
 name = "mdbx-sys"
 version = "0.12.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21a329f8d655fb646cc9511c00886eefcddb6ef131869ef2d4b02c24c66825ac"
+source = "git+https://github.com/DvirYo-starkware/libmdbx-rs.git?rev=a6a4956#a6a49563b8f0911893ee1991e0ffde29de99849f"
 dependencies = [
  "bindgen 0.66.1",
  "cc",
