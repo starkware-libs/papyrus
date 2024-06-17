@@ -78,6 +78,33 @@ pub enum StateDiffChunk {
     DeclaredClass(DeclaredClass),
     DeprecatedDeclaredClass(DeprecatedDeclaredClass),
 }
+impl StateDiffChunk {
+    pub fn len(&self) -> usize {
+        let mut result = 0usize;
+        match self {
+            StateDiffChunk::ContractDiff(contract_diff) => {
+                result += contract_diff.storage_diffs.len();
+                if contract_diff.class_hash.is_some() {
+                    result += 1;
+                }
+                if contract_diff.nonce.is_some() {
+                    result += 1;
+                }
+            }
+            StateDiffChunk::DeclaredClass(_) => {
+                result += 1;
+            }
+            StateDiffChunk::DeprecatedDeclaredClass(_) => {
+                result += 1;
+            }
+        }
+        result
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
 impl Default for StateDiffChunk {
     fn default() -> Self {
         Self::ContractDiff(ContractDiff::default())
