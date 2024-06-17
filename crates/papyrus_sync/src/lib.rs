@@ -373,30 +373,29 @@ impl<
         unreachable!("Fetching data loop should never return.");
     }
 
-    fn should_verify(sn_version: &StarknetVersion) -> bool {
-        if sn_version.0.is_empty() {
+    fn should_verify_sn_version(&self, sn_version: &StarknetVersion) -> bool {
+        if !self.config.verify_blocks {
+            info!("Not verifying (configured not to)");
             return false;
         }
-        let check_from_sn_version = vec![0, 13, 1];
-        for (block_version, check_from) in
-            sn_version.0.split('.').take(3).zip(check_from_sn_version)
-        {
-            let Ok(block_version) = block_version.parse::<u32>() else {
-                return false;
-            };
-            if block_version < check_from {
-                return false;
-            }
+        if sn_version.0.starts_with("0.13.1") {
+            info!("Verifying");
+            return true;
         }
-        true
+        info!("Not verifying (not 0.13.1 or later)");
+        return false;
+    }
+
+    fn should_verify(&self, block_number: BlockNumber) -> bool {
+        let sn_version = self.reader.begin_ro_txn().expect("111").get_starknet_version(block_number.prev().unwrap_or_default()).expect("2222").unwrap_or_default();
+        self.should_verify_sn_version(&sn_version)
     }
 
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block, signature } => {
-                if self.config.verify_blocks && Self::should_verify(&block.header.starknet_version)
-                {
+                if self.should_verify_sn_version(&block.header.starknet_version) {
                     info!("Verifying block {}.", block_number);
                     let state_diff_commitment = GlobalRoot(
                         block
@@ -478,11 +477,8 @@ impl<
                     state_diff,
                     deployed_contract_class_definitions,
                 )?;
-                                                    let sn_version = self
-                    .reader
-                    .begin_ro_txn()?
-                    .get_starknet_version(block_number)?.unwrap_or_default();
-                if Self::should_verify(&sn_version) {
+
+                if self.should_verify(block_number) {
                     info!("Verifying state diff for block {}.", block_number);
                     let thin_state_diff = self.reader.begin_ro_txn()?.get_state_diff(block_number)?.expect("State diff not found.");
                     let calculated_state_diff_commitment = papyrus_common::state_diff_commitment::calculate_state_diff_commitment(&thin_state_diff, StateDiffVersion::V0);
