@@ -480,6 +480,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
+    #[latency_histogram("storage_commit_latency_seconds", false)]
     pub fn commit(self) -> StorageResult<()> {
         self.file_handlers.flush();
         Ok(self.txn.commit()?)
@@ -701,11 +702,15 @@ impl FileHandlers<RW> {
     }
 
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+    #[latency_histogram("storage_file_handler_flush_latency_seconds", false)]
     fn flush(&self) {
+        debug!("Flushing the mmap files.");
         self.thin_state_diff.flush();
         self.contract_class.flush();
         self.casm.flush();
         self.deprecated_contract_class.flush();
+        self.transaction_output.flush();
+        self.transaction.flush();
     }
 
     // Appends a thin transaction output to the corresponding file and returns its location.
