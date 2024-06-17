@@ -195,7 +195,8 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
     if config.enforce_file_exists && !db_file_path.exists() {
         return Err(DbError::FileDoesNotExist(db_file_path));
     }
-    const MAX_READERS: u32 = 1 << 13; // 8K readers
+    // const MAX_READERS: u32 = 1 << 13; // 8K readers
+    const MAX_READERS: u32 = 200000; // 200K readers
     let env = Arc::new(
         Environment::new()
             .set_geometry(Geometry {
