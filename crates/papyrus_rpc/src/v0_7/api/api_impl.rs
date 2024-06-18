@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -117,6 +116,7 @@ use super::{
     BlockHashAndNumber,
     BlockId,
     CallRequest,
+    CompiledContractClass,
     ContinuationToken,
     EventFilter,
     EventsChunk,
@@ -1437,23 +1437,34 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> RpcResult<CasmContractClass> {
+    ) -> RpcResult<CompiledContractClass> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let state_reader = storage_txn.get_state_reader().map_err(internal_server_error)?;
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
-        let class_definition_block_number = storage_txn
-            .get_state_reader()
-            .map_err(internal_server_error)?
+
+        // Check if this class exists in the Cairo1 classes table.
+        if let Some(class_definition_block_number) = state_reader
             .get_class_definition_block_number(&class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
-        if class_definition_block_number > block_number {
-            return Err(ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND));
+        {
+            if class_definition_block_number > block_number {
+                return Err(ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND));
+            }
+            let casm = storage_txn
+                .get_casm(&class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
+            return Ok(CompiledContractClass::V1(casm));
         }
-        let casm = storage_txn
-            .get_casm(&class_hash)
+
+        // Check if this class exists in the Cairo0 classes table.
+        let state_number = StateNumber::right_after_block(block_number)
+            .ok_or(internal_server_error("Could not compute state number"))?;
+        let deprecated_compiled_contract_class = state_reader
+            .get_deprecated_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
-        Ok(casm)
+        Ok(CompiledContractClass::V0(deprecated_compiled_contract_class))
     }
 }
 
