@@ -16,20 +16,11 @@ use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
-use papyrus_protobuf::sync::{
-    DataOrFin,
-    HeaderQuery,
-    SignedBlockHeader,
-    StateDiffChunk,
-    StateDiffQuery,
-};
-use papyrus_storage::StorageReader;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::db_executor::{DBExecutor, DBExecutorTrait};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
@@ -42,9 +33,8 @@ pub enum NetworkError {
     DialError(#[from] libp2p::swarm::DialError),
 }
 
-pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> {
+pub struct GenericNetworkManager<SwarmT: SwarmTrait> {
     swarm: SwarmT,
-    db_executor: DBExecutorT,
     header_buffer_size: usize,
     sqmr_inbound_response_receivers:
         StreamHashMap<InboundSessionId, BoxStream<'static, Option<Bytes>>>,
@@ -68,24 +58,11 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     num_active_outbound_sessions: usize,
 }
 
-impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBExecutorT, SwarmT> {
+impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     pub async fn run(mut self) -> Result<(), NetworkError> {
-        // TODO(shahak): Move this logic to register_sqmr_subscriber.
-        let header_db_executor_channel = self
-            .register_protocol_to_db_executor::<HeaderQuery, DataOrFin<SignedBlockHeader>>(
-                Protocol::SignedBlockHeader,
-            );
-        self.db_executor.set_header_queries_receiver(header_db_executor_channel);
-        let state_diff_db_executor_channel = self
-            .register_protocol_to_db_executor::<StateDiffQuery, DataOrFin<StateDiffChunk>>(
-                Protocol::StateDiff,
-            );
-        self.db_executor.set_state_diff_queries_receiver(state_diff_db_executor_channel);
-
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
-                _ = self.db_executor.run() => panic!("DB executor should never finish."),
                 Some(res) = self.sqmr_inbound_response_receivers.next() => self.handle_response_for_inbound_query(res),
                 Some((protocol, query)) = self.sqmr_outbound_query_receivers.next() => {
                     self.handle_local_sqmr_query(protocol, query)
@@ -98,36 +75,11 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn register_protocol_to_db_executor<Query, Response>(
-        &mut self,
-        protocol: Protocol,
-    ) -> SqmrQueryReceiver<Query, Response>
-    where
-        Query: TryFrom<Bytes>,
-        Bytes: From<Response>,
-    {
-        let (inbound_query_sender, inbound_query_receiver) =
-            futures::channel::mpsc::channel(self.header_buffer_size);
-        self.sqmr_inbound_query_senders.insert(protocol, inbound_query_sender);
-
-        inbound_query_receiver.map(|(query_bytes, response_bytes_sender)| {
-            (
-                Query::try_from(query_bytes),
-                response_bytes_sender.with(|response| ready(Ok(Bytes::from(response)))),
-            )
-        })
-    }
-
-    pub(crate) fn generic_new(
-        swarm: SwarmT,
-        db_executor: DBExecutorT,
-        header_buffer_size: usize,
-    ) -> Self {
+    pub(crate) fn generic_new(swarm: SwarmT, header_buffer_size: usize) -> Self {
         gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
         let (reported_peer_sender, reported_peer_receiver) = futures::channel::mpsc::unbounded();
         Self {
             swarm,
-            db_executor,
             header_buffer_size,
             sqmr_inbound_response_receivers: StreamHashMap::new(HashMap::new()),
             sqmr_inbound_query_senders: HashMap::new(),
@@ -143,6 +95,30 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
+    pub fn register_sqmr_protocol_server<Query, Response>(
+        &mut self,
+        protocol: Protocol,
+    ) -> SqmrQueryReceiver<Query, Response>
+    where
+        Bytes: From<Response>,
+        Query: TryFrom<Bytes>,
+    {
+        let (inbound_query_sender, inbound_query_receiver) =
+            futures::channel::mpsc::channel(self.header_buffer_size);
+        let result = self.sqmr_inbound_query_senders.insert(protocol, inbound_query_sender);
+        if result.is_some() {
+            panic!("Protocol '{}' has already been registered as a server.", protocol);
+        }
+
+        inbound_query_receiver.map(|(query_bytes, response_bytes_sender)| {
+            (
+                Query::try_from(query_bytes),
+                response_bytes_sender.with(|response| ready(Ok(Bytes::from(response)))),
+            )
+        })
+    }
+
+    // TODO(shahak): rename to register_sqmr_protocol_client.
     /// Register a new subscriber for sending a single query and receiving multiple responses.
     /// Panics if the given protocol is already subscribed.
     pub fn register_sqmr_subscriber<Query, Response>(
@@ -162,11 +138,11 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
 
         let insert_result = self.sqmr_outbound_query_receivers.insert(protocol, query_receiver);
         if insert_result.is_some() {
-            panic!("Protocol '{}' has already been registered.", protocol);
+            panic!("Protocol '{}' has already been registered as a client.", protocol);
         }
         let insert_result = self.sqmr_outbound_response_senders.insert(protocol, response_sender);
         if insert_result.is_some() {
-            panic!("Protocol '{}' has already been registered.", protocol);
+            panic!("Protocol '{}' has already been registered as a client.", protocol);
         }
 
         let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> =
@@ -507,10 +483,10 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     }
 }
 
-pub type NetworkManager = GenericNetworkManager<DBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
+pub type NetworkManager = GenericNetworkManager<Swarm<mixed_behaviour::MixedBehaviour>>;
 
 impl NetworkManager {
-    pub fn new(config: NetworkConfig, storage_reader: StorageReader) -> Self {
+    pub fn new(config: NetworkConfig) -> Self {
         let NetworkConfig {
             tcp_port,
             quic_port: _,
@@ -540,8 +516,7 @@ impl NetworkManager {
             )
         });
 
-        let db_executor = DBExecutor::new(storage_reader);
-        Self::generic_new(swarm, db_executor, header_buffer_size)
+        Self::generic_new(swarm, header_buffer_size)
     }
 
     pub fn get_local_peer_id(&self) -> String {
@@ -549,7 +524,7 @@ impl NetworkManager {
     }
 }
 
-// TODO(shahak): Change to a wrapper of PeerId if Box dyn becomes an overhead.
+// TODO(shahak): Create a custom struct if Box dyn becomes an overhead.
 pub type ReportCallback = Box<dyn Fn() + Send>;
 
 // TODO(shahak): Add report callback.
@@ -569,6 +544,7 @@ pub type SubscriberSender<T> = With<
     fn(T) -> Ready<Result<Bytes, SendError>>,
 >;
 
+// TODO(shahak): rename to ConvertFromBytesReceiver and add an alias called BroadcastReceiver
 pub type SubscriberReceiver<T> =
     Map<Receiver<(Bytes, ReportCallback)>, ReceivedMessagesConverterFn<T>>;
 
@@ -576,8 +552,6 @@ type ReceivedMessagesConverterFn<T> =
     fn((Bytes, ReportCallback)) -> (Result<T, <T as TryFrom<Bytes>>::Error>, ReportCallback);
 
 // TODO(shahak): Unite channels to a Sender of Query and Receiver of Responses.
-// TODO(shahak): Change Query to something generic.
-// TODO(shahak): Add channels for DB executor.
 pub struct SqmrSubscriberChannels<Query: Into<Bytes>, Response: TryFrom<Bytes>> {
     pub query_sender: SubscriberSender<Query>,
     pub response_receiver: SubscriberReceiver<Response>,
