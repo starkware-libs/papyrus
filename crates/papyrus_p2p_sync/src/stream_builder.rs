@@ -28,7 +28,7 @@ pub(crate) enum BlockNumberLimit {
     // TODO(shahak): Add variant for state diff marker once we support classes sync.
 }
 
-pub(crate) trait DataStreamFactory<QuerySender, DataReceiver, InputFromNetwork>
+pub(crate) trait DataStreamBuilder<QuerySender, DataReceiver, InputFromNetwork>
 where
     QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
     DataReceiver: Stream<Item = Response<InputFromNetwork>> + Unpin + Send + 'static,

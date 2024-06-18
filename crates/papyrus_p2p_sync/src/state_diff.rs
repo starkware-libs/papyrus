@@ -14,7 +14,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
-use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use crate::stream_builder::{BlockData, BlockNumberLimit, DataStreamBuilder};
 use crate::{P2PSyncError, Response, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
@@ -27,13 +27,13 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
     }
 }
 
-pub(crate) struct StateDiffStreamFactory<QuerySender, DataReceiver>(
+pub(crate) struct StateDiffStreamBuilder<QuerySender, DataReceiver>(
     PhantomData<(QuerySender, DataReceiver)>,
 );
 
 // TODO(shahak): Change to StateDiffChunk.
-impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, ThinStateDiff>
-    for StateDiffStreamFactory<QuerySender, DataReceiver>
+impl<QuerySender, DataReceiver> DataStreamBuilder<QuerySender, DataReceiver, ThinStateDiff>
+    for StateDiffStreamBuilder<QuerySender, DataReceiver>
 where
     QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
     DataReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,

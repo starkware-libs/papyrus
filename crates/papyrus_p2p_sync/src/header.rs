@@ -8,7 +8,7 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
-use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use crate::stream_builder::{BlockData, BlockNumberLimit, DataStreamBuilder};
 use crate::{P2PSyncError, Response, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
@@ -33,12 +33,12 @@ impl BlockData for SignedBlockHeader {
     }
 }
 
-pub(crate) struct HeaderStreamFactory<QuerySender, DataReceiver>(
+pub(crate) struct HeaderStreamBuilder<QuerySender, DataReceiver>(
     PhantomData<(QuerySender, DataReceiver)>,
 );
 
-impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, SignedBlockHeader>
-    for HeaderStreamFactory<QuerySender, DataReceiver>
+impl<QuerySender, DataReceiver> DataStreamBuilder<QuerySender, DataReceiver, SignedBlockHeader>
+    for HeaderStreamBuilder<QuerySender, DataReceiver>
 where
     QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
     DataReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,

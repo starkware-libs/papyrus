@@ -4,7 +4,7 @@ mod header_test;
 mod state_diff;
 #[cfg(test)]
 mod state_diff_test;
-mod stream_factory;
+mod stream_builder;
 #[cfg(test)]
 mod test_utils;
 
@@ -27,9 +27,9 @@ use starknet_api::state::ThinStateDiff;
 use tokio_stream::StreamExt;
 use tracing::instrument;
 
-use crate::header::HeaderStreamFactory;
-use crate::state_diff::StateDiffStreamFactory;
-use crate::stream_factory::DataStreamFactory;
+use crate::header::HeaderStreamBuilder;
+use crate::state_diff::StateDiffStreamBuilder;
+use crate::stream_builder::DataStreamBuilder;
 
 const STEP: u64 = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
@@ -195,7 +195,7 @@ where
 
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
-        let header_stream = HeaderStreamFactory::create_stream(
+        let header_stream = HeaderStreamBuilder::create_stream(
             self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
             self.header_response_receiver,
             self.storage_reader.clone(),
@@ -204,7 +204,7 @@ where
             self.config.stop_sync_at_block_number,
         );
 
-        let state_diff_stream = StateDiffStreamFactory::create_stream(
+        let state_diff_stream = StateDiffStreamBuilder::create_stream(
             self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
             self.state_diff_response_receiver,
             self.storage_reader,
