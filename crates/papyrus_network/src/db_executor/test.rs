@@ -2,7 +2,7 @@ use futures::channel::mpsc::Receiver;
 use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
 use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query};
+use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -65,17 +65,22 @@ async fn header_db_executor_can_register_and_run_a_query() {
                     assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
                 }
                 for (i, data) in data.into_iter().enumerate() {
-                    match data {
-                        Data::BlockHeaderAndSignature(signed_header) => {
-                            assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                    match &data {
+                        Data::BlockHeaderAndSignature(_) => {
                             assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
                         }
-                        Data::StateDiffChunk (_state_diff)  => {
-                            // TODO: check the state diff.
+                        Data::StateDiffChunk(_) => {
                             assert_eq!(*requested_data_type, DataType::StateDiff);
                         }
-                        Data::Fin(data_type) => {
-                            assert_eq!(data_type, *requested_data_type);
+                    }
+                    match data {
+                        Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
+                            assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                        }
+                        Data::StateDiffChunk(DataOrFin(Some(_state_diff)))  => {
+                            // TODO: check the state diff.
+                        }
+                        _ => {
                             assert_eq!(i, len - 1);
                         }
                     }
@@ -123,10 +128,10 @@ async fn header_db_executor_start_block_given_by_hash() {
             assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
             for (i, data) in res.into_iter().enumerate() {
                 match data {
-                    Data::BlockHeaderAndSignature(signed_header) => {
+                    Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
                         assert_eq!(signed_header.block_header.block_number.0, i as u64);
                     }
-                    Data::Fin(DataType::SignedBlockHeader) => assert_eq!(i, len - 1),
+                    Data::BlockHeaderAndSignature(DataOrFin(None)) => assert_eq!(i, len - 1),
                     _ => panic!("Unexpected data type"),
                 };
             }
