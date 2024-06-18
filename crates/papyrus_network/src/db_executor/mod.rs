@@ -1,8 +1,8 @@
 use std::vec;
 
-use async_trait::async_trait;
-use futures::future::pending;
-use futures::{FutureExt, Sink, SinkExt, StreamExt};
+use futures::channel::mpsc::SendError;
+use futures::{Sink, SinkExt, Stream, StreamExt};
+use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
     ContractDiff,
@@ -21,8 +21,6 @@ use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 use tracing::error;
-
-use crate::network_manager::SqmrQueryReceiver;
 
 #[cfg(test)]
 mod test;
@@ -61,72 +59,35 @@ impl DBExecutorError {
 }
 
 /// A DBExecutor receives inbound queries and returns their corresponding data.
-#[async_trait]
-pub trait DBExecutorTrait {
-    fn set_header_queries_receiver(
-        &mut self,
-        receiver: SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-    );
-
-    fn set_state_diff_queries_receiver(
-        &mut self,
-        receiver: SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
-    );
-
-    /// Polls incoming queries.
-    // TODO(shahak): Consume self.
-    async fn run(&mut self);
-}
-
-pub struct DBExecutor {
+pub struct DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver> {
     storage_reader: StorageReader,
-    // TODO(shahak): Make this non-option.
-    header_queries_receiver: Option<SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>>,
-    // TODO(shahak): Make this non-option.
-    state_diff_queries_receiver:
-        Option<SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>>,
+    header_queries_receiver: HeaderQueryReceiver,
+    state_diff_queries_receiver: StateDiffQueryReceiver,
 }
 
-#[async_trait]
-impl DBExecutorTrait for DBExecutor {
-    fn set_header_queries_receiver(
-        &mut self,
-        receiver: SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-    ) {
-        self.header_queries_receiver = Some(receiver);
-    }
-
-    fn set_state_diff_queries_receiver(
-        &mut self,
-        receiver: SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
-    ) {
-        self.state_diff_queries_receiver = Some(receiver);
-    }
-
-    async fn run(&mut self) {
+impl<HeaderQueryReceiver, StateDiffQueryReceiver, HeaderResponsesSender, StateDiffResponsesSender>
+    DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver>
+where
+    HeaderQueryReceiver: Stream<Item = (Result<HeaderQuery, ProtobufConversionError>, HeaderResponsesSender)>
+        + Unpin,
+    HeaderResponsesSender:
+        Sink<DataOrFin<SignedBlockHeader>, Error = SendError> + Unpin + Send + 'static,
+    StateDiffQueryReceiver: Stream<Item = (Result<StateDiffQuery, ProtobufConversionError>, StateDiffResponsesSender)>
+        + Unpin,
+    StateDiffResponsesSender:
+        Sink<DataOrFin<StateDiffChunk>, Error = SendError> + Unpin + Send + 'static,
+{
+    pub async fn run(mut self) {
         loop {
-            let header_queries_receiver_future =
-                if let Some(header_queries_receiver) = self.header_queries_receiver.as_mut() {
-                    header_queries_receiver.next().boxed()
-                } else {
-                    pending().boxed()
-                };
-            let state_diff_queries_receiver_future = if let Some(state_diff_queries_receiver) =
-                self.state_diff_queries_receiver.as_mut()
-            {
-                state_diff_queries_receiver.next().boxed()
-            } else {
-                pending().boxed()
-            };
-
             tokio::select! {
-                Some((query_result, response_sender)) = header_queries_receiver_future => {
-                // TODO(shahak): Report if query_result is Err.
+                Some((query_result, response_sender)) = self.header_queries_receiver.next() => {
+                    // TODO(shahak): Report if query_result is Err.
                     if let Ok(query) = query_result {
                         self.register_query(query.0, response_sender);
                     }
                 }
-                Some((query_result, response_sender)) = state_diff_queries_receiver_future => {
+                Some((query_result, response_sender)) = self.state_diff_queries_receiver.next() => {
+                    // TODO(shahak): Report if query_result is Err.
                     if let Ok(query) = query_result {
                         self.register_query(query.0, response_sender);
                     }
@@ -134,11 +95,13 @@ impl DBExecutorTrait for DBExecutor {
             };
         }
     }
-}
 
-impl DBExecutor {
-    pub fn new(storage_reader: StorageReader) -> Self {
-        Self { storage_reader, header_queries_receiver: None, state_diff_queries_receiver: None }
+    pub fn new(
+        storage_reader: StorageReader,
+        header_queries_receiver: HeaderQueryReceiver,
+        state_diff_queries_receiver: StateDiffQueryReceiver,
+    ) -> Self {
+        Self { storage_reader, header_queries_receiver, state_diff_queries_receiver }
     }
 
     fn register_query<Data, Sender>(&self, query: Query, sender: Sender)
