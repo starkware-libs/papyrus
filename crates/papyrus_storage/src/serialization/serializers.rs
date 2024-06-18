@@ -469,9 +469,9 @@ auto_storage_serde! {
     (ContractAddress, BlockHash);
     (ContractAddress, BlockNumber);
     (ContractAddress, Nonce);
-    (ContractAddress, StorageKey, BlockHash);
-    (ContractAddress, StorageKey, BlockNumber);
+    (ContractAddress, StorageKey);
     (ContractAddress, TransactionIndex);
+    ((ContractAddress, StorageKey), BlockNumber);
     (usize, Vec<Hint>);
     (usize, Vec<String>);
 }
@@ -479,6 +479,7 @@ auto_storage_serde! {
 ////////////////////////////////////////////////////////////////////////
 //  impl StorageSerde macro.
 ////////////////////////////////////////////////////////////////////////
+#[allow(unused_macro_rules)]
 macro_rules! auto_storage_serde {
     () => {};
     // Tuple structs (no names associated with fields) - one field.

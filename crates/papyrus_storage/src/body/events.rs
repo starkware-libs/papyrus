@@ -63,7 +63,7 @@ use starknet_api::transaction::{
 use super::TransactionMetadataTable;
 use crate::body::{EventsTableKey, TransactionIndex};
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
+use crate::db::table_types::{CommonPrefix, DbCursor, DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, RO};
 use crate::{FileHandlers, StorageResult, StorageTxn, TransactionMetadata};
 
@@ -359,7 +359,7 @@ fn get_events_from_tx(
 
 /// A cursor of the events table.
 type EventsTableCursor<'txn> =
-    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
+    DbCursor<'txn, RO, EventsTableKey, NoVersionValueWrapper<NoValue>, CommonPrefix>;
 /// A cursor of the transaction outputs table.
 type TransactionMetadataTableCursor<'txn> =
     DbCursor<'txn, RO, TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>;

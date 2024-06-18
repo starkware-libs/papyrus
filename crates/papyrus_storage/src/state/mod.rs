@@ -67,8 +67,8 @@ use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use crate::db::serialization::{NoVersionValueWrapper, VersionWrapper, VersionZeroWrapper};
-use crate::db::table_types::{DbCursorTrait, SimpleTable, Table};
-use crate::db::{DbError, DbTransaction, TableHandle, TransactionKind, RW};
+use crate::db::table_types::{CommonPrefix, DbCursorTrait, SimpleTable, Table};
+use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 #[cfg(feature = "document_calls")]
 use crate::document_calls::{add_query, StorageQuery};
 use crate::mmap_file::LocationInFile;
@@ -98,12 +98,12 @@ pub(crate) type DeployedContractsTable<'env> =
     TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>;
 pub(crate) type ContractStorageTable<'env> = TableHandle<
     'env,
-    (ContractAddress, StorageKey, BlockNumber),
+    ((ContractAddress, StorageKey), BlockNumber),
     NoVersionValueWrapper<Felt>,
-    SimpleTable,
+    CommonPrefix,
 >;
 pub(crate) type NoncesTable<'env> =
-    TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>;
+    TableHandle<'env, (ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, CommonPrefix>;
 
 /// Interface for reading data related to the state.
 // Structure of state data:
@@ -321,14 +321,14 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         // The updates to the storage key are indexed by the block_number at which they occurred.
         let first_irrelevant_block: BlockNumber = state_number.block_after();
         // The relevant update is the last update strictly before `first_irrelevant_block`.
-        let db_key = (*address, *key, first_irrelevant_block);
+        let db_key = ((*address, *key), first_irrelevant_block);
         // Find the previous db item.
         let mut cursor = self.storage_table.cursor(self.txn)?;
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
             None => Ok(Felt::default()),
-            Some(((got_address, got_key, _got_block_number), value)) => {
+            Some((((got_address, got_key), _got_block_number), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
@@ -447,6 +447,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
             block_number,
             &deployed_contracts_table,
             &nonces_table,
+            &thin_state_diff.nonces,
         )?;
         write_storage_diffs(
             &thin_state_diff.storage_diffs,
@@ -469,7 +470,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
 
         // Write state diff.
         let location = self.file_handlers.append_state_diff(&thin_state_diff);
-        state_diffs_table.insert(&self.txn, &block_number, &location)?;
+        state_diffs_table.append(&self.txn, &block_number, &location)?;
         file_offset_table.upsert(&self.txn, &OffsetKind::ThinStateDiff, &location.next_offset())?;
 
         update_marker_to_next_block(&self.txn, &markers_table, MarkerKind::State, block_number)?;
@@ -637,21 +638,18 @@ fn write_deployed_contracts<'env>(
     block_number: BlockNumber,
     deployed_contracts_table: &'env DeployedContractsTable<'env>,
     nonces_table: &'env NoncesTable<'env>,
+    nonces_diffs: &IndexMap<ContractAddress, Nonce>,
 ) -> StorageResult<()> {
     for (address, class_hash) in deployed_contracts {
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
-        nonces_table.insert(txn, &(*address, block_number), &Nonce::default()).map_err(|err| {
-            if matches!(err, DbError::KeyAlreadyExists(..)) {
-                StorageError::NonceReWrite {
-                    contract_address: *address,
-                    nonce: Nonce::default(),
-                    block_number,
-                }
-            } else {
-                StorageError::from(err)
-            }
-        })?;
+        if !nonces_diffs.contains_key(address) {
+            nonces_table.append_greater_sub_key(
+                txn,
+                &(*address, block_number),
+                &Nonce::default(),
+            )?;
+        }
     }
     Ok(())
 }
@@ -691,7 +689,7 @@ fn write_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in storage_diffs {
         for (key, value) in storage_entries {
-            storage_table.upsert(txn, &(*address, *key, block_number), value)?;
+            storage_table.append_greater_sub_key(txn, &((*address, *key), block_number), value)?;
         }
     }
     Ok(())
@@ -805,7 +803,7 @@ fn delete_storage_diffs<'env>(
 ) -> StorageResult<()> {
     for (address, storage_entries) in &thin_state_diff.storage_diffs {
         for (key, _) in storage_entries {
-            storage_table.delete(txn, &(*address, *key, block_number))?;
+            storage_table.delete(txn, &((*address, *key), block_number))?;
         }
     }
     Ok(())
