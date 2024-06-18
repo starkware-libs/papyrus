@@ -3,7 +3,7 @@
 ///
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
-mod db_executor;
+pub mod db_executor;
 mod discovery;
 pub mod gossipsub_impl;
 pub mod mixed_behaviour;
