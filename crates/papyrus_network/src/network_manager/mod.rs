@@ -285,6 +285,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     }
 
     fn handle_sqmr_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
+        // TODO(shahak): Extract the body of each match arm to a separate function.
         match event {
             sqmr::behaviour::ExternalEvent::NewInboundSession {
                 query,

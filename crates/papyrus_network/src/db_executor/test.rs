@@ -38,16 +38,14 @@ async fn header_query_positive_flow() {
         _ = db_executor.run() => {
             panic!("DB executor should never finish its run.");
         },
-        all_data = data_receiver.collect::<Vec<_>>() => {
-            let len = all_data.len();
-            assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
+        mut all_data = data_receiver.collect::<Vec<_>>() => {
+            assert_eq!(all_data.len(), NUM_OF_BLOCKS as usize + 1);
+            assert_eq!(DataOrFin(None), all_data.pop().unwrap());
             for (i, data) in all_data.into_iter().enumerate() {
-                match data {
-                    DataOrFin(Some(signed_header)) => {
-                        assert_eq!(signed_header.block_header.block_number.0, i as u64);
-                    }
-                    DataOrFin(None) => assert_eq!(i, len - 1),
-                }
+                assert_eq!(
+                    data.0.expect("Received fin too early.").block_header.block_number.0,
+                    i as u64
+                );
             }
         }
     }
