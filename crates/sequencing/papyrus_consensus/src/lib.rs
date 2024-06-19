@@ -12,6 +12,7 @@ use types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, Vali
 pub mod papyrus_consensus_context;
 #[allow(dead_code)]
 pub mod single_height_consensus;
+pub mod state_machine;
 #[cfg(test)]
 pub(crate) mod test_utils;
 #[allow(dead_code)]
