@@ -28,7 +28,6 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::{GenericNetworkManager, SqmrSubscriberChannels};
-use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb};
 use crate::gossipsub_impl::{self, Topic};
 use crate::mixed_behaviour;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
@@ -42,7 +41,7 @@ struct MockSwarm {
     pub subscribed_topics: HashSet<TopicHash>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, TopicHash)>>,
     reported_peer_senders: Vec<UnboundedSender<PeerId>>,
-    inbound_session_id_to_data_sender: HashMap<InboundSessionId, UnboundedSender<Data>>,
+    inbound_session_id_to_response_sender: HashMap<InboundSessionId, UnboundedSender<Bytes>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
     inbound_session_closed_notifier: Option<oneshot::Sender<()>>,
@@ -68,16 +67,19 @@ impl Stream for MockSwarm {
 }
 
 impl MockSwarm {
-    pub fn get_data_sent_to_inbound_session(
+    pub fn get_responses_sent_to_inbound_session(
         &mut self,
         inbound_session_id: InboundSessionId,
-    ) -> impl Future<Output = Vec<Data>> {
-        let (data_sender, data_receiver) = unbounded();
-        if self.inbound_session_id_to_data_sender.insert(inbound_session_id, data_sender).is_some()
+    ) -> impl Future<Output = Vec<Bytes>> {
+        let (responses_sender, responses_receiver) = unbounded();
+        if self
+            .inbound_session_id_to_response_sender
+            .insert(inbound_session_id, responses_sender)
+            .is_some()
         {
-            panic!("Called get_data_sent_to_inbound_session on {inbound_session_id:?} twice");
+            panic!("Called get_responses_sent_to_inbound_session on {inbound_session_id:?} twice");
         }
-        data_receiver.collect()
+        responses_receiver.collect()
     }
 
     pub fn stream_messages_we_broadcasted(&mut self) -> impl Stream<Item = (Bytes, TopicHash)> {
@@ -117,7 +119,7 @@ impl SwarmTrait for MockSwarm {
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let data_sender = self
-            .inbound_session_id_to_data_sender
+            .inbound_session_id_to_response_sender
             .get(&inbound_session_id)
             .expect("Called send_data without calling get_data_sent_to_inbound_session first");
         let data = DataOrFin::<SignedBlockHeader>::try_from(
@@ -184,50 +186,6 @@ impl SwarmTrait for MockSwarm {
     fn report_peer(&mut self, peer_id: PeerId) {
         for sender in &self.reported_peer_senders {
             sender.unbounded_send(peer_id).unwrap();
-        }
-    }
-}
-
-#[derive(Default)]
-struct MockDBExecutor {
-    pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<(), DBExecutorError>>>,
-}
-
-#[async_trait]
-impl DBExecutorTrait for MockDBExecutor {
-    // TODO(shahak): Consider fixing code duplication with DBExecutor.
-    fn register_query(
-        &mut self,
-        query: Query,
-        _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Data>,
-    ) {
-        let headers = self.query_to_headers.get(&query).unwrap().clone();
-        self.query_execution_set.push(tokio::task::spawn(async move {
-            {
-                for header in headers.iter().cloned() {
-                    // Using poll_fn because Sender::poll_ready is not a future
-                    if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(Some(
-                            SignedBlockHeader { block_header: header, signatures: vec![] },
-                        ))))?;
-                    }
-                }
-                sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(None)))?;
-                Ok(())
-            }
-        }));
-    }
-    async fn run(&mut self) {
-        loop {
-            let result =
-                futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
-            if result.is_none() {
-                // We assume that if all queries are finished then there won't come any new
-                // queries.
-                return pending().await;
-            }
         }
     }
 }
