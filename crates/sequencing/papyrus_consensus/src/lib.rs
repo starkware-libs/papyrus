@@ -19,6 +19,8 @@ pub mod papyrus_consensus_context;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod single_height_consensus;
+#[allow(missing_docs)]
+pub mod state_machine;
 #[cfg(test)]
 pub(crate) mod test_utils;
 #[allow(dead_code)]
