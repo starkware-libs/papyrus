@@ -6,19 +6,19 @@ use starknet_types_core::felt::Felt;
 use tokio;
 
 use super::SingleHeightConsensus;
-use crate::test_utils::{MockTestContext, TestBlock};
-use crate::types::{ConsensusBlock, ProposalInit, ValidatorId};
+use crate::test_utils::{validator_id, MockTestContext, TestBlock};
+use crate::types::{ConsensusBlock, ProposalInit};
 
 #[tokio::test]
 async fn proposer() {
     let mut context = MockTestContext::new();
 
-    let node_id: ValidatorId = 1_u32.into();
+    let node_id = validator_id(1);
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
     // Set expectations for how the test should run:
     context
         .expect_validators()
-        .returning(move |_| vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()]);
+        .returning(move |_| vec![node_id, validator_id(2), validator_id(3), validator_id(4)]);
     context.expect_proposer().returning(move |_, _| node_id);
     let block_clone = block.clone();
     context.expect_build_proposal().returning(move |_| {
@@ -52,14 +52,14 @@ async fn proposer() {
 async fn validator() {
     let mut context = MockTestContext::new();
 
-    let node_id: ValidatorId = 1_u32.into();
-    let proposer: ValidatorId = 2_u32.into();
+    let node_id = validator_id(1);
+    let proposer = validator_id(2);
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
 
     // Set expectations for how the test should run:
     context
         .expect_validators()
-        .returning(move |_| vec![node_id, proposer, 3_u32.into(), 4_u32.into()]);
+        .returning(move |_| vec![node_id, proposer, validator_id(3), validator_id(4)]);
     context.expect_proposer().returning(move |_, _| proposer);
     let block_clone = block.clone();
     context.expect_validate_proposal().returning(move |_, _| {
