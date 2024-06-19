@@ -127,4 +127,19 @@ auto_impl_get_test_instance! {
     pub struct DeprecatedDeclaredClass {
         pub class_hash: ClassHash,
     }
+    pub struct StateDiffQuery(pub Query);
+    pub struct Query {
+        pub start_block: BlockHashOrNumber,
+        pub direction: Direction,
+        pub limit: u64,
+        pub step: u64,
+    }
+    pub enum BlockHashOrNumber {
+        Hash(BlockHash)=0,
+        Number(BlockNumber)=1,
+    }
+    pub enum Direction {
+        Forward=0,
+        Backward=1,
+    }
 }
