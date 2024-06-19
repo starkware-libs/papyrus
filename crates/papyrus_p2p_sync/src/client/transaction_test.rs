@@ -4,17 +4,28 @@ use assert_matches::assert_matches;
 use futures::{FutureExt, SinkExt, StreamExt};
 use indexmap::{indexmap, IndexMap};
 use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::protobuf::transaction;
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    DataOrFin,
+    Direction,
+    Query,
+    SignedBlockHeader,
+    TransactionQuery,
+};
 use papyrus_storage::state::StateStorageReader;
+use rand::Rng;
+use rand_chacha::ChaCha8Rng;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_types_core::felt::Felt;
 use static_assertions::const_assert;
-use test_utils::get_rng;
+use test_utils::{get_rng, GetTestInstance};
 
-use super::test_utils::{
+use crate::test_utils::{
     create_block_hashes_and_signatures,
     setup,
     TestArgs,
@@ -22,47 +33,12 @@ use super::test_utils::{
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     STATE_DIFF_QUERY_LENGTH,
 };
-use super::{P2PSyncError, StateDiffQuery};
+use crate::{P2PSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
 
-fn split_state_diff(state_diff: ThinStateDiff) -> Vec<ThinStateDiff> {
-    let mut result = Vec::new();
-    if !state_diff.deployed_contracts.is_empty() {
-        result.push(ThinStateDiff {
-            deployed_contracts: state_diff.deployed_contracts,
-            ..Default::default()
-        })
-    }
-    if !state_diff.storage_diffs.is_empty() {
-        result.push(ThinStateDiff { storage_diffs: state_diff.storage_diffs, ..Default::default() })
-    }
-    if !state_diff.declared_classes.is_empty() {
-        result.push(ThinStateDiff {
-            declared_classes: state_diff.declared_classes,
-            ..Default::default()
-        })
-    }
-    if !state_diff.deprecated_declared_classes.is_empty() {
-        result.push(ThinStateDiff {
-            deprecated_declared_classes: state_diff.deprecated_declared_classes,
-            ..Default::default()
-        })
-    }
-    if !state_diff.nonces.is_empty() {
-        result.push(ThinStateDiff { nonces: state_diff.nonces, ..Default::default() })
-    }
-    if !state_diff.replaced_classes.is_empty() {
-        result.push(ThinStateDiff {
-            replaced_classes: state_diff.replaced_classes,
-            ..Default::default()
-        })
-    }
-    result
-}
-
 #[tokio::test]
-async fn state_diff_basic_flow() {
+async fn transaction_basic_flow() {
     // Asserting the constants so the test can assume there will be 2 state diff queries for a
     // single header query and the second will be smaller than the first.
     const_assert!(STATE_DIFF_QUERY_LENGTH < HEADER_QUERY_LENGTH);
@@ -71,34 +47,34 @@ async fn state_diff_basic_flow() {
     let TestArgs {
         p2p_sync,
         storage_reader,
-        mut state_diff_query_receiver,
+        mut transaction_query_receiver,
         mut headers_sender,
-        mut state_diffs_sender,
+        mut transaction_sender,
         // The test will fail if we drop this.
         // We don't need to read the header query in order to know which headers to send, and we
         // already validate the header query in a different test.
         header_query_receiver: _header_query_receiver,
-        transaction_query_receiver: _transaction_query_receiver,
-        transaction_sender: _transaction_sender,
+        state_diff_query_receiver: _state_diff_query_receiver,
+        state_diffs_sender: _state_diffs_sender,
     } = setup();
 
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures(HEADER_QUERY_LENGTH.try_into().unwrap());
     let mut rng = get_rng();
-    let state_diffs =
-        (0..HEADER_QUERY_LENGTH).map(|_| create_random_state_diff(&mut rng)).collect::<Vec<_>>();
+    let transactions =
+        (0..HEADER_QUERY_LENGTH).map(|_| create_n_transactions(&mut rng)).collect::<Vec<_>>();
 
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
-        // We wait for the state diff sync to see that there are no headers and start sleeping
+        // We wait for the transaction sync to see that there are no headers and start sleeping
         tokio::time::sleep(SLEEP_DURATION_TO_LET_SYNC_ADVANCE).await;
 
-        // Check that before we send headers there is no state diff query.
-        assert!(state_diff_query_receiver.next().now_or_never().is_none());
+        // Check that before we send headers there is no transaction query.
+        assert!(transaction_query_receiver.next().now_or_never().is_none());
 
         // Send headers for entire query.
-        for (i, ((block_hash, block_signature), state_diff)) in
-            block_hashes_and_signatures.iter().zip(state_diffs.iter()).enumerate()
+        for (i, ((block_hash, block_signature), n_transactions)) in
+            block_hashes_and_signatures.iter().zip(transactions.iter()).enumerate()
         {
             // Send responses
             headers_sender
@@ -107,7 +83,7 @@ async fn state_diff_basic_flow() {
                         block_header: BlockHeader {
                             block_number: BlockNumber(i.try_into().unwrap()),
                             block_hash: *block_hash,
-                            state_diff_length: Some(state_diff.len()),
+                            n_transactions: Some(n_transactions.len()),
                             ..Default::default()
                         },
                         signatures: vec![*block_signature],
@@ -122,10 +98,10 @@ async fn state_diff_basic_flow() {
             (STATE_DIFF_QUERY_LENGTH, HEADER_QUERY_LENGTH - STATE_DIFF_QUERY_LENGTH),
         ] {
             // Get a state diff query and validate it
-            let query = state_diff_query_receiver.next().await.unwrap();
+            let query = transaction_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
-                StateDiffQuery(Query {
+                TransactionQuery(Query {
                     start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: num_blocks,
@@ -135,7 +111,7 @@ async fn state_diff_basic_flow() {
 
             for block_number in start_block_number..(start_block_number + num_blocks) {
                 let expected_state_diff: &ThinStateDiff =
-                    &state_diffs[usize::try_from(block_number).unwrap()];
+                    &transactions[usize::try_from(block_number).unwrap()];
                 let state_diff_parts = split_state_diff(expected_state_diff.clone());
 
                 let block_number = BlockNumber(block_number);
@@ -144,7 +120,7 @@ async fn state_diff_basic_flow() {
                     let txn = storage_reader.begin_ro_txn().unwrap();
                     assert_eq!(block_number, txn.get_state_marker().unwrap());
 
-                    state_diffs_sender
+                    transaction_sender
                         .send((Ok(DataOrFin(Some(state_diff_part))), Box::new(|| {})))
                         .await
                         .unwrap();
@@ -172,6 +148,16 @@ async fn state_diff_basic_flow() {
         _ = parse_queries_future => {}
     }
 }
+pub fn create_n_transactions(rng: &mut ChaCha8Rng) -> (Vec<(Transaction, TransactionOutput)>) {
+    let n_transactions = rng.gen_range(0..10);
+    (0..n_transactions)
+        .map(|_| {
+            let transaction = Transaction::get_test_instance(rng);
+            let transaction_output = TransactionOutput::get_test_instance(rng);
+            (transaction, transaction_output)
+        })
+        .collect()
+}
 
 async fn validate_state_diff_fails(
     state_diff_length_in_header: usize,
@@ -188,8 +174,7 @@ async fn validate_state_diff_fails(
         // We don't need to read the header query in order to know which headers to send, and we
         // already validate the header query in a different test.
         header_query_receiver: _header_query_receiver,
-        transaction_query_receiver: _transaction_query_receiver,
-        transaction_sender: _transaction_sender,
+        ..
     } = setup();
 
     let (block_hash, block_signature) = *create_block_hashes_and_signatures(1).first().unwrap();
