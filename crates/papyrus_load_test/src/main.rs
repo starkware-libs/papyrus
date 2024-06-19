@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
     let metrics = GooseAttack::initialize()?
         // The choice between versions must be also in the environment variable VERSION_ID.
         // TODO(dvir): Add scenarios for v0_5 and v0_6.
-        .register_scenario(scenarios::general_request_v0_4())
+        .register_scenario(scenarios::benchmark_scenario())
         .execute()
         .await?;
 

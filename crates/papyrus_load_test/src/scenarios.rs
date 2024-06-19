@@ -108,3 +108,21 @@ pub fn general_request_v0_4() -> Scenario {
     }
     scenario
 }
+
+pub fn benchmark_scenario() -> Scenario {
+    let mut scenario = Scenario::new("benchmark_scenario");
+    // This is the scenario name to run from the command line.
+    // This name must be alphanumeric, so instead of letting Goose do the conversion from the
+    // scenario name for us, we give it the name we want.
+    scenario.machine_name = "benchmarkscenario".to_string();
+
+    scenario = scenario
+        .register_transaction(txs::trace_block_transactions_by_number().set_weight(1).unwrap());
+    scenario =
+        scenario.register_transaction(txs::get_state_update_by_number().set_weight(1).unwrap());
+    scenario = scenario.register_transaction(
+        txs::get_block_with_full_transactions_and_receipts_by_number().set_weight(1).unwrap(),
+    );
+
+    scenario
+}
