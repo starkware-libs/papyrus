@@ -502,6 +502,65 @@ impl NetworkManager {
     }
 }
 
+#[cfg(test)]
+const CHANNEL_BUFFER_SIZE: usize = 1000;
+
+#[cfg(test)]
+pub fn test_register_broadcast_subscriber<T, U>()
+-> Result<TestSubscriberChannels<T, U>, SubscriptionError>
+where
+    T: TryFrom<Bytes>,
+    Bytes: From<T>,
+    U: TryFrom<Bytes>,
+    Bytes: From<U>,
+{
+    let (messages_to_broadcast_sender, mock_messages_to_broadcast_receiver) =
+        futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
+    let (mock_broadcasted_messages_sender, broadcasted_messages_receiver) =
+        futures::channel::mpsc::channel(CHANNEL_BUFFER_SIZE);
+
+    let messages_to_broadcast_fn: fn(T) -> Ready<Result<Bytes, SendError>> =
+        |x| ready(Ok(Bytes::from(x)));
+    let messages_to_broadcast_sender = messages_to_broadcast_sender.with(messages_to_broadcast_fn);
+
+    let broadcasted_messages_fn: ReceivedMessagesConverterFn<T> =
+        |(x, report_callback)| (T::try_from(x), report_callback);
+    let broadcasted_messages_receiver = broadcasted_messages_receiver.map(broadcasted_messages_fn);
+
+    let network_subscribers =
+        BroadcastSubscriberChannels { messages_to_broadcast_sender, broadcasted_messages_receiver };
+
+    let mock_messages_to_broadcast_fn: MockMessagesToBroadcastFn<U> =
+        |(x, report_call_back)| ready(Ok((Bytes::from(x), report_call_back)));
+
+    let mock_broadcasted_messages_sender =
+        mock_broadcasted_messages_sender.with(mock_messages_to_broadcast_fn);
+
+    let mock_broadcasted_messages_fn: fn(Bytes) -> U = |x| match U::try_from(x) {
+        Ok(result) => result,
+        Err(_) => {
+            panic!("Failed to convert Bytes to U");
+        }
+    };
+    let mock_messages_to_broadcast_receiver =
+        mock_messages_to_broadcast_receiver.map(mock_broadcasted_messages_fn);
+
+    let mock_network_subscribers = BroadcastNetworkMock {
+        broadcasted_messages_sender: mock_broadcasted_messages_sender,
+        messages_to_broadcast_receiver: mock_messages_to_broadcast_receiver,
+    };
+
+    Ok(TestSubscriberChannels {
+        subscriber_channels: network_subscribers,
+        mock_network: mock_network_subscribers,
+    })
+}
+
+#[allow(dead_code)]
+fn return_report_callback() -> ReportCallback {
+    Box::new(|| {})
+}
+
 // TODO(shahak): Change to a wrapper of PeerId if Box dyn becomes an overhead.
 pub type ReportCallback = Box<dyn Fn() + Send>;
 
@@ -530,6 +589,29 @@ pub struct SqmrSubscriberChannels<Query: Into<Bytes>, Response: TryFrom<Bytes>> 
 pub struct BroadcastSubscriberChannels<T: TryFrom<Bytes>> {
     pub messages_to_broadcast_sender: SubscriberSender<T>,
     pub broadcasted_messages_receiver: SubscriberReceiver<T>,
+}
+
+pub type TestSubscriberSender<T> = With<
+    Sender<(Bytes, ReportCallback)>,
+    (Bytes, ReportCallback),
+    (T, ReportCallback),
+    Ready<Result<(Bytes, ReportCallback), SendError>>,
+    MockMessagesToBroadcastFn<T>,
+>;
+
+type MockMessagesToBroadcastFn<T> =
+    fn((T, ReportCallback)) -> Ready<Result<(Bytes, ReportCallback), SendError>>;
+
+pub type TestSubscriberReceiver<T> = Map<Receiver<Bytes>, fn(Bytes) -> T>;
+
+pub struct BroadcastNetworkMock<T: TryFrom<Bytes>> {
+    pub broadcasted_messages_sender: TestSubscriberSender<T>,
+    pub messages_to_broadcast_receiver: TestSubscriberReceiver<T>,
+}
+
+pub struct TestSubscriberChannels<T: TryFrom<Bytes>, U: TryFrom<Bytes>> {
+    pub subscriber_channels: BroadcastSubscriberChannels<T>,
+    pub mock_network: BroadcastNetworkMock<U>,
 }
 
 type SqmrResponseReceiver<Response> =
