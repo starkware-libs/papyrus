@@ -129,6 +129,11 @@
     "privacy": "Public",
     "value": 10001
   },
+  "network.secret_key": {
+    "description": "The secret key used for building the peer id. If it's an empty string a random one will be used.",
+    "privacy": "Private",
+    "value": ""
+  },
   "network.session_timeout": {
     "description": "Maximal time in seconds that each session can take before failing on timeout.",
     "privacy": "Public",

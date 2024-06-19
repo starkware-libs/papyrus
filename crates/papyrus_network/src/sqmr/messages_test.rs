@@ -6,8 +6,7 @@ use pretty_assertions::assert_eq;
 use super::{
     read_message,
     read_message_without_length_prefix,
-    with_length_prefix,
-    write_length_prefixed_message,
+    write_message,
     write_message_without_length_prefix,
 };
 use crate::test_utils::{dummy_data, get_connected_streams};
@@ -17,7 +16,7 @@ async fn read_write_positive_flow() {
     let (mut stream1, mut stream2, _) = get_connected_streams().await;
     let messages = dummy_data();
     for message in &messages {
-        write_length_prefixed_message(&with_length_prefix(message), &mut stream1).await.unwrap();
+        write_message(message, &mut stream1).await.unwrap();
     }
     for expected_message in &messages {
         assert_eq!(*expected_message, read_message(&mut stream2).await.unwrap().unwrap());

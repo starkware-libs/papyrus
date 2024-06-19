@@ -1,12 +1,8 @@
-use std::task::Poll;
-
-use assert_matches::assert_matches;
 use futures::channel::mpsc::Receiver;
-use futures::future::poll_fn;
 use futures::stream::SelectAll;
 use futures::{FutureExt, StreamExt};
 use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::sync::{BlockHashOrNumber, Direction, Query, SignedBlockHeader};
+use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
@@ -15,14 +11,7 @@ use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use test_utils::get_rng;
 
-use super::Data::BlockHeaderAndSignature;
-use crate::db_executor::{
-    DBExecutorError,
-    DBExecutorTrait,
-    Data,
-    MockFetchBlockDataFromDb,
-    QueryId,
-};
+use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, MockFetchBlockDataFromDb};
 use crate::DataType;
 
 const BUFFER_SIZE: usize = 10;
@@ -43,15 +32,14 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    type ReceiversType = Vec<(Receiver<Vec<Data>>, DataType)>;
-    let (query_ids, mut receivers): (Vec<QueryId>, ReceiversType) =
-        enum_iterator::all::<DataType>()
-            .map(|data_type| {
-                let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-                let query_id = db_executor.register_query(query.clone(), data_type, sender);
-                (query_id, (receiver, data_type))
-            })
-            .unzip();
+    type ReceiversType = Vec<(Receiver<Data>, DataType)>;
+    let mut receivers: ReceiversType = enum_iterator::all::<DataType>()
+        .map(|data_type| {
+            let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+            db_executor.register_query(query.clone(), data_type, sender);
+            (receiver, data_type)
+        })
+        .collect();
     let mut receivers_stream = SelectAll::new();
     receivers
         .iter_mut()
@@ -66,27 +54,34 @@ async fn header_db_executor_can_register_and_run_a_query() {
 
     // run the executor and collect query results.
     tokio::select! {
-        res = db_executor.next() => {
-            let poll_res = res.unwrap();
-            let res_query_id = poll_res.unwrap();
-            assert!(query_ids.iter().any(|query_id| query_id == &res_query_id));
+        _ = db_executor.run() => {
+            panic!("DB executor should never finish its run.");
         },
         _ = async {
             while let Some(res) = receivers_stream.next().await {
                 let (data, requested_data_type) = res.await;
-                assert_eq!(data.len(), NUM_OF_BLOCKS as usize);
-                for (i, data) in data.iter().enumerate() {
-                    for data in data.iter() {
-                        match data {
-                            Data::BlockHeaderAndSignature(SignedBlockHeader { block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, .. }) => {
-                                assert_eq!(block_number, &(i as u64));
-                                assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
-                            }
-                            Data::StateDiffChunk (_state_diff)  => {
-                                // TODO: check the state diff.
-                                assert_eq!(*requested_data_type, DataType::StateDiff);
-                            }
-                            _ => panic!("Unexpected data type"),
+                let len = data.len();
+                if matches!(requested_data_type, DataType::SignedBlockHeader) {
+                    assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
+                }
+                for (i, data) in data.into_iter().enumerate() {
+                    match &data {
+                        Data::BlockHeaderAndSignature(_) => {
+                            assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
+                        }
+                        Data::StateDiffChunk(_) => {
+                            assert_eq!(*requested_data_type, DataType::StateDiff);
+                        }
+                    }
+                    match data {
+                        Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
+                            assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                        }
+                        Data::StateDiffChunk(DataOrFin(Some(_state_diff)))  => {
+                            // TODO: check the state diff.
+                        }
+                        _ => {
+                            assert_eq!(i, len - 1);
                         }
                     }
                 }
@@ -121,23 +116,29 @@ async fn header_db_executor_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let query_id = db_executor.register_query(query, DataType::SignedBlockHeader, sender);
+    db_executor.register_query(query, DataType::SignedBlockHeader, sender);
 
     // run the executor and collect query results.
     tokio::select! {
-        res = db_executor.next() => {
-            let poll_res = res.unwrap();
-            let res_query_id = poll_res.unwrap();
-            assert_eq!(res_query_id, query_id);
-        }
+        _ = db_executor.run() => {
+            panic!("DB executor should never finish its run.");
+        },
         res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), NUM_OF_BLOCKS as usize);
-            for (i, data) in res.iter().enumerate() {
-                assert_matches!(data.first().unwrap(), BlockHeaderAndSignature(SignedBlockHeader{block_header: BlockHeader { block_number: BlockNumber(block_number), .. }, ..}) if block_number == &(i as u64));
+            let len = res.len();
+            assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
+            for (i, data) in res.into_iter().enumerate() {
+                match data {
+                    Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
+                        assert_eq!(signed_header.block_header.block_number.0, i as u64);
+                    }
+                    Data::BlockHeaderAndSignature(DataOrFin(None)) => assert_eq!(i, len - 1),
+                    _ => panic!("Unexpected data type"),
+                };
             }
         }
     }
 }
+
 #[tokio::test]
 async fn header_db_executor_query_of_missing_block() {
     let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
@@ -157,101 +158,27 @@ async fn header_db_executor_query_of_missing_block() {
     };
     let mut mock_data_type = MockFetchBlockDataFromDb::new();
     mock_data_type.expect_fetch_block_data_from_db().times((BLOCKS_DELTA + 1) as usize).returning(
-        |block_number, query_id, _| {
+        |block_number, _| {
             if block_number.0 == NUM_OF_BLOCKS {
                 Err(DBExecutorError::BlockNotFound {
                     block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                    query_id,
                 })
             } else {
                 Ok(vec![Data::default()])
             }
         },
     );
-    let _query_id = db_executor.register_query(query, mock_data_type, sender);
+    mock_data_type.expect_fin().times(1).returning(Data::default);
+    db_executor.register_query(query, mock_data_type, sender);
 
     tokio::select! {
-        res = db_executor.next() => {
-            let poll_res = res.unwrap();
-            assert_matches!(poll_res, Err(DBExecutorError::BlockNotFound{..}));
-        }
+        _ = db_executor.run() => {
+            panic!("DB executor should never finish its run.");
+        },
         res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), (BLOCKS_DELTA) as usize);
+            assert_eq!(res.len(), (BLOCKS_DELTA + 1) as usize);
         }
     }
-}
-
-#[test]
-fn header_db_executor_stream_pending_with_no_query() {
-    let ((storage_reader, _), _temp_dir) = get_test_storage();
-    let mut db_executor = super::DBExecutor::new(storage_reader);
-
-    // poll without registering a query.
-    assert!(poll_fn(|cx| db_executor.poll_next_unpin(cx)).now_or_never().is_none());
-}
-
-#[tokio::test]
-async fn header_db_executor_can_receive_queries_after_stream_is_exhausted() {
-    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
-    let mut db_executor = super::DBExecutor::new(storage_reader);
-
-    const NUM_OF_BLOCKS: u64 = 10;
-    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
-
-    for _ in 0..2 {
-        // register a query.
-        let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-        let query = Query {
-            start_block: BlockHashOrNumber::Number(BlockNumber(0)),
-            direction: Direction::Forward,
-            limit: NUM_OF_BLOCKS,
-            step: 1,
-        };
-        let mut mock_data_type = MockFetchBlockDataFromDb::new();
-        mock_data_type
-            .expect_fetch_block_data_from_db()
-            .times(NUM_OF_BLOCKS as usize)
-            .returning(|_, _, _| Ok(vec![Data::default()]));
-        let query_id = db_executor.register_query(query, mock_data_type, sender);
-
-        // run the executor and collect query results.
-        receiver.collect::<Vec<_>>().await;
-        let res = db_executor.next().await;
-        assert_eq!(res.unwrap().unwrap(), query_id);
-
-        // make sure the stream is pending.
-        let res = poll_fn(|cx| match db_executor.poll_next_unpin(cx) {
-            Poll::Pending => Poll::Ready(Ok(())),
-            Poll::Ready(ready) => Poll::Ready(Err(ready)),
-        })
-        .await;
-        assert!(res.is_ok());
-    }
-}
-
-#[tokio::test]
-async fn header_db_executor_drop_receiver_before_query_is_done() {
-    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
-    let mut db_executor = super::DBExecutor::new(storage_reader);
-
-    const NUM_OF_BLOCKS: u64 = 10;
-    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
-
-    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = Query {
-        start_block: BlockHashOrNumber::Number(BlockNumber(1)),
-        direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
-        step: 1,
-    };
-    drop(receiver);
-
-    // register a query.
-    let _query_id = db_executor.register_query(query, MockFetchBlockDataFromDb::new(), sender);
-
-    // executor should return an error.
-    let res = db_executor.next().await;
-    assert!(res.unwrap().is_err());
 }
 
 fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut StorageWriter) {

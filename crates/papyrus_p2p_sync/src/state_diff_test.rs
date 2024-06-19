@@ -8,8 +8,9 @@ use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query, Sig
 use papyrus_storage::state::StateStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use starknet_api::core::{ClassHash, CompiledClassHash, ContractAddress, Nonce};
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use static_assertions::const_assert;
 use test_utils::get_rng;
 
@@ -21,7 +22,7 @@ use crate::test_utils::{
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     STATE_DIFF_QUERY_LENGTH,
 };
-use crate::P2PSyncError;
+use crate::{P2PSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
 
@@ -122,12 +123,12 @@ async fn state_diff_basic_flow() {
             let query = state_diff_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
-                Query {
+                StateDiffQuery(Query {
                     start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
                     direction: Direction::Forward,
                     limit: num_blocks,
                     step: 1,
-                }
+                })
             );
 
             for block_number in start_block_number..(start_block_number + num_blocks) {
@@ -212,12 +213,12 @@ async fn validate_state_diff_fails(
         let query = state_diff_query_receiver.next().await.unwrap();
         assert_eq!(
             query,
-            Query {
+            StateDiffQuery(Query {
                 start_block: BlockHashOrNumber::Number(BlockNumber(0)),
                 direction: Direction::Forward,
                 limit: 1,
                 step: 1,
-            }
+            })
         );
 
         // Send state diffs.
@@ -321,13 +322,13 @@ async fn state_diff_conflicting() {
         vec![
             Some(ThinStateDiff {
                 storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => StarkFelt::default()
+                    StorageKey::default() => Felt::default()
                 }},
                 ..Default::default()
             }),
             Some(ThinStateDiff {
                 storage_diffs: indexmap! { ContractAddress::default() => indexmap! {
-                    StorageKey::default() => StarkFelt::default()
+                    StorageKey::default() => Felt::default()
                 }},
                 ..Default::default()
             }),

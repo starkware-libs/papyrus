@@ -20,10 +20,13 @@ use papyrus_storage::StorageTxn;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
-use starknet_api::deprecated_contract_class::Program;
-use starknet_api::hash::StarkFelt;
+use starknet_api::deprecated_contract_class::{
+    ContractClass as StarknetApiDeprecatedContractClass,
+    Program,
+};
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{EventKey, Fee, TransactionHash, TransactionOffsetInBlock};
+use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use super::block::Block;
@@ -104,7 +107,7 @@ pub trait JsonRpc {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> RpcResult<StarkFelt>;
+    ) -> RpcResult<Felt>;
 
     /// Gets the details of a submitted transaction.
     #[method(name = "getTransactionByHash")]
@@ -191,7 +194,7 @@ pub trait JsonRpc {
     /// Executes the entry point of the contract at the given address with the given calldata,
     /// returns the result (Retdata).
     #[method(name = "call")]
-    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>>;
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<Felt>>;
 
     /// Submits a new invoke transaction to be added to the chain.
     #[method(name = "addInvokeTransaction")]
@@ -260,7 +263,7 @@ pub trait JsonRpc {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> RpcResult<CasmContractClass>;
+    ) -> RpcResult<CompiledContractClass>;
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -669,4 +672,10 @@ pub(crate) fn decompress_program(
 pub struct TransactionTraceWithHash {
     pub transaction_hash: TransactionHash,
     pub trace_root: TransactionTrace,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
+pub enum CompiledContractClass {
+    V0(StarknetApiDeprecatedContractClass),
+    V1(CasmContractClass),
 }

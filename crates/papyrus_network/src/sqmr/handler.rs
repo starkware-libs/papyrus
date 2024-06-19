@@ -200,6 +200,7 @@ impl ConnectionHandler for Handler {
                         RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
                             outbound_session_id: *outbound_session_id,
                             data,
+                            peer_id: self.peer_id,
                         }),
                     ));
                     true

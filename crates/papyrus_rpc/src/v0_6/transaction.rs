@@ -24,7 +24,6 @@ use starknet_api::core::{
     Nonce,
 };
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::StarkFelt;
 use starknet_api::serde_utils::bytes_from_hex_str;
 use starknet_api::transaction::{
     AccountDeploymentData,
@@ -44,6 +43,7 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_client::writer::objects::transaction as client_transaction;
+use starknet_types_core::felt::Felt;
 
 use super::error::BLOCK_NOT_FOUND;
 use crate::internal_server_error;
@@ -863,15 +863,17 @@ impl From<(starknet_api::transaction::TransactionOutput, TransactionVersion, Opt
         ),
     ) -> Self {
         let (tx_output, tx_version, maybe_msg_hash) = tx_output_msg_hash;
-        let actual_fee = match tx_version {
-            TransactionVersion::ZERO | TransactionVersion::ONE | TransactionVersion::TWO => {
-                FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Wei }
-            }
-            TransactionVersion::THREE => {
-                FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Fri }
-            }
-            _ => unreachable!("Invalid transaction version."),
+        // TODO: consider supporting match instead.
+        let actual_fee = if tx_version == TransactionVersion::ZERO
+            || tx_version == TransactionVersion::ONE
+            || tx_version == TransactionVersion::TWO
+        {
+            FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Wei }
+        } else {
+            // TransactionVersion::THREE
+            FeePayment { amount: tx_output.actual_fee(), unit: PriceUnit::Fri }
         };
+
         match tx_output {
             starknet_api::transaction::TransactionOutput::Declare(declare_tx_output) => {
                 TransactionOutput::Declare(DeclareTransactionOutput {
@@ -995,7 +997,7 @@ pub fn get_block_tx_hashes_by_number<Mode: TransactionKind>(
 }
 
 /// The hash of a L1 -> L2 message.
-// The hash is Keccak256, so it doesn't necessarily fit in a StarkFelt.
+// The hash is Keccak256, so it doesn't necessarily fit in a Felt.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct L1L2MsgHash(pub [u8; 32]);
 
@@ -1061,15 +1063,15 @@ fn l1_handler_message_hash(
     let (from_address, payload) =
         calldata.0.split_first().expect("Invalid calldata, expected at least from_address");
 
-    let from_address = Token::Bytes(from_address.bytes().to_vec());
-    let to_address = Token::Bytes(contract_address.0.key().bytes().to_vec());
-    let nonce = Token::Bytes(nonce.bytes().to_vec());
-    let selector = Token::Bytes(entry_point_selector.0.bytes().to_vec());
-    let payload_length_as_felt = StarkFelt::from(payload.len() as u64);
-    let payload_length = Token::Bytes(payload_length_as_felt.bytes().to_vec());
+    let from_address = Token::Bytes(from_address.to_bytes_be().to_vec());
+    let to_address = Token::Bytes(contract_address.0.key().to_bytes_be().to_vec());
+    let nonce = Token::Bytes(nonce.to_bytes_be().to_vec());
+    let selector = Token::Bytes(entry_point_selector.0.to_bytes_be().to_vec());
+    let payload_length_as_felt = Felt::from(payload.len() as u64);
+    let payload_length = Token::Bytes(payload_length_as_felt.to_bytes_be().to_vec());
 
     let mut payload: Vec<_> =
-        payload.iter().map(|felt| Token::Bytes(felt.bytes().to_vec())).collect();
+        payload.iter().map(|felt| Token::Bytes(felt.to_bytes_be().to_vec())).collect();
 
     let mut to_encode = vec![from_address, to_address, nonce, selector, payload_length];
     to_encode.append(&mut payload);
@@ -1115,11 +1117,11 @@ impl From<MessageFromL1> for L1HandlerTransaction {
 }
 
 // TODO(yair): move to SN_API and implement as From.
-fn eth_address_to_felt(eth_address: EthAddress) -> StarkFelt {
+fn eth_address_to_felt(eth_address: EthAddress) -> Felt {
     let eth_address_as_bytes = eth_address.0.to_fixed_bytes();
     let mut bytes: [u8; 32] = [0; 32];
     bytes[12..32].copy_from_slice(&eth_address_as_bytes);
-    StarkFelt::new(bytes).expect("Eth address should fit in Felt")
+    Felt::from_bytes_be(&bytes)
 }
 
 /// An InvokeTransactionV1 that has the type field. This enum can be used to serialize/deserialize

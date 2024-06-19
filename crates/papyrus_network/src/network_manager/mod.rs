@@ -8,28 +8,25 @@ use std::collections::HashMap;
 use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
 use futures::future::{ready, Ready};
 use futures::sink::With;
-use futures::stream::{self, BoxStream, Map, SelectAll};
+use futures::stream::{self, Chain, Map, Once};
 use futures::{SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
 use metrics::gauge;
 use papyrus_common::metrics as papyrus_metrics;
-use papyrus_protobuf::sync::{HeaderQuery, StateDiffQuery};
 use papyrus_storage::StorageReader;
 use sqmr::Bytes;
 use tracing::{debug, error, info, trace};
 
 use self::swarm_trait::SwarmTrait;
 use crate::bin_utils::build_swarm;
-use crate::db_executor::{self, DBExecutor, DBExecutorTrait, Data, QueryId};
+use crate::db_executor::{DBExecutor, DBExecutorTrait, Data};
 use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol, Query};
-
-type StreamCollection = SelectAll<BoxStream<'static, (Data, InboundSessionId)>>;
+use crate::{gossipsub_impl, DataType, NetworkConfig, Protocol};
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -41,18 +38,17 @@ pub struct GenericNetworkManager<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrai
     swarm: SwarmT,
     db_executor: DBExecutorT,
     header_buffer_size: usize,
-    query_results_router: StreamCollection,
+    sqmr_inbound_response_receivers: StreamHashMap<InboundSessionId, SqmrResponseReceiver<Data>>,
     // Splitting the response receivers from the query senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
-    sqmr_query_receivers: StreamHashMap<Protocol, Receiver<Bytes>>,
-    sqmr_response_senders: HashMap<Protocol, Sender<(Bytes, ReportCallback)>>,
+    sqmr_outbound_query_receivers: StreamHashMap<Protocol, Receiver<Bytes>>,
+    sqmr_outbound_response_senders: HashMap<Protocol, Sender<(Bytes, ReportCallback)>>,
     // Splitting the broadcast receivers from the broadcasted senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
     messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
     broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
-    query_id_to_inbound_session_id: HashMap<QueryId, InboundSessionId>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
     reported_peer_receiver: UnboundedReceiver<PeerId>,
     // We keep this just for giving a clone of it for subscribers.
@@ -67,9 +63,9 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         loop {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
-                Some(res) = self.db_executor.next() => self.handle_db_executor_result(res),
-                Some(res) = self.query_results_router.next() => self.handle_query_result_routing_to_other_peer(res),
-                Some((protocol, query)) = self.sqmr_query_receivers.next() => {
+                _ = self.db_executor.run() => panic!("DB executor should never finish."),
+                Some(res) = self.sqmr_inbound_response_receivers.next() => self.handle_response_for_inbound_query(res),
+                Some((protocol, query)) = self.sqmr_outbound_query_receivers.next() => {
                     self.handle_local_sqmr_query(protocol, query)
                 }
                 Some((topic_hash, message)) = self.messages_to_broadcast_receivers.next() => {
@@ -91,12 +87,11 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             swarm,
             db_executor,
             header_buffer_size,
-            query_results_router: StreamCollection::new(),
-            sqmr_query_receivers: StreamHashMap::new(HashMap::new()),
-            sqmr_response_senders: HashMap::new(),
+            sqmr_inbound_response_receivers: StreamHashMap::new(HashMap::new()),
+            sqmr_outbound_query_receivers: StreamHashMap::new(HashMap::new()),
+            sqmr_outbound_response_senders: HashMap::new(),
             messages_to_broadcast_receivers: StreamHashMap::new(HashMap::new()),
             broadcasted_messages_senders: HashMap::new(),
-            query_id_to_inbound_session_id: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
             reported_peer_sender,
             reported_peer_receiver,
@@ -107,10 +102,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
 
     /// Register a new subscriber for sending a single query and receiving multiple responses.
     /// Panics if the given protocol is already subscribed.
-    pub fn register_sqmr_subscriber<Response: TryFrom<Bytes>>(
+    pub fn register_sqmr_subscriber<Query, Response>(
         &mut self,
         protocol: Protocol,
-    ) -> SqmrSubscriberChannels<Response> {
+    ) -> SqmrSubscriberChannels<Query, Response>
+    where
+        Bytes: From<Query>,
+        Response: TryFrom<Bytes>,
+    {
         // TODO(shahak): Remove header_buffer_size from config and add buffer_size as an argument
         // to this function.
         let (query_sender, query_receiver) =
@@ -118,20 +117,17 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         let (response_sender, response_receiver) =
             futures::channel::mpsc::channel(self.header_buffer_size);
 
-        let insert_result = self.sqmr_query_receivers.insert(protocol, query_receiver);
+        let insert_result = self.sqmr_outbound_query_receivers.insert(protocol, query_receiver);
         if insert_result.is_some() {
             panic!("Protocol '{}' has already been registered.", protocol);
         }
-        let insert_result = self.sqmr_response_senders.insert(protocol, response_sender);
+        let insert_result = self.sqmr_outbound_response_senders.insert(protocol, response_sender);
         if insert_result.is_some() {
             panic!("Protocol '{}' has already been registered.", protocol);
         }
 
-        // TODO(shahak): Remove specific protocol from this code.
-        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> = match protocol {
-            Protocol::SignedBlockHeader => |x| ready(Ok(Bytes::from(HeaderQuery(x)))),
-            Protocol::StateDiff => |x| ready(Ok(Bytes::from(StateDiffQuery(x)))),
-        };
+        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> =
+            |query| ready(Ok(Bytes::from(query)));
         let query_sender = query_sender.with(query_fn);
 
         let response_fn: ReceivedMessagesConverterFn<Response> =
@@ -248,25 +244,6 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_db_executor_result(
-        &mut self,
-        res: Result<db_executor::QueryId, db_executor::DBExecutorError>,
-    ) {
-        match res {
-            Ok(query_id) => {
-                // TODO: in case we want to do bookkeeping, this is the place.
-                debug!("Query completed successfully. query_id: {query_id:?}");
-            }
-            Err(err) => {
-                if err.should_log_in_error_level() {
-                    error!("Query failed. error: {err:?}");
-                } else {
-                    debug!("Query failed. error: {err:?}");
-                }
-            }
-        };
-    }
-
     fn handle_behaviour_event(&mut self, event: mixed_behaviour::Event) {
         match event {
             mixed_behaviour::Event::ExternalEvent(external_event) => {
@@ -281,7 +258,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     fn handle_behaviour_external_event(&mut self, event: mixed_behaviour::ExternalEvent) {
         match event {
             mixed_behaviour::ExternalEvent::Sqmr(event) => {
-                self.handle_stream_bytes_behaviour_event(event);
+                self.handle_sqmr_behaviour_event(event);
             }
             mixed_behaviour::ExternalEvent::GossipSub(event) => {
                 self.handle_gossipsub_behaviour_event(event);
@@ -304,7 +281,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         self.swarm.behaviour_mut().gossipsub.on_other_behaviour_event(&event);
     }
 
-    fn handle_stream_bytes_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
+    fn handle_sqmr_behaviour_event(&mut self, event: sqmr::behaviour::ExternalEvent) {
         match event {
             sqmr::behaviour::ExternalEvent::NewInboundSession {
                 query,
@@ -327,17 +304,14 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     Protocol::try_from(protocol_name).expect("Encountered unknown protocol");
                 let internal_query = protocol.bytes_query_to_protobuf_request(query);
                 let data_type = DataType::from(protocol);
-                let query_id = self.db_executor.register_query(internal_query, data_type, sender);
-                self.query_id_to_inbound_session_id.insert(query_id, inbound_session_id);
-                self.query_results_router.push(
-                    receiver
-                        .flat_map(futures::stream::iter)
-                        .chain(stream::once(async move { Data::Fin(data_type) }))
-                        .map(move |data| (data, inbound_session_id))
-                        .boxed(),
+                self.db_executor.register_query(internal_query, data_type, sender);
+                let response_fn: fn(Data) -> Option<Data> = Some;
+                self.sqmr_inbound_response_receivers.insert(
+                    inbound_session_id,
+                    receiver.map(response_fn).chain(stream::once(ready(None))),
                 );
             }
-            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data } => {
+            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data, peer_id } => {
                 trace!(
                     "Received data from peer for session id: {outbound_session_id:?}. sending to \
                      sync subscriber."
@@ -346,10 +320,12 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     .outbound_session_id_to_protocol
                     .get(&outbound_session_id)
                     .expect("Received data from an unknown session id");
-                if let Some(response_sender) = self.sqmr_response_senders.get_mut(protocol) {
+                let report_callback = self.create_external_callback_for_received_data(peer_id);
+                if let Some(response_sender) = self.sqmr_outbound_response_senders.get_mut(protocol)
+                {
                     // TODO(shahak): Implement the report callback, while removing code duplication
                     // with broadcast.
-                    if let Err(error) = response_sender.try_send((data, Box::new(|| {}))) {
+                    if let Err(error) = response_sender.try_send((data, report_callback)) {
                         if error.is_disconnected() {
                             panic!("Receiver was dropped. This should never happen.")
                         } else if error.is_full() {
@@ -382,6 +358,8 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
     fn handle_gossipsub_behaviour_event(&mut self, event: gossipsub_impl::ExternalEvent) {
         match event {
             gossipsub_impl::ExternalEvent::Received { originated_peer_id, message, topic_hash } => {
+                let report_callback =
+                    self.create_external_callback_for_received_data(originated_peer_id);
                 let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic_hash) else {
                     error!(
                         "Received a message from a topic we're not subscribed to with hash \
@@ -389,14 +367,7 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
                     );
                     return;
                 };
-                let reported_peer_sender = self.reported_peer_sender.clone();
-                let send_result = sender.try_send((
-                    message,
-                    Box::new(move || {
-                        // TODO(shahak): Check if we can panic in case of error.
-                        let _ = reported_peer_sender.unbounded_send(originated_peer_id);
-                    }),
-                ));
+                let send_result = sender.try_send((message, report_callback));
                 if let Err(e) = send_result {
                     if e.is_disconnected() {
                         panic!("Receiver was dropped. This should never happen.")
@@ -411,30 +382,28 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
         }
     }
 
-    fn handle_query_result_routing_to_other_peer(&mut self, res: (Data, InboundSessionId)) {
-        if self.query_results_router.is_empty() {
-            // We're done handling all the queries we had and the stream is exhausted.
-            // Creating a new stream collection to process new queries.
-            self.query_results_router = StreamCollection::new();
-        }
-        let (data, inbound_session_id) = res;
-        let is_fin = matches!(data, Data::Fin(_));
-        let mut data_bytes = vec![];
-        data.encode_with_length_prefix(&mut data_bytes).expect("failed to encode data");
-        self.swarm.send_length_prefixed_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
-            error!(
-                "Failed to send data to peer. Session id: {inbound_session_id:?} not found error: \
-                 {e:?}"
-            );
-        });
-        if is_fin {
-            self.swarm.close_inbound_session(inbound_session_id).unwrap_or_else(|e| {
-                error!(
-                    "Failed to close session after Fin. Session id: {inbound_session_id:?} not \
-                     found error: {e:?}"
-                )
-            });
-        }
+    fn handle_response_for_inbound_query(&mut self, res: (InboundSessionId, Option<Data>)) {
+        let (inbound_session_id, maybe_data) = res;
+        match maybe_data {
+            Some(data) => {
+                let mut data_bytes = vec![];
+                data.encode(&mut data_bytes).expect("failed to encode data");
+                self.swarm.send_data(data_bytes, inbound_session_id).unwrap_or_else(|e| {
+                    error!(
+                        "Failed to send data to peer. Session id: {inbound_session_id:?} not \
+                         found error: {e:?}"
+                    );
+                });
+            }
+            None => {
+                self.swarm.close_inbound_session(inbound_session_id).unwrap_or_else(|e| {
+                    error!(
+                        "Failed to close session after sending all data. Session id: \
+                         {inbound_session_id:?} not found error: {e:?}"
+                    )
+                });
+            }
+        };
     }
 
     fn handle_local_sqmr_query(&mut self, protocol: Protocol, query: Bytes) {
@@ -479,6 +448,16 @@ impl<DBExecutorT: DBExecutorTrait, SwarmT: SwarmTrait> GenericNetworkManager<DBE
             }
         }
     }
+    fn create_external_callback_for_received_data(
+        &self,
+        originated_peer_id: PeerId,
+    ) -> Box<dyn Fn() + Send> {
+        let reported_peer_sender = self.reported_peer_sender.clone();
+        Box::new(move || {
+            // TODO(shahak): Check if we can panic in case of error.
+            let _ = reported_peer_sender.unbounded_send(originated_peer_id);
+        })
+    }
 }
 
 pub type NetworkManager = GenericNetworkManager<DBExecutor, Swarm<mixed_behaviour::MixedBehaviour>>;
@@ -492,6 +471,7 @@ impl NetworkManager {
             idle_connection_timeout,
             header_buffer_size,
             bootstrap_peer_multiaddr,
+            secret_key,
         } = config;
 
         let listen_addresses = vec![
@@ -499,7 +479,7 @@ impl NetworkManager {
             // format!("/ip4/0.0.0.0/udp/{quic_port}/quic-v1"),
             format!("/ip4/0.0.0.0/tcp/{tcp_port}"),
         ];
-        let swarm = build_swarm(listen_addresses, idle_connection_timeout, |key| {
+        let swarm = build_swarm(listen_addresses, idle_connection_timeout, secret_key, |key| {
             mixed_behaviour::MixedBehaviour::new(
                 key,
                 bootstrap_peer_multiaddr.clone(),
@@ -517,7 +497,7 @@ impl NetworkManager {
         Self::generic_new(swarm, db_executor, header_buffer_size)
     }
 
-    pub fn get_own_peer_id(&self) -> String {
+    pub fn get_local_peer_id(&self) -> String {
         self.swarm.local_peer_id().to_string()
     }
 }
@@ -542,7 +522,7 @@ type ReceivedMessagesConverterFn<T> =
 // TODO(shahak): Unite channels to a Sender of Query and Receiver of Responses.
 // TODO(shahak): Change Query to something generic.
 // TODO(shahak): Add channels for DB executor.
-pub struct SqmrSubscriberChannels<Response: TryFrom<Bytes>> {
+pub struct SqmrSubscriberChannels<Query: Into<Bytes>, Response: TryFrom<Bytes>> {
     pub query_sender: SubscriberSender<Query>,
     pub response_receiver: SubscriberReceiver<Response>,
 }
@@ -551,3 +531,6 @@ pub struct BroadcastSubscriberChannels<T: TryFrom<Bytes>> {
     pub messages_to_broadcast_sender: SubscriberSender<T>,
     pub broadcasted_messages_receiver: SubscriberReceiver<T>,
 }
+
+type SqmrResponseReceiver<Response> =
+    Chain<Map<Receiver<Response>, fn(Response) -> Option<Response>>, Once<Ready<Option<Response>>>>;

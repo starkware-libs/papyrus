@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::ErrorObjectOwned;
 use jsonrpsee::RpcModule;
@@ -24,7 +23,7 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageTxn};
 use starknet_api::block::{BlockHash, BlockNumber, BlockStatus};
 use starknet_api::core::{ChainId, ClassHash, ContractAddress, GlobalRoot, Nonce};
-use starknet_api::hash::{StarkFelt, StarkHash, GENESIS_HASH};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::{StateNumber, StorageKey};
 use starknet_api::transaction::{
     EventContent,
@@ -47,6 +46,7 @@ use starknet_client::reader::objects::transaction::{
 use starknet_client::reader::PendingData;
 use starknet_client::writer::{StarknetWriter, WriterClientError};
 use starknet_client::ClientError;
+use starknet_types_core::felt::Felt;
 use tokio::sync::RwLock;
 use tracing::{instrument, trace, warn};
 
@@ -117,6 +117,7 @@ use super::{
     BlockHashAndNumber,
     BlockId,
     CallRequest,
+    CompiledContractClass,
     ContinuationToken,
     EventFilter,
     EventsChunk,
@@ -136,6 +137,7 @@ use crate::{
     internal_server_error,
     verify_storage_scope,
     ContinuationTokenAsStruct,
+    GENESIS_HASH,
 };
 
 const DONT_IGNORE_L1_DA_MODE: bool = false;
@@ -321,7 +323,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         contract_address: ContractAddress,
         key: StorageKey,
         block_id: BlockId,
-    ) -> RpcResult<StarkFelt> {
+    ) -> RpcResult<Felt> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_storage_diffs = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(
@@ -351,7 +353,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
         // we'll return an error instead.
         // Contract address 0x1 is a special address, it stores the block
         // hashes. Contracts are not deployed to this address.
-        if res == StarkFelt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
+        if res == Felt::default() && contract_address != *BLOCK_HASH_TABLE_ADDRESS {
             // check if the contract exists
             txn.get_state_reader()
                 .map_err(internal_server_error)?
@@ -483,7 +485,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
             Ok(parent_block_number) => {
                 BlockHeader::from(get_block_header_by_number(&txn, parent_block_number)?).new_root
             }
-            Err(_) => GlobalRoot(StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?),
+            Err(_) => GlobalRoot(StarkHash::from_hex_unchecked(GENESIS_HASH)),
         };
 
         // Get the block state diff.
@@ -861,7 +863,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
     }
 
     #[instrument(skip(self), level = "debug", err, ret)]
-    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<StarkFelt>> {
+    async fn call(&self, request: CallRequest, block_id: BlockId) -> RpcResult<Vec<Felt>> {
         let txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
         let maybe_pending_data = if let BlockId::Tag(Tag::Pending) = block_id {
             Some(client_pending_data_to_execution_pending_data(
@@ -1437,23 +1439,34 @@ impl JsonRpcServer for JsonRpcServerImpl {
         &self,
         block_id: BlockId,
         class_hash: ClassHash,
-    ) -> RpcResult<CasmContractClass> {
+    ) -> RpcResult<CompiledContractClass> {
         let storage_txn = self.storage_reader.begin_ro_txn().map_err(internal_server_error)?;
+        let state_reader = storage_txn.get_state_reader().map_err(internal_server_error)?;
         let block_number = get_accepted_block_number(&storage_txn, block_id)?;
-        let class_definition_block_number = storage_txn
-            .get_state_reader()
-            .map_err(internal_server_error)?
+
+        // Check if this class exists in the Cairo1 classes table.
+        if let Some(class_definition_block_number) = state_reader
             .get_class_definition_block_number(&class_hash)
             .map_err(internal_server_error)?
-            .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
-        if class_definition_block_number > block_number {
-            return Err(ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND));
+        {
+            if class_definition_block_number > block_number {
+                return Err(ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND));
+            }
+            let casm = storage_txn
+                .get_casm(&class_hash)
+                .map_err(internal_server_error)?
+                .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
+            return Ok(CompiledContractClass::V1(casm));
         }
-        let casm = storage_txn
-            .get_casm(&class_hash)
+
+        // Check if this class exists in the Cairo0 classes table.
+        let state_number = StateNumber::right_after_block(block_number)
+            .ok_or(internal_server_error("Could not compute state number"))?;
+        let deprecated_compiled_contract_class = state_reader
+            .get_deprecated_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
             .ok_or_else(|| ErrorObjectOwned::from(CLASS_HASH_NOT_FOUND))?;
-        Ok(casm)
+        Ok(CompiledContractClass::V0(deprecated_compiled_contract_class))
     }
 }
 
@@ -1464,9 +1477,7 @@ async fn read_pending_data<Mode: TransactionKind>(
     let latest_header = match get_latest_block_number(txn)? {
         Some(latest_block_number) => get_block_header_by_number(txn, latest_block_number)?,
         None => starknet_api::block::BlockHeader {
-            parent_hash: BlockHash(
-                StarkHash::try_from(GENESIS_HASH).map_err(internal_server_error)?,
-            ),
+            parent_hash: BlockHash(StarkHash::from_hex_unchecked(GENESIS_HASH)),
             ..Default::default()
         },
     };

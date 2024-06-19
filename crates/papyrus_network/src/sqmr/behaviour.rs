@@ -60,8 +60,8 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
                 peer_id,
                 protocol_name,
             } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
-            GenericEvent::ReceivedData { outbound_session_id, data } => {
-                Self::ReceivedData { outbound_session_id, data }
+            GenericEvent::ReceivedData { outbound_session_id, data, peer_id } => {
+                Self::ReceivedData { outbound_session_id, data, peer_id }
             }
             GenericEvent::SessionFailed {
                 session_id,
@@ -186,7 +186,7 @@ impl Behaviour {
     }
 
     /// Send a data message to an open inbound session.
-    pub fn send_length_prefixed_data(
+    pub fn send_data(
         &mut self,
         data: Bytes,
         inbound_session_id: InboundSessionId,

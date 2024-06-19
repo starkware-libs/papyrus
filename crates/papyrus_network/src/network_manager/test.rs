@@ -5,12 +5,14 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 use std::vec;
 
+use async_trait::async_trait;
 use deadqueue::unlimited::Queue;
 use futures::channel::mpsc::{unbounded, Sender, UnboundedSender};
 use futures::channel::oneshot;
-use futures::future::{poll_fn, FutureExt};
+use futures::future::{pending, poll_fn, FutureExt};
 use futures::stream::{FuturesUnordered, Stream};
 use futures::{pin_mut, Future, SinkExt, StreamExt};
+use lazy_static::lazy_static;
 use libp2p::core::ConnectedPoint;
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
@@ -26,25 +28,17 @@ use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
 use super::{GenericNetworkManager, SqmrSubscriberChannels};
-use crate::db_executor::{
-    poll_query_execution_set,
-    DBExecutorError,
-    DBExecutorTrait,
-    Data,
-    FetchBlockDataFromDb,
-    QueryId,
-};
+use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, FetchBlockDataFromDb};
 use crate::gossipsub_impl::{self, Topic};
+use crate::mixed_behaviour;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
-use crate::{mixed_behaviour, DataType};
 
 const TIMEOUT: Duration = Duration::from_secs(1);
 
 #[derive(Default)]
 struct MockSwarm {
     pub pending_events: Queue<Event>,
-    pub sent_queries: Vec<(Query, PeerId)>,
     pub subscribed_topics: HashSet<TopicHash>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, TopicHash)>>,
     reported_peer_senders: Vec<UnboundedSender<PeerId>>,
@@ -98,31 +92,18 @@ impl MockSwarm {
         receiver
     }
 
-    fn create_received_data_events_for_query(
+    fn create_response_events_for_query_each_num_becomes_response(
         &self,
-        query: Query,
+        query: Vec<u8>,
         outbound_session_id: OutboundSessionId,
+        peer_id: PeerId,
     ) {
-        let BlockHashOrNumber::Number(BlockNumber(start_block_number)) = query.start_block else {
-            unimplemented!("test does not support start block as block hash")
-        };
-        let block_max_number = start_block_number + (query.step * query.limit);
-        for block_number in (start_block_number..block_max_number)
-            .step_by(query.step.try_into().expect("step too large to convert to usize"))
-        {
-            let signed_header = SignedBlockHeader {
-                block_header: BlockHeader {
-                    block_number: BlockNumber(block_number),
-                    ..Default::default()
-                },
-                signatures: vec![],
-            };
-            let data_bytes =
-                protobuf::BlockHeadersResponse::from(Some(signed_header)).encode_to_vec();
+        for data in query {
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
                 mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
-                    data: data_bytes,
+                    data: vec![data],
                     outbound_session_id,
+                    peer_id,
                 }),
             )));
         }
@@ -130,27 +111,21 @@ impl MockSwarm {
 }
 
 impl SwarmTrait for MockSwarm {
-    fn send_length_prefixed_data(
+    fn send_data(
         &mut self,
         data: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let data_sender = self.inbound_session_id_to_data_sender.get(&inbound_session_id).expect(
-            "Called send_length_prefixed_data without calling get_data_sent_to_inbound_session \
-             first",
-        );
-        let decoded_data = protobuf::BlockHeadersResponse::decode_length_delimited(&data[..])
-            .unwrap()
-            .try_into()
-            .unwrap();
-        // TODO(shahak): Add tests for state diff.
-        let (data, is_fin) = match decoded_data {
-            Some(signed_block_header) => {
-                (Data::BlockHeaderAndSignature(signed_block_header), false)
-            }
-            None => (Data::Fin(DataType::SignedBlockHeader), true),
-        };
-        data_sender.unbounded_send(data).unwrap();
+        let data_sender = self
+            .inbound_session_id_to_data_sender
+            .get(&inbound_session_id)
+            .expect("Called send_data without calling get_data_sent_to_inbound_session first");
+        let data = DataOrFin::<SignedBlockHeader>::try_from(
+            protobuf::BlockHeadersResponse::decode(&data[..]).unwrap(),
+        )
+        .unwrap();
+        let is_fin = data.0.is_none();
+        data_sender.unbounded_send(Data::BlockHeaderAndSignature(data)).unwrap();
         if is_fin {
             data_sender.close_channel();
         }
@@ -163,13 +138,12 @@ impl SwarmTrait for MockSwarm {
         peer_id: PeerId,
         _protocol: crate::Protocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        let query: Query = protobuf::BlockHeadersRequest::decode(&query[..])
-            .expect("failed to decode protobuf BlockHeadersRequest")
-            .try_into()
-            .expect("failed to convert BlockHeadersRequest");
-        self.sent_queries.push((query.clone(), peer_id));
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
-        self.create_received_data_events_for_query(query, outbound_session_id);
+        self.create_response_events_for_query_each_num_becomes_response(
+            query,
+            outbound_session_id,
+            peer_id,
+        );
         self.next_outbound_session_id += 1;
         Ok(outbound_session_id)
     }
@@ -216,53 +190,52 @@ impl SwarmTrait for MockSwarm {
 
 #[derive(Default)]
 struct MockDBExecutor {
-    next_query_id: usize,
     pub query_to_headers: HashMap<Query, Vec<BlockHeader>>,
-    query_execution_set: FuturesUnordered<JoinHandle<Result<QueryId, DBExecutorError>>>,
+    query_execution_set: FuturesUnordered<JoinHandle<Result<(), DBExecutorError>>>,
 }
 
-impl Stream for MockDBExecutor {
-    type Item = Result<QueryId, DBExecutorError>;
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        poll_query_execution_set(&mut Pin::into_inner(self).query_execution_set, cx)
-    }
-}
-
+#[async_trait]
 impl DBExecutorTrait for MockDBExecutor {
     // TODO(shahak): Consider fixing code duplication with DBExecutor.
     fn register_query(
         &mut self,
         query: Query,
         _data_type: impl FetchBlockDataFromDb + Send,
-        mut sender: Sender<Vec<Data>>,
-    ) -> QueryId {
-        let query_id = QueryId(self.next_query_id);
-        self.next_query_id += 1;
+        mut sender: Sender<Data>,
+    ) {
         let headers = self.query_to_headers.get(&query).unwrap().clone();
         self.query_execution_set.push(tokio::task::spawn(async move {
             {
                 for header in headers.iter().cloned() {
                     // Using poll_fn because Sender::poll_ready is not a future
                     if let Ok(()) = poll_fn(|cx| sender.poll_ready(cx)).await {
-                        if let Err(e) = sender.start_send(vec![Data::BlockHeaderAndSignature(
+                        sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(Some(
                             SignedBlockHeader { block_header: header, signatures: vec![] },
-                        )]) {
-                            return Err(DBExecutorError::SendError { query_id, send_error: e });
-                        };
+                        ))))?;
                     }
                 }
-                Ok(query_id)
+                sender.start_send(Data::BlockHeaderAndSignature(DataOrFin(None)))?;
+                Ok(())
             }
         }));
-        query_id
+    }
+    async fn run(&mut self) {
+        loop {
+            let result =
+                futures::future::poll_fn(|cx| self.query_execution_set.poll_next_unpin(cx)).await;
+            if result.is_none() {
+                // We assume that if all queries are finished then there won't come any new
+                // queries.
+                return pending().await;
+            }
+        }
     }
 }
 
 const BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
-async fn register_subscriber_and_use_channels() {
+async fn register_sqmr_subscriber_and_use_channels() {
     // mock swarm to send and track connection established event
     let mut mock_swarm = MockSwarm::default();
     let peer_id = PeerId::random();
@@ -273,40 +246,27 @@ async fn register_subscriber_and_use_channels() {
     // network manager to register subscriber and send query
     let mut network_manager =
         GenericNetworkManager::generic_new(mock_swarm, MockDBExecutor::default(), BUFFER_SIZE);
-    // define query
-    let query_limit: usize = 5;
-    let start_block_number = 0;
-    let query = Query {
-        start_block: BlockHashOrNumber::Number(BlockNumber(start_block_number)),
-        direction: Direction::Forward,
-        limit: query_limit.try_into().unwrap(),
-        step: 1,
-    };
 
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_subscriber::<DataOrFin<SignedBlockHeader>>(
-            crate::Protocol::SignedBlockHeader,
-        );
+        .register_sqmr_subscriber::<Vec<u8>, Vec<u8>>(crate::Protocol::SignedBlockHeader);
 
     let response_receiver_length = Arc::new(Mutex::new(0));
     let cloned_response_receiver_length = Arc::clone(&response_receiver_length);
     let response_receiver_collector = response_receiver
         .enumerate()
-        .take(query_limit)
-        .map(|(i, (signed_block_header_result, _report_callback))| {
-            let signed_block_header = signed_block_header_result.unwrap();
-            assert_eq!(
-                signed_block_header.clone().0.unwrap().block_header.block_number.0,
-                i as u64
-            );
-            signed_block_header
+        .take(VEC.len())
+        .map(|(i, (result, _report_callback))| {
+            let result = result.unwrap();
+            // this simulates how the mock swarm parses the query and sends responses to it
+            assert_eq!(result, vec![VEC[i]]);
+            result
         })
         .collect::<Vec<_>>();
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(query).await.unwrap()})
+            query_sender.send(VEC.clone()).await.unwrap()})
             .then(|_| async move {
                 *cloned_response_receiver_length.lock().await = response_receiver_collector.await.len();
             }) => {},
@@ -314,7 +274,7 @@ async fn register_subscriber_and_use_channels() {
             panic!("Test timed out");
         }
     }
-    assert_eq!(*response_receiver_length.lock().await, query_limit);
+    assert_eq!(*response_receiver_length.lock().await, VEC.len());
 }
 
 #[tokio::test]
@@ -371,12 +331,12 @@ async fn process_incoming_query() {
             let mut expected_data = headers
                 .into_iter()
                 .map(|header| {
-                    Data::BlockHeaderAndSignature(SignedBlockHeader {
+                    Data::BlockHeaderAndSignature(DataOrFin(Some(SignedBlockHeader {
                         block_header: header, signatures: vec![]
-                    })
+                    })))
                 })
                 .collect::<Vec<_>>();
-            expected_data.push(Data::Fin(DataType::SignedBlockHeader));
+            expected_data.push(Data::BlockHeaderAndSignature(DataOrFin(None)));
             assert_eq!(inbound_session_data, expected_data);
         }
         _ = network_manager.run() => {
@@ -530,4 +490,8 @@ fn get_test_connection_established_event(mock_peer_id: PeerId) -> Event {
         concurrent_dial_errors: None,
         established_in: Duration::from_secs(0),
     }
+}
+
+lazy_static! {
+    static ref VEC: Vec<u8> = vec![1, 2, 3, 4, 5];
 }

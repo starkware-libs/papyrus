@@ -8,7 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-trait.workspace = true
 ethers.workspace = true
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
 rustc-hex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -21,6 +21,7 @@ url.workspace = true
 ethers-core = { version = "2.0.3" }
 pretty_assertions.workspace = true
 starknet_api = { workspace = true, features = ["testing"] }
+starknet-types-core.workspace = true
 tar = { version = "0.4.38" }
 tempfile.workspace = true
 test-with = { version = "0.9.3", default-features = false, features = [

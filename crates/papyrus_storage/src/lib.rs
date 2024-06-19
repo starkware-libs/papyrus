@@ -29,7 +29,7 @@
 //! # let dir = dir_handle.path().to_path_buf();
 //! let db_config = DbConfig {
 //!     path_prefix: dir,
-//!     chain_id: ChainId("SN_MAIN".to_owned()),
+//!     chain_id: ChainId::Mainnet,
 //!     enforce_file_exists: false,
 //!     min_size: 1 << 20,    // 1MB
 //!     max_size: 1 << 35,    // 32GB
@@ -131,9 +131,9 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
 use starknet_api::transaction::{Transaction, TransactionHash, TransactionOutput};
+use starknet_types_core::felt::Felt;
 use tracing::{debug, warn};
 use validator::Validate;
 use version::{StorageVersionError, Version};
@@ -480,6 +480,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
+    #[latency_histogram("storage_commit_latency_seconds", false)]
     pub fn commit(self) -> StorageResult<()> {
         self.file_handlers.flush();
         Ok(self.txn.commit()?)
@@ -518,12 +519,12 @@ struct_field_names! {
         block_hash_to_number: TableIdentifier<BlockHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         block_signatures: TableIdentifier<BlockNumber, VersionZeroWrapper<BlockSignature>, SimpleTable>,
         casms: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
-        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<StarkFelt>, SimpleTable>,
+        contract_storage: TableIdentifier<(ContractAddress, StorageKey, BlockNumber), NoVersionValueWrapper<Felt>, SimpleTable>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
         deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
-        events: TableIdentifier<(ContractAddress, EventIndex), NoVersionValueWrapper<NoValue>, SimpleTable>,
+        events: TableIdentifier<(ContractAddress, TransactionIndex), NoVersionValueWrapper<NoValue>, SimpleTable>,
         headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, SimpleTable>,
@@ -701,11 +702,15 @@ impl FileHandlers<RW> {
     }
 
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+    #[latency_histogram("storage_file_handler_flush_latency_seconds", false)]
     fn flush(&self) {
+        debug!("Flushing the mmap files.");
         self.thin_state_diff.flush();
         self.contract_class.flush();
         self.casm.flush();
         self.deprecated_contract_class.flush();
+        self.transaction_output.flush();
+        self.transaction.flush();
     }
 
     // Appends a thin transaction output to the corresponding file and returns its location.

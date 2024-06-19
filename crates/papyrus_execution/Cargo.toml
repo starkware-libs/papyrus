@@ -18,14 +18,15 @@ indexmap.workspace = true
 itertools.workspace = true
 lazy_static.workspace = true
 once_cell.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.2" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.3" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+starknet-types-core.workspace = true
 test_utils = { path = "../test_utils", optional = true }
 thiserror.workspace = true
 tracing.workspace = true

@@ -23,7 +23,7 @@ use libp2p::swarm::{
 };
 use libp2p::PeerId;
 
-use super::super::messages::{read_message, with_length_prefix, write_length_prefixed_message};
+use super::super::messages::{read_message, write_message};
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
 use super::{
     Handler,
@@ -153,11 +153,11 @@ async fn validate_received_data_event(
         ConnectionHandlerEvent::NotifyBehaviour(
             RequestToBehaviourEvent::GenerateEvent(
                 GenericEvent::ReceivedData {
-                    data: event_data, outbound_session_id: event_outbound_session_id
+                    data: event_data, outbound_session_id: event_outbound_session_id, peer_id : event_peer_id
 
                 }
             )
-        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id
+        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id && event_peer_id == handler.peer_id
     );
 }
 
@@ -256,11 +256,7 @@ async fn process_inbound_session() {
     validate_new_inbound_session_event(&mut handler, &QUERY, inbound_session_id).await;
     let dummy_data_vec = dummy_data();
     for data in &dummy_data_vec {
-        simulate_request_to_send_data_from_swarm(
-            &mut handler,
-            with_length_prefix(data),
-            inbound_session_id,
-        );
+        simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
     }
 
     let data_received = read_messages(handler, &mut outbound_stream, dummy_data_vec.len()).await;
@@ -343,9 +339,7 @@ async fn process_outbound_session() {
 
     let dummy_data_vec = dummy_data();
     for data in &dummy_data_vec {
-        write_length_prefixed_message(&with_length_prefix(data), &mut inbound_stream)
-            .await
-            .unwrap();
+        write_message(data, &mut inbound_stream).await.unwrap();
     }
 
     for data in &dummy_data_vec {
@@ -445,12 +439,7 @@ async fn outbound_session_dropped_after_negotiation() {
     // Need to sleep to make sure the dropping occurs on the other stream.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-    write_length_prefixed_message(
-        &with_length_prefix(dummy_data().first().unwrap()),
-        &mut inbound_stream,
-    )
-    .await
-    .unwrap_err();
+    write_message(dummy_data().first().unwrap(), &mut inbound_stream).await.unwrap_err();
 
     // Need to sleep to make sure that if we did send a message the stream inside the handle will
     // receive it
@@ -483,12 +472,7 @@ async fn outbound_session_dropped_before_negotiation() {
     // Need to sleep to make sure the dropping occurs on the other stream.
     tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-    write_length_prefixed_message(
-        &with_length_prefix(dummy_data().first().unwrap()),
-        &mut inbound_stream,
-    )
-    .await
-    .unwrap_err();
+    write_message(&dummy_data().first().unwrap().clone(), &mut inbound_stream).await.unwrap_err();
 
     // Need to sleep to make sure that if we did send a message the stream inside the handle will
     // receive it

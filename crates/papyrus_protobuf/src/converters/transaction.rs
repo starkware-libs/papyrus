@@ -1,8 +1,10 @@
+#[cfg(test)]
+#[path = "transaction_test.rs"]
+mod transaction_test;
 use std::convert::{TryFrom, TryInto};
 
 use prost::Message;
 use starknet_api::core::{ClassHash, CompiledClassHash, EntryPointSelector, Nonce};
-use starknet_api::hash::StarkFelt;
 use starknet_api::transaction::{
     AccountDeploymentData,
     Calldata,
@@ -31,6 +33,7 @@ use starknet_api::transaction::{
     TransactionSignature,
     TransactionVersion,
 };
+use starknet_types_core::felt::Felt;
 
 use super::common::{
     enum_int_to_volition_domain,
@@ -214,7 +217,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactio
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::DeployAccountV1) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "DeployAccountV1::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -232,7 +235,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactio
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -264,7 +267,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactio
         );
 
         let constructor_calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let constructor_calldata = Calldata(constructor_calldata.into());
 
@@ -282,7 +285,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV1> for DeployAccountTransactio
 impl From<DeployAccountTransactionV1> for protobuf::transaction::DeployAccountV1 {
     fn from(value: DeployAccountTransactionV1) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
             }),
@@ -318,7 +321,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV3> for DeployAccountTransactio
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -350,7 +353,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV3> for DeployAccountTransactio
         );
 
         let constructor_calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let constructor_calldata = Calldata(constructor_calldata.into());
 
@@ -361,11 +364,7 @@ impl TryFrom<protobuf::transaction::DeployAccountV3> for DeployAccountTransactio
             enum_int_to_volition_domain(value.fee_data_availability_mode)?;
 
         let paymaster_data = PaymasterData(
-            value
-                .paymaster_data
-                .into_iter()
-                .map(StarkFelt::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
+            value.paymaster_data.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?,
         );
 
         Ok(Self {
@@ -425,18 +424,8 @@ impl TryFrom<protobuf::ResourceBounds> for ResourceBoundsMapping {
                 field_description: "ResourceBounds::l1_gas",
             });
         };
-        let max_amount_felt = StarkFelt::try_from(l1_gas.max_amount.ok_or(
-            ProtobufConversionError::MissingField {
-                field_description: "ResourceBounds::l1_gas::max_amount",
-            },
-        )?)?;
-        let max_amount =
-            max_amount_felt.try_into().map_err(|_| ProtobufConversionError::OutOfRangeValue {
-                type_description: "u64",
-                value_as_str: format!("{max_amount_felt:?}"),
-            })?;
-
-        let max_price_per_unit_felt = StarkFelt::try_from(l1_gas.max_price_per_unit.ok_or(
+        let max_amount = l1_gas.max_amount;
+        let max_price_per_unit_felt = Felt::try_from(l1_gas.max_price_per_unit.ok_or(
             ProtobufConversionError::MissingField {
                 field_description: "ResourceBounds::l1_gas::max_price_per_unit",
             },
@@ -457,18 +446,8 @@ impl TryFrom<protobuf::ResourceBounds> for ResourceBoundsMapping {
                 field_description: "ResourceBounds::l2_gas",
             });
         };
-        let max_amount_felt = StarkFelt::try_from(l2_gas.max_amount.ok_or(
-            ProtobufConversionError::MissingField {
-                field_description: "ResourceBounds::l2_gas::max_amount",
-            },
-        )?)?;
-        let max_amount =
-            max_amount_felt.try_into().map_err(|_| ProtobufConversionError::OutOfRangeValue {
-                type_description: "u64",
-                value_as_str: format!("{max_amount_felt:?}"),
-            })?;
-
-        let max_price_per_unit_felt = StarkFelt::try_from(l2_gas.max_price_per_unit.ok_or(
+        let max_amount = l2_gas.max_amount;
+        let max_price_per_unit_felt = Felt::try_from(l2_gas.max_price_per_unit.ok_or(
             ProtobufConversionError::MissingField {
                 field_description: "ResourceBounds::l2_gas::max_price_per_unit",
             },
@@ -495,8 +474,8 @@ impl From<ResourceBoundsMapping> for protobuf::ResourceBounds {
         let resource_bounds_l1 = value.0.get(&Resource::L1Gas).unwrap_or(&resource_bounds_default);
 
         let resource_limits_l1 = protobuf::ResourceLimits {
-            max_amount: Some(StarkFelt::from(resource_bounds_l1.max_amount).into()),
-            max_price_per_unit: Some(StarkFelt::from(resource_bounds_l1.max_price_per_unit).into()),
+            max_amount: resource_bounds_l1.max_amount,
+            max_price_per_unit: Some(Felt::from(resource_bounds_l1.max_price_per_unit).into()),
         };
         res.l1_gas = Some(resource_limits_l1);
 
@@ -504,8 +483,8 @@ impl From<ResourceBoundsMapping> for protobuf::ResourceBounds {
         let resource_bounds_l2 = value.0.get(&Resource::L2Gas).unwrap_or(&resource_bounds_default);
 
         let resource_limits_l2 = protobuf::ResourceLimits {
-            max_amount: Some(StarkFelt::from(resource_bounds_l2.max_amount).into()),
-            max_price_per_unit: Some(StarkFelt::from(resource_bounds_l2.max_price_per_unit).into()),
+            max_amount: resource_bounds_l2.max_amount,
+            max_price_per_unit: Some(Felt::from(resource_bounds_l2.max_price_per_unit).into()),
         };
         res.l2_gas = Some(resource_limits_l2);
 
@@ -517,7 +496,7 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::InvokeV0) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "InvokeV0::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -535,7 +514,7 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -546,7 +525,7 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
             })?
             .try_into()?;
 
-        let entry_point_selector_felt = StarkFelt::try_from(value.entry_point_selector.ok_or(
+        let entry_point_selector_felt = Felt::try_from(value.entry_point_selector.ok_or(
             ProtobufConversionError::MissingField {
                 field_description: "InvokeV0::entry_point_selector",
             },
@@ -554,7 +533,7 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
         let entry_point_selector = EntryPointSelector(entry_point_selector_felt);
 
         let calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let calldata = Calldata(calldata.into());
 
@@ -565,7 +544,7 @@ impl TryFrom<protobuf::transaction::InvokeV0> for InvokeTransactionV0 {
 impl From<InvokeTransactionV0> for protobuf::transaction::InvokeV0 {
     fn from(value: InvokeTransactionV0) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
             }),
@@ -580,7 +559,7 @@ impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::InvokeV1) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "InvokeV1::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -598,7 +577,7 @@ impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -617,7 +596,7 @@ impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
         );
 
         let calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let calldata = Calldata(calldata.into());
 
@@ -628,7 +607,7 @@ impl TryFrom<protobuf::transaction::InvokeV1> for InvokeTransactionV1 {
 impl From<InvokeTransactionV1> for protobuf::transaction::InvokeV1 {
     fn from(value: InvokeTransactionV1) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
             }),
@@ -658,7 +637,7 @@ impl TryFrom<protobuf::transaction::InvokeV3> for InvokeTransactionV3 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -677,7 +656,7 @@ impl TryFrom<protobuf::transaction::InvokeV3> for InvokeTransactionV3 {
             .try_into()?;
 
         let calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let calldata = Calldata(calldata.into());
 
@@ -688,18 +667,14 @@ impl TryFrom<protobuf::transaction::InvokeV3> for InvokeTransactionV3 {
             enum_int_to_volition_domain(value.fee_data_availability_mode)?;
 
         let paymaster_data = PaymasterData(
-            value
-                .paymaster_data
-                .into_iter()
-                .map(StarkFelt::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
+            value.paymaster_data.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?,
         );
 
         let account_deployment_data = AccountDeploymentData(
             value
                 .account_deployment_data
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -755,7 +730,7 @@ impl TryFrom<protobuf::transaction::DeclareV0> for DeclareTransactionV0V1 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::DeclareV0) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "DeclareV0::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -773,7 +748,7 @@ impl TryFrom<protobuf::transaction::DeclareV0> for DeclareTransactionV0V1 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -803,7 +778,7 @@ impl TryFrom<protobuf::transaction::DeclareV0> for DeclareTransactionV0V1 {
 impl From<DeclareTransactionV0V1> for protobuf::transaction::DeclareV0 {
     fn from(value: DeclareTransactionV0V1) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
             }),
@@ -817,7 +792,7 @@ impl TryFrom<protobuf::transaction::DeclareV1> for DeclareTransactionV0V1 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::DeclareV1) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "DeclareV1::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -835,7 +810,7 @@ impl TryFrom<protobuf::transaction::DeclareV1> for DeclareTransactionV0V1 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -871,7 +846,7 @@ impl TryFrom<protobuf::transaction::DeclareV1> for DeclareTransactionV0V1 {
 impl From<DeclareTransactionV0V1> for protobuf::transaction::DeclareV1 {
     fn from(value: DeclareTransactionV0V1) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|stark_felt| stark_felt.into()).collect(),
             }),
@@ -886,7 +861,7 @@ impl TryFrom<protobuf::transaction::DeclareV2> for DeclareTransactionV2 {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::DeclareV2) -> Result<Self, Self::Error> {
         let max_fee_felt =
-            StarkFelt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
+            Felt::try_from(value.max_fee.ok_or(ProtobufConversionError::MissingField {
                 field_description: "DeclareV2::max_fee",
             })?)?;
         let max_fee = Fee(try_from_starkfelt_to_u128(max_fee_felt).map_err(|_| {
@@ -904,7 +879,7 @@ impl TryFrom<protobuf::transaction::DeclareV2> for DeclareTransactionV2 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -949,7 +924,7 @@ impl TryFrom<protobuf::transaction::DeclareV2> for DeclareTransactionV2 {
 impl From<DeclareTransactionV2> for protobuf::transaction::DeclareV2 {
     fn from(value: DeclareTransactionV2) -> Self {
         Self {
-            max_fee: Some(StarkFelt::from(value.max_fee.0).into()),
+            max_fee: Some(Felt::from(value.max_fee.0).into()),
             signature: Some(protobuf::AccountSignature {
                 parts: value.signature.0.into_iter().map(|signature| signature.into()).collect(),
             }),
@@ -980,7 +955,7 @@ impl TryFrom<protobuf::transaction::DeclareV3> for DeclareTransactionV3 {
                 })?
                 .parts
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -1025,18 +1000,14 @@ impl TryFrom<protobuf::transaction::DeclareV3> for DeclareTransactionV3 {
             enum_int_to_volition_domain(value.fee_data_availability_mode)?;
 
         let paymaster_data = PaymasterData(
-            value
-                .paymaster_data
-                .into_iter()
-                .map(StarkFelt::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
+            value.paymaster_data.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?,
         );
 
         let account_deployment_data = AccountDeploymentData(
             value
                 .account_deployment_data
                 .into_iter()
-                .map(StarkFelt::try_from)
+                .map(Felt::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
         );
 
@@ -1093,7 +1064,7 @@ impl From<DeclareTransactionV3> for protobuf::transaction::DeclareV3 {
 impl TryFrom<protobuf::transaction::Deploy> for DeployTransaction {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::Deploy) -> Result<Self, Self::Error> {
-        let version = TransactionVersion(StarkFelt::from_u128(value.version.into()));
+        let version = TransactionVersion(Felt::from(value.version));
 
         let class_hash = ClassHash(
             value
@@ -1114,7 +1085,7 @@ impl TryFrom<protobuf::transaction::Deploy> for DeployTransaction {
         );
 
         let constructor_calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let constructor_calldata = Calldata(constructor_calldata.into());
 
@@ -1141,7 +1112,7 @@ impl From<DeployTransaction> for protobuf::transaction::Deploy {
 impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
     type Error = ProtobufConversionError;
     fn try_from(value: protobuf::transaction::L1HandlerV0) -> Result<Self, Self::Error> {
-        let version = TransactionVersion(StarkFelt::ZERO);
+        let version = TransactionVersion(Felt::ZERO);
 
         let nonce = Nonce(
             value
@@ -1159,7 +1130,7 @@ impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
             })?
             .try_into()?;
 
-        let entry_point_selector_felt = StarkFelt::try_from(value.entry_point_selector.ok_or(
+        let entry_point_selector_felt = Felt::try_from(value.entry_point_selector.ok_or(
             ProtobufConversionError::MissingField {
                 field_description: "L1HandlerV0::entry_point_selector",
             },
@@ -1167,7 +1138,7 @@ impl TryFrom<protobuf::transaction::L1HandlerV0> for L1HandlerTransaction {
         let entry_point_selector = EntryPointSelector(entry_point_selector_felt);
 
         let calldata =
-            value.calldata.into_iter().map(StarkFelt::try_from).collect::<Result<Vec<_>, _>>()?;
+            value.calldata.into_iter().map(Felt::try_from).collect::<Result<Vec<_>, _>>()?;
 
         let calldata = Calldata(calldata.into());
 

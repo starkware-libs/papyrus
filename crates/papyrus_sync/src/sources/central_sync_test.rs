@@ -16,9 +16,8 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::{Block, BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::core::{ClassHash, SequencerPublicKey};
-use starknet_api::crypto::PublicKey;
-use starknet_api::hash::StarkFelt;
-use starknet_api::stark_felt;
+use starknet_api::crypto::utils::PublicKey;
+use starknet_api::felt;
 use starknet_api::state::StateDiff;
 use starknet_client::reader::PendingData;
 use tokio::sync::{Mutex, RwLock};
@@ -652,8 +651,8 @@ async fn test_unrecoverable_sync_error_flow() {
 async fn sequencer_pub_key_management() {
     let _ = simple_logger::init_with_env();
 
-    let first_sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x111")));
-    let second_sequencer_pub_key = SequencerPublicKey(PublicKey(stark_felt!("0x222")));
+    let first_sequencer_pub_key = SequencerPublicKey(PublicKey(felt!("0x111")));
+    let second_sequencer_pub_key = SequencerPublicKey(PublicKey(felt!("0x222")));
     let first_copy = first_sequencer_pub_key;
 
     let mut central_mock = MockCentralSourceTrait::new();
@@ -689,8 +688,8 @@ async fn sequencer_pub_key_management() {
 
 fn create_block_hash(bn: BlockNumber, is_reverted_block: bool) -> BlockHash {
     if is_reverted_block {
-        BlockHash(stark_felt!(format!("0x{}10", bn.0).as_str()))
+        BlockHash(felt!(format!("0x{}10", bn.0).as_str()))
     } else {
-        BlockHash(stark_felt!(format!("0x{}", bn.0).as_str()))
+        BlockHash(felt!(format!("0x{}", bn.0).as_str()))
     }
 }

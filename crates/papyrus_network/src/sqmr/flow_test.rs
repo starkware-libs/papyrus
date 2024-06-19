@@ -9,7 +9,6 @@ use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event, ExternalEvent};
-use super::messages::with_length_prefix;
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 use crate::test_utils::create_fully_connected_swarms_stream;
 use crate::utils::StreamHashMap;
@@ -86,12 +85,8 @@ fn send_data(
     for i in 0..NUM_MESSAGES_PER_SESSION {
         inbound_swarm
             .behaviour_mut()
-            .send_length_prefixed_data(
-                with_length_prefix(&get_bytes_from_data_indices(
-                    inbound_peer_id,
-                    outbound_peer_id,
-                    i,
-                )),
+            .send_data(
+                get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, i),
                 inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
             )
             .unwrap();
@@ -140,10 +135,18 @@ fn check_received_data_event(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::External(ExternalEvent::ReceivedData { outbound_session_id, data }) = event else {
+    let Event::External(ExternalEvent::ReceivedData {
+        outbound_session_id: _outbound_session_id,
+        data,
+        peer_id: inbound_peer_id,
+    }) = event
+    else {
         panic!("Got unexpected event {:?} when expecting ReceivedData", event);
     };
-    let inbound_peer_id = outbound_session_id_to_peer_id[&(outbound_peer_id, outbound_session_id)];
+    assert_eq!(
+        outbound_session_id_to_peer_id[&(outbound_peer_id, _outbound_session_id)],
+        inbound_peer_id
+    );
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
     assert_eq!(data, get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, message_index),);
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);

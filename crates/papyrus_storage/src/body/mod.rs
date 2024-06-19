@@ -19,7 +19,7 @@
 //! # let dir = dir_handle.path().to_path_buf();
 //! # let db_config = DbConfig {
 //! #     path_prefix: dir,
-//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     chain_id: ChainId::Mainnet,
 //! #     enforce_file_exists: false,
 //! #     min_size: 1 << 20,    // 1MB
 //! #     max_size: 1 << 35,    // 32GB
@@ -42,6 +42,7 @@
 mod body_test;
 pub mod events;
 
+use std::collections::HashSet;
 use std::fmt::Debug;
 
 use papyrus_proc_macros::latency_histogram;
@@ -49,7 +50,6 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockBody, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::{
-    EventIndexInTransactionOutput,
     Transaction,
     TransactionHash,
     TransactionOffsetInBlock,
@@ -57,7 +57,6 @@ use starknet_api::transaction::{
 };
 use tracing::debug;
 
-use crate::body::events::EventIndex;
 use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{DbCursorTrait, NoValue, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
@@ -76,7 +75,7 @@ type TransactionMetadataTable<'env> =
     TableHandle<'env, TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
     TableHandle<'env, TransactionHash, NoVersionValueWrapper<TransactionIndex>, SimpleTable>;
-type EventsTableKey = (ContractAddress, EventIndex);
+type EventsTableKey = (ContractAddress, TransactionIndex);
 type EventsTable<'env> =
     TableHandle<'env, EventsTableKey, NoVersionValueWrapper<NoValue>, SimpleTable>;
 
@@ -411,12 +410,8 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             {
                 let tx_index = TransactionIndex(block_number, TransactionOffsetInBlock(offset));
 
-                for (event_offset, event) in tx_output.events().iter().enumerate() {
-                    let key = (
-                        event.from_address,
-                        EventIndex(tx_index, EventIndexInTransactionOutput(event_offset)),
-                    );
-                    events_table.delete(&self.txn, &key)?;
+                for event in tx_output.events().iter() {
+                    events_table.delete(&self.txn, &(event.from_address, tx_index))?;
                 }
                 transaction_hash_to_idx_table.delete(&self.txn, tx_hash)?;
                 transaction_metadata_table.delete(&self.txn, &tx_index)?;
@@ -469,9 +464,15 @@ fn write_events<'env>(
     events_table: &'env EventsTable<'env>,
     transaction_index: TransactionIndex,
 ) -> StorageResult<()> {
-    for (index, event) in tx_output.events().iter().enumerate() {
-        let event_index = EventIndex(transaction_index, EventIndexInTransactionOutput(index));
-        events_table.insert(txn, &(event.from_address, event_index), &NoValue)?;
+    let mut contract_addresses_set = HashSet::new();
+
+    for event in tx_output.events().iter() {
+        contract_addresses_set.insert(event.from_address);
+    }
+
+    for contract_address in contract_addresses_set {
+        let key = (contract_address, transaction_index);
+        events_table.insert(txn, &key, &NoValue)?;
     }
     Ok(())
 }

@@ -1,5 +1,6 @@
 use clap::{Arg, Command};
 use papyrus_storage::utils::dump_declared_classes_table_by_block_range;
+use starknet_api::core::ChainId;
 
 /// This executable dumps the declared_classes table from the storage to a file.
 fn main() {
@@ -19,7 +20,7 @@ struct CliParams {
     start_block: u64,
     end_block: u64,
     file_path: String,
-    chain_id: String,
+    chain_id: ChainId,
 }
 
 /// The start_block and end_block arguments are mandatory and define the block range to dump,
@@ -74,5 +75,5 @@ fn get_cli_params() -> CliParams {
     }
     let chain_id =
         matches.get_one::<String>("chain_id").expect("Failed parsing chain_id").to_string();
-    CliParams { start_block, end_block, file_path, chain_id }
+    CliParams { start_block, end_block, file_path, chain_id: ChainId::Other(chain_id) }
 }

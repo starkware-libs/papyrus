@@ -76,7 +76,7 @@ impl Default for DbConfig {
     fn default() -> Self {
         DbConfig {
             path_prefix: PathBuf::from("./data"),
-            chain_id: ChainId("SN_MAIN".to_string()),
+            chain_id: ChainId::Mainnet,
             enforce_file_exists: false,
             min_size: 1 << 20,    // 1MB
             max_size: 1 << 40,    // 1TB
@@ -134,7 +134,7 @@ impl SerializeConfig for DbConfig {
 impl DbConfig {
     /// Returns the path of the database (path prefix, followed by the chain id).
     pub fn path(&self) -> PathBuf {
-        self.path_prefix.join(self.chain_id.0.as_str())
+        self.path_prefix.join(self.chain_id.to_string().as_str())
     }
 }
 

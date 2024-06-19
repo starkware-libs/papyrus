@@ -5,13 +5,14 @@ mod types_test;
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::ContractAddress;
 
 /// Used to identify the node by consensus.
 /// 1. This ID is derived from the id registered with Starknet's L2 staking contract.
 /// 2. We must be able to derive the public key associated with this ID for the sake of validating
 ///    signatures.
 // TODO(matan): Determine the actual type of NodeId.
-pub type NodeId = u64;
+pub type ValidatorId = ContractAddress;
 
 /// Interface that any concrete block type must implement to be used by consensus.
 ///
@@ -19,13 +20,15 @@ pub type NodeId = u64;
 /// need to perform certain activities with blocks:
 /// 1. All proposals for a given height are held by consensus for book keeping, with only the
 ///    decided block returned to ConsensusContext.
-/// 2. Tendermint may require re-broadcasting an old proposal [Line 16 of Algorithm 1]( https://arxiv.org/pdf/1807.04938)
+/// 2. Tendermint may require re-broadcasting an old proposal [Line 16 of Algorithm 1](https://arxiv.org/pdf/1807.04938)
 // This trait was designed with the following in mind:
 // 1. It must allow `ConsensusContext` to be object safe. This precludes generics.
 // 2. Starknet blocks are expected to be quite large, and we expect consensus to hold something akin
 //    to a reference with a small stack size and cheap shallow cloning.
 pub trait ConsensusBlock: Send {
     /// The chunks of content returned when iterating the proposal.
+    // In practice I expect this to match the type sent to the network
+    // (papyrus_protobuf::ConsensusMessage), and not to be specific to just the block's content.
     type ProposalChunk;
     /// Iterator for accessing the proposal's content.
     // An associated type is used instead of returning `impl Iterator` due to object safety.
@@ -99,7 +102,7 @@ pub trait ConsensusContext: Send + Sync {
     );
 
     /// This function is called by consensus to validate a block. It expects that this call will
-    /// return immediately and that consensus can then stream in the block's content in parallel to
+    /// return immediately and that context can then stream in the block's content in parallel to
     /// consensus continuing to handle other tasks.
     ///
     /// Params:
@@ -121,29 +124,32 @@ pub trait ConsensusContext: Send + Sync {
     // TODO(matan): We expect this to change in the future to BTreeMap. Why?
     // 1. Map - The nodes will have associated information (e.g. voting weight).
     // 2. BTreeMap - We want a stable ordering of the nodes for deterministic leader selection.
-    async fn validators(&self, height: BlockNumber) -> Vec<NodeId>;
+    async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
 
     /// Calculates the ID of the Proposer based on the inputs.
-    fn proposer(&self, validators: &Vec<NodeId>, height: BlockNumber) -> NodeId;
+    fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
+
+    /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
+    /// input channels in parallel (ie on a separate task).
+    // TODO(matan): change to just be a generic broadcast function.
+    async fn propose(
+        &self,
+        init: ProposalInit,
+        content_receiver: mpsc::Receiver<<Self::Block as ConsensusBlock>::ProposalChunk>,
+        fin_receiver: oneshot::Receiver<BlockHash>,
+    ) -> Result<(), ConsensusError>;
 }
 
-#[derive(PartialEq, Debug)]
-pub(crate) struct ProposalInit {
+#[derive(PartialEq, Debug, Clone)]
+pub struct ProposalInit {
     pub height: BlockNumber,
-    pub proposer: NodeId,
-}
-
-// This type encapsulate the messages that are sent between the SingleHeightConsensus and the
-// Peering components.
-pub(crate) enum PeeringConsensusMessage<ProposalChunkT> {
-    // TODO(matan): Switch the oneshot channel to be a Signature when we add.
-    Proposal((ProposalInit, mpsc::Receiver<ProposalChunkT>, oneshot::Receiver<BlockHash>)),
+    pub proposer: ValidatorId,
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum ConsensusError {
     #[error(transparent)]
     Canceled(#[from] oneshot::Canceled),
-    #[error("Invalid proposal sent by peer {0} at height {1}")]
-    InvalidProposal(NodeId, BlockNumber),
+    #[error("Invalid proposal sent by peer {0:?} at height {1}: {2}")]
+    InvalidProposal(ValidatorId, BlockNumber, String),
 }

@@ -25,7 +25,6 @@ byteorder.workspace = true
 cairo-lang-starknet-classes.workspace = true
 cairo-lang-casm = { workspace = true, features = ["parity-scale-codec"] }
 cairo-lang-utils.workspace = true
-flate2.workspace = true
 human_bytes.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 integer-encoding.workspace = true
@@ -35,18 +34,20 @@ memmap2.workspace = true
 metrics.workspace = true
 num-bigint.workspace = true
 page_size.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.2" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.3" }
 parity-scale-codec.workspace = true
 primitive-types.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
+starknet-types-core = { workspace = true, features = ["papyrus-serialization"] }
 tempfile = { workspace = true, optional = true }
 thiserror.workspace = true
 tracing = { workspace = true, features = ["log"] }
 validator = { workspace = true, features = ["derive"] }
+zstd.workspace = true
 
 # Binaries dependencies
 clap = { workspace = true, optional = true }

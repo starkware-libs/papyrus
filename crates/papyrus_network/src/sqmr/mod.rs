@@ -1,6 +1,6 @@
 pub mod behaviour;
 pub mod handler;
-pub mod messages;
+mod messages;
 pub mod protocol;
 
 #[cfg(test)]
@@ -54,6 +54,7 @@ pub enum GenericEvent<SessionError> {
     ReceivedData {
         outbound_session_id: OutboundSessionId,
         data: Bytes,
+        peer_id: PeerId,
     },
     SessionFailed {
         session_id: SessionId,

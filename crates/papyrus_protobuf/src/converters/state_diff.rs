@@ -2,8 +2,8 @@ use indexmap::IndexMap;
 use prost::Message;
 use starknet_api::core::{ClassHash, CompiledClassHash, Nonce};
 use starknet_api::data_availability::DataAvailabilityMode;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 
 use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
@@ -39,6 +39,7 @@ impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<ThinStateDiff> {
     }
 }
 auto_impl_try_from_vec_u8!(DataOrFin<ThinStateDiff>, protobuf::StateDiffsResponse);
+auto_impl_try_from_vec_u8!(DataOrFin<StateDiffChunk>, protobuf::StateDiffsResponse);
 
 impl TryFrom<protobuf::StateDiffsResponse> for DataOrFin<StateDiffChunk> {
     type Error = ProtobufConversionError;
@@ -115,7 +116,7 @@ impl TryFrom<protobuf::ContractDiff> for ThinStateDiff {
                 .values
                 .into_iter()
                 .map(|stored_value| stored_value.try_into())
-                .collect::<Result<IndexMap<StorageKey, StarkFelt>, _>>()?;
+                .collect::<Result<IndexMap<StorageKey, Felt>, _>>()?;
             IndexMap::from_iter([(contract_address, storage_values)])
         };
 
@@ -177,13 +178,12 @@ impl TryFrom<protobuf::DeclaredClass> for ThinStateDiff {
     }
 }
 
-impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
+impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, Felt) {
     type Error = ProtobufConversionError;
     fn try_from(entry: protobuf::ContractStoredValue) -> Result<Self, Self::Error> {
-        let key_felt =
-            StarkFelt::try_from(entry.key.ok_or(ProtobufConversionError::MissingField {
-                field_description: "ContractStoredValue::key",
-            })?)?;
+        let key_felt = Felt::try_from(entry.key.ok_or(ProtobufConversionError::MissingField {
+            field_description: "ContractStoredValue::key",
+        })?)?;
         let key = StorageKey(key_felt.try_into().map_err(|_| {
             ProtobufConversionError::OutOfRangeValue {
                 // TODO(shahak): Check if the type in the protobuf of the field
@@ -193,10 +193,9 @@ impl TryFrom<protobuf::ContractStoredValue> for (StorageKey, StarkFelt) {
                 value_as_str: format!("{key_felt:?}"),
             }
         })?);
-        let value =
-            StarkFelt::try_from(entry.value.ok_or(ProtobufConversionError::MissingField {
-                field_description: "ContractStoredValue::value",
-            })?)?;
+        let value = Felt::try_from(entry.value.ok_or(ProtobufConversionError::MissingField {
+            field_description: "ContractStoredValue::value",
+        })?)?;
         Ok((key, value))
     }
 }
@@ -264,7 +263,7 @@ impl TryFrom<protobuf::ContractDiff> for ContractDiff {
             .values
             .into_iter()
             .map(|stored_value| stored_value.try_into())
-            .collect::<Result<IndexMap<StorageKey, StarkFelt>, _>>()?;
+            .collect::<Result<IndexMap<StorageKey, Felt>, _>>()?;
 
         Ok(ContractDiff { contract_address, class_hash, nonce, storage_diffs })
     }

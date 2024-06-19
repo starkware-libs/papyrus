@@ -55,7 +55,7 @@ use starknet_api::deprecated_contract_class::{
     ContractClass as SN_API_DeprecatedContractClass,
     EntryPointType,
 };
-use starknet_api::hash::{StarkFelt, StarkHash};
+use starknet_api::hash::StarkHash;
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{
     Calldata,
@@ -65,7 +65,7 @@ use starknet_api::transaction::{
     TransactionOffsetInBlock,
     TransactionVersion,
 };
-use starknet_api::{calldata, class_hash, contract_address, patricia_key, stark_felt};
+use starknet_api::{calldata, class_hash, contract_address, felt, patricia_key};
 use starknet_client::reader::objects::pending_data::{
     DeprecatedPendingBlock,
     PendingBlockOrDeprecated,
@@ -78,6 +78,7 @@ use starknet_client::reader::objects::transaction::{
     TransactionReceipt as ClientTransactionReceipt,
 };
 use starknet_client::reader::PendingData;
+use starknet_types_core::felt::Felt;
 use test_utils::{
     auto_impl_get_test_instance,
     get_number_of_variants,
@@ -150,18 +151,18 @@ lazy_static! {
     pub static ref ACCOUNT_ADDRESS: ContractAddress = contract_address!("0x444");
     pub static ref TEST_ERC20_CONTRACT_CLASS_HASH: ClassHash = class_hash!("0x1010");
     pub static ref TEST_ERC20_CONTRACT_ADDRESS: ContractAddress = contract_address!("0x1001");
-    pub static ref ACCOUNT_INITIAL_BALANCE: StarkFelt = stark_felt!(2 * MAX_FEE.0);
+    pub static ref ACCOUNT_INITIAL_BALANCE: Felt = felt!(2 * MAX_FEE.0);
     // TODO(yair): verify this is the correct fee, got this value by printing the result of the
     // call.
     pub static ref EXPECTED_FEE_ESTIMATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x67f"),
+        gas_consumed: felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
     };
 
     pub static ref EXPECTED_FEE_ESTIMATE_SKIP_VALIDATE: FeeEstimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x67f"),
+        gas_consumed: felt!("0x67f"),
         gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(166300000000000,),
         unit: PriceUnit::Wei,
@@ -170,14 +171,14 @@ lazy_static! {
     // A message from L1 contract at address 0x987 to the contract at CONTRACT_ADDRESS that calls
     // the entry point "l1_handle" with the value 0x123, the retdata should be 0x123.
     pub static ref MESSAGE_FROM_L1: MessageFromL1 = MessageFromL1 {
-        from_address: EthAddress::try_from(stark_felt!(
+        from_address: EthAddress::try_from(felt!(
             "0x987"
         ))
         .unwrap(),
         to_address: *CONTRACT_ADDRESS,
         entry_point_selector: selector_from_name("l1_handle"),
         payload: calldata![
-            stark_felt!("0x123")
+            felt!("0x123")
         ],
     };
 }
@@ -188,8 +189,8 @@ async fn execution_call() {
 
     prepare_storage_for_execution(storage_writer);
 
-    let key = stark_felt!(1234_u16);
-    let value = stark_felt!(18_u8);
+    let key = felt!(1234_u16);
+    let value = felt!(18_u8);
 
     call_api_then_assert_and_validate_schema_for_result(
         &module,
@@ -210,7 +211,7 @@ async fn execution_call() {
 
     // Calling a non-existent contract.
     let err = module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest {
@@ -228,7 +229,7 @@ async fn execution_call() {
 
     // Calling a non-existent block.
     let err = module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest {
@@ -246,7 +247,7 @@ async fn execution_call() {
 
     // Calling a non-existent function (contract error).
     let err = module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest {
@@ -270,15 +271,17 @@ async fn execution_call() {
         *SEQUENCER_ADDRESS,
         &InvokeTransactionV1::default(),
         TransactionHash(StarkHash::ZERO),
-        Some(StarkFelt::ZERO),
+        Some(Felt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let contract_address = ContractAddress(
+        PatriciaKey::try_from(Arc::get_mut(&mut calldata.0).unwrap().remove(0)).unwrap(),
+    );
     let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest { contract_address, entry_point_selector, calldata },
@@ -301,11 +304,11 @@ async fn pending_execution_call() {
     );
     write_empty_block(storage_writer);
 
-    let key = stark_felt!(1234_u16);
-    let value = stark_felt!(18_u8);
+    let key = felt!(1234_u16);
+    let value = felt!(18_u8);
 
     let res = module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest {
@@ -329,15 +332,17 @@ async fn pending_execution_call() {
         *SEQUENCER_ADDRESS,
         &InvokeTransactionV1::default(),
         TransactionHash(StarkHash::ZERO),
-        Some(StarkFelt::ZERO),
+        Some(Felt::ZERO),
     );
     // Calling the contract directly and not through the account contract.
-    let contract_address = contract_address!(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
+    let contract_address = ContractAddress(
+        PatriciaKey::try_from(Arc::get_mut(&mut calldata.0).unwrap().remove(0)).unwrap(),
+    );
     let entry_point_selector = EntryPointSelector(Arc::get_mut(&mut calldata.0).unwrap().remove(0));
     let _calldata_length = Arc::get_mut(&mut calldata.0).unwrap().remove(0);
 
     module
-        .call::<_, Vec<StarkFelt>>(
+        .call::<_, Vec<Felt>>(
             "starknet_V0_6_call",
             (
                 CallRequest { contract_address, entry_point_selector, calldata },
@@ -363,8 +368,8 @@ async fn call_estimate_fee() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
         ..Default::default()
     }));
@@ -422,8 +427,8 @@ async fn call_estimate_fee() {
             calldata: calldata![
                 *DEPRECATED_CONTRACT_ADDRESS.0.key(),    // Contract address.
                 selector_from_name("non_existent_ep").0, // EP selector.
-                stark_felt!(1_u8),                       // Calldata length.
-                stark_felt!(2_u8)                        // Calldata: num.
+                felt!(1_u8),                             // Calldata length.
+                felt!(2_u8)                              // Calldata: num.
             ],
             ..Default::default()
         }));
@@ -474,8 +479,8 @@ async fn pending_call_estimate_fee() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
         ..Default::default()
     }));
@@ -537,8 +542,8 @@ async fn test_call_simulate(
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
         ..Default::default()
     };
@@ -619,8 +624,8 @@ async fn call_simulate_skip_validate() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
         ..Default::default()
     }));
@@ -668,8 +673,8 @@ async fn call_simulate_skip_fee_charge() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
         ..Default::default()
     }));
@@ -711,8 +716,8 @@ async fn trace_block_transactions_regular_and_pending() {
 
     let mut writer = prepare_storage_for_execution(storage_writer);
 
-    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
-    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+    let tx_hash1 = TransactionHash(felt!("0x1234"));
+    let tx_hash2 = TransactionHash(felt!("0x5678"));
 
     let client_tx1 = ClientTransaction::Invoke(ClientInvokeTransaction {
         max_fee: Some(*MAX_FEE),
@@ -720,10 +725,10 @@ async fn trace_block_transactions_regular_and_pending() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
-        nonce: Some(Nonce(stark_felt!(0_u128))),
+        nonce: Some(Nonce(felt!(0_u128))),
         version: TransactionVersion::ONE,
         ..Default::default()
     });
@@ -734,10 +739,10 @@ async fn trace_block_transactions_regular_and_pending() {
         calldata: calldata![
             *DEPRECATED_CONTRACT_ADDRESS.0.key(),  // Contract address.
             selector_from_name("return_result").0, // EP selector.
-            stark_felt!(1_u8),                     // Calldata length.
-            stark_felt!(2_u8)                      // Calldata: num.
+            felt!(1_u8),                           // Calldata length.
+            felt!(2_u8)                            // Calldata: num.
         ],
-        nonce: Some(Nonce(stark_felt!(1_u128))),
+        nonce: Some(Nonce(felt!(1_u128))),
         version: TransactionVersion::ONE,
         ..Default::default()
     });
@@ -752,8 +757,8 @@ async fn trace_block_transactions_regular_and_pending() {
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x2")),
-                parent_hash: BlockHash(stark_felt!("0x1")),
+                block_hash: BlockHash(felt!("0x2")),
+                parent_hash: BlockHash(felt!("0x1")),
                 ..Default::default()
             },
         )
@@ -777,7 +782,7 @@ async fn trace_block_transactions_regular_and_pending() {
         .append_state_diff(
             BlockNumber(2),
             ThinStateDiff {
-                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(felt!(2_u128))),
                 ..Default::default()
             },
         )
@@ -829,7 +834,7 @@ async fn trace_block_transactions_regular_and_pending() {
             eth_l1_gas_price: GAS_PRICE.price_in_wei,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
-            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            parent_block_hash: BlockHash(felt!("0x1")),
             transactions: vec![client_tx1, client_tx2],
             transaction_receipts: vec![
                 ClientTransactionReceipt {
@@ -848,7 +853,7 @@ async fn trace_block_transactions_regular_and_pending() {
         state_update: PendingStateUpdate {
             old_root: Default::default(),
             state_diff: ClientStateDiff {
-                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(felt!(2_u128))),
                 ..Default::default()
             },
         },
@@ -889,21 +894,21 @@ async fn trace_block_transactions_regular_and_pending() {
 
 #[tokio::test]
 async fn trace_block_transactions_and_trace_transaction_execution_context() {
-    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
-    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+    let tx_hash1 = TransactionHash(felt!("0x1234"));
+    let tx_hash2 = TransactionHash(felt!("0x5678"));
 
     let mut invoke_tx1 = starknet_api::transaction::InvokeTransactionV1 {
         max_fee: *MAX_FEE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Nonce(stark_felt!(0_u128)),
+        nonce: Nonce(felt!(0_u128)),
         ..Default::default()
     };
     let mut invoke_tx2 = starknet_api::transaction::InvokeTransactionV1 {
         max_fee: *MAX_FEE,
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Nonce(stark_felt!(1_u128)),
+        nonce: Nonce(felt!(1_u128)),
         ..Default::default()
     };
 
@@ -955,8 +960,8 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
                 l1_gas_price: *GAS_PRICE,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x2")),
-                parent_hash: BlockHash(stark_felt!("0x1")),
+                block_hash: BlockHash(felt!("0x2")),
+                parent_hash: BlockHash(felt!("0x1")),
                 ..Default::default()
             },
         )
@@ -980,7 +985,7 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
         .append_state_diff(
             BlockNumber(2),
             ThinStateDiff {
-                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(felt!(2_u128))),
                 ..Default::default()
             },
         )
@@ -1025,14 +1030,14 @@ async fn trace_block_transactions_and_trace_transaction_execution_context() {
 
 #[tokio::test]
 async fn pending_trace_block_transactions_and_trace_transaction_execution_context() {
-    let tx_hash1 = TransactionHash(stark_felt!("0x1234"));
-    let tx_hash2 = TransactionHash(stark_felt!("0x5678"));
+    let tx_hash1 = TransactionHash(felt!("0x1234"));
+    let tx_hash2 = TransactionHash(felt!("0x5678"));
 
     let mut client_invoke_tx1 = ClientInvokeTransaction {
         max_fee: Some(*MAX_FEE),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Some(Nonce(stark_felt!(0_u128))),
+        nonce: Some(Nonce(felt!(0_u128))),
         version: TransactionVersion::ONE,
         ..Default::default()
     };
@@ -1040,7 +1045,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
         max_fee: Some(*MAX_FEE),
         sender_address: *ACCOUNT_ADDRESS,
         calldata: calldata![],
-        nonce: Some(Nonce(stark_felt!(1_u128))),
+        nonce: Some(Nonce(felt!(1_u128))),
         version: TransactionVersion::ONE,
         ..Default::default()
     };
@@ -1077,7 +1082,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
             eth_l1_gas_price: GAS_PRICE.price_in_wei,
             sequencer_address: *SEQUENCER_ADDRESS,
             timestamp: *BLOCK_TIMESTAMP,
-            parent_block_hash: BlockHash(stark_felt!("0x1")),
+            parent_block_hash: BlockHash(felt!("0x1")),
             transactions: vec![client_tx1, client_tx2],
             transaction_receipts: vec![
                 ClientTransactionReceipt {
@@ -1096,7 +1101,7 @@ async fn pending_trace_block_transactions_and_trace_transaction_execution_contex
         state_update: PendingStateUpdate {
             old_root: Default::default(),
             state_diff: ClientStateDiff {
-                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(stark_felt!(2_u128))),
+                nonces: indexmap!(*ACCOUNT_ADDRESS => Nonce(felt!(2_u128))),
                 ..Default::default()
             },
         },
@@ -1162,7 +1167,7 @@ async fn call_estimate_message_fee() {
     // TODO(yair): get a l1_handler entry point that actually does something and check that the fee
     // is correct.
     let expected_fee_estimate = FeeEstimate {
-        gas_consumed: stark_felt!("0x0"),
+        gas_consumed: felt!("0x0"),
         gas_price: GAS_PRICE.price_in_wei,
         overall_fee: Fee(0),
         unit: PriceUnit::default(),
@@ -1337,7 +1342,7 @@ auto_impl_get_test_instance! {
     }
 
     pub struct FeeEstimate {
-        pub gas_consumed: StarkFelt,
+        pub gas_consumed: Felt,
         pub gas_price: GasPrice,
         pub overall_fee: Fee,
         pub unit: PriceUnit,
@@ -1379,26 +1384,26 @@ fn get_calldata_for_test_execution_info(
     expected_sequencer_address: SequencerContractAddress,
     invoke_tx: &InvokeTransactionV1,
     tx_hash: TransactionHash,
-    override_tx_version: Option<StarkFelt>,
+    override_tx_version: Option<Felt>,
 ) -> Calldata {
     let entry_point_selector = selector_from_name("test_get_execution_info");
-    let expected_block_number = stark_felt!(expected_block_number.0);
-    let expected_block_timestamp = stark_felt!(expected_block_timestamp.0);
+    let expected_block_number = felt!(expected_block_number.0);
+    let expected_block_timestamp = felt!(expected_block_timestamp.0);
     let expected_sequencer_address = *(expected_sequencer_address.0.0.key());
     let expected_caller_address = *(invoke_tx.sender_address.0.key());
     let expected_contract_address = *CONTRACT_ADDRESS.0.key();
-    let expected_transaction_version = override_tx_version.unwrap_or(StarkFelt::ONE);
+    let expected_transaction_version = override_tx_version.unwrap_or(Felt::ONE);
     let expected_signature = invoke_tx.signature.0.clone();
     let expected_transaction_hash = tx_hash.0;
-    let expected_chain_id = stark_felt!(&*(get_test_rpc_config().chain_id.as_hex()));
+    let expected_chain_id = felt!(&*(get_test_rpc_config().chain_id.as_hex()));
     let expected_nonce = invoke_tx.nonce.0;
-    let expected_max_fee = stark_felt!(invoke_tx.max_fee.0);
-    let expected_resource_bounds_length = StarkFelt::ZERO;
-    let expected_tip = StarkFelt::ZERO;
-    let expected_paymaster_data = StarkFelt::ZERO;
-    let expected_nonce_da = StarkFelt::ZERO;
-    let expected_fee_da = StarkFelt::ZERO;
-    let expected_account_data = StarkFelt::ZERO;
+    let expected_max_fee = felt!(invoke_tx.max_fee.0);
+    let expected_resource_bounds_length = Felt::ZERO;
+    let expected_tip = Felt::ZERO;
+    let expected_paymaster_data = Felt::ZERO;
+    let expected_nonce_da = Felt::ZERO;
+    let expected_fee_da = Felt::ZERO;
+    let expected_account_data = Felt::ZERO;
 
     let calldata = [
         vec![
@@ -1408,7 +1413,7 @@ fn get_calldata_for_test_execution_info(
             expected_transaction_version,
             expected_caller_address,
             expected_max_fee,
-            stark_felt!(expected_signature.len() as u64),
+            felt!(expected_signature.len() as u64),
         ],
         expected_signature,
         vec![
@@ -1423,7 +1428,7 @@ fn get_calldata_for_test_execution_info(
             expected_account_data,
             expected_caller_address,
             expected_contract_address,
-            stark_felt!(entry_point_selector.0),
+            entry_point_selector.0,
         ],
     ]
     .iter()
@@ -1433,11 +1438,7 @@ fn get_calldata_for_test_execution_info(
 
     Calldata(Arc::new(
         [
-            vec![
-                *CONTRACT_ADDRESS.0.key(),
-                entry_point_selector.0,
-                stark_felt!(calldata.len() as u64),
-            ],
+            vec![*CONTRACT_ADDRESS.0.key(), entry_point_selector.0, felt!(calldata.len() as u64)],
             calldata,
         ]
         .iter()
@@ -1635,7 +1636,7 @@ fn prepare_storage_for_execution(mut storage_writer: StorageWriter) -> StorageWr
                 l1_gas_price: different_gas_price,
                 sequencer: *SEQUENCER_ADDRESS,
                 timestamp: *BLOCK_TIMESTAMP,
-                block_hash: BlockHash(stark_felt!("0x1")),
+                block_hash: BlockHash(felt!("0x1")),
                 block_number: BlockNumber(1),
                 ..Default::default()
             },

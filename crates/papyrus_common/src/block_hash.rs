@@ -11,7 +11,8 @@ use starknet_api::core::{
     SequencerContractAddress,
     TransactionCommitment,
 };
-use starknet_api::hash::{pedersen_hash, StarkFelt, StarkHash};
+use starknet_api::crypto::patricia_hash::calculate_root;
+use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{
     DeployAccountTransaction,
     Event,
@@ -20,8 +21,9 @@ use starknet_api::transaction::{
     TransactionOutput,
 };
 use starknet_api::StarknetApiError;
+use starknet_types_core::felt::Felt;
+use starknet_types_core::hash::{Pedersen, StarkHash as CoreStarkHash};
 
-use crate::patricia_hash_tree::calculate_root;
 use crate::transaction_hash::{ascii_as_felt, HashChain, ZERO};
 use crate::usize_into_felt;
 
@@ -87,7 +89,7 @@ fn calculate_block_hash_by_version(
 ) -> Result<BlockHash, BlockHashError> {
     // Can't implement as a closure because ascii_as_felt returns a Result.
     let chain_id_as_felt = if version == BlockHashVersion::V0 {
-        Some(ascii_as_felt(chain_id.0.as_str())?)
+        Some(ascii_as_felt(chain_id.to_string().as_str())?)
     } else {
         None
     };
@@ -137,7 +139,7 @@ fn calculate_transaction_commitment_by_version(
                 get_transaction_leaf(transaction, transaction_hash, version)
             })
             .collect::<Result<Vec<_>, _>>()?;
-    let transactions_patricia_root = calculate_root(transaction_patricia_leaves);
+    let transactions_patricia_root = calculate_root::<Pedersen>(transaction_patricia_leaves);
     Ok(TransactionCommitment(transactions_patricia_root))
 }
 
@@ -153,10 +155,10 @@ fn get_transaction_leaf(
         get_signature_only_from_invoke(transaction)
     };
     let signature_hash = HashChain::new().chain_iter(signature.iter()).get_pedersen_hash();
-    Ok(pedersen_hash(&transaction_hash.0, &signature_hash))
+    Ok(Pedersen::hash(&transaction_hash.0, &signature_hash))
 }
 
-fn get_transaction_signature(transaction: &Transaction) -> Vec<StarkFelt> {
+fn get_transaction_signature(transaction: &Transaction) -> Vec<Felt> {
     match transaction {
         Transaction::Declare(declare) => declare.signature().0,
         Transaction::Deploy(_) => vec![],
@@ -173,7 +175,7 @@ fn get_transaction_signature(transaction: &Transaction) -> Vec<StarkFelt> {
     }
 }
 
-fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<StarkFelt> {
+fn get_signature_only_from_invoke(transaction: &Transaction) -> Vec<Felt> {
     if let Transaction::Invoke(invoke) = transaction { invoke.signature().0 } else { vec![] }
 }
 
@@ -187,7 +189,7 @@ fn calculate_event_commitment_by_version(
     }
     let event_patricia_leaves: Vec<_> =
         transaction_outputs.iter().flat_map(|output| output.events()).map(get_event_leaf).collect();
-    let event_patricia_root = calculate_root(event_patricia_leaves);
+    let event_patricia_root = calculate_root::<Pedersen>(event_patricia_leaves);
     EventCommitment(event_patricia_root)
 }
 
@@ -203,11 +205,10 @@ fn get_event_leaf(event: &Event) -> StarkHash {
 
 // The fixed sequencer addresses of the chains that have historic blocks with block hash version 2.
 fn get_chain_sequencer_address(chain_id: &ChainId) -> StarkHash {
-    match chain_id.to_string().as_str() {
-        "SN_MAIN" => StarkHash::try_from(
+    match chain_id {
+        ChainId::Mainnet => StarkHash::from_hex_unchecked(
             "0x021f4b90b0377c82bf330b7b5295820769e72d79d8acd0effa0ebde6e9988bc5",
-        )
-        .expect("should be a Stark felt in hex representation"),
+        ),
         // TODO(yoav): Add sequencers for the rest of the supported chains that have historic blocks
         // with block hash version 2.
         _ => unimplemented!("Sequencer address for chain"),

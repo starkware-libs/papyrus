@@ -6,10 +6,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "papyrus.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
+{{- with .Values.ingress.annotations }}
   annotations:
-    {{ tpl .Values.ingress.annotations . | nindent 4 | trim }}
-  {{- end }}
+    {{ toYaml . | nindent 4 }}
+{{- end }}
 spec:
   rules:
   - host: {{ .Values.ingress.host }}

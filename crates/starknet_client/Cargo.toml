@@ -17,8 +17,8 @@ http.workspace = true
 indexmap = { workspace = true, features = ["serde"] }
 mockall = { workspace = true, optional = true }
 os_info.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.2" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.2" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
 reqwest = { workspace = true, features = ["json", "blocking"] }
@@ -26,6 +26,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 serde_repr.workspace = true
 starknet_api.workspace = true
+starknet-types-core = {workspace = true, features = ["serde"]}
 strum.workspace = true
 strum_macros.workspace = true
 test_utils = { path = "../test_utils", optional = true }

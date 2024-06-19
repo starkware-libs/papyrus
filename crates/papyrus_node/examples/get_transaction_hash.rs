@@ -236,7 +236,7 @@ fn create_map_of_transaction(
     transaction_hash: String,
     deprecated: bool,
 ) -> BTreeMap<String, Value> {
-    let chain_id = ChainId("SN_MAIN".to_string());
+    let chain_id = ChainId::Mainnet;
     let mut transaction_info = BTreeMap::new();
     transaction_info.insert("transaction".to_string(), json!(transaction));
     transaction_info.insert("chain_id".to_string(), json!(chain_id));

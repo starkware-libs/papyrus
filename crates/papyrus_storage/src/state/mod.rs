@@ -19,7 +19,7 @@
 //! # let dir = dir_handle.path().to_path_buf();
 //! # let db_config = DbConfig {
 //! #     path_prefix: dir,
-//! #     chain_id: ChainId("SN_MAIN".to_owned()),
+//! #     chain_id: ChainId::Mainnet,
 //! #     enforce_file_exists: false,
 //! #     min_size: 1 << 20,    // 1MB
 //! #     max_size: 1 << 35,    // 32GB
@@ -62,8 +62,8 @@ use papyrus_proc_macros::latency_histogram;
 use starknet_api::block::BlockNumber;
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
-use starknet_api::hash::StarkFelt;
 use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff};
+use starknet_types_core::felt::Felt;
 use tracing::debug;
 
 use crate::db::serialization::{NoVersionValueWrapper, VersionWrapper, VersionZeroWrapper};
@@ -99,7 +99,7 @@ pub(crate) type DeployedContractsTable<'env> =
 pub(crate) type ContractStorageTable<'env> = TableHandle<
     'env,
     (ContractAddress, StorageKey, BlockNumber),
-    NoVersionValueWrapper<StarkFelt>,
+    NoVersionValueWrapper<Felt>,
     SimpleTable,
 >;
 pub(crate) type NoncesTable<'env> =
@@ -300,7 +300,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
     }
 
     /// Returns the storage value at a given state number for a given contract and key.
-    /// If no value is stored at the given state number, returns [`StarkFelt`]::default.
+    /// If no value is stored at the given state number, returns [`Felt`]::default.
     ///
     /// # Arguments
     /// * state_number - state number to search before.
@@ -314,7 +314,7 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         state_number: StateNumber,
         address: &ContractAddress,
         key: &StorageKey,
-    ) -> StorageResult<StarkFelt> {
+    ) -> StorageResult<Felt> {
         #[cfg(feature = "document_calls")]
         add_query(StorageQuery::GetStorageAt(state_number, *address, *key));
 
@@ -327,12 +327,12 @@ impl<'env, Mode: TransactionKind> StateReader<'env, Mode> {
         cursor.lower_bound(&db_key)?;
         let res = cursor.prev()?;
         match res {
-            None => Ok(StarkFelt::default()),
+            None => Ok(Felt::default()),
             Some(((got_address, got_key, _got_block_number), value)) => {
                 if got_address != *address || got_key != *key {
                     // The previous item belongs to different key, which means there is no
                     // previous state diff for this item.
-                    return Ok(StarkFelt::default());
+                    return Ok(Felt::default());
                 };
                 // The previous db item indeed belongs to this address and key.
                 Ok(value)
@@ -682,9 +682,9 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
-#[latency_histogram("storage_write_storage_diffs_latency_seconds", true)]
+#[latency_histogram("storage_write_storage_diffs_latency_seconds", false)]
 fn write_storage_diffs<'env>(
-    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
+    storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, Felt>>,
     txn: &DbTransaction<'env, RW>,
     block_number: BlockNumber,
     storage_table: &'env ContractStorageTable<'env>,
