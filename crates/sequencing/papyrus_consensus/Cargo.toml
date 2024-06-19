@@ -22,3 +22,4 @@ tracing.workspace = true
 mockall.workspace = true
 papyrus_storage = { path = "../../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../../test_utils" }
+test-case.workspace = true
