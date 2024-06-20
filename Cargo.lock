@@ -6089,6 +6089,7 @@ dependencies = [
  "papyrus_base_layer",
  "papyrus_common",
  "papyrus_config",
+ "papyrus_consensus",
  "papyrus_monitoring_gateway",
  "papyrus_network",
  "papyrus_p2p_sync",

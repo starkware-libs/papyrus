@@ -506,7 +506,7 @@ impl NetworkManager {
 const CHANNEL_BUFFER_SIZE: usize = 1000;
 
 #[cfg(feature = "testing")]
-pub fn mock_register_broadcast_subscriber<T, U>()
+pub fn mock_register_broadcast_subscriber<T>()
 -> Result<TestSubscriberChannels<T>, SubscriptionError>
 where
     T: TryFrom<Bytes>,

@@ -5,7 +5,7 @@
 pub mod bin_utils;
 mod db_executor;
 mod discovery;
-mod gossipsub_impl;
+pub mod gossipsub_impl;
 pub mod mixed_behaviour;
 pub mod network_manager;
 mod peer_manager;

@@ -31,6 +31,7 @@ once_cell.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.3" }
 papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
 papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
+papyrus_consensus = { path = "../sequencing/papyrus_consensus", version = "0.4.0-dev.3" }
 papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway", version = "0.4.0-dev.3" }
 papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.3" }
 papyrus_p2p_sync = { path = "../papyrus_p2p_sync", version = "0.4.0-dev.3" }
