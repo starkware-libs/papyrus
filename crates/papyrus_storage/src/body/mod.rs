@@ -458,6 +458,7 @@ fn write_transactions<'env>(
     Ok(())
 }
 
+// This function assumes that the `transaction_index` is the last index used to call it.
 fn write_events<'env>(
     tx_output: &TransactionOutput,
     txn: &DbTransaction<'env, RW>,
@@ -472,6 +473,8 @@ fn write_events<'env>(
 
     for contract_address in contract_addresses_set {
         let key = (contract_address, transaction_index);
+        // Here, we use the function assumption; the append will fail if an older transaction_index
+        // is a table.
         events_table.append_greater_sub_key(txn, &key, &NoValue)?;
     }
     Ok(())

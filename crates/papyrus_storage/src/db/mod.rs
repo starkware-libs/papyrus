@@ -206,7 +206,14 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
             })
             .set_max_tables(MAX_DBS)
             .set_max_readers(MAX_READERS)
-            .set_flags(DatabaseFlags { no_rdahead: true, liforeclaim: true, ..Default::default() })
+            .set_flags(DatabaseFlags {
+                // There is no locality of pages in the database almost at all, so readahead will
+                // fill the RAM with garbage.
+                no_rdahead: true,
+                // LIFO policy for recycling a Garbage Collection items should be faster.
+                liforeclaim: true,
+                ..Default::default()
+            })
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
