@@ -142,4 +142,9 @@ auto_impl_get_test_instance! {
         Forward=0,
         Backward=1,
     }
+    pub struct HeaderQuery(pub Query);
+    pub struct SignedBlockHeader {
+        pub block_header: BlockHeader,
+        pub signatures: Vec<BlockSignature>,
+    }
 }
