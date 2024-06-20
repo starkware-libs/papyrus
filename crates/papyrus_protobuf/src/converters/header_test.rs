@@ -1,18 +1,13 @@
-use starknet_api::block::{BlockHeader, BlockNumber};
+use test_utils::{get_rng, GetTestInstance};
 
-use crate::sync::{BlockHashOrNumber, DataOrFin, Direction, HeaderQuery, Query, SignedBlockHeader};
+use crate::sync::{DataOrFin, HeaderQuery, SignedBlockHeader};
 
 #[test]
 fn block_header_to_bytes_and_back() {
-    let data = DataOrFin(Some(SignedBlockHeader {
-        // TODO(shahak): Remove state_diff_length from here once we correctly deduce if it should
-        // be None or Some.
-        block_header: BlockHeader { state_diff_length: Some(0), ..Default::default() },
-        signatures: vec![],
-    }));
-    dbg!(&data);
+    let mut rng = get_rng();
+    let signed_block_header = SignedBlockHeader::get_test_instance(&mut rng);
+    let data = DataOrFin(Some(signed_block_header.clone()));
     let bytes_data = Vec::<u8>::from(data.clone());
-
     let res_data = DataOrFin::try_from(bytes_data).unwrap();
     assert_eq!(res_data, data);
 }
@@ -27,14 +22,9 @@ fn fin_to_bytes_and_back() {
 
 #[test]
 fn header_query_to_bytes_and_back() {
-    let query = HeaderQuery(Query {
-        start_block: BlockHashOrNumber::Number(BlockNumber(0)),
-        direction: Direction::Forward,
-        limit: 1,
-        step: 1,
-    });
-
-    let bytes = Vec::<u8>::from(query.clone());
+    let mut rng = get_rng();
+    let header_query = HeaderQuery::get_test_instance(&mut rng);
+    let bytes = Vec::<u8>::from(header_query.clone());
     let res_query = HeaderQuery::try_from(bytes).unwrap();
-    assert_eq!(query, res_query);
+    assert_eq!(header_query, res_query);
 }
