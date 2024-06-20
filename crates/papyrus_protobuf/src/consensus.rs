@@ -11,6 +11,21 @@ pub struct Proposal {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub enum VoteType {
+    Prevote,
+    Precommit,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Vote {
+    pub vote_type: VoteType,
+    pub height: u64,
+    pub block_hash: BlockHash,
+    pub voter: ContractAddress,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ConsensusMessage {
     Proposal(Proposal),
+    Vote(Vote),
 }
