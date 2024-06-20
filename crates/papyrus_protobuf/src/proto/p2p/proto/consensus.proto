@@ -3,14 +3,31 @@ import "p2p/proto/transaction.proto";
 import "p2p/proto/common.proto";
 
 message Proposal {
-    uint64 height = 1;
-    Address proposer = 2;
+    uint64               height       = 1;
+    Address              proposer     = 2;
     repeated Transaction transactions = 3;
-    Hash block_hash = 4;
+    Hash                 block_hash   = 4;
+}
+
+message Vote {
+    enum  VoteType {
+        Prevote   = 0;
+        Precommit = 1;
+    };
+
+    // We use a type field to distinguish between prevotes and precommits instead of different
+    // messages, to make sure the data, and therefore the signatures, are unambiguous between
+    // Prevote and Precommit.
+    VoteType      vote_type  = 2;
+    uint64        height     = 3;
+    // This is optional since a vote can be NIL.
+    optional Hash block_hash = 4;
+    Address       voter      = 5;
 }
 
 message ConsensusMessage {
     oneof message {
         Proposal proposal = 1;
+        Vote     vote     = 2;
     }
 }

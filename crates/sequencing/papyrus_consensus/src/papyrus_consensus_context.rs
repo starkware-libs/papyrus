@@ -14,7 +14,6 @@ use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::block_hash;
 use starknet_api::transaction::Transaction;
 use tokio::sync::Mutex;
 use tracing::debug;

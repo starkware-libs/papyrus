@@ -42,7 +42,10 @@ where
             let ConsensusMessage::Proposal(proposal) = network_receiver
                 .try_next()
                 .expect("Failed to receive a message from network")
-                .expect("Network receiver closed unexpectedly");
+                .expect("Network receiver closed unexpectedly")
+            else {
+                todo!("Handle votes");
+            };
             let (proposal_init, content_receiver, fin_receiver) = proposal.into();
 
             shc.handle_proposal(proposal_init, content_receiver, fin_receiver).await?.unwrap()
