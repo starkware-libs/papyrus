@@ -47,7 +47,10 @@ where
                 .await
                 .expect("Failed to receive a message from network")
                 .0
-                .expect("Network receiver closed unexpectedly");
+                .expect("Network receiver closed unexpectedly")
+            else {
+                todo!("Handle votes");
+            };
             let (proposal_init, content_receiver, fin_receiver) = ProposalWrapper(proposal).into();
 
             shc.handle_proposal(proposal_init, content_receiver, fin_receiver)
