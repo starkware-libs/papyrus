@@ -952,10 +952,10 @@ dependencies = [
  "ark-secp256k1",
  "ark-secp256r1",
  "cached",
- "cairo-lang-casm",
+ "cairo-lang-casm 2.7.0-dev.0",
  "cairo-lang-runner",
- "cairo-lang-starknet-classes",
- "cairo-lang-utils",
+ "cairo-lang-starknet-classes 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
  "cairo-vm",
  "derive_more",
  "indexmap 2.2.6",
@@ -973,7 +973,7 @@ dependencies = [
  "sha3",
  "starknet-crypto 0.5.2",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "strum 0.24.1",
  "strum_macros 0.24.3",
  "thiserror",
@@ -1107,16 +1107,29 @@ checksum = "3a4f925191b4367301851c6d99b09890311d74b0d43f274c0b34c86d308a3663"
 
 [[package]]
 name = "cairo-lang-casm"
-version = "2.7.0-dev.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c2faefea599ed16d71262ad60b66c8b8e081b83e08d141ae9f8da98240a3dabd"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
 dependencies = [
- "cairo-lang-utils",
+ "cairo-lang-utils 2.6.4",
  "indoc",
  "num-bigint 0.4.5",
  "num-traits 0.2.19",
  "parity-scale-codec",
  "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cairo-lang-casm"
+version = "2.7.0-dev.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c2faefea599ed16d71262ad60b66c8b8e081b83e08d141ae9f8da98240a3dabd"
+dependencies = [
+ "cairo-lang-utils 2.7.0-dev.0",
+ "indoc",
+ "num-bigint 0.4.5",
+ "num-traits 0.2.19",
+ "parity-scale-codec",
  "serde",
 ]
 
@@ -1134,10 +1147,10 @@ dependencies = [
  "cairo-lang-parser",
  "cairo-lang-project",
  "cairo-lang-semantic",
- "cairo-lang-sierra",
+ "cairo-lang-sierra 2.7.0-dev.0",
  "cairo-lang-sierra-generator",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "indoc",
  "salsa",
  "smol_str",
@@ -1150,7 +1163,7 @@ version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "69a2ccc456d6d6be5c45b94d7f0da5da573e888adf4dece38fe5768910d4c4fd"
 dependencies = [
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
 ]
 
 [[package]]
@@ -1164,7 +1177,7 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-parser",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "itertools 0.12.1",
  "salsa",
  "smol_str",
@@ -1178,8 +1191,17 @@ checksum = "cf54b7d11b9c4be3f7b9fa15ae6912c2b830a404983b21dbfea7503cc7a0a96d"
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-filesystem",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "itertools 0.12.1",
+]
+
+[[package]]
+name = "cairo-lang-eq-solver"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "cairo-lang-utils 2.6.4",
+ "good_lp",
 ]
 
 [[package]]
@@ -1188,7 +1210,7 @@ version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "83adfb83ff9c2f2b2df81f80ac0c4c0ee4f23a3ee2898e186bddf838f0d76896"
 dependencies = [
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "good_lp",
 ]
 
@@ -1199,7 +1221,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56daeeed88b6d8358701a3d47b33374fd2a019596bb9a0864d0278cd41004fc8"
 dependencies = [
  "cairo-lang-debug",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "path-clean",
  "salsa",
  "serde",
@@ -1217,7 +1239,7 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-parser",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "diffy",
  "ignore",
  "itertools 0.12.1",
@@ -1241,7 +1263,7 @@ dependencies = [
  "cairo-lang-proc-macros",
  "cairo-lang-semantic",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "id-arena",
  "itertools 0.12.1",
  "log",
@@ -1262,7 +1284,7 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-syntax",
  "cairo-lang-syntax-codegen",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "colored",
  "itertools 0.12.1",
  "num-bigint 0.4.5",
@@ -1283,7 +1305,7 @@ dependencies = [
  "cairo-lang-filesystem",
  "cairo-lang-parser",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "indent",
  "indoc",
  "itertools 0.12.1",
@@ -1309,7 +1331,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74a9759131a1d59a58c775a980ad514e243addb334b95556cd23266d774587a2"
 dependencies = [
  "cairo-lang-filesystem",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "serde",
  "smol_str",
  "thiserror",
@@ -1325,15 +1347,15 @@ dependencies = [
  "ark-ff",
  "ark-secp256k1",
  "ark-secp256r1",
- "cairo-lang-casm",
+ "cairo-lang-casm 2.7.0-dev.0",
  "cairo-lang-lowering",
- "cairo-lang-sierra",
- "cairo-lang-sierra-ap-change",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-sierra-ap-change 2.7.0-dev.0",
  "cairo-lang-sierra-generator",
- "cairo-lang-sierra-to-casm",
- "cairo-lang-sierra-type-size",
+ "cairo-lang-sierra-to-casm 2.7.0-dev.0",
+ "cairo-lang-sierra-type-size 2.7.0-dev.0",
  "cairo-lang-starknet",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "cairo-vm",
  "itertools 0.12.1",
  "keccak",
@@ -1363,7 +1385,7 @@ dependencies = [
  "cairo-lang-proc-macros",
  "cairo-lang-syntax",
  "cairo-lang-test-utils",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "id-arena",
  "indoc",
  "itertools 0.12.1",
@@ -1377,12 +1399,39 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "anyhow",
+ "cairo-lang-utils 2.6.4",
+ "const-fnv1a-hash",
+ "convert_case 0.6.0",
+ "derivative",
+ "itertools 0.12.1",
+ "lalrpop",
+ "lalrpop-util",
+ "num-bigint 0.4.5",
+ "num-integer",
+ "num-traits 0.2.19",
+ "once_cell",
+ "regex",
+ "salsa",
+ "serde",
+ "serde_json",
+ "sha3",
+ "smol_str",
+ "starknet-types-core",
+ "thiserror",
+]
+
+[[package]]
+name = "cairo-lang-sierra"
 version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5022f62ac3a430e4d52d55b62080cbd88e8587b43a7e5c0569feb02c5eb63443"
 dependencies = [
  "anyhow",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "const-fnv1a-hash",
  "convert_case 0.6.0",
  "derivative",
@@ -1403,14 +1452,44 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-ap-change"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "cairo-lang-eq-solver 2.6.4",
+ "cairo-lang-sierra 2.6.4",
+ "cairo-lang-sierra-type-size 2.6.4",
+ "cairo-lang-utils 2.6.4",
+ "itertools 0.12.1",
+ "num-bigint 0.4.5",
+ "num-traits 0.2.19",
+ "thiserror",
+]
+
+[[package]]
+name = "cairo-lang-sierra-ap-change"
 version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f5cd352c120ffc20eecfbd7691652ca4a6ca7231567377939d6fac3dc35da99"
 dependencies = [
- "cairo-lang-eq-solver",
- "cairo-lang-sierra",
- "cairo-lang-sierra-type-size",
- "cairo-lang-utils",
+ "cairo-lang-eq-solver 2.7.0-dev.0",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-sierra-type-size 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
+ "itertools 0.12.1",
+ "num-bigint 0.4.5",
+ "num-traits 0.2.19",
+ "thiserror",
+]
+
+[[package]]
+name = "cairo-lang-sierra-gas"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "cairo-lang-eq-solver 2.6.4",
+ "cairo-lang-sierra 2.6.4",
+ "cairo-lang-sierra-type-size 2.6.4",
+ "cairo-lang-utils 2.6.4",
  "itertools 0.12.1",
  "num-bigint 0.4.5",
  "num-traits 0.2.19",
@@ -1423,10 +1502,10 @@ version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59aa1123fc8a6d08f80c2f12d1f72807597c32f2d75ca19696013824af263cb8"
 dependencies = [
- "cairo-lang-eq-solver",
- "cairo-lang-sierra",
- "cairo-lang-sierra-type-size",
- "cairo-lang-utils",
+ "cairo-lang-eq-solver 2.7.0-dev.0",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-sierra-type-size 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
  "itertools 0.12.1",
  "num-bigint 0.4.5",
  "num-traits 0.2.19",
@@ -1446,9 +1525,9 @@ dependencies = [
  "cairo-lang-lowering",
  "cairo-lang-parser",
  "cairo-lang-semantic",
- "cairo-lang-sierra",
+ "cairo-lang-sierra 2.7.0-dev.0",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "itertools 0.12.1",
  "num-traits 0.2.19",
  "once_cell",
@@ -1460,17 +1539,37 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-to-casm"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "assert_matches",
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-sierra 2.6.4",
+ "cairo-lang-sierra-ap-change 2.6.4",
+ "cairo-lang-sierra-gas 2.6.4",
+ "cairo-lang-sierra-type-size 2.6.4",
+ "cairo-lang-utils 2.6.4",
+ "indoc",
+ "itertools 0.12.1",
+ "num-bigint 0.4.5",
+ "num-traits 0.2.19",
+ "starknet-types-core",
+ "thiserror",
+]
+
+[[package]]
+name = "cairo-lang-sierra-to-casm"
 version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f51aab0d040f6c2c49eba5bbebd1ac7d66e87db24c5587ac8c759247c295a11"
 dependencies = [
  "assert_matches",
- "cairo-lang-casm",
- "cairo-lang-sierra",
- "cairo-lang-sierra-ap-change",
- "cairo-lang-sierra-gas",
- "cairo-lang-sierra-type-size",
- "cairo-lang-utils",
+ "cairo-lang-casm 2.7.0-dev.0",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-sierra-ap-change 2.7.0-dev.0",
+ "cairo-lang-sierra-gas 2.7.0-dev.0",
+ "cairo-lang-sierra-type-size 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
  "indoc",
  "itertools 0.12.1",
  "num-bigint 0.4.5",
@@ -1481,12 +1580,21 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-sierra-type-size"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "cairo-lang-sierra 2.6.4",
+ "cairo-lang-utils 2.6.4",
+]
+
+[[package]]
+name = "cairo-lang-sierra-type-size"
 version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9eab42a1cda2bae4adf612985080e7ecb88ceb83c9c069f1bfef9ae76c408eec"
 dependencies = [
- "cairo-lang-sierra",
- "cairo-lang-utils",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
 ]
 
 [[package]]
@@ -1503,11 +1611,11 @@ dependencies = [
  "cairo-lang-lowering",
  "cairo-lang-plugins",
  "cairo-lang-semantic",
- "cairo-lang-sierra",
+ "cairo-lang-sierra 2.7.0-dev.0",
  "cairo-lang-sierra-generator",
- "cairo-lang-starknet-classes",
+ "cairo-lang-starknet-classes 2.7.0-dev.0",
  "cairo-lang-syntax",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "const_format",
  "indent",
  "indoc",
@@ -1522,14 +1630,37 @@ dependencies = [
 
 [[package]]
 name = "cairo-lang-starknet-classes"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-sierra 2.6.4",
+ "cairo-lang-sierra-to-casm 2.6.4",
+ "cairo-lang-utils 2.6.4",
+ "convert_case 0.6.0",
+ "itertools 0.12.1",
+ "num-bigint 0.4.5",
+ "num-integer",
+ "num-traits 0.2.19",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "sha3",
+ "smol_str",
+ "starknet-types-core",
+ "thiserror",
+]
+
+[[package]]
+name = "cairo-lang-starknet-classes"
 version = "2.7.0-dev.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc7fdcbbba52cf3daedd2a2b3dde6403bc4c0bf679e5fbfd330a73d693fc9158"
 dependencies = [
- "cairo-lang-casm",
- "cairo-lang-sierra",
- "cairo-lang-sierra-to-casm",
- "cairo-lang-utils",
+ "cairo-lang-casm 2.7.0-dev.0",
+ "cairo-lang-sierra 2.7.0-dev.0",
+ "cairo-lang-sierra-to-casm 2.7.0-dev.0",
+ "cairo-lang-utils 2.7.0-dev.0",
  "convert_case 0.6.0",
  "itertools 0.12.1",
  "num-bigint 0.4.5",
@@ -1553,7 +1684,7 @@ checksum = "9a794b8c7b14cb8134f5c710c35014f087ea27d981618d26441e3b07830120de"
 dependencies = [
  "cairo-lang-debug",
  "cairo-lang-filesystem",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "num-bigint 0.4.5",
  "num-traits 0.2.19",
  "salsa",
@@ -1578,10 +1709,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b49fd5ec4786f5a088219ac672db55e1ffad03603c95069626d93f9391ab2cc"
 dependencies = [
  "cairo-lang-formatter",
- "cairo-lang-utils",
+ "cairo-lang-utils 2.7.0-dev.0",
  "colored",
  "log",
  "pretty_assertions",
+]
+
+[[package]]
+name = "cairo-lang-utils"
+version = "2.6.4"
+source = "git+https://github.com/giladchase/cairo.git?rev=60452d467#60452d467c365fa243aa990882091a9fa1763e5c"
+dependencies = [
+ "hashbrown 0.14.5",
+ "indexmap 2.2.6",
+ "itertools 0.12.1",
+ "num-bigint 0.4.5",
+ "num-traits 0.2.19",
+ "parity-scale-codec",
+ "schemars",
+ "serde",
 ]
 
 [[package]]
@@ -5876,7 +6022,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "tar",
  "tempfile",
  "test-with",
@@ -5891,7 +6037,7 @@ version = "0.4.0-dev.3"
 dependencies = [
  "papyrus_storage",
  "pretty_assertions",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "test_utils",
  "thiserror",
  "tracing",
@@ -5903,7 +6049,7 @@ version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "bitvec",
- "cairo-lang-starknet-classes",
+ "cairo-lang-starknet-classes 2.6.4",
  "hex",
  "indexmap 2.2.6",
  "lazy_static",
@@ -5914,7 +6060,7 @@ dependencies = [
  "sha3",
  "starknet-crypto 0.5.2",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "test_utils",
  "thiserror",
 ]
@@ -5944,7 +6090,7 @@ dependencies = [
  "futures",
  "mockall",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "thiserror",
  "tokio",
 ]
@@ -5956,9 +6102,9 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "blockifier",
- "cairo-lang-casm",
- "cairo-lang-starknet-classes",
- "cairo-lang-utils",
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-starknet-classes 2.6.4",
+ "cairo-lang-utils 2.6.4",
  "cairo-vm",
  "indexmap 2.2.6",
  "itertools 0.10.5",
@@ -5973,7 +6119,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "test_utils",
  "thiserror",
  "tracing",
@@ -6051,7 +6197,7 @@ dependencies = [
  "rand 0.8.5",
  "replace_with",
  "serde",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "test_utils",
  "thiserror",
  "tokio",
@@ -6095,7 +6241,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "starknet_client",
  "strum 0.25.0",
  "tempfile",
@@ -6128,7 +6274,7 @@ dependencies = [
  "rand 0.8.5",
  "serde",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "static_assertions",
  "test_utils",
  "thiserror",
@@ -6161,7 +6307,7 @@ dependencies = [
  "prost-build",
  "prost-types",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "thiserror",
 ]
 
@@ -6173,8 +6319,8 @@ dependencies = [
  "assert_matches",
  "async-trait",
  "base64 0.13.1",
- "cairo-lang-casm",
- "cairo-lang-starknet-classes",
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-starknet-classes 2.6.4",
  "camelpaste",
  "derive_more",
  "enum-iterator",
@@ -6208,7 +6354,7 @@ dependencies = [
  "serde_json",
  "starknet-core",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "starknet_client",
  "strum 0.25.0",
  "strum_macros 0.25.3",
@@ -6228,9 +6374,9 @@ version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "byteorder",
- "cairo-lang-casm",
- "cairo-lang-starknet-classes",
- "cairo-lang-utils",
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-starknet-classes 2.6.4",
+ "cairo-lang-utils 2.6.4",
  "camelpaste",
  "clap",
  "human_bytes",
@@ -6260,7 +6406,7 @@ dependencies = [
  "serde_json",
  "simple_logger",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "statistical",
  "tempfile",
  "test-case",
@@ -6280,7 +6426,7 @@ dependencies = [
  "assert_matches",
  "async-stream",
  "async-trait",
- "cairo-lang-starknet-classes",
+ "cairo-lang-starknet-classes 2.6.4",
  "chrono",
  "futures",
  "futures-channel",
@@ -6302,7 +6448,7 @@ dependencies = [
  "serde",
  "simple_logger",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "starknet_client",
  "test_utils",
  "thiserror",
@@ -6314,9 +6460,9 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.6.12"
+version = "3.6.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "306800abfa29c7f16596b5970a588435e3d5b3149683d00c12b699cc19f895ee"
+checksum = "881331e34fa842a2fb61cc2db9643a8fedc615e47cfcc52597d1af0db9a7e8fe"
 dependencies = [
  "arrayvec",
  "bitvec",
@@ -8382,7 +8528,30 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "27090bd07dd034d6c1140a8f4294d0587d5d81a2b101ad6c50b57993bc9565e1"
 dependencies = [
  "bitvec",
- "cairo-lang-starknet-classes",
+ "cairo-lang-starknet-classes 2.7.0-dev.0",
+ "derive_more",
+ "hex",
+ "indexmap 2.2.6",
+ "itertools 0.12.1",
+ "once_cell",
+ "primitive-types",
+ "serde",
+ "serde_json",
+ "sha3",
+ "starknet-crypto 0.5.2",
+ "starknet-types-core",
+ "strum 0.24.1",
+ "strum_macros 0.24.3",
+ "thiserror",
+]
+
+[[package]]
+name = "starknet_api"
+version = "0.13.0-dev.4"
+source = "git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7#c8a02c7659b568fb5cdd98cc397c92f14422b056"
+dependencies = [
+ "bitvec",
+ "cairo-lang-starknet-classes 2.6.4",
  "derive_more",
  "hex",
  "indexmap 2.2.6",
@@ -8405,7 +8574,7 @@ version = "0.4.0-dev.3"
 dependencies = [
  "assert_matches",
  "async-trait",
- "cairo-lang-starknet-classes",
+ "cairo-lang-starknet-classes 2.6.4",
  "enum-iterator",
  "http",
  "indexmap 2.2.6",
@@ -8423,7 +8592,7 @@ dependencies = [
  "serde_repr",
  "simple_logger",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "test_utils",
@@ -8725,9 +8894,9 @@ dependencies = [
 name = "test_utils"
 version = "0.4.0-dev.3"
 dependencies = [
- "cairo-lang-casm",
- "cairo-lang-starknet-classes",
- "cairo-lang-utils",
+ "cairo-lang-casm 2.6.4",
+ "cairo-lang-starknet-classes 2.6.4",
+ "cairo-lang-utils 2.6.4",
  "indexmap 2.2.6",
  "num-bigint 0.4.5",
  "pretty_assertions",
@@ -8739,7 +8908,7 @@ dependencies = [
  "serde",
  "serde_json",
  "starknet-types-core",
- "starknet_api",
+ "starknet_api 0.13.0-dev.4 (git+https://github.com/starkware-libs/starknet-api.git?rev=c8a02c7)",
  "tracing",
 ]
 
