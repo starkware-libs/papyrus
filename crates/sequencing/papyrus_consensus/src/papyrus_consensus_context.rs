@@ -8,23 +8,25 @@ use std::time::Duration;
 
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
+use futures::sink::SinkExt;
 use futures::StreamExt;
-use papyrus_protobuf::consensus::Proposal;
+use papyrus_network::network_manager::SubscriberSender;
+use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::block_hash;
 use starknet_api::transaction::Transaction;
 use tokio::sync::Mutex;
 use tracing::debug;
 
 use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
+use crate::ProposalWrapper;
 
 // TODO: add debug messages and span to the tasks.
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-struct PapyrusConsensusBlock {
+pub struct PapyrusConsensusBlock {
     content: Vec<Transaction>,
     id: BlockHash,
 }
@@ -42,15 +44,18 @@ impl ConsensusBlock for PapyrusConsensusBlock {
     }
 }
 
-struct PapyrusConsensusContext {
+pub struct PapyrusConsensusContext {
     storage_reader: StorageReader,
-    broadcast_sender: Arc<Mutex<mpsc::Sender<Proposal>>>,
+    broadcast_sender: Arc<Mutex<SubscriberSender<ConsensusMessage>>>,
 }
 
 impl PapyrusConsensusContext {
     // TODO(dvir): remove the dead code attribute after we will use this function.
     #[allow(dead_code)]
-    pub fn new(storage_reader: StorageReader, broadcast_sender: mpsc::Sender<Proposal>) -> Self {
+    pub fn new(
+        storage_reader: StorageReader,
+        broadcast_sender: SubscriberSender<ConsensusMessage>,
+    ) -> Self {
         Self { storage_reader, broadcast_sender: Arc::new(Mutex::new(broadcast_sender)) }
     }
 }
@@ -149,11 +154,11 @@ impl ConsensusContext for PapyrusConsensusContext {
     }
 
     async fn validators(&self, _height: BlockNumber) -> Vec<ValidatorId> {
-        vec![0u8.into(), 1u8.into(), 2u8.into()]
+        vec![0u8.into(), 1u8.into()]
     }
 
-    fn proposer(&self, _validators: &Vec<ValidatorId>, _height: BlockNumber) -> ValidatorId {
-        0u8.into()
+    fn proposer(&self, _validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId {
+        (height.0 % 2).into()
     }
 
     async fn propose(
@@ -179,7 +184,12 @@ impl ConsensusContext for PapyrusConsensusContext {
                 block_hash,
             };
 
-            broadcast_sender.lock().await.try_send(proposal).expect("Failed to send proposal");
+            broadcast_sender
+                .lock()
+                .await
+                .send(ConsensusMessage::Proposal(proposal))
+                .await
+                .expect("Failed to send proposal");
         });
         Ok(())
     }
@@ -196,4 +206,24 @@ async fn wait_for_block(
         tokio::time::sleep(SLEEP_BETWEEN_CHECK_FOR_BLOCK).await;
     }
     Ok(())
+}
+
+impl Into<(ProposalInit, mpsc::Receiver<Transaction>, oneshot::Receiver<BlockHash>)>
+    for ProposalWrapper
+{
+    fn into(self) -> (ProposalInit, mpsc::Receiver<Transaction>, oneshot::Receiver<BlockHash>) {
+        let transactions: Vec<Transaction> = self.0.transactions.into_iter().collect();
+        let proposal_init =
+            ProposalInit { height: BlockNumber(self.0.height), proposer: self.0.proposer };
+        let (mut content_sender, content_receiver) = mpsc::channel(CHANNEL_SIZE);
+        for tx in transactions {
+            content_sender.try_send(tx).expect("Send should succeed");
+        }
+        content_sender.close_channel();
+
+        let (fin_sender, fin_receiver) = oneshot::channel();
+        fin_sender.send(self.0.block_hash).expect("Send should succeed");
+
+        (proposal_init, content_receiver, fin_receiver)
+    }
 }

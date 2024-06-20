@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
-use papyrus_protobuf::consensus::ConsensusMessage;
+use papyrus_network::network_manager::SubscriberReceiver;
+use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use single_height_consensus::SingleHeightConsensus;
 use starknet_api::block::{BlockHash, BlockNumber};
 use tracing::info;
@@ -16,15 +17,17 @@ pub(crate) mod test_utils;
 #[allow(dead_code)]
 pub mod types;
 
+use futures::StreamExt;
+
 // TODO(dvir): add test for this.
 pub async fn run_consensus<BlockT: ConsensusBlock>(
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     start_height: BlockNumber,
     validator_id: ValidatorId,
-    mut network_receiver: mpsc::Receiver<ConsensusMessage>,
+    mut network_receiver: SubscriberReceiver<ConsensusMessage>,
 ) -> Result<(), ConsensusError>
 where
-    papyrus_protobuf::consensus::Proposal:
+    ProposalWrapper:
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
 {
     let mut current_height = start_height;
@@ -39,10 +42,12 @@ where
         } else {
             info!("Validator flow height {current_height}");
             let ConsensusMessage::Proposal(proposal) = network_receiver
-                .try_next()
+                .next()
+                .await
                 .expect("Failed to receive a message from network")
+                .0
                 .expect("Network receiver closed unexpectedly");
-            let (proposal_init, content_receiver, fin_receiver) = proposal.into();
+            let (proposal_init, content_receiver, fin_receiver) = ProposalWrapper(proposal).into();
 
             shc.handle_proposal(proposal_init, content_receiver, fin_receiver).await?.unwrap()
         };
@@ -54,3 +59,7 @@ where
         current_height = current_height.unchecked_next();
     }
 }
+
+// `Proposal` defined in the protobuf crate so we can't implement `Into` for it because the orphan
+// rule. This wrapper enable us to implement `Into` for the inner `Proposal`.
+pub struct ProposalWrapper(Proposal);
