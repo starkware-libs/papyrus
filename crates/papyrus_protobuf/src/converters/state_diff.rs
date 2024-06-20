@@ -89,7 +89,6 @@ impl From<DataOrFin<StateDiffChunk>> for protobuf::StateDiffsResponse {
         protobuf::StateDiffsResponse { state_diff_message: Some(state_diff_message) }
     }
 }
-auto_impl_into_and_try_from_vec_u8!(DataOrFin<StateDiffChunk>, protobuf::StateDiffsResponse);
 
 auto_impl_into_and_try_from_vec_u8!(DataOrFin<StateDiffChunk>, protobuf::StateDiffsResponse);
 
