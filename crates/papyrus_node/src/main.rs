@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod main_test;
 
-use std::env::args;
+use std::env::{self, args};
 use std::future::{pending, Future};
 use std::process::exit;
 use std::sync::Arc;
@@ -16,12 +16,20 @@ use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
 use papyrus_config::ConfigError;
+use papyrus_consensus::papyrus_consensus_context::PapyrusConsensusContext;
+use papyrus_consensus::types::ConsensusError;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_network::network_manager::{NetworkError, SqmrSubscriberChannels};
+use papyrus_network::gossipsub_impl::Topic;
+use papyrus_network::network_manager::{
+    BroadcastSubscriberChannels,
+    NetworkError,
+    SqmrSubscriberChannels,
+};
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
@@ -30,7 +38,7 @@ use papyrus_sync::sources::base_layer::{BaseLayerSourceError, EthereumBaseLayerS
 use papyrus_sync::sources::central::{CentralError, CentralSource, CentralSourceConfig};
 use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
-use starknet_api::block::BlockHash;
+use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::felt;
 use starknet_api::state::ThinStateDiff;
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
@@ -85,6 +93,29 @@ async fn create_rpc_server_future(
     Ok(pending())
 }
 
+fn run_consensus(
+    storage_reader: StorageReader,
+    consensus_channels: BroadcastSubscriberChannels<ConsensusMessage>,
+) -> anyhow::Result<JoinHandle<Result<(), ConsensusError>>> {
+    let Ok(validator_id) = env::var("CONSENSUS_VALIDATOR_ID") else {
+        return Ok(tokio::spawn(pending()));
+    };
+    let validator_id = validator_id.parse::<u128>()?.into();
+    let context = PapyrusConsensusContext::new(
+        storage_reader.clone(),
+        consensus_channels.messages_to_broadcast_sender,
+    );
+    // TODO(dvir): add option to configure this value.
+    let start_height = BlockNumber(0);
+
+    Ok(tokio::spawn(papyrus_consensus::run_consensus(
+        Arc::new(context),
+        start_height,
+        validator_id,
+        consensus_channels.broadcasted_messages_receiver,
+    )))
+}
+
 async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     let (storage_reader, storage_writer) = open_storage(config.storage.clone())?;
 
@@ -95,8 +126,12 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     };
 
     // P2P network.
-    let (network_future, maybe_query_sender_and_response_receivers, local_peer_id) =
-        run_network(config.network.clone(), storage_reader.clone());
+    let (
+        network_future,
+        maybe_p2p_sync_query_sender_and_response_receivers,
+        maybe_consensus_channels,
+        local_peer_id,
+    ) = run_network(config.network.clone(), storage_reader.clone())?;
     let network_handle = tokio::spawn(network_future);
 
     // Monitoring server.
@@ -146,8 +181,9 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             (sync_fut.boxed(), pending().boxed())
         }
         (None, Some(p2p_sync_config)) => {
-            let (query_sender, response_receivers) = maybe_query_sender_and_response_receivers
-                .expect("If p2p sync is enabled, network needs to be enabled too");
+            let (query_sender, response_receivers) =
+                maybe_p2p_sync_query_sender_and_response_receivers
+                    .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
                 run_p2p_sync(
@@ -164,6 +200,12 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     };
     let sync_handle = tokio::spawn(sync_future);
     let p2p_sync_handle = tokio::spawn(p2p_sync_future);
+
+    let consensus_handle = if let Some(consensus_channels) = maybe_consensus_channels {
+        run_consensus(storage_reader.clone(), consensus_channels)?
+    } else {
+        tokio::spawn(pending())
+    };
 
     tokio::select! {
         res = storage_metrics_handle => {
@@ -188,6 +230,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         }
         res = network_handle => {
             error!("Network stopped.");
+            res??
+        }
+        res = consensus_handle => {
+            error!("Consensus stopped.");
             res??
         }
     };
@@ -250,17 +296,31 @@ type NetworkRunReturn = (
         SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
     )>,
+    Option<BroadcastSubscriberChannels<ConsensusMessage>>,
     String,
 );
 
-fn run_network(config: Option<NetworkConfig>, storage_reader: StorageReader) -> NetworkRunReturn {
-    let Some(network_config) = config else { return (pending().boxed(), None, "".to_string()) };
+fn run_network(
+    config: Option<NetworkConfig>,
+    storage_reader: StorageReader,
+) -> anyhow::Result<NetworkRunReturn> {
+    let Some(network_config) = config else {
+        return Ok((pending().boxed(), None, None, "".to_string()));
+    };
     let mut network_manager =
         network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
     let local_peer_id = network_manager.get_local_peer_id();
     let header_channels = network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
     let state_diff_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
-    (network_manager.run().boxed(), Some((header_channels, state_diff_channels)), local_peer_id)
+    let consensus_channels =
+        network_manager.register_broadcast_subscriber(Topic::new("consensus"), 5)?;
+
+    Ok((
+        network_manager.run().boxed(),
+        Some((header_channels, state_diff_channels)),
+        Some(consensus_channels),
+        local_peer_id,
+    ))
 }
 
 // TODO(yair): add dynamic level filtering.
