@@ -29,7 +29,7 @@ use std::path::PathBuf;
 use std::result;
 use std::sync::Arc;
 
-use libmdbx::{Geometry, PageSize, WriteMap};
+use libmdbx::{DatabaseFlags, Geometry, PageSize, WriteMap};
 use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::validators::{validate_ascii, validate_path_exists};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -206,6 +206,7 @@ pub(crate) fn open_env(config: &DbConfig) -> DbResult<(DbReader, DbWriter)> {
             })
             .set_max_tables(MAX_DBS)
             .set_max_readers(MAX_READERS)
+            .set_flags(DatabaseFlags { no_rdahead: true, liforeclaim: true, ..Default::default() })
             .open(&config.path())?,
     );
     Ok((DbReader { env: env.clone() }, DbWriter { env }))
