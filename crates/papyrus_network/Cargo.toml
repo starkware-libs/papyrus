@@ -5,6 +5,9 @@ edition.workspace = true
 repository.workspace = true
 license-file.workspace = true
 
+[features]
+testing = []
+
 [[bin]]
 name = "streamed_bytes_benchmark"
 required-features = ["clap"]
