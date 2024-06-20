@@ -15,10 +15,13 @@ use starknet_api::block::{
 use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
+    ReceiptCommitment,
     SequencerContractAddress,
+    StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::crypto::utils::Signature;
+use starknet_api::hash::PoseidonHash;
 
 use super::common::{enum_int_to_l1_data_availability_mode, l1_data_availability_mode_to_enum_int};
 use super::ProtobufConversionError;
@@ -170,6 +173,23 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             ),
         };
 
+        let receipt_commitment = value
+            .receipts
+            .map(|receipts| receipts.try_into().map(ReceiptCommitment))
+            .transpose()?;
+
+        let state_diff_commitment = match value.state_diff_commitment {
+            None => None,
+            Some(state_diff_commitment) => Some(StateDiffCommitment(PoseidonHash(
+                state_diff_commitment
+                    .root
+                    .ok_or(ProtobufConversionError::MissingField {
+                        field_description: "StateDiffCommitment::root",
+                    })?
+                    .try_into()?,
+            ))),
+        };
+
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
                 block_hash,
@@ -181,15 +201,13 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
                 sequencer,
                 timestamp,
                 l1_da_mode,
-                // TODO(shahak): fill this.
-                state_diff_commitment: None,
+                state_diff_commitment,
                 state_diff_length,
                 transaction_commitment,
                 event_commitment,
                 n_transactions,
                 n_events,
-                // TODO(shahak): fill this.
-                receipt_commitment: None,
+                receipt_commitment,
                 starknet_version,
             },
             // collect will convert from Vec<Result> to Result<Vec>.
@@ -224,8 +242,9 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
                     .unwrap_or(0)
                     .try_into()
                     .expect("Converting usize to u64 failed"),
-                // TODO: fill this.
-                root: None,
+                root: header
+                    .state_diff_commitment
+                    .map(|state_diff_commitment| state_diff_commitment.0.0.into()),
             }),
             state_root: Some(header.state_root.0.into()),
             // This will be Some only if both n_transactions and transaction_commitment are Some.
@@ -242,8 +261,9 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
                     root: Some(event_commitment.0.into()),
                 })
             }),
-            // TODO(shahak): fill this.
-            receipts: None,
+            receipts: header
+                .receipt_commitment
+                .map(|receipt_commitment| receipt_commitment.0.into()),
             protocol_version: header.starknet_version.0,
             gas_price_wei: Some(header.l1_gas_price.price_in_wei.0.into()),
             gas_price_fri: Some(header.l1_gas_price.price_in_fri.0.into()),
