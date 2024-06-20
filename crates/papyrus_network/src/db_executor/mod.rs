@@ -120,13 +120,19 @@ impl DBExecutorTrait for DBExecutor {
             };
 
             tokio::select! {
-                Some((query_result, response_sender)) = header_queries_receiver_future => {
+                result = header_queries_receiver_future => {
+                    let (query_result, response_sender) = result.expect(
+                        "Header queries sender was unexpectedly dropped."
+                    );
                 // TODO(shahak): Report if query_result is Err.
                     if let Ok(query) = query_result {
                         self.register_query(query.0, response_sender);
                     }
                 }
-                Some((query_result, response_sender)) = state_diff_queries_receiver_future => {
+                result = state_diff_queries_receiver_future => {
+                    let (query_result, response_sender) = result.expect(
+                        "State diff queries sender was unexpectedly dropped."
+                    );
                     if let Ok(query) = query_result {
                         self.register_query(query.0, response_sender);
                     }
