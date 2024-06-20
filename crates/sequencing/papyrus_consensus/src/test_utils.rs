@@ -46,7 +46,7 @@ mock! {
 
         async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
 
-        fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
+        fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
         async fn propose(
             &self,

@@ -127,7 +127,7 @@ pub trait ConsensusContext: Send + Sync {
     async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
 
     /// Calculates the ID of the Proposer based on the inputs.
-    fn proposer(&self, validators: &Vec<ValidatorId>, height: BlockNumber) -> ValidatorId;
+    fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
     /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
     /// input channels in parallel (ie on a separate task).
