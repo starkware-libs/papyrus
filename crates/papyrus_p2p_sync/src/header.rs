@@ -7,7 +7,10 @@ use papyrus_protobuf::sync::{Query, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
-
+use chrono::{TimeZone, Utc};
+use metrics::gauge;
+use papyrus_common::metrics as papyrus_metrics;
+use tracing::debug;
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, Response, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
@@ -29,7 +32,23 @@ impl BlockData for SignedBlockHeader {
                     // verification.
                     .expect("Vec::first should return a value on a vector of size 1"),
             )?
-            .commit()
+            .commit()?;
+        gauge!(
+            papyrus_metrics::PAPYRUS_HEADER_MARKER,
+            self.block_header.block_number.unchecked_next().0 as f64
+        );
+        // TODO(shahak): Fix code dup with central sync
+        let dt = Utc::now()
+            - Utc
+                .timestamp_opt(self.block_header.timestamp.0 as i64, 0)
+                .single()
+                .expect("block timestamp should be valid");
+        let header_latency = dt.num_seconds();
+        debug!("Header latency: {}.", header_latency);
+        if header_latency >= 0 {
+            gauge!(papyrus_metrics::PAPYRUS_HEADER_LATENCY_SEC, header_latency as f64);
+        }
+        Ok(())
     }
 }
 
