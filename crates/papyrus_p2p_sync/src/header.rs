@@ -1,16 +1,17 @@
 use std::marker::PhantomData;
 
+use chrono::{TimeZone, Utc};
 use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
 use futures::{FutureExt, Sink, Stream, StreamExt};
+use metrics::gauge;
+use papyrus_common::metrics as papyrus_metrics;
 use papyrus_protobuf::sync::{Query, SignedBlockHeader};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
-use chrono::{TimeZone, Utc};
-use metrics::gauge;
-use papyrus_common::metrics as papyrus_metrics;
 use tracing::debug;
+
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
 use crate::{P2PSyncError, Response, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
