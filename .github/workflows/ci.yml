@@ -54,6 +54,33 @@ jobs:
           target/release/papyrus_node --base_layer.node_url ${{ secrets.CI_BASE_LAYER_NODE_URL }}
           & sleep 30 ; kill $!
 
+  executable-p2p-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: Noelware/setup-protoc@1.1.0
+        with:
+          version: ${{env.PROTOC_VERSION}}
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.x"
+
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      - run: mkdir data1 && mkdir data2
+
+      - name: Build node
+        run: cargo build -r
+
+      - name: Run Python script test for p2p syncing
+        run: |
+          python3 scripts/p2p_syncing_test.py ${{ secrets.CI_BASE_LAYER_NODE_URL }}
+
   executable-run-no-rpc:
     runs-on: ubuntu-latest
     steps:
@@ -114,7 +141,6 @@ jobs:
           cargo test -p papyrus_node --no-default-features
         env:
           SEED: 0
-
 
   rustfmt:
     runs-on: ubuntu-latest
@@ -263,4 +289,3 @@ jobs:
       # repeat this job 32 times. this is a random test for part of the code that may cause a corrupted database.
       - run: for run in {1..32}; do cargo test -r -p papyrus_storage -- --include-ignored common_prefix_compare_with_simple_table_random; done
         if: steps.changes.outputs.target_directory == 'true'
-
