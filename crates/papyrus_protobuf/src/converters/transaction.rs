@@ -42,7 +42,7 @@ use super::common::{
     volition_domain_to_enum_int,
 };
 use super::ProtobufConversionError;
-use crate::sync::DataOrFin;
+use crate::sync::{DataOrFin, Query, TransactionQuery};
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 impl TryFrom<protobuf::TransactionsResponse> for DataOrFin<(Transaction, TransactionOutput)> {
@@ -1156,6 +1156,41 @@ impl From<L1HandlerTransaction> for protobuf::transaction::L1HandlerV0 {
         }
     }
 }
+
+impl TryFrom<protobuf::TransactionsRequest> for Query {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::TransactionsRequest) -> Result<Self, Self::Error> {
+        Ok(TransactionQuery::try_from(value)?.0)
+    }
+}
+
+impl TryFrom<protobuf::TransactionsRequest> for TransactionQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::TransactionsRequest) -> Result<Self, Self::Error> {
+        Ok(TransactionQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "TransactionsRequest::iteration",
+                })?
+                .try_into()?,
+        ))
+    }
+}
+
+impl From<Query> for protobuf::TransactionsRequest {
+    fn from(value: Query) -> Self {
+        protobuf::TransactionsRequest { iteration: Some(value.into()) }
+    }
+}
+
+impl From<TransactionQuery> for protobuf::TransactionsRequest {
+    fn from(value: TransactionQuery) -> Self {
+        protobuf::TransactionsRequest { iteration: Some(value.0.into()) }
+    }
+}
+
+auto_impl_into_and_try_from_vec_u8!(TransactionQuery, protobuf::TransactionsRequest);
 
 pub fn set_price_unit_based_on_transaction(
     receipt: &mut protobuf::Receipt,
