@@ -387,7 +387,13 @@ impl<
     }
 
     fn should_verify(&self, block_number: BlockNumber) -> bool {
-        let sn_version = self.reader.begin_ro_txn().expect("111").get_starknet_version(block_number.prev().unwrap_or_default()).expect("2222").unwrap_or_default();
+        let sn_version = self
+            .reader
+            .begin_ro_txn()
+            .expect("111")
+            .get_starknet_version(block_number.prev().unwrap_or_default())
+            .expect("2222")
+            .unwrap_or_default();
         self.should_verify_sn_version(&sn_version)
     }
 
@@ -470,7 +476,6 @@ impl<
                 state_diff,
                 deployed_contract_class_definitions,
             } => {
-
                 self.store_state_diff(
                     block_number,
                     block_hash,
@@ -480,26 +485,63 @@ impl<
 
                 if self.should_verify(block_number) {
                     info!("Verifying state diff for block {}.", block_number);
-                    let thin_state_diff = self.reader.begin_ro_txn()?.get_state_diff(block_number)?.expect("State diff not found.");
-                    let calculated_state_diff_commitment = papyrus_common::state_diff_commitment::calculate_state_diff_commitment(&thin_state_diff, StateDiffVersion::V0);
-                    let header = self.reader.begin_ro_txn()?.get_block_header(block_number)?.expect("Header not found.");
-                    if calculated_state_diff_commitment != header.state_diff_commitment.expect("State diff commitment not found.") {
-                        error!("State diff commitment verification failed for block {}.", block_number);
+                    let thin_state_diff = self
+                        .reader
+                        .begin_ro_txn()?
+                        .get_state_diff(block_number)?
+                        .expect("State diff not found.");
+                    let calculated_state_diff_commitment =
+                        papyrus_common::state_diff_commitment::calculate_state_diff_commitment(
+                            &thin_state_diff,
+                            StateDiffVersion::V0,
+                        );
+                    let header = self
+                        .reader
+                        .begin_ro_txn()?
+                        .get_block_header(block_number)?
+                        .expect("Header not found.");
+                    if calculated_state_diff_commitment
+                        != header.state_diff_commitment.expect("State diff commitment not found.")
+                    {
+                        error!(
+                            "State diff commitment verification failed for block {}.",
+                            block_number
+                        );
                         return Err(StateSyncError::BlockVerificationFailed);
                     }
                     for class_hash in thin_state_diff.declared_classes.keys() {
-                        let class = self.reader.begin_ro_txn()?.get_class(class_hash)?.expect("Class not found.");
-                        let calculated_class_hash = papyrus_common::class_hash::calculate_class_hash(&class);
+                        let class = self
+                            .reader
+                            .begin_ro_txn()?
+                            .get_class(class_hash)?
+                            .expect("Class not found.");
+                        let calculated_class_hash =
+                            papyrus_common::class_hash::calculate_class_hash(&class);
                         if calculated_class_hash != *class_hash {
-                            error!("Class hash verification failed for class {} in block {}.", class_hash, block_number);
+                            error!(
+                                "Class hash verification failed for class {} in block {}.",
+                                class_hash, block_number
+                            );
                             return Err(StateSyncError::BlockVerificationFailed);
                         }
                     }
                     for deprecated_class_hash in thin_state_diff.deprecated_declared_classes {
-                        let mut deprecated_class = self.reader.begin_ro_txn()?.get_deprecated_class(&deprecated_class_hash)?.expect("Deprecated class not found.");
-                        let calculated_class_hash = papyrus_common::class_hash::calculate_deprecated_class_hash(&mut deprecated_class).expect("Error calculating deprecated class hash.");
+                        let mut deprecated_class = self
+                            .reader
+                            .begin_ro_txn()?
+                            .get_deprecated_class(&deprecated_class_hash)?
+                            .expect("Deprecated class not found.");
+                        let calculated_class_hash =
+                            papyrus_common::class_hash::calculate_deprecated_class_hash(
+                                &mut deprecated_class,
+                            )
+                            .expect("Error calculating deprecated class hash.");
                         if calculated_class_hash != deprecated_class_hash {
-                            error!("Deprecated class hash verification failed for class {} in block {}.", deprecated_class_hash, block_number);
+                            error!(
+                                "Deprecated class hash verification failed for class {} in block \
+                                 {}.",
+                                deprecated_class_hash, block_number
+                            );
                             return Err(StateSyncError::BlockVerificationFailed);
                         }
                     }
