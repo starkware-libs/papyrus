@@ -6,12 +6,11 @@ use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::header::HeaderStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use starknet_api::block::Block;
-use starknet_api::core::ContractAddress;
 use starknet_api::transaction::Transaction;
 use test_utils::get_test_block;
 
 use crate::papyrus_consensus_context::PapyrusConsensusContext;
-use crate::types::{ConsensusBlock, ConsensusContext, ProposalInit};
+use crate::types::{ConsensusBlock, ConsensusContext, ProposalInit, ValidatorId};
 
 // TODO(dvir): consider adding tests for times, i.e, the calls are returned immediately and nothing
 // happen until it should (for example, not creating a block before we have it in storage).
@@ -84,7 +83,7 @@ async fn propose() {
     let (fin_sender, fin_receiver) = oneshot::channel();
     fin_sender.send(block.header.block_hash).unwrap();
 
-    let proposal_init = ProposalInit { height: block_number, proposer: ContractAddress::default() };
+    let proposal_init = ProposalInit { height: block_number, proposer: ValidatorId::default() };
     papyrus_context.propose(proposal_init.clone(), content_receiver, fin_receiver).await.unwrap();
 
     let expected_message = ConsensusMessage::Proposal(Proposal {
