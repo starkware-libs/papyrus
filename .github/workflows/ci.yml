@@ -165,9 +165,9 @@ jobs:
 
       - run: echo "Skipping clippy for now"
       - run: >
-          cargo clippy --all-targets --all-features -- -D warnings -D future-incompatible
-          -D nonstandard-style -D rust-2018-idioms -D unused -D clippy::unwrap_used
-          -A clippy::blocks_in_conditions  # This is because of a bug in tracing: https://github.com/tokio-rs/tracing/issues/2876
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          -D future-incompatible -D nonstandard-style -D rust-2018-idioms -D unused
+          -D clippy::unwrap_used -A clippy::blocks_in_conditions  # This is because of a bug in tracing: https://github.com/tokio-rs/tracing/issues/2876
 
   doc:
     runs-on: ubuntu-latest
@@ -181,7 +181,7 @@ jobs:
         with:
           version: ${{env.PROTOC_VERSION}}
 
-      - run: cargo doc -r --document-private-items --no-deps
+      - run: cargo doc --workspace -r --document-private-items --no-deps
 
   check:
     runs-on: ubuntu-latest
@@ -195,7 +195,7 @@ jobs:
         with:
           version: ${{env.PROTOC_VERSION}}
 
-      - run: cargo check -r --all-features
+      - run: cargo check --workspace -r --all-features
 
   codecov:
     runs-on: ubuntu-latest
