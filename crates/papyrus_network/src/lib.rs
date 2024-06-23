@@ -50,35 +50,6 @@ pub struct NetworkConfig {
     pub(crate) secret_key: Option<Vec<u8>>,
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Clone, Copy, Display)]
-#[cfg_attr(test, derive(Sequence))]
-pub enum DataType {
-    // TODO: consider adding a default variant / removing the #[default] attribute.
-    #[default]
-    #[display(fmt = "SignedBlockHeader")]
-    SignedBlockHeader,
-    #[display(fmt = "StateDiff")]
-    StateDiff,
-}
-
-impl From<Protocol> for DataType {
-    fn from(protocol: Protocol) -> DataType {
-        match protocol {
-            Protocol::SignedBlockHeader => DataType::SignedBlockHeader,
-            Protocol::StateDiff => DataType::StateDiff,
-        }
-    }
-}
-
-impl From<DataType> for Protocol {
-    fn from(data_type: DataType) -> Protocol {
-        match data_type {
-            DataType::SignedBlockHeader => Protocol::SignedBlockHeader,
-            DataType::StateDiff => Protocol::StateDiff,
-        }
-    }
-}
-
 /// This is a part of the exposed API of the network manager.
 /// This is meant to represent the different underlying p2p protocols the network manager supports.
 // TODO(shahak): Change protocol to a wrapper of string.
