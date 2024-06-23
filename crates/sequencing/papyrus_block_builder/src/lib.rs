@@ -50,14 +50,14 @@ impl BlockBuilderTrait for BlockBuilder {
         let block = self
             .storage_reader
             .begin_ro_txn()
-            .unwrap()
+            .expect("Failed to read storage")
             .get_block_transactions(block_number)
-            .unwrap();
+            .expect("Block missing in storage");
 
         match block {
             Some(block) => {
                 for txn in block {
-                    sender.send(txn).unwrap();
+                    sender.send(txn).expect("Failed to send transaction");
                 }
                 Ok(receiver)
             }
