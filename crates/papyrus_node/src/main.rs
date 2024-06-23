@@ -29,6 +29,7 @@ use papyrus_protobuf::sync::{
     SignedBlockHeader,
     StateDiffChunk,
     StateDiffQuery,
+    TransactionQuery,
 };
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
@@ -40,6 +41,7 @@ use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::BlockHash;
 use starknet_api::felt;
 use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
@@ -142,11 +144,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
 
     // P2P Sync Server task.
     let p2p_sync_server_future = match maybe_sync_server_channels {
-        Some((header_sync_server_channel, state_diff_sync_server_channel)) => {
+        Some((
+            header_sync_server_channel,
+            state_diff_sync_server_channel,
+            transaction_server_channel,
+        )) => {
             let db_executor = DBExecutor::new(
                 storage_reader.clone(),
                 header_sync_server_channel,
                 state_diff_sync_server_channel,
+                transaction_server_channel,
             );
             db_executor.run().boxed()
         }
@@ -167,16 +174,17 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             (sync_fut.boxed(), pending().boxed())
         }
         (None, Some(p2p_sync_config)) => {
-            let (query_sender, response_receivers) = maybe_sync_client_channels
-                .expect("If p2p sync is enabled, network needs to be enabled too");
+            let (header_channels, state_diff_channels, _transaction_channels) =
+                maybe_sync_client_channels
+                    .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
                 run_p2p_sync_client(
                     p2p_sync_config,
                     storage_reader.clone(),
                     storage_writer,
-                    query_sender,
-                    response_receivers,
+                    header_channels,
+                    state_diff_channels,
                 )
                 .boxed(),
             )
@@ -274,10 +282,12 @@ type NetworkRunReturn = (
     Option<(
         SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
+        SqmrSubscriberChannels<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>,
     )>,
     Option<(
         SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
+        SqmrQueryReceiver<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>,
     )>,
     String,
 );
@@ -291,14 +301,18 @@ fn run_network(config: Option<NetworkConfig>) -> NetworkRunReturn {
     let header_client_channels =
         network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
     let state_diff_client_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+    let transaction_client_channels =
+        network_manager.register_sqmr_subscriber(Protocol::Transaction);
     let header_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader);
     let state_diff_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader);
+        network_manager.register_sqmr_protocol_server(Protocol::StateDiff);
+    let transaction_server_channel =
+        network_manager.register_sqmr_protocol_server(Protocol::Transaction);
     (
         network_manager.run().boxed(),
-        Some((header_client_channels, state_diff_client_channels)),
-        Some((header_server_channel, state_diff_server_channel)),
+        Some((header_client_channels, state_diff_client_channels, transaction_client_channels)),
+        Some((header_server_channel, state_diff_server_channel, transaction_server_channel)),
         local_peer_id,
     )
 }

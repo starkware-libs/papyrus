@@ -11,6 +11,7 @@ use papyrus_protobuf::sync::{
     SignedBlockHeader,
     StateDiffChunk,
     StateDiffQuery,
+    TransactionQuery,
 };
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
@@ -18,6 +19,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageReader, StorageWriter};
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use test_utils::get_rng;
 
 use super::DBExecutor;
@@ -34,6 +36,7 @@ async fn header_query_positive_flow() {
         mut storage_writer,
         _header_queries_sender,
         _state_diff_queries_sender,
+        _transaction_queries_sender,
     ) = setup();
 
     // put some data in the storage.
@@ -76,6 +79,7 @@ async fn header_query_start_block_given_by_hash() {
         mut storage_writer,
         _header_queries_sender,
         _state_diff_queries_sender,
+        _transaction_queries_sender,
     ) = setup();
 
     // put some data in the storage.
@@ -128,6 +132,7 @@ async fn header_query_some_blocks_are_missing() {
         mut storage_writer,
         _header_queries_sender,
         _state_diff_queries_sender,
+        _transaction_queries_sender,
     ) = setup();
 
     const NUM_OF_BLOCKS: u64 = 15;
@@ -168,11 +173,19 @@ fn setup() -> (
             Result<StateDiffQuery, ProtobufConversionError>,
             Sender<DataOrFin<StateDiffChunk>>,
         )>,
+        Receiver<(
+            Result<TransactionQuery, ProtobufConversionError>,
+            Sender<DataOrFin<(Transaction, TransactionOutput)>>,
+        )>,
     >,
     StorageReader,
     StorageWriter,
     Sender<(Result<HeaderQuery, ProtobufConversionError>, Sender<DataOrFin<SignedBlockHeader>>)>,
     Sender<(Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>)>,
+    Sender<(
+        Result<TransactionQuery, ProtobufConversionError>,
+        Sender<DataOrFin<(Transaction, TransactionOutput)>>,
+    )>,
 ) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
     let (header_queries_sender, header_queries_receiver) = futures::channel::mpsc::channel::<(
@@ -182,12 +195,25 @@ fn setup() -> (
     let (state_diff_queries_sender, state_diff_queries_receiver) = futures::channel::mpsc::channel::<
         (Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>),
     >(BUFFER_SIZE);
+    let (transaction_sender, transaction_queries_receiver) = futures::channel::mpsc::channel::<(
+        Result<TransactionQuery, ProtobufConversionError>,
+        Sender<DataOrFin<(Transaction, TransactionOutput)>>,
+    )>(BUFFER_SIZE);
+
     let db_executor = super::DBExecutor::new(
         storage_reader.clone(),
         header_queries_receiver,
         state_diff_queries_receiver,
+        transaction_queries_receiver,
     );
-    (db_executor, storage_reader, storage_writer, header_queries_sender, state_diff_queries_sender)
+    (
+        db_executor,
+        storage_reader,
+        storage_writer,
+        header_queries_sender,
+        state_diff_queries_sender,
+        transaction_sender,
+    )
 }
 
 fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut StorageWriter) {
