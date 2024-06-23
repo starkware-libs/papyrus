@@ -4,7 +4,7 @@ import "p2p/proto/common.proto";
 
 message Proposal {
     uint64 height = 1;
-    Address proposer = 2;
+    Felt252 proposer = 2;
     repeated Transaction transactions = 3;
     Hash block_hash = 4;
 }
