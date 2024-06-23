@@ -57,6 +57,7 @@ pub struct NetworkConfig {
 pub enum Protocol {
     SignedBlockHeader,
     StateDiff,
+    Transaction,
 }
 
 impl Protocol {
@@ -64,6 +65,7 @@ impl Protocol {
         match self {
             Protocol::SignedBlockHeader => "/starknet/headers/1",
             Protocol::StateDiff => "/starknet/state_diffs/1",
+            Protocol::Transaction => "/starknet/transactions/1",
         }
     }
 }

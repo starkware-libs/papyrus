@@ -507,6 +507,7 @@ impl NetworkManager {
                     supported_inbound_protocols: vec![
                         Protocol::SignedBlockHeader.into(),
                         Protocol::StateDiff.into(),
+                        Protocol::Transaction.into(),
                     ],
                 },
             )

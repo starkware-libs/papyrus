@@ -14,12 +14,15 @@ use papyrus_protobuf::sync::{
     SignedBlockHeader,
     StateDiffChunk,
     StateDiffQuery,
+    TransactionQuery,
 };
+use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use tracing::error;
 
 #[cfg(test)]
@@ -59,14 +62,21 @@ impl DBExecutorError {
 }
 
 /// A DBExecutor receives inbound queries and returns their corresponding data.
-pub struct DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver> {
+pub struct DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver> {
     storage_reader: StorageReader,
     header_queries_receiver: HeaderQueryReceiver,
     state_diff_queries_receiver: StateDiffQueryReceiver,
+    transaction_queries_receiver: TransactionQueryReceiver,
 }
 
-impl<HeaderQueryReceiver, StateDiffQueryReceiver, HeaderResponsesSender, StateDiffResponsesSender>
-    DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver>
+impl<
+    HeaderQueryReceiver,
+    StateDiffQueryReceiver,
+    TransactionQueryReceiver,
+    HeaderResponsesSender,
+    StateDiffResponsesSender,
+    TransactionResponsesSender,
+> DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver>
 where
     HeaderQueryReceiver: Stream<Item = (Result<HeaderQuery, ProtobufConversionError>, HeaderResponsesSender)>
         + Unpin,
@@ -76,6 +86,13 @@ where
         + Unpin,
     StateDiffResponsesSender:
         Sink<DataOrFin<StateDiffChunk>, Error = SendError> + Unpin + Send + 'static,
+    TransactionQueryReceiver: Stream<
+            Item = (Result<TransactionQuery, ProtobufConversionError>, TransactionResponsesSender),
+        > + Unpin,
+    TransactionResponsesSender: Sink<DataOrFin<(Transaction, TransactionOutput)>, Error = SendError>
+        + Unpin
+        + Send
+        + 'static,
 {
     pub async fn run(mut self) {
         loop {
@@ -92,6 +109,12 @@ where
                         self.register_query(query.0, response_sender);
                     }
                 }
+                Some((query_result, response_sender)) = self.transaction_queries_receiver.next() => {
+                    // TODO: Report if query_result is Err.
+                    if let Ok(query) = query_result {
+                        self.register_query(query.0, response_sender);
+                    }
+                }
             };
         }
     }
@@ -100,8 +123,14 @@ where
         storage_reader: StorageReader,
         header_queries_receiver: HeaderQueryReceiver,
         state_diff_queries_receiver: StateDiffQueryReceiver,
+        transaction_queries_receiver: TransactionQueryReceiver,
     ) -> Self {
-        Self { storage_reader, header_queries_receiver, state_diff_queries_receiver }
+        Self {
+            storage_reader,
+            header_queries_receiver,
+            state_diff_queries_receiver,
+            transaction_queries_receiver,
+        }
     }
 
     fn register_query<Data, Sender>(&self, query: Query, sender: Sender)
@@ -168,6 +197,30 @@ impl FetchBlockDataFromDb for StateDiffChunk {
                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
             })?;
         Ok(split_thin_state_diff(thin_state_diff))
+    }
+}
+
+impl FetchBlockDataFromDb for (Transaction, TransactionOutput) {
+    fn fetch_block_data_from_db(
+        block_number: BlockNumber,
+        txn: &StorageTxn<'_, db::RO>,
+    ) -> Result<Vec<Self>, DBExecutorError> {
+        let transactions =
+            txn.get_block_transactions(block_number)?.ok_or(DBExecutorError::BlockNotFound {
+                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+            })?;
+        let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.ok_or(
+            DBExecutorError::BlockNotFound {
+                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+            },
+        )?;
+        let mut result: Vec<(Transaction, TransactionOutput)> = Vec::new();
+        for (transaction, transaction_output) in
+            transactions.into_iter().zip(transaction_outputs.into_iter())
+        {
+            result.push((transaction, transaction_output));
+        }
+        Ok(result)
     }
 }
 
