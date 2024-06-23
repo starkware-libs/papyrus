@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use mockall::mock;
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ContractAddress;
+use starknet_api::hash::StarkHash;
 
 use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
@@ -61,5 +61,5 @@ mock! {
 // Convenience function for creating a `ValidatorId` since i32 is the default type for explicit
 // numbers.
 pub fn validator_id(id: u32) -> ValidatorId {
-    ContractAddress::from(id)
+    StarkHash::from(id)
 }

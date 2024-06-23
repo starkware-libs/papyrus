@@ -5,14 +5,14 @@ mod types_test;
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use starknet_api::block::{BlockHash, BlockNumber};
-use starknet_api::core::ContractAddress;
+use starknet_api::hash::StarkHash;
 
 /// Used to identify the node by consensus.
 /// 1. This ID is derived from the id registered with Starknet's L2 staking contract.
 /// 2. We must be able to derive the public key associated with this ID for the sake of validating
 ///    signatures.
 // TODO(matan): Determine the actual type of NodeId.
-pub type ValidatorId = ContractAddress;
+pub type ValidatorId = StarkHash;
 
 /// Interface that any concrete block type must implement to be used by consensus.
 ///
