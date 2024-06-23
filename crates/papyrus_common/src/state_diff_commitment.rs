@@ -2,6 +2,7 @@
 #[path = "state_diff_commitment_test.rs"]
 mod state_diff_commitment_test;
 
+use itertools::Itertools;
 use starknet_api::core::StateDiffCommitment;
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::hash::PoseidonHash;
@@ -49,8 +50,11 @@ pub fn calculate_state_diff_commitment(
     // diff.
     let num_deployed_contracts =
         state_diff.deployed_contracts.len() + state_diff.replaced_classes.len();
-    let deployed_contracts_iter =
-        state_diff.deployed_contracts.iter().chain(state_diff.replaced_classes.iter());
+    let deployed_contracts_iter = state_diff
+        .deployed_contracts
+        .iter()
+        .chain(state_diff.replaced_classes.iter())
+        .sorted_by_key(|(contract_address, _)| *contract_address);
     let mut flattened_deployed_contracts = vec![Felt::from(num_deployed_contracts as u64)];
     for (contract_address, class_hash) in deployed_contracts_iter {
         flattened_deployed_contracts.push(*contract_address.0.key());
