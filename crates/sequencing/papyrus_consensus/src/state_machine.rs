@@ -170,8 +170,7 @@ impl StateMachine {
 
     fn handle_prevote(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
-        let prevote_count =
-            self.prevotes.entry(round).or_insert_with(HashMap::new).entry(block_hash).or_insert(0);
+        let prevote_count = self.prevotes.entry(round).or_default().entry(block_hash).or_insert(0);
         *prevote_count += 1;
         if *prevote_count < self.quorum() {
             return Vec::new();
@@ -181,12 +180,8 @@ impl StateMachine {
 
     fn handle_precommit(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
-        let precommit_count = self
-            .precommits
-            .entry(round)
-            .or_insert_with(HashMap::new)
-            .entry(block_hash)
-            .or_insert(0);
+        let precommit_count =
+            self.precommits.entry(round).or_default().entry(block_hash).or_insert(0);
         *precommit_count += 1;
         if *precommit_count < self.quorum() {
             return Vec::new();
@@ -207,7 +202,7 @@ impl StateMachine {
     }
 
     fn check_prevote_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
-        let Some((block_hash, count)) = self.leading_prevote(round) else {
+        let Some((block_hash, count)) = leading_block(&self.prevotes, round) else {
             return Vec::new();
         };
         if *count < self.quorum() {
@@ -217,7 +212,7 @@ impl StateMachine {
     }
 
     fn check_precommit_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
-        let Some((block_hash, count)) = self.leading_precommit(round) else {
+        let Some((block_hash, count)) = leading_block(&self.precommits, round) else {
             return Vec::new();
         };
         if *count < self.quorum() {
@@ -232,18 +227,15 @@ impl StateMachine {
         output
     }
 
-    fn leading_prevote(&self, round: u32) -> Option<(&BlockHash, &u32)> {
-        let prevotes = self.prevotes.get(&round)?;
-        prevotes.iter().max_by(|a, b| a.1.cmp(b.1)).map(|(block_hash, count)| (block_hash, count))
-    }
-
-    fn leading_precommit(&self, round: u32) -> Option<(&BlockHash, &u32)> {
-        let precommits = self.precommits.get(&round)?;
-        precommits.iter().max_by(|a, b| a.1.cmp(b.1)).map(|(block_hash, count)| (block_hash, count))
-    }
-
     fn quorum(&self) -> u32 {
         let q = (2 * self.validators.len() / 3) + 1;
         q as u32
     }
+}
+
+fn leading_block(
+    votes: &HashMap<u32, HashMap<BlockHash, u32>>,
+    round: u32,
+) -> Option<(&BlockHash, &u32)> {
+    votes.get(&round)?.iter().max_by(|a, b| a.1.cmp(b.1))
 }
