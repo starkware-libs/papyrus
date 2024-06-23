@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 // TODO(Matan): Add a description of the crate.
 // TODO(Matan): fix #[allow(missing_docs)].
-//! A consensus implementation for a [`Starknet`] node.
+//! A consensus implementation for a [`Starknet`](https://www.starknet.io/) node.
 //!
 //! This crate provides ...
 //!
