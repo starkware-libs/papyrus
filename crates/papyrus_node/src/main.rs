@@ -98,7 +98,7 @@ fn run_consensus(
     consensus_channels: BroadcastSubscriberChannels<ConsensusMessage>,
 ) -> anyhow::Result<JoinHandle<Result<(), ConsensusError>>> {
     let Ok(validator_id) = env::var("CONSENSUS_VALIDATOR_ID") else {
-        info!("CONSENSUS_VALIDATOR_ID is not set. Not run consensus.");
+        info!("CONSENSUS_VALIDATOR_ID is not set. Not running consensus.");
         return Ok(tokio::spawn(pending()));
     };
     info!("Running consensus as validator {validator_id}");
