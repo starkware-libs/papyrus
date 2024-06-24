@@ -2,15 +2,6 @@
 // TODO(Matan): Add a description of the crate.
 // TODO(Matan): fix #[allow(missing_docs)].
 //! A consensus implementation for a [`Starknet`](https://www.starknet.io/) node.
-//!
-//! This crate provides ...
-//!
-//! # Disclaimer
-//! This crate is still under development and is not keeping backwards compatibility with previous
-//! versions. Breaking changes are expected to happen in the near future.
-//!
-//! # Quick Start
-//! ...
 
 use std::sync::Arc;
 
