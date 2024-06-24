@@ -46,7 +46,7 @@ use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
 use tokio::task::{JoinError, JoinHandle};
 use tracing::metadata::LevelFilter;
-use tracing::{debug_span, error, info, warn, Instrument};
+use tracing::{debug, debug_span, error, info, warn, Instrument};
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
@@ -98,7 +98,7 @@ fn run_consensus(
     consensus_channels: BroadcastSubscriberChannels<ConsensusMessage>,
 ) -> anyhow::Result<JoinHandle<Result<(), ConsensusError>>> {
     let Ok(validator_id) = env::var("CONSENSUS_VALIDATOR_ID") else {
-        info!("CONSENSUS_VALIDATOR_ID is not set. Not run consensus.");
+        debug!("CONSENSUS_VALIDATOR_ID is not set. Not running consensus.");
         return Ok(tokio::spawn(pending()));
     };
     info!("Running consensus as validator {validator_id}");
