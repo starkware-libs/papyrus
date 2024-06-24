@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
 use starknet_api::block::{BlockHash, BlockNumber};
+use tracing::{debug, info, instrument};
 
 use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
@@ -36,11 +37,15 @@ where
         Self { height, context, validators, id }
     }
 
+    #[instrument(skip(self), fields(height=self.height.0), level = "debug")]
     pub(crate) async fn start(&mut self) -> Result<Option<BlockT>, ConsensusError> {
+        info!("Starting consensus with validators {:?}", self.validators);
+
         let proposer_id = self.context.proposer(&self.validators, self.height);
         if proposer_id != self.id {
             return Ok(None);
         }
+        debug!("Proposer flow");
 
         let (content_receiver, block_receiver) = self.context.build_proposal(self.height).await;
         let (fin_sender, fin_receiver) = oneshot::channel();
@@ -62,12 +67,21 @@ where
 
     /// Receive a proposal from a peer node. Returns only once the proposal has been fully received
     /// and processed.
+    #[instrument(
+        skip(self, init, content_receiver, fin_receiver),
+        fields(height = %self.height),
+        level = "debug",
+    )]
     pub(crate) async fn handle_proposal(
         &mut self,
         init: ProposalInit,
         content_receiver: mpsc::Receiver<<BlockT as ConsensusBlock>::ProposalChunk>,
         fin_receiver: oneshot::Receiver<BlockHash>,
     ) -> Result<Option<BlockT>, ConsensusError> {
+        debug!(
+            "Received proposal: proposal_height={}, proposer={:?}",
+            init.height.0, init.proposer
+        );
         let proposer_id = self.context.proposer(&self.validators, self.height);
         if init.height != self.height {
             let msg = format!("invalid height: expected {:?}, got {:?}", self.height, init.height);
