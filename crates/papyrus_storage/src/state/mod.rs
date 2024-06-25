@@ -66,7 +66,7 @@ use starknet_api::state::{ContractClass, StateNumber, StorageKey, ThinStateDiff}
 use starknet_types_core::felt::Felt;
 use tracing::debug;
 
-use crate::db::serialization::{NoVersionValueWrapper, VersionWrapper, VersionZeroWrapper};
+use crate::db::serialization::{NoVersionValueWrapper, VersionZeroWrapper};
 use crate::db::table_types::{CommonPrefix, DbCursorTrait, SimpleTable, Table};
 use crate::db::{DbTransaction, TableHandle, TransactionKind, RW};
 #[cfg(feature = "document_calls")]
@@ -91,7 +91,7 @@ pub(crate) type DeclaredClassesTable<'env> =
 pub(crate) type DeclaredClassesBlockTable<'env> =
     TableHandle<'env, ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>;
 pub(crate) type DeprecatedDeclaredClassesTable<'env> =
-    TableHandle<'env, ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>;
+    TableHandle<'env, ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>;
 pub(crate) type CompiledClassesTable<'env> =
     TableHandle<'env, ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>;
 pub(crate) type DeployedContractsTable<'env> =
