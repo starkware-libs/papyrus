@@ -90,7 +90,13 @@ async fn stream_block_headers() {
             .times(1)
             .returning(|_block_number| Ok(Some(BlockOrDeprecated::default())));
         mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+            |block_number| {
+                Ok(Some(BlockSignatureData::Deprecated {
+                    block_number,
+                    signature: Default::default(),
+                    signature_input: Default::default(),
+                }))
+            },
         );
     }
     let ((reader, _), _temp_dir) = get_test_storage();
@@ -136,7 +142,13 @@ async fn stream_block_headers_some_are_missing() {
                 .times(1)
                 .returning(|_| Ok(Some(BlockOrDeprecated::default())));
             mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-                |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+                |block_number| {
+                    Ok(Some(BlockSignatureData::Deprecated {
+                        block_number,
+                        signature: Default::default(),
+                        signature_input: Default::default(),
+                    }))
+                },
             );
         }
         if block_missing {
@@ -160,9 +172,10 @@ async fn stream_block_headers_some_are_missing() {
                 .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
                 .times(1)
                 .returning(|_| {
-                    Ok(Some(BlockSignatureData {
+                    Ok(Some(BlockSignatureData::Deprecated {
                         block_number: BlockNumber(MISSING_BLOCK_NUMBER),
-                        ..Default::default()
+                        signature: Default::default(),
+                        signature_input: Default::default(),
                     }))
                 });
         }
@@ -213,7 +226,13 @@ async fn stream_block_headers_error() {
             .times(1)
             .returning(|_x| Ok(Some(BlockOrDeprecated::default())));
         mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+            |block_number| {
+                Ok(Some(BlockSignatureData::Deprecated {
+                    block_number,
+                    signature: Default::default(),
+                    signature_input: Default::default(),
+                }))
+            },
         );
     }
     mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(

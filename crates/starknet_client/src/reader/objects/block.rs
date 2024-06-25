@@ -96,6 +96,10 @@ pub struct Block {
     pub l1_data_gas_price: GasPricePerToken,
     pub transaction_commitment: TransactionCommitment,
     pub event_commitment: EventCommitment,
+    // Additions to the block structure in V0.13.2
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_diff_commitment: Option<StateDiffCommitment>,
 }
 
 impl Block {
@@ -467,13 +471,18 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 }
 
 /// A block signature and the input data used to create it.
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct BlockSignatureData {
-    pub block_number: BlockNumber,
-    pub signature: [Felt; 2],
-    pub signature_input: BlockSignatureMessage,
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum BlockSignatureData {
+    Deprecated {
+        block_number: BlockNumber,
+        signature: [Felt; 2],
+        signature_input: BlockSignatureMessage,
+    },
+    Current {
+        block_hash: BlockHash,
+        signature: [Felt; 2],
+    },
 }
 
 /// The input data used to create a block signature (Poseidon hash of this data).
