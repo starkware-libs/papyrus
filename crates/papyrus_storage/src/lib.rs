@@ -107,13 +107,7 @@ use std::sync::Arc;
 use body::events::EventIndex;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
 use db::db_stats::{DbTableStats, DbWholeStats};
-use db::serialization::{
-    Key,
-    NoVersionValueWrapper,
-    ValueSerde,
-    VersionWrapper,
-    VersionZeroWrapper,
-};
+use db::serialization::{Key, NoVersionValueWrapper, ValueSerde, VersionZeroWrapper};
 use db::table_types::{CommonPrefix, NoValue, Table, TableType};
 use mmap_file::{
     open_file,
@@ -524,11 +518,11 @@ struct_field_names! {
         contract_storage: TableIdentifier<((ContractAddress, StorageKey), BlockNumber), NoVersionValueWrapper<Felt>, CommonPrefix>,
         declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<LocationInFile>, SimpleTable>,
         declared_classes_block: TableIdentifier<ClassHash, NoVersionValueWrapper<BlockNumber>, SimpleTable>,
-        deprecated_declared_classes: TableIdentifier<ClassHash, VersionWrapper<IndexedDeprecatedContractClass, 1>, SimpleTable>,
+        deprecated_declared_classes: TableIdentifier<ClassHash, VersionZeroWrapper<IndexedDeprecatedContractClass>, SimpleTable>,
         // TODO(dvir): consider use here also the CommonPrefix table type.
         deployed_contracts: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<ClassHash>, SimpleTable>,
         events: TableIdentifier<(ContractAddress, TransactionIndex), NoVersionValueWrapper<NoValue>, CommonPrefix>,
-        headers: TableIdentifier<BlockNumber, VersionWrapper<StorageBlockHeader, 2>, SimpleTable>,
+        headers: TableIdentifier<BlockNumber, VersionZeroWrapper<StorageBlockHeader>, SimpleTable>,
         markers: TableIdentifier<MarkerKind, VersionZeroWrapper<BlockNumber>, SimpleTable>,
         nonces: TableIdentifier<(ContractAddress, BlockNumber), VersionZeroWrapper<Nonce>, CommonPrefix>,
         file_offsets: TableIdentifier<OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>,
