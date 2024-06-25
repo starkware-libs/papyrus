@@ -5906,6 +5906,7 @@ dependencies = [
  "cairo-lang-starknet-classes",
  "hex",
  "indexmap 2.2.6",
+ "itertools 0.10.5",
  "lazy_static",
  "pretty_assertions",
  "rand 0.8.5",

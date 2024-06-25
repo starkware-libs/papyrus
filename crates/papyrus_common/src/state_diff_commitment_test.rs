@@ -59,3 +59,27 @@ fn empty_storage_diff() {
         calculate_state_diff_commitment(&state_diff_with_empty_storage_diff, StateDiffVersion::V0)
     );
 }
+
+#[test]
+fn deployed_and_replaced_contracts_are_sorted_for_hashing() {
+    // Tests a bug fix where the squashing of deployed and replaced contracts was not sorted by
+    // contract address.
+    let state_diff = ThinStateDiff {
+        deployed_contracts: [(contract_address!("0x2"), class_hash!("0x2"))].into(),
+        storage_diffs: [].into(),
+        declared_classes: [].into(),
+        deprecated_declared_classes: [].into(),
+        nonces: [].into(),
+        replaced_classes: [
+            (contract_address!("0x1"), class_hash!("0x1")),
+            (contract_address!("0x3"), class_hash!("0x3")),
+        ]
+        .into(),
+    };
+
+    let calculated_commitment = calculate_state_diff_commitment(&state_diff, StateDiffVersion::V0);
+    assert_eq!(
+        calculated_commitment.0.0.to_hex_string(),
+        "0x5264ab018246d1ab06704c6016285e90962e843561ebb82c4325d7254b1724b"
+    );
+}
