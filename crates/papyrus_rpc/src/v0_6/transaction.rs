@@ -765,17 +765,22 @@ pub enum Builtin {
     SegmentArena,
 }
 
-impl From<starknet_api::transaction::Builtin> for Builtin {
-    fn from(builtin: starknet_api::transaction::Builtin) -> Self {
+impl TryFrom<starknet_api::transaction::Builtin> for Builtin {
+    type Error = ();
+    fn try_from(builtin: starknet_api::transaction::Builtin) -> Result<Self, Self::Error> {
         match builtin {
-            starknet_api::transaction::Builtin::RangeCheck => Builtin::RangeCheck,
-            starknet_api::transaction::Builtin::Pedersen => Builtin::Pedersen,
-            starknet_api::transaction::Builtin::Poseidon => Builtin::Poseidon,
-            starknet_api::transaction::Builtin::EcOp => Builtin::EcOp,
-            starknet_api::transaction::Builtin::Ecdsa => Builtin::Ecdsa,
-            starknet_api::transaction::Builtin::Bitwise => Builtin::Bitwise,
-            starknet_api::transaction::Builtin::Keccak => Builtin::Keccak,
-            starknet_api::transaction::Builtin::SegmentArena => Builtin::SegmentArena,
+            starknet_api::transaction::Builtin::RangeCheck => Ok(Builtin::RangeCheck),
+            starknet_api::transaction::Builtin::Pedersen => Ok(Builtin::Pedersen),
+            starknet_api::transaction::Builtin::Poseidon => Ok(Builtin::Poseidon),
+            starknet_api::transaction::Builtin::EcOp => Ok(Builtin::EcOp),
+            starknet_api::transaction::Builtin::Ecdsa => Ok(Builtin::Ecdsa),
+            starknet_api::transaction::Builtin::Bitwise => Ok(Builtin::Bitwise),
+            starknet_api::transaction::Builtin::Keccak => Ok(Builtin::Keccak),
+            starknet_api::transaction::Builtin::SegmentArena => Ok(Builtin::SegmentArena),
+            // These builtins are not part of the specs.
+            starknet_api::transaction::Builtin::AddMod
+            | starknet_api::transaction::Builtin::MulMod
+            | starknet_api::transaction::Builtin::RangeCheck96 => Err(()),
         }
     }
 }
@@ -800,7 +805,7 @@ impl From<starknet_api::transaction::ExecutionResources> for ExecutionResources 
                 .into_iter()
                 .filter_map(|(k, v)| match v {
                     0 => None,
-                    _ => Some((k.into(), v)),
+                    _ => Builtin::try_from(k).ok().map(|k| (k, v)),
                 })
                 .collect(),
             memory_holes: match value.memory_holes {

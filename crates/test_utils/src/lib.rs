@@ -460,6 +460,9 @@ auto_impl_get_test_instance! {
         Bitwise = 5,
         Keccak = 6,
         SegmentArena = 7,
+        AddMod = 8,
+        MulMod = 9,
+        RangeCheck96 = 10,
     }
     pub struct StarknetVersion(pub String);
     pub struct Calldata(pub Arc<Vec<Felt>>);
