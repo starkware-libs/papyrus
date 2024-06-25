@@ -19,10 +19,12 @@ use papyrus_config::ConfigError;
 use papyrus_consensus::papyrus_consensus_context::PapyrusConsensusContext;
 use papyrus_consensus::types::ConsensusError;
 use papyrus_monitoring_gateway::MonitoringServer;
+use papyrus_network::db_executor::DBExecutor;
 use papyrus_network::gossipsub_impl::Topic;
 use papyrus_network::network_manager::{
     BroadcastSubscriberChannels,
     NetworkError,
+    SqmrQueryReceiver,
     SqmrSubscriberChannels,
 };
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
@@ -30,7 +32,13 @@ use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
 use papyrus_protobuf::consensus::ConsensusMessage;
-use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
+use papyrus_protobuf::sync::{
+    DataOrFin,
+    HeaderQuery,
+    SignedBlockHeader,
+    StateDiffChunk,
+    StateDiffQuery,
+};
 #[cfg(feature = "rpc")]
 use papyrus_rpc::run_server;
 use papyrus_storage::{open_storage, update_storage_metrics, StorageReader, StorageWriter};
@@ -130,10 +138,11 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // P2P network.
     let (
         network_future,
-        maybe_p2p_sync_query_sender_and_response_receivers,
+        maybe_sync_client_channels,
+        maybe_sync_server_channels,
         maybe_consensus_channels,
         local_peer_id,
-    ) = run_network(config.network.clone(), storage_reader.clone())?;
+    ) = run_network(config.network.clone())?;
     let network_handle = tokio::spawn(network_future);
 
     // Monitoring server.
@@ -170,8 +179,22 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     )
     .await?;
 
+    // P2P Sync Server task.
+    let p2p_sync_server_future = match maybe_sync_server_channels {
+        Some((header_sync_server_channel, state_diff_sync_server_channel)) => {
+            let db_executor = DBExecutor::new(
+                storage_reader.clone(),
+                header_sync_server_channel,
+                state_diff_sync_server_channel,
+            );
+            db_executor.run().boxed()
+        }
+        None => pending().boxed(),
+    };
+    let p2p_sync_server_handle = tokio::spawn(p2p_sync_server_future);
+
     // Sync task.
-    let (sync_future, p2p_sync_future) = match (config.sync, config.p2p_sync) {
+    let (sync_future, p2p_sync_client_future) = match (config.sync, config.p2p_sync) {
         (Some(_), Some(_)) => {
             panic!("One of --sync.#is_none or --p2p_sync.#is_none must be turned on");
         }
@@ -183,12 +206,11 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             (sync_fut.boxed(), pending().boxed())
         }
         (None, Some(p2p_sync_config)) => {
-            let (query_sender, response_receivers) =
-                maybe_p2p_sync_query_sender_and_response_receivers
-                    .expect("If p2p sync is enabled, network needs to be enabled too");
+            let (query_sender, response_receivers) = maybe_sync_client_channels
+                .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
-                run_p2p_sync(
+                run_p2p_sync_client(
                     p2p_sync_config,
                     storage_reader.clone(),
                     storage_writer,
@@ -201,7 +223,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         (None, None) => (pending().boxed(), pending().boxed()),
     };
     let sync_handle = tokio::spawn(sync_future);
-    let p2p_sync_handle = tokio::spawn(p2p_sync_future);
+    let p2p_sync_client_handle = tokio::spawn(p2p_sync_client_future);
 
     let consensus_handle = if let Some(consensus_channels) = maybe_consensus_channels {
         run_consensus(storage_reader.clone(), consensus_channels)?
@@ -226,9 +248,13 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             error!("Sync stopped.");
             res??
         }
-        res = p2p_sync_handle => {
+        res = p2p_sync_client_handle => {
             error!("P2P Sync stopped.");
             res??
+        }
+        res = p2p_sync_server_handle => {
+            error!("P2P Sync server stopped");
+            res?
         }
         res = network_handle => {
             error!("Network stopped.");
@@ -272,7 +298,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         sync.run().await
     }
 
-    async fn run_p2p_sync(
+    async fn run_p2p_sync_client(
         p2p_sync_config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
@@ -298,28 +324,36 @@ type NetworkRunReturn = (
         SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
     )>,
+    Option<(
+        SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
+        SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
+    )>,
     Option<BroadcastSubscriberChannels<ConsensusMessage>>,
     String,
 );
 
-fn run_network(
-    config: Option<NetworkConfig>,
-    storage_reader: StorageReader,
-) -> anyhow::Result<NetworkRunReturn> {
+fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn> {
     let Some(network_config) = config else {
-        return Ok((pending().boxed(), None, None, "".to_string()));
+        return Ok((pending().boxed(), None, None, None, "".to_string()));
     };
-    let mut network_manager =
-        network_manager::NetworkManager::new(network_config.clone(), storage_reader.clone());
+    let mut network_manager = network_manager::NetworkManager::new(network_config.clone());
     let local_peer_id = network_manager.get_local_peer_id();
-    let header_channels = network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
-    let state_diff_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+    let header_client_channels =
+        network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
+    let state_diff_client_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+
+    let header_server_channel =
+        network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader);
+    let state_diff_server_channel =
+        network_manager.register_sqmr_protocol_server(Protocol::StateDiff);
+
     let consensus_channels =
         network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?;
 
     Ok((
         network_manager.run().boxed(),
-        Some((header_channels, state_diff_channels)),
+        Some((header_client_channels, state_diff_client_channels)),
+        Some((header_server_channel, state_diff_server_channel)),
         Some(consensus_channels),
         local_peer_id,
     ))
