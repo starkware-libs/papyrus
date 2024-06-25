@@ -1,25 +1,40 @@
-use futures::channel::mpsc::Receiver;
-use futures::stream::SelectAll;
-use futures::{FutureExt, StreamExt};
+use futures::channel::mpsc::{Receiver, Sender};
+use futures::StreamExt;
 use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
+use papyrus_protobuf::converters::ProtobufConversionError;
+use papyrus_protobuf::sync::{
+    BlockHashOrNumber,
+    DataOrFin,
+    Direction,
+    HeaderQuery,
+    Query,
+    SignedBlockHeader,
+    StateDiffChunk,
+    StateDiffQuery,
+};
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
-use papyrus_storage::StorageWriter;
+use papyrus_storage::{StorageReader, StorageWriter};
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use test_utils::get_rng;
 
-use crate::db_executor::{DBExecutorError, DBExecutorTrait, Data, MockFetchBlockDataFromDb};
-use crate::DataType;
+use super::DBExecutor;
 
 const BUFFER_SIZE: usize = 10;
 
+// TODO(shahak): Add test for state_diff_query_positive_flow.
+// TODO(shahak): Change tests to use channels and not register_query
 #[tokio::test]
-async fn header_db_executor_can_register_and_run_a_query() {
-    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
-    let mut db_executor = super::DBExecutor::new(storage_reader);
+async fn header_query_positive_flow() {
+    let (
+        db_executor,
+        _storage_reader,
+        mut storage_writer,
+        _header_queries_sender,
+        _state_diff_queries_sender,
+    ) = setup();
 
     // put some data in the storage.
     const NUM_OF_BLOCKS: u64 = 10;
@@ -32,67 +47,36 @@ async fn header_db_executor_can_register_and_run_a_query() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    type ReceiversType = Vec<(Receiver<Data>, DataType)>;
-    let mut receivers: ReceiversType = enum_iterator::all::<DataType>()
-        .map(|data_type| {
-            let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-            db_executor.register_query(query.clone(), data_type, sender);
-            (receiver, data_type)
-        })
-        .collect();
-    let mut receivers_stream = SelectAll::new();
-    receivers
-        .iter_mut()
-        .map(|(receiver, requested_data_type)| {
-            receiver
-                .collect::<Vec<_>>()
-                .map(|collected| async move { (collected, requested_data_type) })
-        })
-        .for_each(|fut| {
-            receivers_stream.push(fut.into_stream());
-        });
+    let (sender, data_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    db_executor.register_query::<SignedBlockHeader, _>(query.clone(), sender);
 
     // run the executor and collect query results.
     tokio::select! {
         _ = db_executor.run() => {
             panic!("DB executor should never finish its run.");
         },
-        _ = async {
-            while let Some(res) = receivers_stream.next().await {
-                let (data, requested_data_type) = res.await;
-                let len = data.len();
-                if matches!(requested_data_type, DataType::SignedBlockHeader) {
-                    assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
-                }
-                for (i, data) in data.into_iter().enumerate() {
-                    match &data {
-                        Data::BlockHeaderAndSignature(_) => {
-                            assert_eq!(*requested_data_type, DataType::SignedBlockHeader);
-                        }
-                        Data::StateDiffChunk(_) => {
-                            assert_eq!(*requested_data_type, DataType::StateDiff);
-                        }
-                    }
-                    match data {
-                        Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
-                            assert_eq!(signed_header.block_header.block_number.0, i as u64);
-                        }
-                        Data::StateDiffChunk(DataOrFin(Some(_state_diff)))  => {
-                            // TODO: check the state diff.
-                        }
-                        _ => {
-                            assert_eq!(i, len - 1);
-                        }
-                    }
-                }
+        mut all_data = data_receiver.collect::<Vec<_>>() => {
+            assert_eq!(all_data.len(), NUM_OF_BLOCKS as usize + 1);
+            assert_eq!(DataOrFin(None), all_data.pop().unwrap());
+            for (i, data) in all_data.into_iter().enumerate() {
+                assert_eq!(
+                    data.0.expect("Received fin too early.").block_header.block_number.0,
+                    i as u64
+                );
             }
-        } => {}
+        }
     }
 }
 
 #[tokio::test]
-async fn header_db_executor_start_block_given_by_hash() {
-    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
+async fn header_query_start_block_given_by_hash() {
+    let (
+        db_executor,
+        storage_reader,
+        mut storage_writer,
+        _header_queries_sender,
+        _state_diff_queries_sender,
+    ) = setup();
 
     // put some data in the storage.
     const NUM_OF_BLOCKS: u64 = 10;
@@ -106,8 +90,6 @@ async fn header_db_executor_start_block_given_by_hash() {
         .unwrap()
         .block_hash;
 
-    let mut db_executor = super::DBExecutor::new(storage_reader);
-
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = Query {
@@ -116,7 +98,7 @@ async fn header_db_executor_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    db_executor.register_query(query, DataType::SignedBlockHeader, sender);
+    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
 
     // run the executor and collect query results.
     tokio::select! {
@@ -128,11 +110,10 @@ async fn header_db_executor_start_block_given_by_hash() {
             assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
             for (i, data) in res.into_iter().enumerate() {
                 match data {
-                    Data::BlockHeaderAndSignature(DataOrFin(Some(signed_header))) => {
+                    DataOrFin(Some(signed_header)) => {
                         assert_eq!(signed_header.block_header.block_number.0, i as u64);
                     }
-                    Data::BlockHeaderAndSignature(DataOrFin(None)) => assert_eq!(i, len - 1),
-                    _ => panic!("Unexpected data type"),
+                    DataOrFin(None) => assert_eq!(i, len - 1),
                 };
             }
         }
@@ -140,9 +121,14 @@ async fn header_db_executor_start_block_given_by_hash() {
 }
 
 #[tokio::test]
-async fn header_db_executor_query_of_missing_block() {
-    let ((storage_reader, mut storage_writer), _temp_dir) = get_test_storage();
-    let mut db_executor = super::DBExecutor::new(storage_reader);
+async fn header_query_some_blocks_are_missing() {
+    let (
+        db_executor,
+        _storage_reader,
+        mut storage_writer,
+        _header_queries_sender,
+        _state_diff_queries_sender,
+    ) = setup();
 
     const NUM_OF_BLOCKS: u64 = 15;
     insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
@@ -156,20 +142,7 @@ async fn header_db_executor_query_of_missing_block() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    let mut mock_data_type = MockFetchBlockDataFromDb::new();
-    mock_data_type.expect_fetch_block_data_from_db().times((BLOCKS_DELTA + 1) as usize).returning(
-        |block_number, _| {
-            if block_number.0 == NUM_OF_BLOCKS {
-                Err(DBExecutorError::BlockNotFound {
-                    block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                })
-            } else {
-                Ok(vec![Data::default()])
-            }
-        },
-    );
-    mock_data_type.expect_fin().times(1).returning(Data::default);
-    db_executor.register_query(query, mock_data_type, sender);
+    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
 
     tokio::select! {
         _ = db_executor.run() => {
@@ -177,8 +150,44 @@ async fn header_db_executor_query_of_missing_block() {
         },
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), (BLOCKS_DELTA + 1) as usize);
+            for (i, data) in res.into_iter().enumerate() {
+                assert_eq!(i == usize::try_from(BLOCKS_DELTA).unwrap(), data.0.is_none());
+            }
         }
     }
+}
+
+#[allow(clippy::type_complexity)]
+fn setup() -> (
+    DBExecutor<
+        Receiver<(
+            Result<HeaderQuery, ProtobufConversionError>,
+            Sender<DataOrFin<SignedBlockHeader>>,
+        )>,
+        Receiver<(
+            Result<StateDiffQuery, ProtobufConversionError>,
+            Sender<DataOrFin<StateDiffChunk>>,
+        )>,
+    >,
+    StorageReader,
+    StorageWriter,
+    Sender<(Result<HeaderQuery, ProtobufConversionError>, Sender<DataOrFin<SignedBlockHeader>>)>,
+    Sender<(Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>)>,
+) {
+    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
+    let (header_queries_sender, header_queries_receiver) = futures::channel::mpsc::channel::<(
+        Result<HeaderQuery, ProtobufConversionError>,
+        Sender<DataOrFin<SignedBlockHeader>>,
+    )>(BUFFER_SIZE);
+    let (state_diff_queries_sender, state_diff_queries_receiver) = futures::channel::mpsc::channel::<
+        (Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>),
+    >(BUFFER_SIZE);
+    let db_executor = super::DBExecutor::new(
+        storage_reader.clone(),
+        header_queries_receiver,
+        state_diff_queries_receiver,
+    );
+    (db_executor, storage_reader, storage_writer, header_queries_sender, state_diff_queries_sender)
 }
 
 fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut StorageWriter) {
