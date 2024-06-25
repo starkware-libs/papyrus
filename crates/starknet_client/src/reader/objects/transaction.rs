@@ -658,6 +658,15 @@ pub enum Builtin {
     Output,
     #[serde(rename = "segment_arena_builtin")]
     SegmentArena,
+    // Note: in starknet_api this variant doesn't exist.
+    #[serde(rename = "add_mod_builtin")]
+    AddMod,
+    // Note: in starknet_api this variant doesn't exist.
+    #[serde(rename = "mul_mod_builtin")]
+    MulMod,
+    // Note: in starknet_api this variant doesn't exist.
+    #[serde(rename = "range_check96_builtin")]
+    RangeCheck96,
 }
 
 impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources {
@@ -681,8 +690,11 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
                     Builtin::Ecdsa => Some((starknet_api::transaction::Builtin::Ecdsa, count)),
                     Builtin::Bitwise => Some((starknet_api::transaction::Builtin::Bitwise, count)),
                     Builtin::Keccak => Some((starknet_api::transaction::Builtin::Keccak, count)),
-                    // output builtin should be ignored.
-                    Builtin::Output => None,
+                    // These builtins should be ignored. We don't store them because they're not
+                    // part of the RPC or P2P specs.
+                    Builtin::Output | Builtin::AddMod | Builtin::MulMod | Builtin::RangeCheck96 => {
+                        None
+                    }
                     Builtin::SegmentArena => {
                         Some((starknet_api::transaction::Builtin::SegmentArena, count))
                     }
