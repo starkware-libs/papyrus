@@ -457,6 +457,9 @@ auto_storage_serde! {
         Bitwise = 5,
         Keccak = 6,
         SegmentArena = 7,
+        AddMod = 8,
+        MulMod = 9,
+        RangeCheck96 = 10,
     }
 
     binary(u32, read_u32, write_u32);
