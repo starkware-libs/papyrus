@@ -362,6 +362,11 @@ expression: dumped_default_config
     },
     "privacy": "Public"
   },
+  "sync.chain_id": {
+    "description": "chain id.",
+    "value": "SN_MAIN",
+    "privacy": "Public"
+  },
   "sync.recoverable_error_sleep_duration": {
     "description": "Waiting time in seconds before restarting synchronization after a recoverable error.",
     "value": {

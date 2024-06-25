@@ -67,7 +67,7 @@ const PENDING_SLEEP_DURATION: Duration = Duration::from_millis(500);
 // Sleep duration, in seconds, between sync progress checks.
 const SLEEP_TIME_SYNC_PROGRESS: Duration = Duration::from_secs(300);
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct SyncConfig {
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub block_propagation_sleep_duration: Duration,
@@ -78,6 +78,7 @@ pub struct SyncConfig {
     pub blocks_max_stream_size: u32,
     pub state_updates_max_stream_size: u32,
     pub verify_blocks: bool,
+    pub chain_id: ChainId,
 }
 
 impl SerializeConfig for SyncConfig {
@@ -120,6 +121,12 @@ impl SerializeConfig for SyncConfig {
                 "Whether to verify incoming blocks.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "chain_id",
+                &self.chain_id,
+                "chain id.",
+                ParamPrivacyInput::Public,
+            ),
         ])
     }
 }
@@ -133,6 +140,7 @@ impl Default for SyncConfig {
             blocks_max_stream_size: 1000,
             state_updates_max_stream_size: 1000,
             verify_blocks: true,
+            chain_id: ChainId::Mainnet,
         }
     }
 }
@@ -421,8 +429,7 @@ impl<
                             panic!("Error verifying block signature: {err}");
                         }
                     };
-                    let chain_id = ChainId::Mainnet;
-                    if !papyrus_common::block_hash::validate_header(&block.header, &chain_id)
+                    if !papyrus_common::block_hash::validate_header(&block.header, &self.config.chain_id)
                         .expect("Error validating block header")
                     {
                         error!("Block {} header verification failed.", block_number);
@@ -448,7 +455,7 @@ impl<
                         if !papyrus_common::transaction_hash::validate_transaction_hash(
                             tx,
                             &block_number,
-                            &chain_id,
+                            &self.config.chain_id,
                             *tx_hash,
                             &TransactionOptions { only_query: false },
                         )

@@ -94,6 +94,7 @@ fn get_test_sync_config(verify_blocks: bool) -> SyncConfig {
         blocks_max_stream_size: STREAM_SIZE,
         state_updates_max_stream_size: STREAM_SIZE,
         verify_blocks,
+        chain_id: starknet_api::core::ChainId::Mainnet,
     }
 }
 
@@ -671,7 +672,7 @@ async fn sequencer_pub_key_management() {
 
     let ((reader, writer), _temp_dir) = get_test_storage();
     let config = get_test_sync_config(true);
-    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock, config);
+    let sync_future = run_sync(reader.clone(), writer, central_mock, base_layer_mock, config.clone());
 
     let sync_result =
         tokio::time::timeout(config.block_propagation_sleep_duration * 4, sync_future)
