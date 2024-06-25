@@ -257,7 +257,7 @@ impl<V: ValueSerde + Debug> Writer<V> for FileHandler<V, RW> {
 impl<V: ValueSerde, Mode: TransactionKind> Reader<V> for FileHandler<V, Mode> {
     /// Returns an object from the file.
     fn get(&self, location: LocationInFile) -> MmapFileResult<Option<V::Value>> {
-        debug!("Reading object at location: {:?}", location);
+        trace!("Reading object at location: {:?}", location);
         let mut bytes = unsafe {
             std::slice::from_raw_parts(
                 self.memory_ptr.offset(location.offset.try_into()?),

@@ -643,6 +643,10 @@ fn write_deployed_contracts<'env>(
     for (address, class_hash) in deployed_contracts {
         deployed_contracts_table.insert(txn, &(*address, block_number), class_hash)?;
 
+        // In old blocks, there is no nonce diff, so we must add the default value if the diff is
+        // not specified.
+        // TODO: check what happens in case of a contract that was deployed and its nonce is still
+        // zero (does it in the nonce diff?).
         if !nonces_diffs.contains_key(address) {
             nonces_table.append_greater_sub_key(
                 txn,
