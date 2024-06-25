@@ -19,7 +19,7 @@ deployment:
   # The container image
   image:
     repository: ghcr.io/starkware-libs/papyrus
-    tag: 0.2.0
+    tag: 0.4.0
   # The container's pullPolicy
   pullPolicy: Always
   # Optional - nodeSelector
