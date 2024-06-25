@@ -11,7 +11,7 @@ use starknet_api::hash::StarkHash;
 use starknet_api::state::ThinStateDiff;
 use starknet_types_core::felt::Felt;
 
-use crate::{P2PSync, P2PSyncConfig, Response};
+use crate::{P2PSync, P2PSyncChannels, P2PSyncConfig, Response};
 
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;
@@ -33,12 +33,7 @@ lazy_static! {
 
 pub struct TestArgs {
     #[allow(clippy::type_complexity)]
-    pub p2p_sync: P2PSync<
-        Sender<HeaderQuery>,
-        Receiver<Response<SignedBlockHeader>>,
-        Sender<StateDiffQuery>,
-        Receiver<Response<ThinStateDiff>>,
-    >,
+    pub p2p_sync: P2PSync,
     pub storage_reader: StorageReader,
     pub header_query_receiver: Receiver<HeaderQuery>,
     pub state_diff_query_receiver: Receiver<StateDiffQuery>,
@@ -51,17 +46,17 @@ pub fn setup() -> TestArgs {
     let (header_query_sender, header_query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (state_diff_query_sender, state_diff_query_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
-    let (headers_sender, headers_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let p2p_sync = P2PSync::new(
-        *TEST_CONFIG,
-        storage_reader.clone(),
-        storage_writer,
-        header_query_sender,
-        headers_receiver,
-        state_diff_query_sender,
-        state_diffs_receiver,
-    );
+    let (headers_sender, header_response_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diffs_sender, state_diff_response_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let p2p_sync_channels = P2PSyncChannels {
+        header_query_sender: Box::new(header_query_sender),
+        state_diff_query_sender: Box::new(state_diff_query_sender),
+        header_response_receiver: Box::new(header_response_receiver),
+        state_diff_response_receiver: Box::new(state_diff_response_receiver),
+    };
+    let p2p_sync =
+        P2PSync::new(*TEST_CONFIG, storage_reader.clone(), storage_writer, p2p_sync_channels);
     TestArgs {
         p2p_sync,
         storage_reader,

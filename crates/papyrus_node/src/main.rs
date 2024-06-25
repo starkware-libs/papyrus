@@ -25,12 +25,11 @@ use papyrus_network::network_manager::{
     BroadcastSubscriberChannels,
     NetworkError,
     SqmrQueryReceiver,
-    SqmrSubscriberChannels,
 };
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
-use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+use papyrus_p2p_sync::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{
     DataOrFin,
@@ -49,7 +48,6 @@ use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::felt;
-use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
@@ -213,7 +211,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             (sync_fut.boxed(), pending().boxed())
         }
         (None, Some(p2p_sync_config)) => {
-            let (header_channels, state_diff_channels) = maybe_sync_client_channels
+            let p2p_sync_client_channels = maybe_sync_client_channels
                 .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
@@ -221,8 +219,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
                     p2p_sync_config,
                     storage_reader.clone(),
                     storage_writer,
-                    header_channels,
-                    state_diff_channels,
+                    p2p_sync_client_channels,
                 )
                 .boxed(),
             )
@@ -309,28 +306,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         p2p_sync_config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        header_channels: SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-        state_diff_channels: SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
+        p2p_sync_channels: P2PSyncChannels,
     ) -> Result<(), P2PSyncError> {
-        let sync = P2PSync::new(
-            p2p_sync_config,
-            storage_reader,
-            storage_writer,
-            header_channels.query_sender,
-            header_channels.response_receiver,
-            state_diff_channels.query_sender,
-            state_diff_channels.response_receiver,
-        );
+        let sync = P2PSync::new(p2p_sync_config, storage_reader, storage_writer, p2p_sync_channels);
         sync.run().await
     }
 }
 
 type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
-    Option<(
-        SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
-        SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
-    )>,
+    Option<P2PSyncChannels>,
     Option<(
         SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
@@ -359,10 +344,16 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
 
     let consensus_channels =
         network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?;
+    let p2p_sync_channels = P2PSyncChannels {
+        header_query_sender: Box::new(header_client_channels.query_sender),
+        header_response_receiver: Box::new(header_client_channels.response_receiver),
+        state_diff_query_sender: Box::new(state_diff_client_channels.query_sender),
+        state_diff_response_receiver: Box::new(state_diff_client_channels.response_receiver),
+    };
 
     Ok((
         network_manager.run().boxed(),
-        Some((header_client_channels, state_diff_client_channels)),
+        Some(p2p_sync_channels),
         Some((header_server_channel, state_diff_server_channel, transaction_server_channel)),
         Some(consensus_channels),
         local_peer_id,

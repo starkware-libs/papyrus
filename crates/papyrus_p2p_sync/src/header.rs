@@ -1,15 +1,12 @@
-use std::marker::PhantomData;
-
-use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
-use futures::{FutureExt, Sink, Stream, StreamExt};
-use papyrus_protobuf::sync::{Query, SignedBlockHeader};
+use futures::{FutureExt, StreamExt};
+use papyrus_protobuf::sync::SignedBlockHeader;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
 use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, Response, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
+use crate::{P2PSyncError, ResponseReceiver, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
     fn write_to_storage(
@@ -33,23 +30,16 @@ impl BlockData for SignedBlockHeader {
     }
 }
 
-pub(crate) struct HeaderStreamFactory<QuerySender, DataReceiver>(
-    PhantomData<(QuerySender, DataReceiver)>,
-);
+pub(crate) struct HeaderStreamFactory;
 
-impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, SignedBlockHeader>
-    for HeaderStreamFactory<QuerySender, DataReceiver>
-where
-    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
-    DataReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,
-{
+impl DataStreamFactory<SignedBlockHeader> for HeaderStreamFactory {
     type Output = SignedBlockHeader;
 
     const TYPE_DESCRIPTION: &'static str = "headers";
     const BLOCK_NUMBER_LIMIT: BlockNumberLimit = BlockNumberLimit::Unlimited;
 
     fn parse_data_for_block<'a>(
-        signed_headers_receiver: &'a mut DataReceiver,
+        signed_headers_receiver: &'a mut ResponseReceiver<SignedBlockHeader>,
         block_number: BlockNumber,
         _storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
