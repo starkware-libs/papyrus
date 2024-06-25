@@ -1,3 +1,17 @@
+#![warn(missing_docs)]
+// TODO(Matan): Add a description of the crate.
+// TODO(Matan): fix #[allow(missing_docs)].
+//! A consensus implementation for a [`Starknet`] node.
+//!
+//! This crate provides ...
+//!
+//! # Disclaimer
+//! This crate is still under development and is not keeping backwards compatibility with previous
+//! versions. Breaking changes are expected to happen in the near future.
+//!
+//! # Quick Start
+//! ...
+
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
@@ -9,17 +23,21 @@ use tracing::info;
 use types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
 // TODO(matan): Remove dead code allowance at the end of milestone 1.
+#[allow(missing_docs)]
 pub mod papyrus_consensus_context;
 #[allow(dead_code)]
+#[allow(missing_docs)]
 pub mod single_height_consensus;
 #[cfg(test)]
 pub(crate) mod test_utils;
 #[allow(dead_code)]
+#[allow(missing_docs)]
 pub mod types;
 
 use futures::StreamExt;
 
 // TODO(dvir): add test for this.
+#[allow(missing_docs)]
 pub async fn run_consensus<BlockT: ConsensusBlock>(
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     start_height: BlockNumber,
@@ -64,4 +82,5 @@ where
 
 // `Proposal` is defined in the protobuf crate so we can't implement `Into` for it because of the
 // orphan rule. This wrapper enables us to implement `Into` for the inner `Proposal`.
+#[allow(missing_docs)]
 pub struct ProposalWrapper(Proposal);
