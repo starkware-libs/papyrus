@@ -8,9 +8,10 @@ use tracing::info;
 
 pub use self::behaviour_impl::ToOtherBehaviourEvent;
 use self::peer::PeerTrait;
+use crate::discovery::identify_impl::IdentifyToOtherBehaviourEvent;
 use crate::mixed_behaviour::BridgedBehaviour;
 use crate::sqmr::OutboundSessionId;
-use crate::{mixed_behaviour, sqmr};
+use crate::{discovery, mixed_behaviour, sqmr};
 
 pub(crate) mod behaviour_impl;
 pub(crate) mod peer;
@@ -188,12 +189,40 @@ impl From<ToOtherBehaviourEvent> for mixed_behaviour::Event {
 
 impl<P: PeerTrait + 'static> BridgedBehaviour for PeerManager<P> {
     fn on_other_behaviour_event(&mut self, event: &mixed_behaviour::ToOtherBehaviourEvent) {
-        let mixed_behaviour::ToOtherBehaviourEvent::Sqmr(
-            sqmr::ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
-        ) = event
-        else {
-            return;
-        };
-        self.assign_peer_to_session(*outbound_session_id);
+        match event {
+            mixed_behaviour::ToOtherBehaviourEvent::Sqmr(
+                sqmr::ToOtherBehaviourEvent::RequestPeerAssignment { outbound_session_id },
+            ) => {
+                self.assign_peer_to_session(*outbound_session_id);
+            }
+            mixed_behaviour::ToOtherBehaviourEvent::Identify(
+                IdentifyToOtherBehaviourEvent::FoundListenAddresses { peer_id, listen_addresses },
+            )
+            | mixed_behaviour::ToOtherBehaviourEvent::Discovery(
+                discovery::ToOtherBehaviourEvent::FoundListenAddresses {
+                    peer_id,
+                    listen_addresses,
+                },
+            ) => {
+                // TODO(shahak): Handle changed addresses
+                if self.peers.contains_key(peer_id) {
+                    return;
+                }
+                // TODO(shahak): Track multiple addresses per peer.
+                let Some(address) = listen_addresses.first() else {
+                    return;
+                };
+
+                let peer = P::new(*peer_id, address.clone());
+                self.add_peer(peer);
+                if !self.more_peers_needed() {
+                    // TODO: consider how and in which cases we resume discovery
+                    self.pending_events.push(libp2p::swarm::ToSwarm::GenerateEvent(
+                        ToOtherBehaviourEvent::PauseDiscovery,
+                    ))
+                }
+            }
+            _ => {}
+        }
     }
 }
