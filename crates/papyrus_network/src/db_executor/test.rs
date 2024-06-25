@@ -1,5 +1,6 @@
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
+use lazy_static::lazy_static;
 use papyrus_common::state::create_random_state_diff;
 use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{
@@ -13,66 +14,102 @@ use papyrus_protobuf::sync::{
     StateDiffQuery,
     TransactionQuery,
 };
+use papyrus_storage::body::BodyStorageWriter;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageReader, StorageWriter};
 use rand::random;
-use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::transaction::{Transaction, TransactionOutput};
-use test_utils::get_rng;
+use test_utils::{get_rng, get_test_body};
 
-use super::DBExecutor;
-
+use super::{DBExecutor, FetchBlockDataFromDb};
 const BUFFER_SIZE: usize = 10;
+const NUM_OF_BLOCKS: u64 = 10;
+const NUM_TXS_PER_BLOCK: usize = 5;
+const BLOCKS_DELTA: u64 = 5;
 
-// TODO: Add test for state_diff and transaction query_positive_flow.
+enum StartBlockType {
+    Hash,
+    Number,
+}
+// TODO: Add test for state_diff.
 // TODO(shahak): Change tests to use channels and not register_query
 #[tokio::test]
 async fn header_query_positive_flow() {
-    let (
-        db_executor,
-        _storage_reader,
-        mut storage_writer,
-        _header_queries_sender,
-        _state_diff_queries_sender,
-        _transaction_queries_sender,
-    ) = setup();
-
-    // put some data in the storage.
-    const NUM_OF_BLOCKS: u64 = 10;
-    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
-
-    // register a query.
-    let query = Query {
-        start_block: BlockHashOrNumber::Number(BlockNumber(0)),
-        direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
-        step: 1,
-    };
-    let (sender, data_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    db_executor.register_query::<SignedBlockHeader, _>(query.clone(), sender);
-
-    // run the executor and collect query results.
-    tokio::select! {
-        _ = db_executor.run() => {
-            panic!("DB executor should never finish its run.");
-        },
-        mut all_data = data_receiver.collect::<Vec<_>>() => {
-            assert_eq!(all_data.len(), NUM_OF_BLOCKS as usize + 1);
-            assert_eq!(DataOrFin(None), all_data.pop().unwrap());
-            for (i, data) in all_data.into_iter().enumerate() {
-                assert_eq!(
-                    data.0.expect("Received fin too early.").block_header.block_number.0,
-                    i as u64
-                );
-            }
+    let assert_signed_block_header = |data: Vec<SignedBlockHeader>| {
+        let len = data.len();
+        assert!(len == NUM_OF_BLOCKS as usize);
+        for (i, signed_header) in data.into_iter().enumerate() {
+            assert_eq!(signed_header.block_header.block_number.0, i as u64);
         }
-    }
+    };
+
+    run_test(assert_signed_block_header, 0, StartBlockType::Hash).await;
+    run_test(assert_signed_block_header, 0, StartBlockType::Number).await;
 }
 
 #[tokio::test]
-async fn header_query_start_block_given_by_hash() {
+async fn transaction_query_positive_flow() {
+    let assert_transaction_and_output = |data: Vec<(Transaction, TransactionOutput)>| {
+        let len = data.len();
+        assert!(len == NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK);
+        for (i, (tx, tx_output)) in data.into_iter().enumerate() {
+            assert_eq!(tx, TXS[i / NUM_TXS_PER_BLOCK][i % NUM_TXS_PER_BLOCK]);
+            assert_eq!(tx_output, TX_OUTPUTS[i / NUM_TXS_PER_BLOCK][i % NUM_TXS_PER_BLOCK]);
+        }
+    };
+
+    run_test(assert_transaction_and_output, 0, StartBlockType::Hash).await;
+    run_test(assert_transaction_and_output, 0, StartBlockType::Number).await;
+}
+
+#[tokio::test]
+async fn header_query_some_blocks_are_missing() {
+    let assert_signed_block_header = |data: Vec<SignedBlockHeader>| {
+        let len = data.len();
+        assert!(len == BLOCKS_DELTA as usize);
+        for (i, signed_header) in data.into_iter().enumerate() {
+            assert_eq!(
+                signed_header.block_header.block_number.0,
+                i as u64 + NUM_OF_BLOCKS - BLOCKS_DELTA
+            );
+        }
+    };
+
+    run_test(assert_signed_block_header, NUM_OF_BLOCKS - BLOCKS_DELTA, StartBlockType::Number)
+        .await;
+}
+
+#[tokio::test]
+async fn transaction_query_some_blocks_are_missing() {
+    let assert_transaction_and_output = |data: Vec<(Transaction, TransactionOutput)>| {
+        let len = data.len();
+        assert!(len == (BLOCKS_DELTA as usize * NUM_TXS_PER_BLOCK));
+        for (i, (tx, tx_output)) in data.into_iter().enumerate() {
+            assert_eq!(
+                tx,
+                TXS[i / NUM_TXS_PER_BLOCK + NUM_OF_BLOCKS as usize - BLOCKS_DELTA as usize]
+                    [i % NUM_TXS_PER_BLOCK]
+            );
+            assert_eq!(
+                tx_output,
+                TX_OUTPUTS[i / NUM_TXS_PER_BLOCK + NUM_OF_BLOCKS as usize - BLOCKS_DELTA as usize]
+                    [i % NUM_TXS_PER_BLOCK]
+            );
+        }
+    };
+
+    run_test(assert_transaction_and_output, NUM_OF_BLOCKS - BLOCKS_DELTA, StartBlockType::Number)
+        .await;
+}
+
+async fn run_test<T, F>(assert_fn: F, start_block_number: u64, start_block_type: StartBlockType)
+where
+    T: FetchBlockDataFromDb + std::fmt::Debug + PartialEq + Send + Sync + 'static,
+    F: FnOnce(Vec<T>),
+{
     let (
         db_executor,
         storage_reader,
@@ -83,81 +120,40 @@ async fn header_query_start_block_given_by_hash() {
     ) = setup();
 
     // put some data in the storage.
-    const NUM_OF_BLOCKS: u64 = 10;
-    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
+    insert_to_storage_test_blocks_up_to(&mut storage_writer);
 
-    let block_hash = storage_reader
-        .begin_ro_txn()
-        .unwrap()
-        .get_block_header(BlockNumber(0))
-        .unwrap()
-        .unwrap()
-        .block_hash;
+    let start_block = match start_block_type {
+        StartBlockType::Hash => BlockHashOrNumber::Hash(
+            storage_reader
+                .begin_ro_txn()
+                .unwrap()
+                .get_block_header(BlockNumber(start_block_number))
+                .unwrap()
+                .unwrap()
+                .block_hash,
+        ),
+        StartBlockType::Number => BlockHashOrNumber::Number(BlockNumber(start_block_number)),
+    };
 
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = Query {
-        start_block: BlockHashOrNumber::Hash(block_hash),
-        direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
-        step: 1,
-    };
-    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
+    let query = Query { start_block, direction: Direction::Forward, limit: NUM_OF_BLOCKS, step: 1 };
+    db_executor.register_query::<T, _>(query, sender);
 
     // run the executor and collect query results.
     tokio::select! {
         _ = db_executor.run() => {
             panic!("DB executor should never finish its run.");
         },
-        res = receiver.collect::<Vec<_>>() => {
-            let len = res.len();
-            assert_eq!(len, NUM_OF_BLOCKS as usize + 1);
-            for (i, data) in res.into_iter().enumerate() {
-                match data {
-                    DataOrFin(Some(signed_header)) => {
-                        assert_eq!(signed_header.block_header.block_number.0, i as u64);
-                    }
-                    DataOrFin(None) => assert_eq!(i, len - 1),
-                };
-            }
-        }
-    }
-}
+        mut res = receiver.collect::<Vec<_>>() => {
+            assert_eq!(DataOrFin(None), res.pop().unwrap());
+            let filtered_res = res.into_iter().inspect(|data| {
+                if data.0.is_none() {
+                    panic!("Should not get None");
+                }
+            }).filter_map(|data| data.0).collect();
 
-#[tokio::test]
-async fn header_query_some_blocks_are_missing() {
-    let (
-        db_executor,
-        _storage_reader,
-        mut storage_writer,
-        _header_queries_sender,
-        _state_diff_queries_sender,
-        _transaction_queries_sender,
-    ) = setup();
-
-    const NUM_OF_BLOCKS: u64 = 15;
-    insert_to_storage_test_blocks_up_to(NUM_OF_BLOCKS, &mut storage_writer);
-
-    const BLOCKS_DELTA: u64 = 5;
-    // register a query.
-    let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let query = Query {
-        start_block: BlockHashOrNumber::Number(BlockNumber(NUM_OF_BLOCKS - BLOCKS_DELTA)),
-        direction: Direction::Forward,
-        limit: NUM_OF_BLOCKS,
-        step: 1,
-    };
-    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
-
-    tokio::select! {
-        _ = db_executor.run() => {
-            panic!("DB executor should never finish its run.");
-        },
-        res = receiver.collect::<Vec<_>>() => {
-            assert_eq!(res.len(), (BLOCKS_DELTA + 1) as usize);
-            for (i, data) in res.into_iter().enumerate() {
-                assert_eq!(i == usize::try_from(BLOCKS_DELTA).unwrap(), data.0.is_none());
-            }
+            assert_fn(filtered_res);
         }
     }
 }
@@ -216,12 +212,13 @@ fn setup() -> (
     )
 }
 
-fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut StorageWriter) {
+fn insert_to_storage_test_blocks_up_to(storage_writer: &mut StorageWriter) {
     let mut rng = get_rng();
     let thin_state_diffs =
-        (0..num_of_blocks).map(|_| create_random_state_diff(&mut rng)).collect::<Vec<_>>();
+        (0..NUM_OF_BLOCKS).map(|_| create_random_state_diff(&mut rng)).collect::<Vec<_>>();
 
-    for i in 0..num_of_blocks {
+    for i in 0..NUM_OF_BLOCKS {
+        let i_usize = usize::try_from(i).unwrap();
         let block_header = BlockHeader {
             block_number: BlockNumber(i),
             block_hash: BlockHash(random::<u64>().into()),
@@ -236,9 +233,31 @@ fn insert_to_storage_test_blocks_up_to(num_of_blocks: u64, storage_writer: &mut 
             // right signatures.
             .append_block_signature(BlockNumber(i), &BlockSignature::default())
             .unwrap()
-            .append_state_diff(BlockNumber(i), thin_state_diffs[i as usize].clone())
+            .append_state_diff(BlockNumber(i), thin_state_diffs[i_usize].clone())
             .unwrap()
+            .append_body(BlockNumber(i), BlockBody{transactions: TXS[i_usize].clone(),
+                transaction_outputs: TX_OUTPUTS[i_usize].clone(),
+                transaction_hashes: TX_HASHES[i_usize].clone(),}).unwrap()
             .commit()
             .unwrap();
     }
+}
+
+lazy_static! {
+    static ref BODY: BlockBody =
+        get_test_body(NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK, None, None, None);
+    static ref TXS: Vec<Vec<Transaction>> =
+        BODY.clone().transactions.chunks(NUM_TXS_PER_BLOCK).map(|chunk| chunk.to_vec()).collect();
+    static ref TX_OUTPUTS: Vec<Vec<TransactionOutput>> = BODY
+        .clone()
+        .transaction_outputs
+        .chunks(NUM_TXS_PER_BLOCK)
+        .map(|chunk| chunk.to_vec())
+        .collect();
+    static ref TX_HASHES: Vec<Vec<starknet_api::transaction::TransactionHash>> = BODY
+        .clone()
+        .transaction_hashes
+        .chunks(NUM_TXS_PER_BLOCK)
+        .map(|chunk| chunk.to_vec())
+        .collect();
 }
