@@ -560,7 +560,7 @@ async fn get_block_signature() {
     )
     .unwrap();
 
-    let expected_block_signature = BlockSignatureData {
+    let expected_block_signature = BlockSignatureData::Deprecated {
         block_number: BlockNumber(20),
         signature: [felt!("0x1"), felt!("0x2")],
         signature_input: BlockSignatureMessage {

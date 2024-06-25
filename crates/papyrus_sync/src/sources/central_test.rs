@@ -27,7 +27,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::{felt, patricia_key};
-use starknet_client::reader::objects::block::DeprecatedBlock;
+use starknet_client::reader::objects::block::{Block, DeprecatedBlock};
 use starknet_client::reader::{
     BlockOrDeprecated,
     BlockSignatureData,
@@ -85,12 +85,21 @@ async fn stream_block_headers() {
 
     // We need to perform all the mocks before moving the mock into central_source.
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
-        mock.expect_block()
-            .with(predicate::eq(BlockNumber(i)))
-            .times(1)
-            .returning(|_block_number| Ok(Some(BlockOrDeprecated::default())));
+        mock.expect_block().with(predicate::eq(BlockNumber(i))).times(1).returning(
+            |_block_number| {
+                Ok(Some(BlockOrDeprecated::V0_13_1(Block {
+                    state_diff_commitment: Some(Default::default()),
+                    ..Default::default()
+                })))
+            },
+        );
         mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+            |_block_number| {
+                Ok(Some(BlockSignatureData::V0_13_2 {
+                    block_hash: Default::default(),
+                    signature: Default::default(),
+                }))
+            },
         );
     }
     let ((reader, _), _temp_dir) = get_test_storage();
@@ -136,7 +145,13 @@ async fn stream_block_headers_some_are_missing() {
                 .times(1)
                 .returning(|_| Ok(Some(BlockOrDeprecated::default())));
             mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-                |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+                |block_number| {
+                    Ok(Some(BlockSignatureData::Deprecated {
+                        block_number,
+                        signature: Default::default(),
+                        signature_input: Default::default(),
+                    }))
+                },
             );
         }
         if block_missing {
@@ -160,9 +175,10 @@ async fn stream_block_headers_some_are_missing() {
                 .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
                 .times(1)
                 .returning(|_| {
-                    Ok(Some(BlockSignatureData {
+                    Ok(Some(BlockSignatureData::Deprecated {
                         block_number: BlockNumber(MISSING_BLOCK_NUMBER),
-                        ..Default::default()
+                        signature: Default::default(),
+                        signature_input: Default::default(),
                     }))
                 });
         }
@@ -213,7 +229,13 @@ async fn stream_block_headers_error() {
             .times(1)
             .returning(|_x| Ok(Some(BlockOrDeprecated::default())));
         mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
-            |block_number| Ok(Some(BlockSignatureData { block_number, ..Default::default() })),
+            |block_number| {
+                Ok(Some(BlockSignatureData::Deprecated {
+                    block_number,
+                    signature: Default::default(),
+                    signature_input: Default::default(),
+                }))
+            },
         );
     }
     mock.expect_block().with(predicate::eq(BlockNumber(ERROR_BLOCK_NUMBER))).times(1).returning(
