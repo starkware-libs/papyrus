@@ -143,61 +143,44 @@ pub enum P2PSyncError {
 }
 
 type Response<T> = (Result<DataOrFin<T>, ProtobufConversionError>, ReportCallback);
+type HeaderQuerySender = Box<dyn Sink<HeaderQuery, Error = SendError> + Unpin + Send + 'static>;
+type HeaderResponseReceiver =
+    Box<dyn Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static>;
+type StateDiffQuerySender =
+    Box<dyn Sink<StateDiffQuery, Error = SendError> + Unpin + Send + 'static>;
+// TODO(shahak): Change to StateDiffChunk.
+type StateDiffResponseReceiver =
+    Box<dyn Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static>;
 
-pub struct P2PSync<
-    HeaderQuerySender,
-    HeaderResponseReceiver,
-    StateDiffQuerySender,
-    StateDiffResponseReceiver,
-> {
+pub struct P2PSyncChannels {
+    pub header_query_sender: HeaderQuerySender,
+    pub header_response_receiver: HeaderResponseReceiver,
+    pub state_diff_query_sender: StateDiffQuerySender,
+    pub state_diff_response_receiver: StateDiffResponseReceiver,
+}
+
+pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    header_query_sender: HeaderQuerySender,
-    header_response_receiver: HeaderResponseReceiver,
-    state_diff_query_sender: StateDiffQuerySender,
-    state_diff_response_receiver: StateDiffResponseReceiver,
+    p2p_sync_channels: P2PSyncChannels,
 }
 
-impl<HeaderQuerySender, HeaderResponseReceiver, StateDiffQuerySender, StateDiffResponseReceiver>
-    P2PSync<
-        HeaderQuerySender,
-        HeaderResponseReceiver,
-        StateDiffQuerySender,
-        StateDiffResponseReceiver,
-    >
-where
-    HeaderQuerySender: Sink<HeaderQuery, Error = SendError> + Unpin + Send + 'static,
-    HeaderResponseReceiver: Stream<Item = Response<SignedBlockHeader>> + Unpin + Send + 'static,
-    StateDiffQuerySender: Sink<StateDiffQuery, Error = SendError> + Unpin + Send + 'static,
-    // TODO(shahak): Change to StateDiffChunk.
-    StateDiffResponseReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
-{
+impl P2PSync {
     pub fn new(
         config: P2PSyncConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        header_query_sender: HeaderQuerySender,
-        header_response_receiver: HeaderResponseReceiver,
-        state_diff_query_sender: StateDiffQuerySender,
-        state_diff_response_receiver: StateDiffResponseReceiver,
+        p2p_sync_channels: P2PSyncChannels,
     ) -> Self {
-        Self {
-            config,
-            storage_reader,
-            storage_writer,
-            header_query_sender,
-            header_response_receiver,
-            state_diff_query_sender,
-            state_diff_response_receiver,
-        }
+        Self { config, storage_reader, storage_writer, p2p_sync_channels }
     }
 
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
         let header_stream = HeaderStreamFactory::create_stream(
-            self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
-            self.header_response_receiver,
+            self.p2p_sync_channels.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
+            self.p2p_sync_channels.header_response_receiver,
             self.storage_reader.clone(),
             self.config.wait_period_for_new_data,
             self.config.num_headers_per_query,
@@ -205,8 +188,10 @@ where
         );
 
         let state_diff_stream = StateDiffStreamFactory::create_stream(
-            self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
-            self.state_diff_response_receiver,
+            self.p2p_sync_channels
+                .state_diff_query_sender
+                .with(|query| ready(Ok(StateDiffQuery(query)))),
+            self.p2p_sync_channels.state_diff_response_receiver,
             self.storage_reader,
             self.config.wait_period_for_new_data,
             self.config.num_block_state_diffs_per_query,

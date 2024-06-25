@@ -28,7 +28,7 @@ use papyrus_network::network_manager::{
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
-use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
+use papyrus_p2p_sync::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, SignedBlockHeader, StateDiffQuery};
 #[cfg(feature = "rpc")]
@@ -279,15 +279,13 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         header_channels: SqmrSubscriberChannels<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         state_diff_channels: SqmrSubscriberChannels<StateDiffQuery, DataOrFin<ThinStateDiff>>,
     ) -> Result<(), P2PSyncError> {
-        let sync = P2PSync::new(
-            p2p_sync_config,
-            storage_reader,
-            storage_writer,
-            header_channels.query_sender,
-            header_channels.response_receiver,
-            state_diff_channels.query_sender,
-            state_diff_channels.response_receiver,
-        );
+        let p2p_sync_channels = P2PSyncChannels {
+            header_query_sender: Box::new(header_channels.query_sender),
+            header_response_receiver: Box::new(header_channels.response_receiver),
+            state_diff_query_sender: Box::new(state_diff_channels.query_sender),
+            state_diff_response_receiver: Box::new(state_diff_channels.response_receiver),
+        };
+        let sync = P2PSync::new(p2p_sync_config, storage_reader, storage_writer, p2p_sync_channels);
         sync.run().await
     }
 }
