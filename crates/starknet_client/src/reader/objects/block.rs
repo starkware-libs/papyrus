@@ -253,7 +253,7 @@ impl Block {
             ));
         }
 
-        let (transaction_commitment, event_commitment, n_transactions, n_events) = match &self {
+        let (transaction_commitment, event_commitment) = match &self {
             Block::PostV0_13_1(block) => {
                 // In some older starknet versions, the transaction and event commitments are not
                 // available from the feeder gateway. In such cases, we return None for these
@@ -261,22 +261,16 @@ impl Block {
                 if block.transaction_commitment == TransactionCommitment::default()
                     && block.event_commitment == EventCommitment::default()
                 {
-                    (None, None, None, None)
+                    (None, None)
                 } else {
-                    (
-                        Some(block.transaction_commitment),
-                        Some(block.event_commitment),
-                        Some(block.transactions.len()),
-                        Some(
-                            block
-                                .transaction_receipts
-                                .iter()
-                                .fold(0, |acc, receipt| acc + receipt.events.len()),
-                        ),
-                    )
+                    (Some(block.transaction_commitment), Some(block.event_commitment))
                 }
             }
         };
+
+        let n_transactions = self.transactions().len();
+        let n_events =
+            self.transaction_receipts().iter().fold(0, |acc, receipt| acc + receipt.events.len());
 
         // Get the header.
         let header = starknet_api::block::BlockHeader {
