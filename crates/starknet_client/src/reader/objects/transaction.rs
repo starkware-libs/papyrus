@@ -622,18 +622,16 @@ pub struct ExecutionResources {
     pub builtin_instance_counter: HashMap<Builtin, u64>,
     // Note: in starknet_api this field is named `memory_holes`
     pub n_memory_holes: u64,
-    // This field was added in Starknet v0.13.1
+    // This field is missing in blocks created before v0.13.1, even if the feeder gateway is of
+    // that version
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub data_availability: Option<DataAvailabilityResources>,
-}
-
-/// The resources used for data availability by a transaction.
-#[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct DataAvailabilityResources {
-    pub l1_gas: u64,
-    pub l1_data_gas: u64,
+    pub data_availability: Option<GasVector>,
+    // This field is missing in blocks created before v0.13.2, even if the feeder gateway is of
+    // that version
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_gas_consumed: Option<GasVector>,
 }
 
 // Note: the serialization is different from the one in starknet_api.
@@ -668,6 +666,7 @@ pub enum Builtin {
 
 impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources {
     fn from(execution_resources: ExecutionResources) -> Self {
+        let da_gas_consumed = execution_resources.data_availability.unwrap_or_default();
         Self {
             steps: execution_resources.n_steps,
             builtin_instance_counter: execution_resources
@@ -700,19 +699,16 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
                 })
                 .collect(),
             memory_holes: execution_resources.n_memory_holes,
-            da_gas_consumed: GasVector {
-                l1_gas: execution_resources
-                    .data_availability
-                    .as_ref()
-                    .map(|data_availability| data_availability.l1_gas)
-                    .unwrap_or_default(),
-                l1_data_gas: execution_resources
-                    .data_availability
-                    .as_ref()
-                    .map(|data_availability| data_availability.l1_data_gas)
-                    .unwrap_or_default(),
+            da_gas_consumed,
+            gas_consumed: match execution_resources.total_gas_consumed {
+                Some(total_gas_consumed) => total_gas_consumed,
+                None => GasVector {
+                    // It's hardcoded that this field is 0 for pre-v0.13.2 blocks (this field is
+                    // only used in calculating the receipt hash)
+                    l1_gas: 0,
+                    l1_data_gas: da_gas_consumed.l1_data_gas,
+                },
             },
-            gas_consumed: GasVector { l1_gas: 0, l1_data_gas: 0 },
         }
     }
 }

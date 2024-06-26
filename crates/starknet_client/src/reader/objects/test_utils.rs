@@ -16,6 +16,7 @@ use starknet_api::transaction::{
     ContractAddressSalt,
     Event,
     Fee,
+    GasVector,
     L1ToL2Payload,
     L2ToL1Payload,
     PaymasterData,
@@ -32,7 +33,6 @@ use test_utils::{auto_impl_get_test_instance, get_number_of_variants, GetTestIns
 use crate::reader::objects::state::ContractClass;
 use crate::reader::objects::transaction::{
     Builtin,
-    DataAvailabilityResources,
     DeployTransaction,
     ExecutionResources,
     IntermediateDeclareTransaction,
@@ -161,11 +161,8 @@ auto_impl_get_test_instance! {
         pub n_steps: u64,
         pub builtin_instance_counter: HashMap<Builtin, u64>,
         pub n_memory_holes: u64,
-        pub data_availability: Option<DataAvailabilityResources>,
-    }
-    pub struct DataAvailabilityResources {
-        pub l1_gas: u64,
-        pub l1_data_gas: u64,
+        pub data_availability: Option<GasVector>,
+        pub total_gas_consumed: Option<GasVector>,
     }
     pub enum Builtin {
         RangeCheck = 0,
