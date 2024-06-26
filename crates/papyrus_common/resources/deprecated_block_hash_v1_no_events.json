@@ -17,6 +17,7 @@
     "l1_da_mode": "CALLDATA",
     "transaction_commitment": "0x018990b555b92ed88c651f0e7e49fe22a3250c1f1d51766ed8c74f33eddb31ca",
     "event_commitment": "0x0",
+    "state_diff_commitment": "0x0",
     "n_transactions": 111,
     "n_events": 0,
     "starknet_version": ""

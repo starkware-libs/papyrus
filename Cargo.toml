@@ -128,7 +128,7 @@ serde_repr = "0.1"
 serde_yaml = "0.9.16"
 sha3 = "0.10.8"
 simple_logger = "4.0.0"
-starknet_api = "0.13.0-dev.4"
+starknet_api = "0.13.0-dev.6"
 starknet-core = "0.6.0"
 starknet-crypto = "0.5.1"
 starknet-types-core = "0.1.2"
@@ -151,3 +151,6 @@ url = "2.2.2"
 validator = "0.12"
 void = "1.0.2"
 zstd = "0.13.1"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "008afd0" }
