@@ -96,6 +96,10 @@ pub struct Block {
     pub l1_data_gas_price: GasPricePerToken,
     pub transaction_commitment: TransactionCommitment,
     pub event_commitment: EventCommitment,
+    // Additions to the block structure in V0.13.2
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_diff_commitment: Option<StateDiffCommitment>,
 }
 
 impl Block {
@@ -103,7 +107,7 @@ impl Block {
         self,
         state_diff_hash: GlobalRoot,
     ) -> ReaderClientResult<starknet_api_block> {
-        let block_or_deprecated = BlockOrDeprecated::Current(self);
+        let block_or_deprecated = BlockOrDeprecated::V0_13_1(self);
         block_or_deprecated.to_starknet_api_block_and_version(state_diff_hash)
     }
 }
@@ -112,7 +116,7 @@ impl Block {
 #[serde(untagged)]
 pub enum BlockOrDeprecated {
     Deprecated(DeprecatedBlock),
-    Current(Block),
+    V0_13_1(Block),
 }
 
 // TODO(yair): add tests for the new block.
@@ -186,35 +190,35 @@ impl BlockOrDeprecated {
     pub fn transactions(&self) -> &[Transaction] {
         match self {
             BlockOrDeprecated::Deprecated(block) => &block.transactions,
-            BlockOrDeprecated::Current(block) => &block.transactions,
+            BlockOrDeprecated::V0_13_1(block) => &block.transactions,
         }
     }
 
     pub fn transaction_receipts(&self) -> &[TransactionReceipt] {
         match self {
             BlockOrDeprecated::Deprecated(block) => &block.transaction_receipts,
-            BlockOrDeprecated::Current(block) => &block.transaction_receipts,
+            BlockOrDeprecated::V0_13_1(block) => &block.transaction_receipts,
         }
     }
 
     pub fn block_number(&self) -> BlockNumber {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.block_number,
-            BlockOrDeprecated::Current(block) => block.block_number,
+            BlockOrDeprecated::V0_13_1(block) => block.block_number,
         }
     }
 
     pub fn block_hash(&self) -> BlockHash {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.block_hash,
-            BlockOrDeprecated::Current(block) => block.block_hash,
+            BlockOrDeprecated::V0_13_1(block) => block.block_hash,
         }
     }
 
     pub fn parent_block_hash(&self) -> BlockHash {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.parent_block_hash,
-            BlockOrDeprecated::Current(block) => block.parent_block_hash,
+            BlockOrDeprecated::V0_13_1(block) => block.parent_block_hash,
         }
     }
 
@@ -224,7 +228,7 @@ impl BlockOrDeprecated {
                 price_in_fri: block.strk_l1_gas_price,
                 price_in_wei: block.eth_l1_gas_price,
             },
-            BlockOrDeprecated::Current(block) => block.l1_gas_price,
+            BlockOrDeprecated::V0_13_1(block) => block.l1_gas_price,
         }
     }
 
@@ -232,42 +236,42 @@ impl BlockOrDeprecated {
         match self {
             // old blocks don't have data price.
             BlockOrDeprecated::Deprecated(_) => GasPricePerToken::default(),
-            BlockOrDeprecated::Current(block) => block.l1_data_gas_price,
+            BlockOrDeprecated::V0_13_1(block) => block.l1_data_gas_price,
         }
     }
 
     pub fn state_root(&self) -> GlobalRoot {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.state_root,
-            BlockOrDeprecated::Current(block) => block.state_root,
+            BlockOrDeprecated::V0_13_1(block) => block.state_root,
         }
     }
 
     pub fn sequencer_address(&self) -> SequencerContractAddress {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.sequencer_address,
-            BlockOrDeprecated::Current(block) => block.sequencer_address,
+            BlockOrDeprecated::V0_13_1(block) => block.sequencer_address,
         }
     }
 
     pub fn timestamp(&self) -> BlockTimestamp {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.timestamp,
-            BlockOrDeprecated::Current(block) => block.timestamp,
+            BlockOrDeprecated::V0_13_1(block) => block.timestamp,
         }
     }
 
     pub fn starknet_version(&self) -> String {
         match self {
             BlockOrDeprecated::Deprecated(block) => block.starknet_version.clone(),
-            BlockOrDeprecated::Current(block) => block.starknet_version.clone(),
+            BlockOrDeprecated::V0_13_1(block) => block.starknet_version.clone(),
         }
     }
 
     pub fn l1_da_mode(&self) -> L1DataAvailabilityMode {
         match self {
             BlockOrDeprecated::Deprecated(_) => L1DataAvailabilityMode::default(),
-            BlockOrDeprecated::Current(block) => block.l1_da_mode,
+            BlockOrDeprecated::V0_13_1(block) => block.l1_da_mode,
         }
     }
 
@@ -276,7 +280,7 @@ impl BlockOrDeprecated {
             // TODO(Eitan): calculate the transaction commitment (note that afterwards, the block
             // hash needs to be verified against self.block_hash).
             BlockOrDeprecated::Deprecated(_) => TransactionCommitment::default(),
-            BlockOrDeprecated::Current(block) => block.transaction_commitment,
+            BlockOrDeprecated::V0_13_1(block) => block.transaction_commitment,
         }
     }
 
@@ -284,7 +288,7 @@ impl BlockOrDeprecated {
         match self {
             // TODO(Eitan): calculate the event commitment.
             BlockOrDeprecated::Deprecated(_) => EventCommitment::default(),
-            BlockOrDeprecated::Current(block) => block.event_commitment,
+            BlockOrDeprecated::V0_13_1(block) => block.event_commitment,
         }
     }
 
@@ -309,7 +313,7 @@ impl BlockOrDeprecated {
 
         let (transaction_commitment, event_commitment, n_transactions, n_events) = match &self {
             BlockOrDeprecated::Deprecated(..) => (None, None, None, None),
-            BlockOrDeprecated::Current(block) => {
+            BlockOrDeprecated::V0_13_1(block) => {
                 // In some older starknet versions, the transaction and event commitments are not
                 // available from the feeder gateway. In such cases, we return None for these
                 // fields.
@@ -432,7 +436,7 @@ impl BlockOrDeprecated {
             BlockOrDeprecated::Deprecated(block) => {
                 (block.transactions, block.transaction_receipts)
             }
-            BlockOrDeprecated::Current(block) => (block.transactions, block.transaction_receipts),
+            BlockOrDeprecated::V0_13_1(block) => (block.transactions, block.transaction_receipts),
         }
     }
 }
@@ -467,13 +471,18 @@ impl From<BlockStatus> for starknet_api::block::BlockStatus {
 }
 
 /// A block signature and the input data used to create it.
-#[derive(
-    Debug, Default, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord,
-)]
-pub struct BlockSignatureData {
-    pub block_number: BlockNumber,
-    pub signature: [Felt; 2],
-    pub signature_input: BlockSignatureMessage,
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash, Deserialize, Serialize, PartialOrd, Ord)]
+#[serde(untagged)]
+pub enum BlockSignatureData {
+    Deprecated {
+        block_number: BlockNumber,
+        signature: [Felt; 2],
+        signature_input: BlockSignatureMessage,
+    },
+    V0_13_2 {
+        block_hash: BlockHash,
+        signature: [Felt; 2],
+    },
 }
 
 /// The input data used to create a block signature (Poseidon hash of this data).
