@@ -9247,8 +9247,8 @@
       {
         "current": {
           "selected": true,
-          "text": "V0_5",
-          "value": "V0_5"
+          "text": "V0_7",
+          "value": "V0_7"
         },
         "hide": 0,
         "includeAll": false,
@@ -9257,16 +9257,16 @@
         "options": [
           {
             "selected": false,
-            "text": "V0_4",
-            "value": "V0_4"
+            "text": "V0_6",
+            "value": "V0_6"
           },
           {
             "selected": false,
-            "text": "V0_5",
-            "value": "V0_5"
+            "text": "V0_7",
+            "value": "V0_7"
           }
         ],
-        "query": "V0_4,V0_5",
+        "query": "V0_6,V0_7",
         "queryValue": "None",
         "skipUrlSync": false,
         "type": "custom"
