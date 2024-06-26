@@ -178,17 +178,18 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .map(|receipts| receipts.try_into().map(ReceiptCommitment))
             .transpose()?;
 
-        let state_diff_commitment = match value.state_diff_commitment {
-            None => None,
-            Some(state_diff_commitment) => Some(StateDiffCommitment(PoseidonHash(
-                state_diff_commitment
-                    .root
-                    .ok_or(ProtobufConversionError::MissingField {
-                        field_description: "StateDiffCommitment::root",
-                    })?
-                    .try_into()?,
-            ))),
-        };
+        let state_diff_commitment = StateDiffCommitment(PoseidonHash(
+            value
+                .state_diff_commitment
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "SignedBlockHeader::state_diff_commitment",
+                })?
+                .root
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "StateDiffCommitment::root",
+                })?
+                .try_into()?,
+        ));
 
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
@@ -242,9 +243,7 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
                     .unwrap_or(0)
                     .try_into()
                     .expect("Converting usize to u64 failed"),
-                root: header
-                    .state_diff_commitment
-                    .map(|state_diff_commitment| state_diff_commitment.0.0.into()),
+                root: Some(header.state_diff_commitment.0.0.into()),
             }),
             state_root: Some(header.state_root.0.into()),
             // This will be Some only if both n_transactions and transaction_commitment are Some.

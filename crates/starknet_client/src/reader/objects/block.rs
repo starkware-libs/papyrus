@@ -344,7 +344,7 @@ impl BlockOrDeprecated {
             timestamp: self.timestamp(),
             l1_data_gas_price: self.l1_data_gas_price(),
             l1_da_mode: self.l1_da_mode(),
-            state_diff_commitment: Some(StateDiffCommitment(PoseidonHash(state_diff_commitment.0))),
+            state_diff_commitment: StateDiffCommitment(PoseidonHash(state_diff_commitment.0)),
             transaction_commitment,
             event_commitment,
             // TODO(shahak): Add receipt commitment once it's added to the FGW
