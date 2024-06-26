@@ -151,3 +151,6 @@ url = "2.2.2"
 validator = "0.12"
 void = "1.0.2"
 zstd = "0.13.1"
+
+[patch.crates-io]
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "5dd8cdd" }
