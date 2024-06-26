@@ -11,7 +11,7 @@ use futures::future::BoxFuture;
 use futures::FutureExt;
 use papyrus_base_layer::ethereum_base_layer_contract::EthereumBaseLayerConfig;
 use papyrus_common::metrics::COLLECT_PROFILING_METRICS;
-use papyrus_common::pending_classes::PendingClasses;
+use papyrus_common::pending_classes::{ApiContractClass, PendingClasses};
 use papyrus_common::BlockHashAndNumber;
 use papyrus_config::presentation::get_config_presentation;
 use papyrus_config::validators::config_validate;
@@ -33,7 +33,9 @@ use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::{P2PSync, P2PSyncConfig, P2PSyncError};
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{
+    ClassQuery,
     DataOrFin,
+    EventQuery,
     HeaderQuery,
     SignedBlockHeader,
     StateDiffChunk,
@@ -50,7 +52,7 @@ use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::felt;
 use starknet_api::state::ThinStateDiff;
-use starknet_api::transaction::{Transaction, TransactionOutput};
+use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
 use tokio::sync::RwLock;
@@ -187,12 +189,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             header_sync_server_channel,
             state_diff_sync_server_channel,
             transaction_server_channel,
+            class_server_channel,
+            event_server_channel,
         )) => {
             let db_executor = DBExecutor::new(
                 storage_reader.clone(),
                 header_sync_server_channel,
                 state_diff_sync_server_channel,
                 transaction_server_channel,
+                class_server_channel,
+                event_server_channel,
             );
             db_executor.run().boxed()
         }
@@ -335,6 +341,8 @@ type NetworkRunReturn = (
         SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
         SqmrQueryReceiver<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>,
+        SqmrQueryReceiver<ClassQuery, DataOrFin<ApiContractClass>>,
+        SqmrQueryReceiver<EventQuery, DataOrFin<(Event, TransactionHash)>>,
     )>,
     Option<BroadcastSubscriberChannels<ConsensusMessage>>,
     String,
@@ -356,6 +364,8 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
         network_manager.register_sqmr_protocol_server(Protocol::StateDiff);
     let transaction_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::Transaction);
+    let class_server_channel = network_manager.register_sqmr_protocol_server(Protocol::Class);
+    let event_server_channel = network_manager.register_sqmr_protocol_server(Protocol::Event);
 
     let consensus_channels =
         network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?;
@@ -363,7 +373,13 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     Ok((
         network_manager.run().boxed(),
         Some((header_client_channels, state_diff_client_channels)),
-        Some((header_server_channel, state_diff_server_channel, transaction_server_channel)),
+        Some((
+            header_server_channel,
+            state_diff_server_channel,
+            transaction_server_channel,
+            class_server_channel,
+            event_server_channel,
+        )),
         Some(consensus_channels),
         local_peer_id,
     ))

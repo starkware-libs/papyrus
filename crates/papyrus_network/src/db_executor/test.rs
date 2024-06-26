@@ -1,11 +1,14 @@
 use futures::channel::mpsc::{Receiver, Sender};
 use futures::StreamExt;
+use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::state::create_random_state_diff;
 use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
+    ClassQuery,
     DataOrFin,
     Direction,
+    EventQuery,
     HeaderQuery,
     Query,
     SignedBlockHeader,
@@ -19,7 +22,7 @@ use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageReader, StorageWriter};
 use rand::random;
 use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
-use starknet_api::transaction::{Transaction, TransactionOutput};
+use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use test_utils::get_rng;
 
 use super::DBExecutor;
@@ -37,6 +40,8 @@ async fn header_query_positive_flow() {
         _header_queries_sender,
         _state_diff_queries_sender,
         _transaction_queries_sender,
+        _class_queries_sender,
+        _event_queries_sender,
     ) = setup();
 
     // put some data in the storage.
@@ -80,6 +85,8 @@ async fn header_query_start_block_given_by_hash() {
         _header_queries_sender,
         _state_diff_queries_sender,
         _transaction_queries_sender,
+        _class_queries_sender,
+        _event_queries_sender,
     ) = setup();
 
     // put some data in the storage.
@@ -133,6 +140,8 @@ async fn header_query_some_blocks_are_missing() {
         _header_queries_sender,
         _state_diff_queries_sender,
         _transaction_queries_sender,
+        _class_queries_sender,
+        _event_queries_sender,
     ) = setup();
 
     const NUM_OF_BLOCKS: u64 = 15;
@@ -177,6 +186,14 @@ fn setup() -> (
             Result<TransactionQuery, ProtobufConversionError>,
             Sender<DataOrFin<(Transaction, TransactionOutput)>>,
         )>,
+        Receiver<(
+            Result<ClassQuery, ProtobufConversionError>,
+            Sender<DataOrFin<ApiContractClass>>,
+        )>,
+        Receiver<(
+            Result<EventQuery, ProtobufConversionError>,
+            Sender<DataOrFin<(Event, TransactionHash)>>,
+        )>,
     >,
     StorageReader,
     StorageWriter,
@@ -185,6 +202,11 @@ fn setup() -> (
     Sender<(
         Result<TransactionQuery, ProtobufConversionError>,
         Sender<DataOrFin<(Transaction, TransactionOutput)>>,
+    )>,
+    Sender<(Result<ClassQuery, ProtobufConversionError>, Sender<DataOrFin<ApiContractClass>>)>,
+    Sender<(
+        Result<EventQuery, ProtobufConversionError>,
+        Sender<DataOrFin<(Event, TransactionHash)>>,
     )>,
 ) {
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
@@ -199,12 +221,22 @@ fn setup() -> (
         Result<TransactionQuery, ProtobufConversionError>,
         Sender<DataOrFin<(Transaction, TransactionOutput)>>,
     )>(BUFFER_SIZE);
+    let (class_sender, class_queries_receiver) = futures::channel::mpsc::channel::<(
+        Result<ClassQuery, ProtobufConversionError>,
+        Sender<DataOrFin<ApiContractClass>>,
+    )>(BUFFER_SIZE);
+    let (event_sender, event_queries_receiver) = futures::channel::mpsc::channel::<(
+        Result<EventQuery, ProtobufConversionError>,
+        Sender<DataOrFin<(Event, TransactionHash)>>,
+    )>(BUFFER_SIZE);
 
     let db_executor = super::DBExecutor::new(
         storage_reader.clone(),
         header_queries_receiver,
         state_diff_queries_receiver,
         transaction_queries_receiver,
+        class_queries_receiver,
+        event_queries_receiver,
     );
     (
         db_executor,
@@ -213,6 +245,8 @@ fn setup() -> (
         header_queries_sender,
         state_diff_queries_sender,
         transaction_sender,
+        class_sender,
+        event_sender,
     )
 }
 
