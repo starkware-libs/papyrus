@@ -78,6 +78,7 @@ async fn state_diff_basic_flow() {
         // We don't need to read the header query in order to know which headers to send, and we
         // already validate the header query in a different test.
         header_query_receiver: _header_query_receiver,
+        ..
     } = setup();
 
     let block_hashes_and_signatures =
@@ -186,6 +187,7 @@ async fn validate_state_diff_fails(
         // We don't need to read the header query in order to know which headers to send, and we
         // already validate the header query in a different test.
         header_query_receiver: _header_query_receiver,
+        ..
     } = setup();
 
     let (block_hash, block_signature) = *create_block_hashes_and_signatures(1).first().unwrap();

@@ -20,11 +20,19 @@ use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_network::network_manager::ReportCallback;
 use papyrus_protobuf::converters::ProtobufConversionError;
-use papyrus_protobuf::sync::{DataOrFin, HeaderQuery, Query, SignedBlockHeader, StateDiffQuery};
+use papyrus_protobuf::sync::{
+    DataOrFin,
+    HeaderQuery,
+    Query,
+    SignedBlockHeader,
+    StateDiffQuery,
+    TransactionQuery,
+};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use tokio_stream::StreamExt;
 use tracing::instrument;
 
@@ -158,12 +166,16 @@ type HeaderQuerySender = QuerySender<HeaderQuery>;
 type HeaderResponseReceiver = ResponseReceiver<SignedBlockHeader>;
 type StateDiffQuerySender = QuerySender<StateDiffQuery>;
 type StateDiffResponseReceiver = ResponseReceiver<ThinStateDiff>;
+type TransactionQuerySender = QuerySender<TransactionQuery>;
+type TransactionResponseReceiver = ResponseReceiver<(Transaction, TransactionOutput)>;
 
 pub struct P2PSyncChannels {
     pub header_query_sender: HeaderQuerySender,
     pub header_response_receiver: HeaderResponseReceiver,
     pub state_diff_query_sender: StateDiffQuerySender,
     pub state_diff_response_receiver: StateDiffResponseReceiver,
+    pub transaction_query_sender: TransactionQuerySender,
+    pub transaction_response_receiver: TransactionResponseReceiver,
 }
 
 pub struct P2PSync {
