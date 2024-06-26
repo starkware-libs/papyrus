@@ -7,7 +7,7 @@ use starknet_api::transaction::{Event, EventContent, EventData, EventKey, Transa
 use starknet_types_core::felt::Felt;
 
 use super::ProtobufConversionError;
-use crate::sync::DataOrFin;
+use crate::sync::{DataOrFin, EventQuery, Query};
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 impl TryFrom<protobuf::EventsResponse> for DataOrFin<(Event, TransactionHash)> {
@@ -92,3 +92,38 @@ impl From<(Event, TransactionHash)> for protobuf::Event {
         Self { transaction_hash, from_address, keys, data }
     }
 }
+
+impl TryFrom<protobuf::EventsRequest> for Query {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::EventsRequest) -> Result<Self, Self::Error> {
+        Ok(EventQuery::try_from(value)?.0)
+    }
+}
+
+impl TryFrom<protobuf::EventsRequest> for EventQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::EventsRequest) -> Result<Self, Self::Error> {
+        Ok(EventQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "EventsRequest::iteration",
+                })?
+                .try_into()?,
+        ))
+    }
+}
+
+impl From<Query> for protobuf::EventsRequest {
+    fn from(value: Query) -> Self {
+        protobuf::EventsRequest { iteration: Some(value.into()) }
+    }
+}
+
+impl From<EventQuery> for protobuf::EventsRequest {
+    fn from(value: EventQuery) -> Self {
+        protobuf::EventsRequest { iteration: Some(value.0.into()) }
+    }
+}
+
+auto_impl_into_and_try_from_vec_u8!(EventQuery, protobuf::EventsRequest);

@@ -58,6 +58,8 @@ pub enum Protocol {
     SignedBlockHeader,
     StateDiff,
     Transaction,
+    Class,
+    Event,
 }
 
 impl Protocol {
@@ -66,6 +68,8 @@ impl Protocol {
             Protocol::SignedBlockHeader => "/starknet/headers/1",
             Protocol::StateDiff => "/starknet/state_diffs/1",
             Protocol::Transaction => "/starknet/transactions/1",
+            Protocol::Class => "/starknet/classes/1",
+            Protocol::Event => "/starknet/events/1",
         }
     }
 }
