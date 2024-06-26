@@ -164,8 +164,8 @@ auto_storage_serde! {
         pub event_commitment: Option<EventCommitment>,
         pub receipt_commitment: Option<ReceiptCommitment>,
         pub state_diff_length: Option<usize>,
-        pub n_transactions: Option<usize>,
-        pub n_events: Option<usize>,
+        pub n_transactions: usize,
+        pub n_events: usize,
     }
     pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {

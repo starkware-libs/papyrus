@@ -8373,9 +8373,9 @@ dependencies = [
 
 [[package]]
 name = "starknet-types-core"
-version = "0.1.2"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4098ac4ad57621cc7ec133b80fe72814d2cc4bee63ca8e7be4450ba6f42a07e8"
+checksum = "65799574816ba83cb04b21a3cb16f791b9882687cd9093415fd1b3821dbac29d"
 dependencies = [
  "lambdaworks-crypto",
  "lambdaworks-math",
@@ -8389,7 +8389,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.13.0-dev.7"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=008afd0#008afd026b95a141578c500ffbe34f3d046b1602"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=7ddb4f6#7ddb4f620fe1893ea7eb9ccb1ddb6a1547609bae"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
