@@ -357,14 +357,16 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     let transaction_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::Transaction);
 
-    let consensus_channels =
-        network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?;
+    let consensus_channels = match env::var("CONSENSUS_VALIDATOR_ID") {
+        Ok(_) => Some(network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?),
+        Err(_) => None,
+    };
 
     Ok((
         network_manager.run().boxed(),
         Some((header_client_channels, state_diff_client_channels)),
         Some((header_server_channel, state_diff_server_channel, transaction_server_channel)),
-        Some(consensus_channels),
+        consensus_channels,
         local_peer_id,
     ))
 }
