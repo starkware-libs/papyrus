@@ -1,0 +1,14 @@
+{
+    "central.http_headers": "X-Throttling-Bypass:dlaxszinf1zggax2xfbqeujanj603hhry8vli3vma34j",
+    "sync.#is_none": true,
+    "network.#is_none": false,
+    "p2p_sync.#is_none": false,
+    "storage.db_config.path_prefix": "./data2",
+    "monitoring_gateway.server_address": "127.0.0.1:8082",
+    "collect_metrics": true,
+    "rpc.server_address": "127.0.0.1:8083",
+    "network.quic_port": 10002,
+    "network.tcp_port": 10003,
+    "network.bootstrap_peer_multiaddr.#is_none": false,
+    "network.bootstrap_peer_multiaddr": "/ip4/127.0.0.1/tcp/10000/p2p/12D3KooWDFYi71juk6dYWo3UDvqs5gAzGDc124LSvcR5d187Tdvi"
+}

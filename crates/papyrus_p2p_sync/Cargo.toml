@@ -8,6 +8,7 @@ license-file.workspace = true
 [dependencies]
 async-stream.workspace = true
 futures.workspace = true
+chrono.workspace = true
 indexmap.workspace = true
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
