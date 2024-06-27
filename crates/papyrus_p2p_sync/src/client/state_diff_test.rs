@@ -14,7 +14,7 @@ use starknet_types_core::felt::Felt;
 use static_assertions::const_assert;
 use test_utils::get_rng;
 
-use crate::test_utils::{
+use super::test_utils::{
     create_block_hashes_and_signatures,
     setup,
     TestArgs,
@@ -22,7 +22,7 @@ use crate::test_utils::{
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     STATE_DIFF_QUERY_LENGTH,
 };
-use crate::{P2PSyncError, StateDiffQuery};
+use super::{P2PSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
 

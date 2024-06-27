@@ -11,7 +11,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
 
-use crate::{P2PSyncError, ResponseReceiver, WithQuerySender, STEP};
+use super::{P2PSyncError, ResponseReceiver, WithQuerySender, STEP};
 
 pub(crate) trait BlockData: Send {
     fn write_to_storage(

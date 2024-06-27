@@ -12,7 +12,7 @@ use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_types_core::felt::Felt;
 
-use crate::{P2PSync, P2PSyncChannels, P2PSyncConfig, Response};
+use super::{P2PSync, P2PSyncChannels, P2PSyncConfig, Response};
 
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;

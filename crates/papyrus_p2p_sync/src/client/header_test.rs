@@ -11,7 +11,7 @@ use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
 
-use crate::test_utils::{
+use super::test_utils::{
     create_block_hashes_and_signatures,
     setup,
     TestArgs,
