@@ -49,7 +49,7 @@ use super::{
     GET_STATE_UPDATE_URL,
 };
 use crate::reader::objects::block::{BlockSignatureData, BlockSignatureMessage};
-use crate::reader::BlockOrDeprecated;
+use crate::reader::Block;
 use crate::test_utils::read_resource::read_resource_file;
 use crate::test_utils::retry::get_test_config;
 
@@ -84,11 +84,11 @@ async fn get_block_number() {
     // There are blocks in Starknet.
     let mock_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
         .with_status(200)
-        .with_body(read_resource_file("reader/block.json"))
+        .with_body(read_resource_file("reader/block_post_0_13_1.json"))
         .create();
     let latest_block = starknet_client.latest_block().await.unwrap();
     mock_block.assert();
-    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(319110));
+    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(329525));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -369,14 +369,14 @@ async fn get_block() {
         get_test_config(),
     )
     .unwrap();
-    let raw_block = read_resource_file("reader/block.json");
+    let raw_block = read_resource_file("reader/block_post_0_13_1.json");
     let mock_block = mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=20")[..])
         .with_status(200)
         .with_body(&raw_block)
         .create();
     let block = starknet_client.block(BlockNumber(20)).await.unwrap().unwrap();
     mock_block.assert();
-    let expected_block: BlockOrDeprecated = serde_json::from_str(&raw_block).unwrap();
+    let expected_block: Block = serde_json::from_str(&raw_block).unwrap();
     assert_eq!(block, expected_block);
 
     // Non-existing block.
