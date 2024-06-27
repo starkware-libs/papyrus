@@ -14,7 +14,6 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     Stream,
-    StreamProtocol,
     SubstreamProtocol,
     ToSwarm,
 };
@@ -133,16 +132,16 @@ impl ConnectionHandler for Handler {
     }
 }
 
-pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/get_stream");
+pub const PROTOCOL_NAME: &str = "/get_stream";
 
 pub(crate) struct Protocol;
 
 impl UpgradeInfo for Protocol {
-    type Info = StreamProtocol;
+    type Info = String;
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(PROTOCOL_NAME)
+        iter::once(PROTOCOL_NAME.into())
     }
 }
 

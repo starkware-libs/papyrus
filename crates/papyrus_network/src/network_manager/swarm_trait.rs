@@ -6,10 +6,10 @@ use libp2p::{Multiaddr, PeerId, Swarm};
 use tracing::error;
 
 use crate::gossipsub_impl::Topic;
+use crate::mixed_behaviour;
 use crate::peer_manager::ReputationModifier;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, InboundSessionId, OutboundSessionId};
-use crate::{mixed_behaviour, Protocol};
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
@@ -24,7 +24,7 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
-        protocol: Protocol,
+        protocol: String,
     ) -> Result<OutboundSessionId, PeerNotConnected>;
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError>;
@@ -61,9 +61,9 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         &mut self,
         query: Vec<u8>,
         _peer_id: PeerId,
-        protocol: Protocol,
+        protocol: String,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        Ok(self.behaviour_mut().sqmr.start_query(query, protocol.into()))
+        Ok(self.behaviour_mut().sqmr.start_query(query, protocol))
     }
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError> {

@@ -8,23 +8,22 @@ use futures::future::BoxFuture;
 use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, FutureExt};
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use libp2p::swarm::StreamProtocol;
 
 use super::messages::{read_message_without_length_prefix, write_message_without_length_prefix};
 use super::Bytes;
 
 pub struct InboundProtocol {
-    supported_protocols: Vec<StreamProtocol>,
+    supported_protocols: Vec<String>,
 }
 
 impl InboundProtocol {
-    pub fn new(supported_protocols: Vec<StreamProtocol>) -> Self {
+    pub fn new(supported_protocols: Vec<String>) -> Self {
         Self { supported_protocols }
     }
 }
 
 impl UpgradeInfo for InboundProtocol {
-    type Info = StreamProtocol;
+    type Info = String;
     type InfoIter = Vec<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
@@ -36,7 +35,7 @@ impl<Stream> InboundUpgrade<Stream> for InboundProtocol
 where
     Stream: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Output = (Bytes, WriteHalf<Stream>, StreamProtocol);
+    type Output = (Bytes, WriteHalf<Stream>, String);
     type Error = io::Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
@@ -53,11 +52,11 @@ where
 #[derive(Debug)]
 pub struct OutboundProtocol {
     pub query: Bytes,
-    pub protocol_name: StreamProtocol,
+    pub protocol_name: String,
 }
 
 impl UpgradeInfo for OutboundProtocol {
-    type Info = StreamProtocol;
+    type Info = String;
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {

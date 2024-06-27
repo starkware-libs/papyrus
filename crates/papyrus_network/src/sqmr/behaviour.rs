@@ -22,7 +22,7 @@ use libp2p::swarm::{
     NotifyHandler,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId, StreamProtocol};
+use libp2p::{Multiaddr, PeerId};
 use tracing::{error, info};
 
 use super::handler::{
@@ -117,7 +117,7 @@ pub struct Behaviour {
     next_inbound_session_id: Arc<AtomicUsize>,
     dropped_sessions: HashSet<SessionId>,
     wakers_waiting_for_event: Vec<Waker>,
-    outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, StreamProtocol)>,
+    outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, String)>,
 }
 
 impl Behaviour {
@@ -142,7 +142,7 @@ impl Behaviour {
         &mut self,
         query: Bytes,
         peer_id: PeerId,
-        protocol_name: StreamProtocol,
+        protocol_name: String,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let connection_id =
             *self.connection_ids_map.get(peer_id).iter().next().ok_or(PeerNotConnected)?;
@@ -167,11 +167,7 @@ impl Behaviour {
     }
 
     /// Assign some peer and start a query. Return the id of the new session.
-    pub fn start_query(
-        &mut self,
-        query: Bytes,
-        protocol_name: StreamProtocol,
-    ) -> OutboundSessionId {
+    pub fn start_query(&mut self, query: Bytes, protocol_name: String) -> OutboundSessionId {
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
 

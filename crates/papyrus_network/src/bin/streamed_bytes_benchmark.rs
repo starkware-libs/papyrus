@@ -4,12 +4,12 @@ use std::time::{Duration, Instant};
 use clap::Parser;
 use futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
-use libp2p::{PeerId, StreamProtocol, Swarm};
+use libp2p::{PeerId, Swarm};
 use papyrus_network::bin_utils::{build_swarm, dial};
 use papyrus_network::sqmr::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
 use papyrus_network::sqmr::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 
-const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/papyrus/bench/1");
+const PROTOCOL_NAME: &str = "/papyrus/bench/1";
 const CONST_BYTE: u8 = 1;
 
 fn pretty_size(mut size: f64) -> String {
@@ -91,8 +91,10 @@ fn create_outbound_sessions_if_all_peers_connected(
     if peers_pending_outbound_session.len() >= args.num_expected_connections {
         for peer_id in peers_pending_outbound_session {
             for _ in 0..args.num_queries_per_connection {
-                let outbound_session_id =
-                    swarm.behaviour_mut().send_query(vec![], *peer_id, PROTOCOL_NAME).expect(
+                let outbound_session_id = swarm
+                    .behaviour_mut()
+                    .send_query(vec![], *peer_id, PROTOCOL_NAME.into())
+                    .expect(
                         "There's no connection to a peer immediately after we got a \
                          ConnectionEstablished event",
                     );
@@ -222,7 +224,7 @@ async fn main() {
         |_| {
             Behaviour::new(Config {
                 session_timeout: Duration::from_secs(3600),
-                supported_inbound_protocols: vec![PROTOCOL_NAME],
+                supported_inbound_protocols: vec![PROTOCOL_NAME.into()],
             })
         },
     );
