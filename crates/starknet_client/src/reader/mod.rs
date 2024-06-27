@@ -24,7 +24,7 @@ use tracing::{debug, error, instrument};
 use url::Url;
 
 pub use crate::reader::objects::block::{
-    BlockOrDeprecated,
+    Block,
     BlockSignatureData,
     BlockSignatureMessage,
     TransactionReceiptsError,
@@ -77,13 +77,10 @@ pub type ReaderClientResult<T> = Result<T, ReaderClientError>;
 pub trait StarknetReader {
     /// Returns the last block in the system, returning [`None`] in case there are no blocks in the
     /// system.
-    async fn latest_block(&self) -> ReaderClientResult<Option<BlockOrDeprecated>>;
-    /// Returns a [`BlockOrDeprecated`] corresponding to `block_number`, returning [`None`] in case
+    async fn latest_block(&self) -> ReaderClientResult<Option<Block>>;
+    /// Returns a [`Block`] corresponding to `block_number`, returning [`None`] in case
     /// no such block exists in the system.
-    async fn block(
-        &self,
-        block_number: BlockNumber,
-    ) -> ReaderClientResult<Option<BlockOrDeprecated>>;
+    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>>;
     /// Returns a [`GenericContractClass`] corresponding to `class_hash`.
     async fn class_by_hash(
         &self,
@@ -207,7 +204,7 @@ impl StarknetFeederGatewayClient {
     async fn request_block(
         &self,
         block_number: Option<BlockNumber>,
-    ) -> ReaderClientResult<Option<BlockOrDeprecated>> {
+    ) -> ReaderClientResult<Option<Block>> {
         let mut url = self.urls.get_block.clone();
         let block_number =
             block_number.map(|bn| bn.to_string()).unwrap_or(String::from(LATEST_BLOCK_NUMBER));
@@ -225,15 +222,12 @@ impl StarknetFeederGatewayClient {
 #[async_trait]
 impl StarknetReader for StarknetFeederGatewayClient {
     #[instrument(skip(self), level = "debug")]
-    async fn latest_block(&self) -> ReaderClientResult<Option<BlockOrDeprecated>> {
+    async fn latest_block(&self) -> ReaderClientResult<Option<Block>> {
         Ok(self.request_block(None).await?)
     }
 
     #[instrument(skip(self), level = "debug")]
-    async fn block(
-        &self,
-        block_number: BlockNumber,
-    ) -> ReaderClientResult<Option<BlockOrDeprecated>> {
+    async fn block(&self, block_number: BlockNumber) -> ReaderClientResult<Option<Block>> {
         self.request_block(Some(block_number)).await
     }
 
