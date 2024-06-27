@@ -27,9 +27,9 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::{felt, patricia_key};
-use starknet_client::reader::objects::block::{Block, DeprecatedBlock};
+use starknet_client::reader::objects::block::BlockPostV0_13_1;
 use starknet_client::reader::{
-    BlockOrDeprecated,
+    Block,
     BlockSignatureData,
     ContractClass,
     DeclaredClassHashEntry,
@@ -57,7 +57,7 @@ async fn last_block_number() {
     // We need to perform all the mocks before moving the mock into central_source.
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(0);
     mock.expect_latest_block().times(1).returning(|| {
-        Ok(Some(BlockOrDeprecated::Deprecated(DeprecatedBlock {
+        Ok(Some(Block::PostV0_13_1(BlockPostV0_13_1 {
             block_number: EXPECTED_LAST_BLOCK_NUMBER,
             ..Default::default()
         })))
@@ -87,7 +87,7 @@ async fn stream_block_headers() {
     for i in START_BLOCK_NUMBER..END_BLOCK_NUMBER {
         mock.expect_block().with(predicate::eq(BlockNumber(i))).times(1).returning(
             |_block_number| {
-                Ok(Some(BlockOrDeprecated::V0_13_1(Block {
+                Ok(Some(Block::PostV0_13_1(BlockPostV0_13_1 {
                     state_diff_commitment: Some(Default::default()),
                     ..Default::default()
                 })))
@@ -143,7 +143,7 @@ async fn stream_block_headers_some_are_missing() {
             mock.expect_block()
                 .with(predicate::eq(BlockNumber(i)))
                 .times(1)
-                .returning(|_| Ok(Some(BlockOrDeprecated::default())));
+                .returning(|_| Ok(Some(Block::default())));
             mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
                 |block_number| {
                     Ok(Some(BlockSignatureData::Deprecated {
@@ -163,7 +163,7 @@ async fn stream_block_headers_some_are_missing() {
             mock.expect_block()
                 .with(predicate::eq(BlockNumber(MISSING_BLOCK_NUMBER)))
                 .times(1)
-                .returning(|_| Ok(Some(BlockOrDeprecated::default())));
+                .returning(|_| Ok(Some(Block::default())));
         }
         if signature_missing {
             mock.expect_block_signature()
@@ -227,7 +227,7 @@ async fn stream_block_headers_error() {
         mock.expect_block()
             .with(predicate::eq(BlockNumber(i)))
             .times(1)
-            .returning(|_x| Ok(Some(BlockOrDeprecated::default())));
+            .returning(|_x| Ok(Some(Block::default())));
         mock.expect_block_signature().with(predicate::eq(BlockNumber(i))).times(1).returning(
             |block_number| {
                 Ok(Some(BlockSignatureData::Deprecated {
