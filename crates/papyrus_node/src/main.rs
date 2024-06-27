@@ -334,6 +334,8 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     let header_client_channels =
         network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
     let state_diff_client_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+    let transaction_client_channels =
+        network_manager.register_sqmr_subscriber(Protocol::Transaction);
 
     let header_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader);
@@ -349,6 +351,8 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
         header_response_receiver: Box::new(header_client_channels.response_receiver),
         state_diff_query_sender: Box::new(state_diff_client_channels.query_sender),
         state_diff_response_receiver: Box::new(state_diff_client_channels.response_receiver),
+        transaction_query_sender: Box::new(transaction_client_channels.query_sender),
+        transaction_response_receiver: Box::new(transaction_client_channels.response_receiver),
     };
 
     Ok((
