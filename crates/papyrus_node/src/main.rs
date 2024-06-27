@@ -29,7 +29,7 @@ use papyrus_network::network_manager::{
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
-use papyrus_p2p_sync::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
+use papyrus_p2p_sync::client::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{
     DataOrFin,

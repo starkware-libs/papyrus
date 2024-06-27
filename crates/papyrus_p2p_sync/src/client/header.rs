@@ -5,8 +5,8 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
-use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, ResponseReceiver, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
+use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use super::{P2PSyncError, ResponseReceiver, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
     fn write_to_storage(

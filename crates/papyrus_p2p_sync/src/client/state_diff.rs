@@ -11,8 +11,8 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
-use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, ResponseReceiver, NETWORK_DATA_TIMEOUT};
+use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use super::{P2PSyncError, ResponseReceiver, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
     #[latency_histogram("p2p_sync_state_diff_write_to_storage_latency_seconds", true)]
