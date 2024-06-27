@@ -14,13 +14,7 @@ use libp2p::swarm::handler::{
     FullyNegotiatedInbound,
     FullyNegotiatedOutbound,
 };
-use libp2p::swarm::{
-    ConnectionHandler,
-    ConnectionHandlerEvent,
-    Stream,
-    StreamProtocol,
-    StreamUpgradeError,
-};
+use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream, StreamUpgradeError};
 use libp2p::PeerId;
 
 use super::super::messages::{read_message, write_message};
@@ -49,7 +43,7 @@ impl StreamTrait for Handler {
 
 lazy_static! {
     static ref QUERY: Bytes = vec![1u8, 2u8, 3u8];
-    static ref PROTOCOL_NAME: StreamProtocol =
+    static ref PROTOCOL_NAME: String =
         Config::get_test_config().supported_inbound_protocols.first().unwrap().clone();
 }
 

@@ -8,7 +8,7 @@ use std::time::Duration;
 use futures::future::Future;
 use futures::pin_mut;
 use futures::stream::Stream as StreamTrait;
-use libp2p::swarm::{NetworkBehaviour, StreamProtocol, Swarm, SwarmEvent};
+use libp2p::swarm::{NetworkBehaviour, Swarm, SwarmEvent};
 use libp2p::{PeerId, Stream};
 use libp2p_swarm_test::SwarmExt;
 use tokio::sync::Mutex;
@@ -46,10 +46,7 @@ pub(crate) fn dummy_data() -> Vec<Bytes> {
 
 impl crate::sqmr::Config {
     pub fn get_test_config() -> Self {
-        Self {
-            session_timeout: Duration::MAX,
-            supported_inbound_protocols: vec![StreamProtocol::new("/")],
-        }
+        Self { session_timeout: Duration::MAX, supported_inbound_protocols: vec!["/".into()] }
     }
 }
 

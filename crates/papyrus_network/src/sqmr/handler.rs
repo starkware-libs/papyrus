@@ -22,7 +22,6 @@ use libp2p::swarm::handler::{
 use libp2p::swarm::{
     ConnectionHandler,
     ConnectionHandlerEvent,
-    StreamProtocol,
     StreamUpgradeError,
     SubstreamProtocol,
 };
@@ -39,7 +38,7 @@ pub enum RequestFromBehaviourEvent {
     CreateOutboundSession {
         query: Bytes,
         outbound_session_id: OutboundSessionId,
-        protocol_name: StreamProtocol,
+        protocol_name: String,
     },
     SendData {
         data: Bytes,

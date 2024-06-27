@@ -7,8 +7,11 @@ license-file.workspace = true
 
 [dependencies]
 async-stream.workspace = true
+derive_more.workspace = true
+enum-iterator.workspace = true
 futures.workspace = true
 indexmap.workspace = true
+lazy_static.workspace = true
 metrics.workspace = true
 papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
 papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
