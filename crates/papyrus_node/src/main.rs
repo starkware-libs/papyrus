@@ -344,8 +344,10 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     let transaction_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::Transaction);
 
-    let consensus_channels =
-        network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?;
+    let consensus_channels = match env::var("CONSENSUS_VALIDATOR_ID") {
+        Ok(_) => Some(network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?),
+        Err(_) => None,
+    };
     let p2p_sync_channels = P2PSyncChannels {
         header_query_sender: Box::new(header_client_channels.query_sender),
         header_response_receiver: Box::new(header_client_channels.response_receiver),
@@ -359,7 +361,7 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
         network_manager.run().boxed(),
         Some(p2p_sync_channels),
         Some((header_server_channel, state_diff_server_channel, transaction_server_channel)),
-        Some(consensus_channels),
+        consensus_channels,
         local_peer_id,
     ))
 }
