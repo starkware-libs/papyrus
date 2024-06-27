@@ -1,3 +1,7 @@
+#[cfg(test)]
+#[path = "state_machine_test.rs"]
+mod state_machine_test;
+
 use std::collections::{HashMap, VecDeque};
 use std::vec;
 
@@ -30,7 +34,6 @@ pub enum Step {
 /// 2. SM must handle "out of order" messages (E.g. vote arrives before proposal).
 /// 3. Only valid proposals (e.g. no NIL)
 /// 4. No network failures - together with 3 this means we only support round 0.
-#[allow(dead_code)]
 pub struct StateMachine {
     round: Round,
     step: Step,
@@ -120,7 +123,121 @@ impl StateMachine {
         output_events
     }
 
-    fn handle_event_internal(&mut self, _event: StateMachineEvent) -> Vec<StateMachineEvent> {
-        todo!()
+    fn handle_event_internal(&mut self, event: StateMachineEvent) -> Vec<StateMachineEvent> {
+        match event {
+            StateMachineEvent::GetProposal(block_hash, round) => {
+                self.handle_get_proposal(block_hash, round)
+            }
+            StateMachineEvent::Propose(block_hash, round) => {
+                self.handle_proposal(block_hash, round)
+            }
+            StateMachineEvent::Prevote(block_hash, round) => self.handle_prevote(block_hash, round),
+            StateMachineEvent::Precommit(block_hash, round) => {
+                self.handle_precommit(block_hash, round)
+            }
+            StateMachineEvent::Decision(_, _) => {
+                unimplemented!(
+                    "If the caller knows of a decision, it can just drop the state machine."
+                )
+            }
+        }
     }
+
+    // The node finishes building a proposal in response to the state machine sending out
+    // GetProposal.
+    fn handle_get_proposal(
+        &mut self,
+        block_hash: Option<BlockHash>,
+        round: u32,
+    ) -> Vec<StateMachineEvent> {
+        if !self.awaiting_get_proposal || self.round != round {
+            return Vec::new();
+        }
+        self.awaiting_get_proposal = false;
+        let block_hash = block_hash.expect("GetProposal event must have a block_hash");
+        let mut output = vec![StateMachineEvent::Propose(block_hash, round)];
+        output.append(&mut self.advance_step(Step::Prevote));
+        output
+    }
+
+    // A proposal from a peer (or self) node.
+    fn handle_proposal(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+        let old = self.proposals.insert(round, block_hash);
+        assert!(old.is_none(), "SHC should handle conflicts & replays");
+        let mut output = vec![StateMachineEvent::Prevote(block_hash, round)];
+        output.append(&mut self.advance_step(Step::Prevote));
+        output
+    }
+
+    fn handle_prevote(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+        assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
+        let prevote_count = self.prevotes.entry(round).or_default().entry(block_hash).or_insert(0);
+        *prevote_count += 1;
+        if *prevote_count < self.quorum() {
+            return Vec::new();
+        }
+        self.send_precommit(block_hash, round)
+    }
+
+    fn handle_precommit(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+        assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
+        let precommit_count =
+            self.precommits.entry(round).or_default().entry(block_hash).or_insert(0);
+        *precommit_count += 1;
+        if *precommit_count < self.quorum() {
+            return Vec::new();
+        }
+        vec![StateMachineEvent::Decision(block_hash, round)]
+    }
+
+    fn advance_step(&mut self, step: Step) -> Vec<StateMachineEvent> {
+        self.step = step;
+        // Check for an existing quorum in case messages arrived out of order.
+        match self.step {
+            Step::Propose => {
+                unimplemented!("Handled by `advance_round`")
+            }
+            Step::Prevote => self.check_prevote_quorum(self.round),
+            Step::Precommit => self.check_precommit_quorum(self.round),
+        }
+    }
+
+    fn check_prevote_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
+        let Some((block_hash, count)) = leading_vote(&self.prevotes, round) else {
+            return Vec::new();
+        };
+        if *count < self.quorum() {
+            return Vec::new();
+        }
+        self.send_precommit(*block_hash, round)
+    }
+
+    fn check_precommit_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
+        let Some((block_hash, count)) = leading_vote(&self.precommits, round) else {
+            return Vec::new();
+        };
+        if *count < self.quorum() {
+            return Vec::new();
+        }
+        vec![StateMachineEvent::Decision(*block_hash, round)]
+    }
+
+    fn send_precommit(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+        let mut output = vec![StateMachineEvent::Precommit(block_hash, round)];
+        output.append(&mut self.advance_step(Step::Precommit));
+        output
+    }
+
+    fn quorum(&self) -> u32 {
+        let q = (2 * self.validators.len() / 3) + 1;
+        q as u32
+    }
+}
+
+fn leading_vote(
+    votes: &HashMap<u32, HashMap<BlockHash, u32>>,
+    round: u32,
+) -> Option<(&BlockHash, &u32)> {
+    // We don't care which value is chosen in the case of a tie, since consensus requires 2/3+1.
+    votes.get(&round)?.iter().max_by(|a, b| a.1.cmp(b.1))
 }
