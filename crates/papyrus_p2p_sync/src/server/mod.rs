@@ -31,7 +31,7 @@ mod test;
 mod utils;
 
 #[derive(thiserror::Error, Debug)]
-pub enum DBExecutorError {
+pub enum P2PSyncServerError {
     #[error(transparent)]
     DBInternalError(#[from] papyrus_storage::StorageError),
     #[error("Block number is out of range. Query: {query:?}, counter: {counter}")]
@@ -50,7 +50,7 @@ pub enum DBExecutorError {
     SendError(#[from] futures::channel::mpsc::SendError),
 }
 
-impl DBExecutorError {
+impl P2PSyncServerError {
     pub fn should_log_in_error_level(&self) -> bool {
         match self {
             Self::JoinError(_) | Self::SignatureNotFound { .. } | Self::SendError { .. }
@@ -61,8 +61,8 @@ impl DBExecutorError {
     }
 }
 
-/// A DBExecutor receives inbound queries and returns their corresponding data.
-pub struct DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver> {
+/// A P2PSyncServer receives inbound queries and returns their corresponding data.
+pub struct P2PSyncServer<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver> {
     storage_reader: StorageReader,
     header_queries_receiver: HeaderQueryReceiver,
     state_diff_queries_receiver: StateDiffQueryReceiver,
@@ -76,7 +76,7 @@ impl<
     HeaderResponsesSender,
     StateDiffResponsesSender,
     TransactionResponsesSender,
-> DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver>
+> P2PSyncServer<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver>
 where
     HeaderQueryReceiver: Stream<Item = (Result<HeaderQuery, ProtobufConversionError>, HeaderResponsesSender)>
         + Unpin,
@@ -146,7 +146,7 @@ where
     where
         Data: FetchBlockDataFromDb + Send + 'static,
         Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
-        DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+        P2PSyncServerError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
     {
         let storage_reader_clone = self.storage_reader.clone();
         tokio::task::spawn(async move {
@@ -167,23 +167,23 @@ pub trait FetchBlockDataFromDb: Sized {
     fn fetch_block_data_from_db(
         block_number: BlockNumber,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Vec<Self>, DBExecutorError>;
+    ) -> Result<Vec<Self>, P2PSyncServerError>;
 }
 
 impl FetchBlockDataFromDb for SignedBlockHeader {
     fn fetch_block_data_from_db(
         block_number: BlockNumber,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Vec<Self>, DBExecutorError> {
+    ) -> Result<Vec<Self>, P2PSyncServerError> {
         let mut header =
-            txn.get_block_header(block_number)?.ok_or(DBExecutorError::BlockNotFound {
+            txn.get_block_header(block_number)?.ok_or(P2PSyncServerError::BlockNotFound {
                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
             })?;
         // TODO(shahak) Remove this once central sync fills the state_diff_length field.
         if header.state_diff_length.is_none() {
             header.state_diff_length = Some(
                 txn.get_state_diff(block_number)?
-                    .ok_or(DBExecutorError::BlockNotFound {
+                    .ok_or(P2PSyncServerError::BlockNotFound {
                         block_hash_or_number: BlockHashOrNumber::Number(block_number),
                     })?
                     .len(),
@@ -191,7 +191,7 @@ impl FetchBlockDataFromDb for SignedBlockHeader {
         }
         let signature = txn
             .get_block_signature(block_number)?
-            .ok_or(DBExecutorError::SignatureNotFound { block_number })?;
+            .ok_or(P2PSyncServerError::SignatureNotFound { block_number })?;
         Ok(vec![SignedBlockHeader { block_header: header, signatures: vec![signature] }])
     }
 }
@@ -200,9 +200,9 @@ impl FetchBlockDataFromDb for StateDiffChunk {
     fn fetch_block_data_from_db(
         block_number: BlockNumber,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Vec<Self>, DBExecutorError> {
+    ) -> Result<Vec<Self>, P2PSyncServerError> {
         let thin_state_diff =
-            txn.get_state_diff(block_number)?.ok_or(DBExecutorError::BlockNotFound {
+            txn.get_state_diff(block_number)?.ok_or(P2PSyncServerError::BlockNotFound {
                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
             })?;
         Ok(split_thin_state_diff(thin_state_diff))
@@ -213,13 +213,13 @@ impl FetchBlockDataFromDb for (Transaction, TransactionOutput) {
     fn fetch_block_data_from_db(
         block_number: BlockNumber,
         txn: &StorageTxn<'_, db::RO>,
-    ) -> Result<Vec<Self>, DBExecutorError> {
+    ) -> Result<Vec<Self>, P2PSyncServerError> {
         let transactions =
-            txn.get_block_transactions(block_number)?.ok_or(DBExecutorError::BlockNotFound {
+            txn.get_block_transactions(block_number)?.ok_or(P2PSyncServerError::BlockNotFound {
                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
             })?;
         let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.ok_or(
-            DBExecutorError::BlockNotFound {
+            P2PSyncServerError::BlockNotFound {
                 block_hash_or_number: BlockHashOrNumber::Number(block_number),
             },
         )?;
@@ -278,11 +278,11 @@ async fn send_data_for_query<Data, Sender>(
     storage_reader: StorageReader,
     query: Query,
     mut sender: Sender,
-) -> Result<(), DBExecutorError>
+) -> Result<(), P2PSyncServerError>
 where
     Data: FetchBlockDataFromDb + Send + 'static,
     Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
-    DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+    P2PSyncServerError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
 {
     // If this function fails, we still want to send fin before failing.
     let result = send_data_without_fin_for_query(&storage_reader, query, &mut sender).await;
@@ -294,18 +294,18 @@ async fn send_data_without_fin_for_query<Data, Sender>(
     storage_reader: &StorageReader,
     query: Query,
     sender: &mut Sender,
-) -> Result<(), DBExecutorError>
+) -> Result<(), P2PSyncServerError>
 where
     Data: FetchBlockDataFromDb + Send + 'static,
     Sender: Sink<DataOrFin<Data>> + Unpin + Send + 'static,
-    DBExecutorError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
+    P2PSyncServerError: From<<Sender as Sink<DataOrFin<Data>>>::Error>,
 {
     let txn = storage_reader.begin_ro_txn()?;
     let start_block_number = match query.start_block {
         BlockHashOrNumber::Number(BlockNumber(num)) => num,
         BlockHashOrNumber::Hash(block_hash) => {
             txn.get_block_number_by_hash(&block_hash)?
-                .ok_or(DBExecutorError::BlockNotFound {
+                .ok_or(P2PSyncServerError::BlockNotFound {
                     block_hash_or_number: BlockHashOrNumber::Hash(block_hash),
                 })?
                 .0
