@@ -84,11 +84,11 @@ async fn get_block_number() {
     // There are blocks in Starknet.
     let mock_block = mock("GET", "/feeder_gateway/get_block?blockNumber=latest")
         .with_status(200)
-        .with_body(read_resource_file("reader/block.json"))
+        .with_body(read_resource_file("reader/block_post_0_13_1.json"))
         .create();
     let latest_block = starknet_client.latest_block().await.unwrap();
     mock_block.assert();
-    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(319110));
+    assert_eq!(latest_block.unwrap().block_number(), BlockNumber(329525));
 
     // There are no blocks in Starknet.
     let body = r#"{"code": "StarknetErrorCode.BLOCK_NOT_FOUND", "message": "Block number -1 was not found."}"#;
@@ -369,7 +369,7 @@ async fn get_block() {
         get_test_config(),
     )
     .unwrap();
-    let raw_block = read_resource_file("reader/block.json");
+    let raw_block = read_resource_file("reader/block_post_0_13_1.json");
     let mock_block = mock("GET", &format!("/feeder_gateway/get_block?{BLOCK_NUMBER_QUERY}=20")[..])
         .with_status(200)
         .with_body(&raw_block)

@@ -27,7 +27,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::hash::StarkHash;
 use starknet_api::state::{ContractClass as sn_api_ContractClass, StorageKey, ThinStateDiff};
 use starknet_api::{felt, patricia_key};
-use starknet_client::reader::objects::block::{Block, DeprecatedBlock};
+use starknet_client::reader::objects::block::Block;
 use starknet_client::reader::{
     BlockOrDeprecated,
     BlockSignatureData,
@@ -57,7 +57,7 @@ async fn last_block_number() {
     // We need to perform all the mocks before moving the mock into central_source.
     const EXPECTED_LAST_BLOCK_NUMBER: BlockNumber = BlockNumber(0);
     mock.expect_latest_block().times(1).returning(|| {
-        Ok(Some(BlockOrDeprecated::Deprecated(DeprecatedBlock {
+        Ok(Some(BlockOrDeprecated::V0_13_1(Block {
             block_number: EXPECTED_LAST_BLOCK_NUMBER,
             ..Default::default()
         })))
