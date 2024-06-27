@@ -46,6 +46,7 @@ use starknet_client::writer::StarknetGatewayClient;
 use starknet_client::RetryConfig;
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, instrument};
+pub use v0_7::api::CompiledContractClass;
 use validator::Validate;
 
 use crate::api::get_methods_from_supported_apis;
