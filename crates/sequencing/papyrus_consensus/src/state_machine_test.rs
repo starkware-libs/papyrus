@@ -1,43 +1,19 @@
 use starknet_api::block::BlockHash;
-use starknet_api::core::ContractAddress;
 use starknet_types_core::felt::Felt;
-use test_case::test_case;
 
 use crate::state_machine::{StateMachine, StateMachineEvent};
-use crate::types::ValidatorId;
 
-fn proposer() -> ValidatorId {
-    ContractAddress::try_from(Felt::ONE).unwrap()
-}
-
-fn validator() -> ValidatorId {
-    ContractAddress::try_from(Felt::TWO).unwrap()
-}
-
-fn create_state_machine(is_proposer: bool) -> StateMachine {
-    StateMachine::new(
-        if is_proposer { proposer() } else { validator() },
-        4,
-        Box::new(|_| proposer()),
-    )
-}
-
-#[test_case(true; "proposer")]
-#[test_case(false; "validator")]
-fn in_order(is_proposer: bool) {
-    let mut sm = create_state_machine(is_proposer);
+#[test]
+fn in_order() {
+    let mut sm = StateMachine::new(4);
 
     let mut events = sm.start();
-    if is_proposer {
-        assert_eq!(events.remove(0), StateMachineEvent::GetProposal(None, 0));
-        assert!(events.is_empty());
+    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
 
-        events = sm.handle_event(StateMachineEvent::GetProposal(Some(BlockHash(Felt::ONE)), 0));
-        assert_eq!(events.remove(0), StateMachineEvent::Propose(BlockHash(Felt::ONE), 0));
-    } else {
-        assert!(events.is_empty());
-        events = sm.handle_event(StateMachineEvent::Propose(BlockHash(Felt::ONE), 0));
-    }
+    // This mimics:
+    // Proposer - the SHC building the proposal and passing it back to SM.
+    // Validator - receiving a proposal from a peer.
+    events = sm.handle_event(StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 
@@ -59,9 +35,10 @@ fn in_order(is_proposer: bool) {
 
 #[test]
 fn validator_receives_votes_first() {
-    let mut sm = create_state_machine(false);
+    let mut sm = StateMachine::new(4);
 
     let mut events = sm.start();
+    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
     assert!(events.is_empty());
 
     // Send votes first.
@@ -72,7 +49,7 @@ fn validator_receives_votes_first() {
     assert!(events.is_empty());
 
     // Finally the proposal arrives.
-    events = sm.handle_event(StateMachineEvent::Propose(BlockHash(Felt::ONE), 0));
+    events = sm.handle_event(StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Decision(BlockHash(Felt::ONE), 0));
@@ -81,9 +58,9 @@ fn validator_receives_votes_first() {
 
 #[test]
 fn cache_events_during_get_proposal() {
-    let mut sm = create_state_machine(true);
+    let mut sm = StateMachine::new(4);
     let mut events = sm.start();
-    assert_eq!(events.remove(0), StateMachineEvent::GetProposal(None, 0));
+    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
     assert!(events.is_empty());
 
     // TODO(matan): When we support NIL votes, we should send them. Real votes without the proposal
@@ -93,8 +70,7 @@ fn cache_events_during_get_proposal() {
     assert!(events.is_empty());
 
     // Node finishes building the proposal.
-    events = sm.handle_event(StateMachineEvent::GetProposal(Some(BlockHash(Felt::ONE)), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Propose(BlockHash(Felt::ONE), 0));
+    events = sm.handle_event(StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
     assert_eq!(events.remove(0), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
