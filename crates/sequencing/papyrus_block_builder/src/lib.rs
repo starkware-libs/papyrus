@@ -42,6 +42,7 @@ impl BlockBuilder {
 }
 
 impl BlockBuilderTrait for BlockBuilder {
+    // The block must already be in storage.
     #[instrument(skip(self), level = "debug")]
     fn build(&self, block_number: BlockNumber) -> BlockBuilderResult<Receiver<Transaction>> {
         let (sender, receiver) = mpsc::channel();
@@ -50,14 +51,14 @@ impl BlockBuilderTrait for BlockBuilder {
         let block = self
             .storage_reader
             .begin_ro_txn()
-            .unwrap()
+            .expect("Failed to read storage")
             .get_block_transactions(block_number)
-            .unwrap();
+            .expect("Block should be in storage");
 
         match block {
             Some(block) => {
                 for txn in block {
-                    sender.send(txn).unwrap();
+                    sender.send(txn).expect("Failed to send transaction");
                 }
                 Ok(receiver)
             }

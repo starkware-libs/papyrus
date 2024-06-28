@@ -1,16 +1,7 @@
 #![warn(missing_docs)]
 // TODO(Matan): Add a description of the crate.
 // TODO(Matan): fix #[allow(missing_docs)].
-//! A consensus implementation for a [`Starknet`] node.
-//!
-//! This crate provides ...
-//!
-//! # Disclaimer
-//! This crate is still under development and is not keeping backwards compatibility with previous
-//! versions. Breaking changes are expected to happen in the near future.
-//!
-//! # Quick Start
-//! ...
+//! A consensus implementation for a [`Starknet`](https://www.starknet.io/) node.
 
 use std::sync::Arc;
 
@@ -28,6 +19,8 @@ pub mod papyrus_consensus_context;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod single_height_consensus;
+#[allow(missing_docs)]
+pub mod state_machine;
 #[cfg(test)]
 pub(crate) mod test_utils;
 #[allow(dead_code)]

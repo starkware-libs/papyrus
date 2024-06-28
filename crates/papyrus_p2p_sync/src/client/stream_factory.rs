@@ -2,17 +2,16 @@ use std::cmp::min;
 use std::time::Duration;
 
 use async_stream::stream;
-use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
-use futures::{Sink, SinkExt, Stream, StreamExt};
+use futures::{SinkExt, StreamExt};
 use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
 
-use crate::{P2PSyncError, Response, STEP};
+use super::{P2PSyncError, ResponseReceiver, WithQuerySender, STEP};
 
 pub(crate) trait BlockData: Send {
     fn write_to_storage(
@@ -28,10 +27,8 @@ pub(crate) enum BlockNumberLimit {
     // TODO(shahak): Add variant for state diff marker once we support classes sync.
 }
 
-pub(crate) trait DataStreamFactory<QuerySender, DataReceiver, InputFromNetwork>
+pub(crate) trait DataStreamFactory<InputFromNetwork>
 where
-    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
-    DataReceiver: Stream<Item = Response<InputFromNetwork>> + Unpin + Send + 'static,
     InputFromNetwork: Send + 'static,
     DataOrFin<InputFromNetwork>: TryFrom<Vec<u8>>,
     <DataOrFin<InputFromNetwork> as TryFrom<Vec<u8>>>::Error: Send,
@@ -43,16 +40,16 @@ where
 
     // Async functions in trait don't work well with argument references
     fn parse_data_for_block<'a>(
-        data_receiver: &'a mut DataReceiver,
+        data_receiver: &'a mut ResponseReceiver<InputFromNetwork>,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>>;
 
     fn get_start_block_number(storage_reader: &StorageReader) -> Result<BlockNumber, StorageError>;
 
-    fn create_stream(
-        mut query_sender: QuerySender,
-        mut data_receiver: DataReceiver,
+    fn create_stream<TQuery: Send + 'static>(
+        mut query_sender: WithQuerySender<TQuery>,
+        mut data_receiver: ResponseReceiver<InputFromNetwork>,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: u64,

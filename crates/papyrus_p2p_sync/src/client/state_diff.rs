@@ -1,21 +1,18 @@
 use std::collections::HashSet;
 use std::hash::Hash;
-use std::marker::PhantomData;
 
-use futures::channel::mpsc::SendError;
 use futures::future::BoxFuture;
-use futures::{FutureExt, Sink, Stream, StreamExt};
+use futures::{FutureExt, StreamExt};
 use indexmap::IndexMap;
 use papyrus_proc_macros::latency_histogram;
-use papyrus_protobuf::sync::Query;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::{StateStorageReader, StateStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
-use crate::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
-use crate::{P2PSyncError, Response, NETWORK_DATA_TIMEOUT};
+use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use super::{P2PSyncError, ResponseReceiver, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
     #[latency_histogram("p2p_sync_state_diff_write_to_storage_latency_seconds", true)]
@@ -27,17 +24,10 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
     }
 }
 
-pub(crate) struct StateDiffStreamFactory<QuerySender, DataReceiver>(
-    PhantomData<(QuerySender, DataReceiver)>,
-);
+pub(crate) struct StateDiffStreamFactory;
 
 // TODO(shahak): Change to StateDiffChunk.
-impl<QuerySender, DataReceiver> DataStreamFactory<QuerySender, DataReceiver, ThinStateDiff>
-    for StateDiffStreamFactory<QuerySender, DataReceiver>
-where
-    QuerySender: Sink<Query, Error = SendError> + Unpin + Send + 'static,
-    DataReceiver: Stream<Item = Response<ThinStateDiff>> + Unpin + Send + 'static,
-{
+impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
     type Output = (ThinStateDiff, BlockNumber);
 
     const TYPE_DESCRIPTION: &'static str = "state diffs";
@@ -45,7 +35,7 @@ where
 
     #[latency_histogram("p2p_sync_state_diff_parse_data_for_block_latency_seconds", true)]
     fn parse_data_for_block<'a>(
-        state_diffs_receiver: &'a mut DataReceiver,
+        state_diffs_receiver: &'a mut ResponseReceiver<ThinStateDiff>,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {

@@ -32,7 +32,7 @@ use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContract
 use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::reader::{
-    BlockOrDeprecated,
+    Block as StarknetClientBlock,
     BlockSignatureData,
     ReaderClientError,
     StarknetFeederGatewayClient,
@@ -403,7 +403,7 @@ fn client_to_central_block(
     current_block_number: BlockNumber,
     maybe_client_block: Result<
         (
-            Option<starknet_client::reader::BlockOrDeprecated>,
+            Option<starknet_client::reader::Block>,
             Option<starknet_client::reader::BlockSignatureData>,
         ),
         ReaderClientError,
@@ -411,8 +411,8 @@ fn client_to_central_block(
 ) -> CentralResult<(Block, BlockSignature)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
-            let state_diff_commitment = if let BlockOrDeprecated::V0_13_1(
-                starknet_client::reader::objects::block::Block {
+            let state_diff_commitment = if let StarknetClientBlock::PostV0_13_1(
+                starknet_client::reader::objects::block::BlockPostV0_13_1 {
                     state_diff_commitment: Some(state_diff_commitment),
                     ..
                 },

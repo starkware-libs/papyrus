@@ -11,7 +11,7 @@ use papyrus_storage::header::HeaderStorageReader;
 use starknet_api::block::{BlockHeader, BlockNumber};
 use tokio::time::timeout;
 
-use crate::test_utils::{
+use super::test_utils::{
     create_block_hashes_and_signatures,
     setup,
     TestArgs,
@@ -32,6 +32,7 @@ async fn signed_headers_basic_flow() {
         // The test will fail if we drop these
         state_diff_query_receiver: _state_diff_query_receiver,
         state_diffs_sender: _state_diffs_sender,
+        ..
     } = setup();
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures((NUM_QUERIES * HEADER_QUERY_LENGTH).try_into().unwrap());

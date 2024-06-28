@@ -2,16 +2,17 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use lazy_static::lazy_static;
-use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffQuery};
+use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffQuery, TransactionQuery};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
 use starknet_api::crypto::utils::Signature;
 use starknet_api::hash::StarkHash;
 use starknet_api::state::ThinStateDiff;
+use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_types_core::felt::Felt;
 
-use crate::{P2PSync, P2PSyncConfig, Response};
+use super::{P2PSync, P2PSyncChannels, P2PSyncConfig, Response};
 
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;
@@ -33,17 +34,16 @@ lazy_static! {
 
 pub struct TestArgs {
     #[allow(clippy::type_complexity)]
-    pub p2p_sync: P2PSync<
-        Sender<HeaderQuery>,
-        Receiver<Response<SignedBlockHeader>>,
-        Sender<StateDiffQuery>,
-        Receiver<Response<ThinStateDiff>>,
-    >,
+    pub p2p_sync: P2PSync,
     pub storage_reader: StorageReader,
     pub header_query_receiver: Receiver<HeaderQuery>,
     pub state_diff_query_receiver: Receiver<StateDiffQuery>,
+    #[allow(dead_code)]
+    pub transaction_query_receiver: Receiver<TransactionQuery>,
     pub headers_sender: Sender<Response<SignedBlockHeader>>,
     pub state_diffs_sender: Sender<Response<ThinStateDiff>>,
+    #[allow(dead_code)]
+    pub transaction_sender: Sender<Response<(Transaction, TransactionOutput)>>,
 }
 
 pub fn setup() -> TestArgs {
@@ -51,24 +51,32 @@ pub fn setup() -> TestArgs {
     let (header_query_sender, header_query_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let (state_diff_query_sender, state_diff_query_receiver) =
         futures::channel::mpsc::channel(BUFFER_SIZE);
-    let (headers_sender, headers_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let (state_diffs_sender, state_diffs_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    let p2p_sync = P2PSync::new(
-        *TEST_CONFIG,
-        storage_reader.clone(),
-        storage_writer,
-        header_query_sender,
-        headers_receiver,
-        state_diff_query_sender,
-        state_diffs_receiver,
-    );
+    let (transaction_query_sender, transaction_query_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (headers_sender, header_response_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diffs_sender, state_diff_response_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (transaction_sender, transaction_response_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let p2p_sync_channels = P2PSyncChannels {
+        header_query_sender: Box::new(header_query_sender),
+        state_diff_query_sender: Box::new(state_diff_query_sender),
+        header_response_receiver: Box::new(header_response_receiver),
+        state_diff_response_receiver: Box::new(state_diff_response_receiver),
+        transaction_query_sender: Box::new(transaction_query_sender),
+        transaction_response_receiver: Box::new(transaction_response_receiver),
+    };
+    let p2p_sync =
+        P2PSync::new(*TEST_CONFIG, storage_reader.clone(), storage_writer, p2p_sync_channels);
     TestArgs {
         p2p_sync,
         storage_reader,
         header_query_receiver,
         state_diff_query_receiver,
+        transaction_query_receiver,
         headers_sender,
         state_diffs_sender,
+        transaction_sender,
     }
 }
 
