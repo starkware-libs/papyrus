@@ -1,3 +1,8 @@
+//! State machine for Starknet consensus.
+//!
+//! LOC refers to the line of code from Algorithm 1 (page 6) of the tendermint
+//! [paper](https://arxiv.org/pdf/1807.04938).
+
 #[cfg(test)]
 #[path = "state_machine_test.rs"]
 mod state_machine_test;
@@ -7,22 +12,33 @@ use std::vec;
 
 use starknet_api::block::BlockHash;
 
-use crate::types::ValidatorId;
-
 pub type Round = u32;
 
+/// Events which the state machine sends/receives.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineEvent {
-    GetProposal(Option<BlockHash>, Round),
-    // BlockHash, Round
-    Propose(BlockHash, Round),
+    /// Outbound - Sent by the StateMachine when it starts a new round with the block hash set to
+    /// `validValue`. This removes the state machine's dependency to calculate the proposer or get
+    /// a new block, by forcing the caller to run LOC 14-18.
+    ///
+    /// Inbound - Sent in response to `StartRound` from the state machine. Block hash is set to
+    /// None if we are not this round's proposer. If we are the proposer the block hash is
+    /// reflected back, and if no block hash was given then the caller is free to return any valid
+    /// block hash.
+    StartRound(Option<BlockHash>, Round),
+    /// Consensus message, can be both sent from and to the state machine.
+    Proposal(BlockHash, Round),
+    /// Consensus message, can be both sent from and to the state machine.
     Prevote(BlockHash, Round),
+    /// Consensus message, can be both sent from and to the state machine.
     Precommit(BlockHash, Round),
-    // SingleHeightConsensus can figure out the relevant precommits, as the StateMachine only
-    // records aggregated votes.
+    /// The state machine returns this event to the caller when a decision is reached. Not
+    /// expected as an inbound message. We presume that the caller is able to recover the set of
+    /// precommits which led to this decision from the information returned here.
     Decision(BlockHash, Round),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum Step {
     Propose,
     Prevote,
@@ -37,70 +53,54 @@ pub enum Step {
 pub struct StateMachine {
     round: Round,
     step: Step,
-    id: ValidatorId,
     quorum: u32,
     proposals: HashMap<Round, BlockHash>,
     // {round: {block_hash: vote_count}
     prevotes: HashMap<Round, HashMap<BlockHash, u32>>,
     precommits: HashMap<Round, HashMap<BlockHash, u32>>,
-    // When true, the state machine will wait for a GetProposal event, cacheing all other input
+    // When true, the state machine will wait for a GetProposal event, buffering all other input
     // events in `events_queue`.
-    awaiting_get_proposal: bool,
+    starting_round: bool,
     events_queue: VecDeque<StateMachineEvent>,
-    leader_fn: Box<dyn Fn(Round) -> ValidatorId>,
 }
 
 impl StateMachine {
     /// total_weight - the total voting weight of all validators for this height.
-    pub fn new(
-        id: ValidatorId,
-        total_weight: u32,
-        leader_fn: Box<dyn Fn(Round) -> ValidatorId>,
-    ) -> Self {
+    pub fn new(total_weight: u32) -> Self {
         Self {
             round: 0,
             step: Step::Propose,
-            id,
             quorum: (2 * total_weight / 3) + 1,
             proposals: HashMap::new(),
             prevotes: HashMap::new(),
             precommits: HashMap::new(),
-            awaiting_get_proposal: false,
+            starting_round: false,
             events_queue: VecDeque::new(),
-            leader_fn,
         }
     }
 
+    /// Starts the state machine, effectively calling `StartRound(0)` from the paper. This is needed
+    /// to trigger the first leader to propose. See [`StartRound`](StateMachineEvent::StartRound)
     pub fn start(&mut self) -> Vec<StateMachineEvent> {
-        if self.id != (self.leader_fn)(self.round) {
-            return Vec::new();
-        }
-        self.awaiting_get_proposal = true;
-        // TODO(matan): Initiate timeout proposal which can lead to round skipping.
-        vec![StateMachineEvent::GetProposal(None, self.round)]
+        self.starting_round = true;
+        vec![StateMachineEvent::StartRound(None, self.round)]
     }
 
     /// Process the incoming event.
     ///
-    /// If we have just started a new round and are awaiting `GetProposal` then any event other than
-    /// `GetProposal` will be cached for processing after `GetProposal` is received. If an event we
-    /// can handle is received, then we handle it and all other cached events.
+    /// If we are waiting for a a response to `StartRound` all other incoming events are buffered
+    /// until that response arrives.
     ///
-    /// This returns a set of events back to the caller. The caller should not pass the output
-    /// events back to the state machine, as it handles these events before returning;
-    /// effectively sending the events to itself.
+    /// Returns a set of events for the caller to handle. The caller should not mirror the output
+    /// events back to the state machine, as it makes sure to handle them before returning.
     // This means that the StateMachine handles events the same regardless of whether it was sent by
-    // self or a peer. This is in line with the Algorithm 1 in
-    // [paper](https://arxiv.org/pdf/1807.04938) and keeps the code simpler.
+    // self or a peer. This is in line with the Algorithm 1 in the paper and keeps the code simpler.
     pub fn handle_event(&mut self, event: StateMachineEvent) -> Vec<StateMachineEvent> {
         // Mimic LOC 18 in the paper; the state machine doesn't
         // handle any events until `getValue` completes.
-        if self.awaiting_get_proposal {
+        if self.starting_round {
             match event {
-                StateMachineEvent::GetProposal(_, round) if round == self.round => {
-                    // `awaiting_get_proposal` is reset when handling `GetProposal` this guarantees
-                    // that only the relevant `GetProposal` is handled, as opposed to potentially
-                    // others from earlier rounds.
+                StateMachineEvent::StartRound(_, round) if round == self.round => {
                     self.events_queue.push_front(event);
                 }
                 _ => {
@@ -127,10 +127,14 @@ impl StateMachine {
             // sent to self.
             for e in self.handle_event_internal(event) {
                 match e {
-                    StateMachineEvent::Propose(_, _)
+                    StateMachineEvent::Proposal(_, _)
                     | StateMachineEvent::Prevote(_, _)
                     | StateMachineEvent::Precommit(_, _) => {
                         events_queue.push_back(e.clone());
+                    }
+                    StateMachineEvent::Decision(_, _) => {
+                        output_events.push(e);
+                        return output_events;
                     }
                     _ => {}
                 }
@@ -142,10 +146,10 @@ impl StateMachine {
 
     fn handle_event_internal(&mut self, event: StateMachineEvent) -> Vec<StateMachineEvent> {
         match event {
-            StateMachineEvent::GetProposal(block_hash, round) => {
-                self.handle_get_proposal(block_hash, round)
+            StateMachineEvent::StartRound(block_hash, round) => {
+                self.handle_start_round(block_hash, round)
             }
-            StateMachineEvent::Propose(block_hash, round) => {
+            StateMachineEvent::Proposal(block_hash, round) => {
                 self.handle_proposal(block_hash, round)
             }
             StateMachineEvent::Prevote(block_hash, round) => self.handle_prevote(block_hash, round),
@@ -160,30 +164,33 @@ impl StateMachine {
         }
     }
 
-    // The node finishes building a proposal in response to the state machine sending out
-    // GetProposal.
-    fn handle_get_proposal(
+    fn handle_start_round(
         &mut self,
         block_hash: Option<BlockHash>,
         round: u32,
     ) -> Vec<StateMachineEvent> {
-        // Used to ignore `GetProposal` from a previous round, or if this round timed out awaiting
-        // the proposal.
-        if !self.awaiting_get_proposal || self.round != round {
-            // TODO(matan): Consider if this should be an assertion or return an error?
+        // TODO(matan): Will we allow other events (timeoutPropose) to exit this state?
+        assert!(self.starting_round);
+        assert_eq!(round, self.round);
+        self.starting_round = false;
+
+        let Some(hash) = block_hash else {
+            // Validator.
             return Vec::new();
-        }
-        self.awaiting_get_proposal = false;
-        let block_hash = block_hash.expect("GetProposal event must have a block_hash");
-        let mut output = vec![StateMachineEvent::Propose(block_hash, round)];
-        output.append(&mut self.advance_to_step(Step::Prevote));
-        output
+        };
+
+        // Proposer.
+        vec![StateMachineEvent::Proposal(hash, round)]
     }
 
     // A proposal from a peer (or self) node.
     fn handle_proposal(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
         let old = self.proposals.insert(round, block_hash);
         assert!(old.is_none(), "SHC should handle conflicts & replays");
+        if self.step != Step::Propose {
+            return Vec::new();
+        }
+
         let mut output = vec![StateMachineEvent::Prevote(block_hash, round)];
         output.append(&mut self.advance_to_step(Step::Prevote));
         output
@@ -193,10 +200,15 @@ impl StateMachine {
     fn handle_prevote(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
         let prevote_count = self.prevotes.entry(round).or_default().entry(block_hash).or_insert(0);
+        // TODO(matan): Use variable weight.
         *prevote_count += 1;
         if *prevote_count < self.quorum {
             return Vec::new();
         }
+        if self.step != Step::Prevote {
+            return Vec::new();
+        }
+
         self.send_precommit(block_hash, round)
     }
 
@@ -205,10 +217,17 @@ impl StateMachine {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
         let precommit_count =
             self.precommits.entry(round).or_default().entry(block_hash).or_insert(0);
+        // TODO(matan): Use variable weight.
         *precommit_count += 1;
         if *precommit_count < self.quorum {
             return Vec::new();
         }
+        let Some(proposed_value) = self.proposals.get(&round) else {
+            return Vec::new();
+        };
+        // TODO(matan): Handle this due to malicious proposer.
+        assert_eq!(*proposed_value, block_hash, "Proposal should match quorum.");
+
         vec![StateMachineEvent::Decision(block_hash, round)]
     }
 
