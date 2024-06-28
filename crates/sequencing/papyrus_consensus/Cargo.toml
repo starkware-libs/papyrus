@@ -23,4 +23,3 @@ mockall.workspace = true
 papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2", features = ["testing"] }
 papyrus_storage = { path = "../../papyrus_storage", features = ["testing"] }
 test_utils = { path = "../../test_utils" }
-test-case.workspace = true
