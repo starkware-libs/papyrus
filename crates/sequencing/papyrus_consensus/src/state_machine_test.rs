@@ -10,30 +10,33 @@ fn in_order(is_proposer: bool) {
     let mut sm = StateMachine::new(4);
 
     let mut events = sm.start();
-    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::StartRound(None, 0));
     if is_proposer {
         events = sm.handle_event(StateMachineEvent::StartRound(Some(BlockHash(Felt::ONE)), 0));
-        assert_eq!(events.remove(0), StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
+        assert_eq!(
+            events.pop_front().unwrap(),
+            StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0)
+        );
     } else {
         sm.handle_event(StateMachineEvent::StartRound(None, 0));
         assert!(events.is_empty());
         events = sm.handle_event(StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
     }
-    assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 
     events = sm.handle_event(StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 
     events = sm.handle_event(StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 
     events = sm.handle_event(StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 
     events = sm.handle_event(StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Decision(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Decision(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 }
 
@@ -42,7 +45,7 @@ fn validator_receives_votes_first() {
     let mut sm = StateMachine::new(4);
 
     let mut events = sm.start();
-    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::StartRound(None, 0));
     assert!(events.is_empty());
     events.append(&mut sm.handle_event(StateMachineEvent::StartRound(None, 0)));
     assert!(events.is_empty());
@@ -58,9 +61,9 @@ fn validator_receives_votes_first() {
 
     // Finally the proposal arrives.
     events = sm.handle_event(StateMachineEvent::Proposal(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Decision(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Decision(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 }
 
@@ -68,7 +71,7 @@ fn validator_receives_votes_first() {
 fn cache_events_during_start_round() {
     let mut sm = StateMachine::new(4);
     let mut events = sm.start();
-    assert_eq!(events.remove(0), StateMachineEvent::StartRound(None, 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::StartRound(None, 0));
     assert!(events.is_empty());
 
     // TODO(matan): When we support NIL votes, we should send them. Real votes without the proposal
@@ -81,7 +84,7 @@ fn cache_events_during_start_round() {
 
     // Node finishes building the proposal.
     events = sm.handle_event(StateMachineEvent::StartRound(None, 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
-    assert_eq!(events.remove(0), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BlockHash(Felt::ONE), 0));
+    assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BlockHash(Felt::ONE), 0));
     assert!(events.is_empty());
 }
