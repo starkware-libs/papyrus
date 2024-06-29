@@ -11,7 +11,7 @@ use std::collections::{HashMap, VecDeque};
 
 use starknet_api::block::BlockHash;
 
-pub type Round = u32;
+use crate::types::Round;
 
 /// Events which the state machine sends/receives.
 #[derive(Debug, Clone, PartialEq)]
