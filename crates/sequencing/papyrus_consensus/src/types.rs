@@ -13,6 +13,7 @@ use starknet_api::core::ContractAddress;
 ///    signatures.
 // TODO(matan): Determine the actual type of NodeId.
 pub type ValidatorId = ContractAddress;
+pub type Round = u32;
 
 /// Interface that any concrete block type must implement to be used by consensus.
 ///
