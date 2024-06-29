@@ -3,7 +3,6 @@
 mod state_machine_test;
 
 use std::collections::{HashMap, VecDeque};
-use std::vec;
 
 use starknet_api::block::BlockHash;
 
@@ -62,9 +61,9 @@ impl StateMachine {
         }
     }
 
-    pub fn start(&mut self) -> Vec<StateMachineEvent> {
+    pub fn start(&mut self) -> VecDeque<StateMachineEvent> {
         self.starting_round = true;
-        vec![StateMachineEvent::StartRound(None, self.round)]
+        VecDeque::from([StateMachineEvent::StartRound(None, self.round)])
     }
 
     /// Process the incoming event.
@@ -79,7 +78,7 @@ impl StateMachine {
     // This means that the StateMachine handles events the same regardless of whether it was sent by
     // self or a peer. This is in line with the Algorithm 1 in
     // [paper](https://arxiv.org/pdf/1807.04938) and keeps the code simpler.
-    pub fn handle_event(&mut self, event: StateMachineEvent) -> Vec<StateMachineEvent> {
+    pub fn handle_event(&mut self, event: StateMachineEvent) -> VecDeque<StateMachineEvent> {
         // Mimic LOC 18 in the paper; the state machine doesn't
         // handle any events until `getValue` completes.
         if self.starting_round {
@@ -89,7 +88,7 @@ impl StateMachine {
                 }
                 _ => {
                     self.events_queue.push_back(event);
-                    return Vec::new();
+                    return VecDeque::new();
                 }
             }
         } else {
@@ -104,8 +103,8 @@ impl StateMachine {
     fn handle_enqueued_events(
         &mut self,
         mut events_queue: VecDeque<StateMachineEvent>,
-    ) -> Vec<StateMachineEvent> {
-        let mut output_events = Vec::new();
+    ) -> VecDeque<StateMachineEvent> {
+        let mut output_events = VecDeque::new();
         while let Some(event) = events_queue.pop_front() {
             // Handle a specific event and then decide which of the output events should also be
             // sent to self.
@@ -117,18 +116,18 @@ impl StateMachine {
                         events_queue.push_back(e.clone());
                     }
                     StateMachineEvent::Decision(_, _) => {
-                        output_events.push(e);
+                        output_events.push_back(e);
                         return output_events;
                     }
                     _ => {}
                 }
-                output_events.push(e);
+                output_events.push_back(e);
             }
         }
         output_events
     }
 
-    fn handle_event_internal(&mut self, event: StateMachineEvent) -> Vec<StateMachineEvent> {
+    fn handle_event_internal(&mut self, event: StateMachineEvent) -> VecDeque<StateMachineEvent> {
         match event {
             StateMachineEvent::StartRound(block_hash, round) => {
                 self.handle_start_round(block_hash, round)
@@ -153,7 +152,7 @@ impl StateMachine {
         &mut self,
         block_hash: Option<BlockHash>,
         round: u32,
-    ) -> Vec<StateMachineEvent> {
+    ) -> VecDeque<StateMachineEvent> {
         // TODO(matan): Will we allow other events (timeoutPropose) to exit this state?
         assert!(self.starting_round);
         assert_eq!(round, self.round);
@@ -161,60 +160,68 @@ impl StateMachine {
 
         let Some(hash) = block_hash else {
             // Validator.
-            return Vec::new();
+            return VecDeque::new();
         };
 
         // Proposer.
-        vec![StateMachineEvent::Proposal(hash, round)]
+        VecDeque::from([StateMachineEvent::Proposal(hash, round)])
     }
 
     // A proposal from a peer (or self) node.
-    fn handle_proposal(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+    fn handle_proposal(
+        &mut self,
+        block_hash: BlockHash,
+        round: u32,
+    ) -> VecDeque<StateMachineEvent> {
         let old = self.proposals.insert(round, block_hash);
         assert!(old.is_none(), "SHC should handle conflicts & replays");
         if self.step != Step::Propose {
-            return Vec::new();
+            return VecDeque::new();
         }
 
-        let mut output = vec![StateMachineEvent::Prevote(block_hash, round)];
+        let mut output = VecDeque::from([StateMachineEvent::Prevote(block_hash, round)]);
         output.append(&mut self.advance_to_step(Step::Prevote));
         output
     }
 
     // A prevote from a peer (or self) node.
-    fn handle_prevote(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+    fn handle_prevote(&mut self, block_hash: BlockHash, round: u32) -> VecDeque<StateMachineEvent> {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
         let prevote_count = self.prevotes.entry(round).or_default().entry(block_hash).or_insert(0);
         *prevote_count += 1;
         if *prevote_count < self.quorum {
-            return Vec::new();
+            return VecDeque::new();
         }
         if self.step != Step::Prevote {
-            return Vec::new();
+            return VecDeque::new();
         }
 
         self.send_precommit(block_hash, round)
     }
 
     // A precommit from a peer (or self) node.
-    fn handle_precommit(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
+    fn handle_precommit(
+        &mut self,
+        block_hash: BlockHash,
+        round: u32,
+    ) -> VecDeque<StateMachineEvent> {
         assert_eq!(round, 0, "Only round 0 is supported in this milestone.");
         let precommit_count =
             self.precommits.entry(round).or_default().entry(block_hash).or_insert(0);
         *precommit_count += 1;
         if *precommit_count < self.quorum {
-            return Vec::new();
+            return VecDeque::new();
         }
         let Some(proposed_value) = self.proposals.get(&round) else {
-            return Vec::new();
+            return VecDeque::new();
         };
         // Can only occur due to a malicious proposer.
         assert_eq!(*proposed_value, block_hash, "Proposal should match quorum.");
 
-        vec![StateMachineEvent::Decision(block_hash, round)]
+        VecDeque::from([StateMachineEvent::Decision(block_hash, round)])
     }
 
-    fn advance_to_step(&mut self, step: Step) -> Vec<StateMachineEvent> {
+    fn advance_to_step(&mut self, step: Step) -> VecDeque<StateMachineEvent> {
         self.step = step;
         // Check for an existing quorum in case messages arrived out of order.
         match self.step {
@@ -226,28 +233,28 @@ impl StateMachine {
         }
     }
 
-    fn check_prevote_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
+    fn check_prevote_quorum(&mut self, round: u32) -> VecDeque<StateMachineEvent> {
         let Some((block_hash, count)) = leading_vote(&self.prevotes, round) else {
-            return Vec::new();
+            return VecDeque::new();
         };
         if *count < self.quorum {
-            return Vec::new();
+            return VecDeque::new();
         }
         self.send_precommit(*block_hash, round)
     }
 
-    fn check_precommit_quorum(&mut self, round: u32) -> Vec<StateMachineEvent> {
+    fn check_precommit_quorum(&mut self, round: u32) -> VecDeque<StateMachineEvent> {
         let Some((block_hash, count)) = leading_vote(&self.precommits, round) else {
-            return Vec::new();
+            return VecDeque::new();
         };
         if *count < self.quorum {
-            return Vec::new();
+            return VecDeque::new();
         }
-        vec![StateMachineEvent::Decision(*block_hash, round)]
+        VecDeque::from([StateMachineEvent::Decision(*block_hash, round)])
     }
 
-    fn send_precommit(&mut self, block_hash: BlockHash, round: u32) -> Vec<StateMachineEvent> {
-        let mut output = vec![StateMachineEvent::Precommit(block_hash, round)];
+    fn send_precommit(&mut self, block_hash: BlockHash, round: u32) -> VecDeque<StateMachineEvent> {
+        let mut output = VecDeque::from([StateMachineEvent::Precommit(block_hash, round)]);
         output.append(&mut self.advance_to_step(Step::Precommit));
         output
     }
