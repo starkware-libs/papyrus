@@ -165,6 +165,11 @@ impl ConsensusContext for PapyrusConsensusContext {
         (height.0 % 2).into()
     }
 
+    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError> {
+        self.broadcast_sender.lock().await.send(message).await?;
+        Ok(())
+    }
+
     async fn propose(
         &self,
         init: ProposalInit,
