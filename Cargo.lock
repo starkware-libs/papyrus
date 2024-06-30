@@ -5901,7 +5901,6 @@ dependencies = [
 name = "papyrus_common"
 version = "0.4.0-dev.3"
 dependencies = [
- "assert_matches",
  "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
@@ -8384,7 +8383,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.13.0-dev.8"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=f76fe54#f76fe54efa11d4d4933a3c192156327251d9516c"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=0e6987e#0e6987e030d6afbb06d102abe4b0b6cc9b584356"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",

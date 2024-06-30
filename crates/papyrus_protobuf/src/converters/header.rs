@@ -97,19 +97,16 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .try_into()
             .expect("Failed converting u64 to usize");
 
-        let transaction_commitment = value
-            .transactions
-            .map(|transactions| {
-                Ok::<_, ProtobufConversionError>(TransactionCommitment(
-                    transactions
-                        .root
-                        .ok_or(ProtobufConversionError::MissingField {
-                            field_description: "Merkle::root",
-                        })?
-                        .try_into()?,
-                ))
-            })
-            .transpose()?;
+        let transaction_commitment = TransactionCommitment(
+            value
+                .transactions
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "SignedBlockHeader::transactions",
+                })?
+                .root
+                .ok_or(ProtobufConversionError::MissingField { field_description: "Merkle::root" })?
+                .try_into()?,
+        );
 
         let n_events = value
             .events
@@ -121,19 +118,16 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .try_into()
             .expect("Failed converting u64 to usize");
 
-        let event_commitment = value
-            .events
-            .map(|events| {
-                Ok::<_, ProtobufConversionError>(EventCommitment(
-                    events
-                        .root
-                        .ok_or(ProtobufConversionError::MissingField {
-                            field_description: "Merkle::root",
-                        })?
-                        .try_into()?,
-                ))
-            })
-            .transpose()?;
+        let event_commitment = EventCommitment(
+            value
+                .events
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "SignedBlockHeader::events",
+                })?
+                .root
+                .ok_or(ProtobufConversionError::MissingField { field_description: "Merkle::root" })?
+                .try_into()?,
+        );
 
         let state_diff_length = value.state_diff_commitment.as_ref().map(|state_diff_commitment| {
             state_diff_commitment
@@ -257,18 +251,13 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
                 root: Some(header.state_diff_commitment.0.0.into()),
             }),
             state_root: Some(header.state_root.0.into()),
-            transactions: header.transaction_commitment.map(|transaction_commitment| {
-                protobuf::Patricia {
-                    n_leaves: header
-                        .n_transactions
-                        .try_into()
-                        .expect("Converting usize to u64 failed"),
-                    root: Some(transaction_commitment.0.into()),
-                }
+            transactions: Some(protobuf::Patricia {
+                n_leaves: header.n_transactions.try_into().expect("Converting usize to u64 failed"),
+                root: Some(header.transaction_commitment.0.into()),
             }),
-            events: header.event_commitment.map(|event_commitment| protobuf::Patricia {
+            events: Some(protobuf::Patricia {
                 n_leaves: header.n_events.try_into().expect("Converting usize to u64 failed"),
-                root: Some(event_commitment.0.into()),
+                root: Some(header.event_commitment.0.into()),
             }),
             receipts: header
                 .receipt_commitment

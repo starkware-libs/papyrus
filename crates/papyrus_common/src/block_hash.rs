@@ -29,8 +29,6 @@ use crate::usize_into_felt;
 
 #[derive(Debug, thiserror::Error)]
 pub enum BlockHashError {
-    #[error("Header is missing data (transaction_commitment / event_commitment)")]
-    MissingHeaderData,
     #[error(transparent)]
     StarknetApiError(#[from] StarknetApiError),
 }
@@ -115,9 +113,9 @@ fn calculate_block_hash_by_version(
             }
         })
         .chain(&usize_into_felt(header.n_transactions))
-        .chain(&header.transaction_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
+        .chain(&header.transaction_commitment.0)
         .chain(&usize_into_felt(header.n_events))
-        .chain(&header.event_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
+        .chain(&header.event_commitment.0)
         .chain(&ZERO) // Not implemented Element.
         .chain(&ZERO) // Not implemented Element.
         .chain_if_fn(|| {

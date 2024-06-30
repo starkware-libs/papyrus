@@ -271,21 +271,6 @@ impl Block {
             ));
         }
 
-        let (transaction_commitment, event_commitment) = match &self {
-            Block::PostV0_13_1(block) => {
-                // In some older starknet versions, the transaction and event commitments are not
-                // available from the feeder gateway. In such cases, we return None for these
-                // fields.
-                if block.transaction_commitment == TransactionCommitment::default()
-                    && block.event_commitment == EventCommitment::default()
-                {
-                    (None, None)
-                } else {
-                    (Some(block.transaction_commitment), Some(block.event_commitment))
-                }
-            }
-        };
-
         let n_transactions = self.transactions().len();
         let n_events =
             self.transaction_receipts().iter().fold(0, |acc, receipt| acc + receipt.events.len());
@@ -302,8 +287,8 @@ impl Block {
             l1_data_gas_price: self.l1_data_gas_price(),
             l1_da_mode: self.l1_da_mode(),
             state_diff_commitment: StateDiffCommitment(PoseidonHash(state_diff_commitment.0)),
-            transaction_commitment,
-            event_commitment,
+            transaction_commitment: self.transaction_commitment(),
+            event_commitment: self.event_commitment(),
             receipt_commitment: self.receipt_commitment(),
             state_diff_length: self.state_diff_length(),
             n_transactions,
