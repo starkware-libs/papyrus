@@ -157,7 +157,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
 
     /// Register a new subscriber for broadcasting and receiving broadcasts for a given topic.
     /// Panics if this topic is already subscribed.
-    pub fn register_broadcast_subscriber<T>(
+    pub fn register_broadcast_topic<T>(
         &mut self,
         topic: Topic,
         buffer_size: usize,

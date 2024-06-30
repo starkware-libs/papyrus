@@ -355,7 +355,7 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     let event_server_channel = network_manager.register_sqmr_protocol_server(Protocol::Event);
 
     let consensus_channels = match env::var("CONSENSUS_VALIDATOR_ID") {
-        Ok(_) => Some(network_manager.register_broadcast_subscriber(Topic::new("consensus"), 100)?),
+        Ok(_) => Some(network_manager.register_broadcast_topic(Topic::new("consensus"), 100)?),
         Err(_) => None,
     };
     let p2p_sync_channels = P2PSyncChannels {

@@ -287,7 +287,7 @@ async fn broadcast_message() {
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
 
     let mut messages_to_broadcast_sender = network_manager
-        .register_broadcast_subscriber(topic.clone(), BUFFER_SIZE)
+        .register_broadcast_topic(topic.clone(), BUFFER_SIZE)
         .unwrap()
         .messages_to_broadcast_sender;
     messages_to_broadcast_sender.send(message.clone()).await.unwrap();
@@ -323,7 +323,7 @@ async fn receive_broadcasted_message_and_report_it() {
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
 
     let mut broadcasted_messages_receiver = network_manager
-        .register_broadcast_subscriber::<Bytes>(topic.clone(), BUFFER_SIZE)
+        .register_broadcast_topic::<Bytes>(topic.clone(), BUFFER_SIZE)
         .unwrap()
         .broadcasted_messages_receiver;
 
