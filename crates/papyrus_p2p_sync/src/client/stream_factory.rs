@@ -13,6 +13,8 @@ use tracing::{debug, info};
 
 use super::{P2PSyncError, ResponseReceiver, WithQuerySender, STEP};
 
+pub type DataStreamResult = Result<Box<dyn BlockData>, P2PSyncError>;
+
 pub(crate) trait BlockData: Send {
     fn write_to_storage(
         // This is Box<Self> in order to allow using it with `Box<dyn BlockData>`.
@@ -54,7 +56,7 @@ where
         wait_period_for_new_data: Duration,
         num_blocks_per_query: u64,
         stop_sync_at_block_number: Option<BlockNumber>,
-    ) -> BoxStream<'static, Result<Box<dyn BlockData>, P2PSyncError>> {
+    ) -> BoxStream<'static, DataStreamResult> {
         stream! {
             let mut current_block_number = Self::get_start_block_number(&storage_reader)?;
             'send_query_and_parse_responses: loop {
