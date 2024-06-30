@@ -15,6 +15,7 @@ use futures::channel::mpsc::SendError;
 use futures::future::{ready, Ready};
 use futures::sink::With;
 use futures::{Sink, SinkExt, Stream};
+use header::HeaderStreamFactory;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -33,12 +34,10 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
+use state_diff::StateDiffStreamFactory;
+use stream_factory::{DataStreamFactory, DataStreamResult};
 use tokio_stream::StreamExt;
 use tracing::instrument;
-
-use self::header::HeaderStreamFactory;
-use self::state_diff::StateDiffStreamFactory;
-use self::stream_factory::DataStreamFactory;
 
 const STEP: u64 = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
@@ -178,6 +177,34 @@ pub struct P2PSyncChannels {
     pub transaction_response_receiver: TransactionResponseReceiver,
 }
 
+impl P2PSyncChannels {
+    pub(crate) fn create_stream(
+        self,
+        storage_reader: StorageReader,
+        config: P2PSyncConfig,
+    ) -> impl Stream<Item = DataStreamResult> + Send + 'static {
+        let header_stream = HeaderStreamFactory::create_stream(
+            self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
+            self.header_response_receiver,
+            storage_reader.clone(),
+            config.wait_period_for_new_data,
+            config.num_headers_per_query,
+            config.stop_sync_at_block_number,
+        );
+
+        let state_diff_stream = StateDiffStreamFactory::create_stream(
+            self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
+            self.state_diff_response_receiver,
+            storage_reader.clone(),
+            config.wait_period_for_new_data,
+            config.num_block_state_diffs_per_query,
+            config.stop_sync_at_block_number,
+        );
+
+        header_stream.merge(state_diff_stream)
+    }
+}
+
 pub struct P2PSync {
     config: P2PSyncConfig,
     storage_reader: StorageReader,
@@ -197,27 +224,8 @@ impl P2PSync {
 
     #[instrument(skip(self), level = "debug", err)]
     pub async fn run(mut self) -> Result<(), P2PSyncError> {
-        let header_stream = HeaderStreamFactory::create_stream(
-            self.p2p_sync_channels.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
-            self.p2p_sync_channels.header_response_receiver,
-            self.storage_reader.clone(),
-            self.config.wait_period_for_new_data,
-            self.config.num_headers_per_query,
-            self.config.stop_sync_at_block_number,
-        );
-
-        let state_diff_stream = StateDiffStreamFactory::create_stream(
-            self.p2p_sync_channels
-                .state_diff_query_sender
-                .with(|query| ready(Ok(StateDiffQuery(query)))),
-            self.p2p_sync_channels.state_diff_response_receiver,
-            self.storage_reader,
-            self.config.wait_period_for_new_data,
-            self.config.num_block_state_diffs_per_query,
-            self.config.stop_sync_at_block_number,
-        );
-
-        let mut data_stream = header_stream.merge(state_diff_stream);
+        let mut data_stream =
+            self.p2p_sync_channels.create_stream(self.storage_reader.clone(), self.config);
 
         loop {
             let data = data_stream.next().await.expect("Sync data stream should never end")?;
