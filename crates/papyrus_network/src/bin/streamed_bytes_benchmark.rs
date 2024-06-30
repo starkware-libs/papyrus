@@ -103,7 +103,7 @@ fn create_outbound_sessions_if_all_peers_connected(
     }
 }
 
-fn send_data_to_inbound_sessions(
+fn send_response_to_inbound_sessions(
     swarm: &mut Swarm<Behaviour>,
     inbound_session_to_messages: &mut HashMap<InboundSessionId, Vec<Vec<u8>>>,
     args: &Args,
@@ -111,7 +111,7 @@ fn send_data_to_inbound_sessions(
     for inbound_session_id in inbound_session_to_messages.keys() {
         swarm
             .behaviour_mut()
-            .send_data(
+            .send_response(
                 encode_inbound_session_metadata(args.num_messages_per_session, args.message_size),
                 *inbound_session_id,
             )
@@ -122,7 +122,7 @@ fn send_data_to_inbound_sessions(
     while !inbound_session_to_messages.is_empty() {
         inbound_session_to_messages.retain(|inbound_session_id, messages| match messages.pop() {
             Some(message) => {
-                swarm.behaviour_mut().send_data(message, *inbound_session_id).unwrap_or_else(
+                swarm.behaviour_mut().send_response(message, *inbound_session_id).unwrap_or_else(
                     |_| panic!("Inbound session {} dissappeared unexpectedly", inbound_session_id),
                 );
 
@@ -196,9 +196,9 @@ display"
             message_size: None,
         }
     }
-    pub fn report_first_message(&mut self, data: Bytes) {
+    pub fn report_first_message(&mut self, response: Bytes) {
         self.first_message_time = Some(Instant::now());
-        let (num_messages, message_size) = decode_inbound_session_metadata(data);
+        let (num_messages, message_size) = decode_inbound_session_metadata(response);
         self.num_messages = Some(num_messages);
         self.message_size = Some(message_size);
     }
@@ -268,7 +268,7 @@ async fn main() {
                         .expect("There are more inbound sessions than expected"),
                 );
                 if preprepared_messages.is_empty() {
-                    send_data_to_inbound_sessions(
+                    send_response_to_inbound_sessions(
                         &mut swarm,
                         &mut inbound_session_to_messages,
                         &args,
@@ -282,16 +282,16 @@ async fn main() {
             )) => {
                 outbound_session_measurements[&outbound_session_id].print();
             }
-            SwarmEvent::Behaviour(Event::External(ExternalEvent::ReceivedData {
+            SwarmEvent::Behaviour(Event::External(ExternalEvent::ReceivedResponse {
                 outbound_session_id,
-                data,
+                response,
                 peer_id: _,
             })) => {
-                if data[0] != CONST_BYTE {
+                if response[0] != CONST_BYTE {
                     outbound_session_measurements
                         .get_mut(&outbound_session_id)
-                        .expect("Received data on non-existing outbound session")
-                        .report_first_message(data);
+                        .expect("Received response on non-existing outbound session")
+                        .report_first_message(response);
                 }
             }
             SwarmEvent::OutgoingConnectionError { .. } => {

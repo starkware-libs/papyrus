@@ -338,22 +338,26 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     response_receiver.map(Some).chain(stream::once(ready(None))).boxed(),
                 );
             }
-            sqmr::behaviour::ExternalEvent::ReceivedData { outbound_session_id, data, peer_id } => {
+            sqmr::behaviour::ExternalEvent::ReceivedResponse {
+                outbound_session_id,
+                response,
+                peer_id,
+            } => {
                 trace!(
-                    "Received data from peer for session id: {outbound_session_id:?}. sending to \
-                     sync subscriber."
+                    "Received response from peer for session id: {outbound_session_id:?}. sending \
+                     to sync subscriber."
                 );
                 let protocol = self
                     .outbound_session_id_to_protocol
                     .get(&outbound_session_id)
-                    .expect("Received data from an unknown session id");
+                    .expect("Received response from an unknown session id");
                 let report_callback = self.create_external_callback_for_received_data(peer_id);
                 if let Some(response_sender) = self.sqmr_outbound_response_senders.get_mut(protocol)
                 {
                     // TODO(shahak): Close the channel if the buffer is full.
                     send_now(
                         response_sender,
-                        (data, report_callback),
+                        (response, report_callback),
                         format!(
                             "Received response for an outbound query while the buffer is full. \
                              Dropping it. Session: {outbound_session_id:?}"
@@ -407,12 +411,12 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     }
 
     fn handle_response_for_inbound_query(&mut self, res: (InboundSessionId, Option<Bytes>)) {
-        let (inbound_session_id, maybe_data) = res;
-        match maybe_data {
-            Some(data) => {
-                self.swarm.send_data(data, inbound_session_id).unwrap_or_else(|e| {
+        let (inbound_session_id, maybe_response) = res;
+        match maybe_response {
+            Some(response) => {
+                self.swarm.send_response(response, inbound_session_id).unwrap_or_else(|e| {
                     error!(
-                        "Failed to send data to peer. Session id: {inbound_session_id:?} not \
+                        "Failed to send response to peer. Session id: {inbound_session_id:?} not \
                          found error: {e:?}"
                     );
                 });
@@ -420,7 +424,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             None => {
                 self.swarm.close_inbound_session(inbound_session_id).unwrap_or_else(|e| {
                     error!(
-                        "Failed to close session after sending all data. Session id: \
+                        "Failed to close session after sending all response. Session id: \
                          {inbound_session_id:?} not found error: {e:?}"
                     )
                 });

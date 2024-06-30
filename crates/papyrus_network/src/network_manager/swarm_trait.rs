@@ -14,9 +14,9 @@ use crate::{mixed_behaviour, Protocol};
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
 pub trait SwarmTrait: Stream<Item = Event> + Unpin {
-    fn send_data(
+    fn send_response(
         &mut self,
-        data: Vec<u8>,
+        response: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError>;
 
@@ -48,12 +48,12 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
 }
 
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
-    fn send_data(
+    fn send_response(
         &mut self,
-        data: Vec<u8>,
+        response: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        self.behaviour_mut().sqmr.send_data(data, inbound_session_id)
+        self.behaviour_mut().sqmr.send_response(response, inbound_session_id)
     }
 
     // TODO: change this function signature

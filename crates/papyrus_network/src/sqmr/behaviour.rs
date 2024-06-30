@@ -60,8 +60,8 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
                 peer_id,
                 protocol_name,
             } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
-            GenericEvent::ReceivedData { outbound_session_id, data, peer_id } => {
-                Self::ReceivedData { outbound_session_id, data, peer_id }
+            GenericEvent::ReceivedResponse { outbound_session_id, response, peer_id } => {
+                Self::ReceivedResponse { outbound_session_id, response, peer_id }
             }
             GenericEvent::SessionFailed {
                 session_id,
@@ -185,10 +185,10 @@ impl Behaviour {
         outbound_session_id
     }
 
-    /// Send a data message to an open inbound session.
-    pub fn send_data(
+    /// Send a response message to an open inbound session.
+    pub fn send_response(
         &mut self,
-        data: Bytes,
+        response: Bytes,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
@@ -196,7 +196,7 @@ impl Behaviour {
         self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::SendData { data, inbound_session_id },
+            event: RequestFromBehaviourEvent::SendResponse { response, inbound_session_id },
         });
         Ok(())
     }
@@ -331,7 +331,7 @@ impl NetworkBehaviour for Behaviour {
                             is_event_muted = true;
                         }
                     }
-                    ExternalEvent::ReceivedData { outbound_session_id, .. } => {
+                    ExternalEvent::ReceivedResponse { outbound_session_id, .. } => {
                         if self.dropped_sessions.contains(&outbound_session_id.into()) {
                             is_event_muted = true;
                         }
