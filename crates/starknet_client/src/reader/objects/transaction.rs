@@ -658,6 +658,12 @@ pub enum Builtin {
     Output,
     #[serde(rename = "segment_arena_builtin")]
     SegmentArena,
+    #[serde(rename = "add_mod_builtin")]
+    AddMod,
+    #[serde(rename = "mul_mod_builtin")]
+    MulMod,
+    #[serde(rename = "range_check96_builtin")]
+    RangeCheck96,
 }
 
 impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources {
@@ -685,6 +691,11 @@ impl From<ExecutionResources> for starknet_api::transaction::ExecutionResources 
                     Builtin::Output => None,
                     Builtin::SegmentArena => {
                         Some((starknet_api::transaction::Builtin::SegmentArena, count))
+                    }
+                    Builtin::AddMod => Some((starknet_api::transaction::Builtin::AddMod, count)),
+                    Builtin::MulMod => Some((starknet_api::transaction::Builtin::MulMod, count)),
+                    Builtin::RangeCheck96 => {
+                        Some((starknet_api::transaction::Builtin::RangeCheck96, count))
                     }
                 })
                 .collect(),
