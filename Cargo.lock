@@ -5949,6 +5949,7 @@ dependencies = [
  "papyrus_storage",
  "starknet-types-core",
  "starknet_api",
+ "test-case",
  "test_utils",
  "thiserror",
  "tokio",
