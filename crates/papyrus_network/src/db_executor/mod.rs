@@ -2,13 +2,16 @@ use std::vec;
 
 use futures::channel::mpsc::SendError;
 use futures::{Sink, SinkExt, Stream, StreamExt};
+use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
+    ClassQuery,
     ContractDiff,
     DataOrFin,
     DeclaredClass,
     DeprecatedDeclaredClass,
+    EventQuery,
     HeaderQuery,
     Query,
     SignedBlockHeader,
@@ -17,12 +20,14 @@ use papyrus_protobuf::sync::{
     TransactionQuery,
 };
 use papyrus_storage::body::BodyStorageReader;
+use papyrus_storage::class::ClassStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{db, StorageReader, StorageTxn};
 use starknet_api::block::BlockNumber;
+use starknet_api::core::ClassHash;
 use starknet_api::state::ThinStateDiff;
-use starknet_api::transaction::{Transaction, TransactionOutput};
+use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use tracing::error;
 
 #[cfg(test)]
@@ -39,6 +44,8 @@ pub enum DBExecutorError {
     // TODO: add data type to the error message.
     #[error("Block not found. Block: {block_hash_or_number:?}")]
     BlockNotFound { block_hash_or_number: BlockHashOrNumber },
+    #[error("Class not found. Class hash: {class_hash}")]
+    ClassNotFound { class_hash: ClassHash },
     // This error should be non recoverable.
     #[error(transparent)]
     JoinError(#[from] tokio::task::JoinError),
@@ -56,27 +63,46 @@ impl DBExecutorError {
             Self::JoinError(_) | Self::SignatureNotFound { .. } | Self::SendError { .. }
             // TODO(shahak): Consider returning false for some of the StorageError variants.
             | Self::DBInternalError { .. } => true,
-            Self::BlockNumberOutOfRange { .. } | Self::BlockNotFound { .. } => false,
+            Self::BlockNumberOutOfRange { .. } | Self::BlockNotFound { .. } | Self::ClassNotFound { .. } => false,
         }
     }
 }
 
 /// A DBExecutor receives inbound queries and returns their corresponding data.
-pub struct DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver> {
+pub struct DBExecutor<
+    HeaderQueryReceiver,
+    StateDiffQueryReceiver,
+    TransactionQueryReceiver,
+    ClassQueryReceiver,
+    EventQueryReceiver,
+> {
     storage_reader: StorageReader,
     header_queries_receiver: HeaderQueryReceiver,
     state_diff_queries_receiver: StateDiffQueryReceiver,
     transaction_queries_receiver: TransactionQueryReceiver,
+    class_queries_receiver: ClassQueryReceiver,
+    event_queries_receiver: EventQueryReceiver,
 }
 
 impl<
     HeaderQueryReceiver,
     StateDiffQueryReceiver,
     TransactionQueryReceiver,
+    ClassQueryReceiver,
+    EventQueryReceiver,
     HeaderResponsesSender,
     StateDiffResponsesSender,
     TransactionResponsesSender,
-> DBExecutor<HeaderQueryReceiver, StateDiffQueryReceiver, TransactionQueryReceiver>
+    ClassResponsesSender,
+    EventResponsesSender,
+>
+    DBExecutor<
+        HeaderQueryReceiver,
+        StateDiffQueryReceiver,
+        TransactionQueryReceiver,
+        ClassQueryReceiver,
+        EventQueryReceiver,
+    >
 where
     HeaderQueryReceiver: Stream<Item = (Result<HeaderQuery, ProtobufConversionError>, HeaderResponsesSender)>
         + Unpin,
@@ -93,6 +119,14 @@ where
         + Unpin
         + Send
         + 'static,
+    ClassQueryReceiver:
+        Stream<Item = (Result<ClassQuery, ProtobufConversionError>, ClassResponsesSender)> + Unpin,
+    ClassResponsesSender:
+        Sink<DataOrFin<ApiContractClass>, Error = SendError> + Unpin + Send + 'static,
+    EventQueryReceiver:
+        Stream<Item = (Result<EventQuery, ProtobufConversionError>, EventResponsesSender)> + Unpin,
+    EventResponsesSender:
+        Sink<DataOrFin<(Event, TransactionHash)>, Error = SendError> + Unpin + Send + 'static,
 {
     pub async fn run(mut self) {
         loop {
@@ -124,6 +158,24 @@ where
                         self.register_query(query.0, response_sender);
                     }
                 }
+                result = self.class_queries_receiver.next() => {
+                    let (query_result, response_sender) = result.expect(
+                        "Class queries sender was unexpectedly dropped."
+                    );
+                    // TODO: Report if query_result is Err.
+                    if let Ok(query) = query_result {
+                        self.register_query(query.0, response_sender);
+                    }
+                }
+                result = self.event_queries_receiver.next() => {
+                    let (query_result, response_sender) = result.expect(
+                        "Event queries sender was unexpectedly dropped."
+                    );
+                    // TODO: Report if query_result is Err.
+                    if let Ok(query) = query_result {
+                        self.register_query(query.0, response_sender);
+                    }
+                }
             };
         }
     }
@@ -133,12 +185,16 @@ where
         header_queries_receiver: HeaderQueryReceiver,
         state_diff_queries_receiver: StateDiffQueryReceiver,
         transaction_queries_receiver: TransactionQueryReceiver,
+        class_queries_receiver: ClassQueryReceiver,
+        event_queries_receiver: EventQueryReceiver,
     ) -> Self {
         Self {
             storage_reader,
             header_queries_receiver,
             state_diff_queries_receiver,
             transaction_queries_receiver,
+            class_queries_receiver,
+            event_queries_receiver,
         }
     }
 
@@ -228,6 +284,62 @@ impl FetchBlockDataFromDb for (Transaction, TransactionOutput) {
             transactions.into_iter().zip(transaction_outputs.into_iter())
         {
             result.push((transaction, transaction_output));
+        }
+        Ok(result)
+    }
+}
+
+impl FetchBlockDataFromDb for ApiContractClass {
+    fn fetch_block_data_from_db(
+        block_number: BlockNumber,
+        txn: &StorageTxn<'_, db::RO>,
+    ) -> Result<Vec<Self>, DBExecutorError> {
+        let thin_state_diff =
+            txn.get_state_diff(block_number)?.ok_or(DBExecutorError::BlockNotFound {
+                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+            })?;
+        let declared_classes = thin_state_diff.declared_classes;
+        let deprecated_declared_classes = thin_state_diff.deprecated_declared_classes;
+        let mut result = Vec::new();
+        for class_hash in &deprecated_declared_classes {
+            result.push(ApiContractClass::DeprecatedContractClass(
+                txn.get_deprecated_class(class_hash)?
+                    .ok_or(DBExecutorError::ClassNotFound { class_hash: *class_hash })?,
+            ));
+        }
+        for (class_hash, _) in &declared_classes {
+            result.push(ApiContractClass::ContractClass(
+                txn.get_class(class_hash)?
+                    .ok_or(DBExecutorError::ClassNotFound { class_hash: *class_hash })?,
+            ));
+        }
+        Ok(result)
+    }
+}
+
+impl FetchBlockDataFromDb for (Event, TransactionHash) {
+    fn fetch_block_data_from_db(
+        block_number: BlockNumber,
+        txn: &StorageTxn<'_, db::RO>,
+    ) -> Result<Vec<Self>, DBExecutorError> {
+        let transaction_outputs = txn.get_block_transaction_outputs(block_number)?.ok_or(
+            DBExecutorError::BlockNotFound {
+                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+            },
+        )?;
+        let transaction_hashes = txn.get_block_transaction_hashes(block_number)?.ok_or(
+            DBExecutorError::BlockNotFound {
+                block_hash_or_number: BlockHashOrNumber::Number(block_number),
+            },
+        )?;
+
+        let mut result = Vec::new();
+        for (transaction_output, transaction_hash) in
+            transaction_outputs.into_iter().zip(transaction_hashes)
+        {
+            for event in transaction_output.events() {
+                result.push((event.clone(), transaction_hash));
+            }
         }
         Ok(result)
     }

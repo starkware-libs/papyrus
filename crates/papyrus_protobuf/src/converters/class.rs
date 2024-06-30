@@ -10,7 +10,7 @@ use starknet_types_core::felt::Felt;
 
 use super::common::volition_domain_to_enum_int;
 use super::ProtobufConversionError;
-use crate::sync::DataOrFin;
+use crate::sync::{ClassQuery, DataOrFin, Query};
 use crate::{auto_impl_into_and_try_from_vec_u8, protobuf};
 
 pub const DOMAIN: DataAvailabilityMode = DataAvailabilityMode::L1;
@@ -307,3 +307,38 @@ impl From<state::EntryPoint> for protobuf::SierraEntryPoint {
         }
     }
 }
+
+impl TryFrom<protobuf::ClassesRequest> for Query {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::ClassesRequest) -> Result<Self, Self::Error> {
+        Ok(ClassQuery::try_from(value)?.0)
+    }
+}
+
+impl TryFrom<protobuf::ClassesRequest> for ClassQuery {
+    type Error = ProtobufConversionError;
+    fn try_from(value: protobuf::ClassesRequest) -> Result<Self, Self::Error> {
+        Ok(ClassQuery(
+            value
+                .iteration
+                .ok_or(ProtobufConversionError::MissingField {
+                    field_description: "ClassesRequest::iteration",
+                })?
+                .try_into()?,
+        ))
+    }
+}
+
+impl From<Query> for protobuf::ClassesRequest {
+    fn from(value: Query) -> Self {
+        protobuf::ClassesRequest { iteration: Some(value.into()) }
+    }
+}
+
+impl From<ClassQuery> for protobuf::ClassesRequest {
+    fn from(value: ClassQuery) -> Self {
+        protobuf::ClassesRequest { iteration: Some(value.0.into()) }
+    }
+}
+
+auto_impl_into_and_try_from_vec_u8!(ClassQuery, protobuf::ClassesRequest);

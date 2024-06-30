@@ -48,6 +48,12 @@ pub struct StateDiffQuery(pub Query);
 #[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TransactionQuery(pub Query);
 
+#[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ClassQuery(pub Query);
+
+#[derive(Default, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct EventQuery(pub Query);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SignedBlockHeader {
     pub block_header: BlockHeader,

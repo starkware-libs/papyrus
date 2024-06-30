@@ -511,6 +511,8 @@ impl NetworkManager {
                         Protocol::SignedBlockHeader.into(),
                         Protocol::StateDiff.into(),
                         Protocol::Transaction.into(),
+                        Protocol::Class.into(),
+                        Protocol::Event.into(),
                     ],
                 },
             )
