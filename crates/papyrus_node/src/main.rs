@@ -19,7 +19,6 @@ use papyrus_config::ConfigError;
 use papyrus_consensus::papyrus_consensus_context::PapyrusConsensusContext;
 use papyrus_consensus::types::ConsensusError;
 use papyrus_monitoring_gateway::MonitoringServer;
-use papyrus_network::db_executor::DBExecutor;
 use papyrus_network::gossipsub_impl::Topic;
 use papyrus_network::network_manager::{
     BroadcastSubscriberChannels,
@@ -30,6 +29,7 @@ use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::client::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
+use papyrus_p2p_sync::server::P2PSyncServer;
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{
     ClassQuery,
@@ -190,7 +190,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
             class_server_channel,
             event_server_channel,
         )) => {
-            let db_executor = DBExecutor::new(
+            let p2p_sync_server = P2PSyncServer::new(
                 storage_reader.clone(),
                 header_sync_server_channel,
                 state_diff_sync_server_channel,
@@ -198,7 +198,7 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
                 class_server_channel,
                 event_server_channel,
             );
-            db_executor.run().boxed()
+            p2p_sync_server.run().boxed()
         }
         None => pending().boxed(),
     };

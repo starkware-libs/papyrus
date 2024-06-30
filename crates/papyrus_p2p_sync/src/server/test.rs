@@ -25,7 +25,7 @@ use starknet_api::block::{BlockHash, BlockHeader, BlockNumber, BlockSignature};
 use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use test_utils::get_rng;
 
-use super::DBExecutor;
+use super::P2PSyncServer;
 
 const BUFFER_SIZE: usize = 10;
 
@@ -34,7 +34,7 @@ const BUFFER_SIZE: usize = 10;
 #[tokio::test]
 async fn header_query_positive_flow() {
     let (
-        db_executor,
+        p2p_sync_server,
         _storage_reader,
         mut storage_writer,
         _header_queries_sender,
@@ -56,12 +56,12 @@ async fn header_query_positive_flow() {
         step: 1,
     };
     let (sender, data_receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
-    db_executor.register_query::<SignedBlockHeader, _>(query.clone(), sender);
+    p2p_sync_server.register_query::<SignedBlockHeader, _>(query.clone(), sender);
 
-    // run the executor and collect query results.
+    // run p2p_sync_server and collect query results.
     tokio::select! {
-        _ = db_executor.run() => {
-            panic!("DB executor should never finish its run.");
+        _ = p2p_sync_server.run() => {
+            panic!("p2p_sync_server should never finish its run.");
         },
         mut all_data = data_receiver.collect::<Vec<_>>() => {
             assert_eq!(all_data.len(), NUM_OF_BLOCKS as usize + 1);
@@ -79,7 +79,7 @@ async fn header_query_positive_flow() {
 #[tokio::test]
 async fn header_query_start_block_given_by_hash() {
     let (
-        db_executor,
+        p2p_sync_server,
         storage_reader,
         mut storage_writer,
         _header_queries_sender,
@@ -109,12 +109,12 @@ async fn header_query_start_block_given_by_hash() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
+    p2p_sync_server.register_query::<SignedBlockHeader, _>(query, sender);
 
-    // run the executor and collect query results.
+    // run p2p_sync_server and collect query results.
     tokio::select! {
-        _ = db_executor.run() => {
-            panic!("DB executor should never finish its run.");
+        _ = p2p_sync_server.run() => {
+            panic!("p2p_sync_server should never finish its run.");
         },
         res = receiver.collect::<Vec<_>>() => {
             let len = res.len();
@@ -134,7 +134,7 @@ async fn header_query_start_block_given_by_hash() {
 #[tokio::test]
 async fn header_query_some_blocks_are_missing() {
     let (
-        db_executor,
+        p2p_sync_server,
         _storage_reader,
         mut storage_writer,
         _header_queries_sender,
@@ -156,11 +156,11 @@ async fn header_query_some_blocks_are_missing() {
         limit: NUM_OF_BLOCKS,
         step: 1,
     };
-    db_executor.register_query::<SignedBlockHeader, _>(query, sender);
+    p2p_sync_server.register_query::<SignedBlockHeader, _>(query, sender);
 
     tokio::select! {
-        _ = db_executor.run() => {
-            panic!("DB executor should never finish its run.");
+        _ = p2p_sync_server.run() => {
+            panic!("p2p_sync_server should never finish its run.");
         },
         res = receiver.collect::<Vec<_>>() => {
             assert_eq!(res.len(), (BLOCKS_DELTA + 1) as usize);
@@ -173,7 +173,7 @@ async fn header_query_some_blocks_are_missing() {
 
 #[allow(clippy::type_complexity)]
 fn setup() -> (
-    DBExecutor<
+    P2PSyncServer<
         Receiver<(
             Result<HeaderQuery, ProtobufConversionError>,
             Sender<DataOrFin<SignedBlockHeader>>,
@@ -230,7 +230,7 @@ fn setup() -> (
         Sender<DataOrFin<(Event, TransactionHash)>>,
     )>(BUFFER_SIZE);
 
-    let db_executor = super::DBExecutor::new(
+    let p2p_sync_server = super::P2PSyncServer::new(
         storage_reader.clone(),
         header_queries_receiver,
         state_diff_queries_receiver,
@@ -239,7 +239,7 @@ fn setup() -> (
         event_queries_receiver,
     );
     (
-        db_executor,
+        p2p_sync_server,
         storage_reader,
         storage_writer,
         header_queries_sender,
