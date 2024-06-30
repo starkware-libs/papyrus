@@ -150,7 +150,7 @@ pub struct ProposalInit {
     pub proposer: ValidatorId,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, PartialEq, Debug)]
 pub enum ConsensusError {
     #[error(transparent)]
     Canceled(#[from] oneshot::Canceled),
@@ -158,4 +158,6 @@ pub enum ConsensusError {
     InvalidProposal(ValidatorId, BlockNumber, String),
     #[error(transparent)]
     SendError(#[from] mpsc::SendError),
+    #[error("Conflicting messages for block {0}. Old: {1:?}, New: {2:?}")]
+    Equivocation(BlockNumber, ConsensusMessage, ConsensusMessage),
 }
