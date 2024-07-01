@@ -11,7 +11,7 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use starknet_api::state::ThinStateDiff;
 
-use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use super::stream_builder::{BlockData, BlockNumberLimit, DataStreamBuilder};
 use super::{P2PSyncError, ResponseReceiver, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for (ThinStateDiff, BlockNumber) {
@@ -24,10 +24,10 @@ impl BlockData for (ThinStateDiff, BlockNumber) {
     }
 }
 
-pub(crate) struct StateDiffStreamFactory;
+pub(crate) struct StateDiffStreamBuilder;
 
 // TODO(shahak): Change to StateDiffChunk.
-impl DataStreamFactory<ThinStateDiff> for StateDiffStreamFactory {
+impl DataStreamBuilder<ThinStateDiff> for StateDiffStreamBuilder {
     type Output = (ThinStateDiff, BlockNumber);
 
     const TYPE_DESCRIPTION: &'static str = "state diffs";

@@ -4,7 +4,7 @@ mod header_test;
 mod state_diff;
 #[cfg(test)]
 mod state_diff_test;
-mod stream_factory;
+mod stream_builder;
 #[cfg(test)]
 mod test_utils;
 
@@ -15,7 +15,7 @@ use futures::channel::mpsc::SendError;
 use futures::future::{ready, Ready};
 use futures::sink::With;
 use futures::{Sink, SinkExt, Stream};
-use header::HeaderStreamFactory;
+use header::HeaderStreamBuilder;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -34,8 +34,8 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
-use state_diff::StateDiffStreamFactory;
-use stream_factory::{DataStreamFactory, DataStreamResult};
+use state_diff::StateDiffStreamBuilder;
+use stream_builder::{DataStreamBuilder, DataStreamResult};
 use tokio_stream::StreamExt;
 use tracing::instrument;
 
@@ -183,7 +183,7 @@ impl P2PSyncChannels {
         storage_reader: StorageReader,
         config: P2PSyncConfig,
     ) -> impl Stream<Item = DataStreamResult> + Send + 'static {
-        let header_stream = HeaderStreamFactory::create_stream(
+        let header_stream = HeaderStreamBuilder::create_stream(
             self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
             self.header_response_receiver,
             storage_reader.clone(),
@@ -192,7 +192,7 @@ impl P2PSyncChannels {
             config.stop_sync_at_block_number,
         );
 
-        let state_diff_stream = StateDiffStreamFactory::create_stream(
+        let state_diff_stream = StateDiffStreamBuilder::create_stream(
             self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
             self.state_diff_response_receiver,
             storage_reader.clone(),
