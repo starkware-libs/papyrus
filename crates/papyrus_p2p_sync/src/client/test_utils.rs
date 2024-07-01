@@ -2,13 +2,18 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use lazy_static::lazy_static;
-use papyrus_protobuf::sync::{HeaderQuery, SignedBlockHeader, StateDiffQuery, TransactionQuery};
+use papyrus_protobuf::sync::{
+    HeaderQuery,
+    SignedBlockHeader,
+    StateDiffChunk,
+    StateDiffQuery,
+    TransactionQuery,
+};
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::StorageReader;
 use starknet_api::block::{BlockHash, BlockSignature};
 use starknet_api::crypto::utils::Signature;
 use starknet_api::hash::StarkHash;
-use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_types_core::felt::Felt;
 
@@ -41,7 +46,7 @@ pub struct TestArgs {
     #[allow(dead_code)]
     pub transaction_query_receiver: Receiver<TransactionQuery>,
     pub headers_sender: Sender<Response<SignedBlockHeader>>,
-    pub state_diffs_sender: Sender<Response<ThinStateDiff>>,
+    pub state_diffs_sender: Sender<Response<StateDiffChunk>>,
     #[allow(dead_code)]
     pub transaction_sender: Sender<Response<(Transaction, TransactionOutput)>>,
 }
