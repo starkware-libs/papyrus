@@ -16,6 +16,7 @@ use starknet_api::block::{
 use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
@@ -64,6 +65,11 @@ pub struct BlockPostV0_13_1 {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_diff_commitment: Option<StateDiffCommitment>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt_commitment: Option<ReceiptCommitment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_diff_length: Option<usize>,
 }
 
 impl BlockPostV0_13_1 {
@@ -234,6 +240,18 @@ impl Block {
         }
     }
 
+    pub fn receipt_commitment(&self) -> Option<ReceiptCommitment> {
+        match self {
+            Block::PostV0_13_1(block) => block.receipt_commitment,
+        }
+    }
+
+    pub fn state_diff_length(&self) -> Option<usize> {
+        match self {
+            Block::PostV0_13_1(block) => block.state_diff_length,
+        }
+    }
+
     // TODO(shahak): Rename to to_starknet_api_block.
     pub fn to_starknet_api_block_and_version(
         self,
@@ -286,10 +304,8 @@ impl Block {
             state_diff_commitment: StateDiffCommitment(PoseidonHash(state_diff_commitment.0)),
             transaction_commitment,
             event_commitment,
-            // TODO(shahak): Add receipt commitment once it's added to the FGW
-            receipt_commitment: None,
-            // TODO(shahak): Add state diff length once it's added to the FGW
-            state_diff_length: None,
+            receipt_commitment: self.receipt_commitment(),
+            state_diff_length: self.state_diff_length(),
             n_transactions,
             n_events,
             starknet_version: StarknetVersion(self.starknet_version()),
