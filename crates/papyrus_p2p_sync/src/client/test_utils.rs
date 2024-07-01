@@ -17,6 +17,7 @@ use super::{P2PSync, P2PSyncChannels, P2PSyncConfig, Response};
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;
 pub const STATE_DIFF_QUERY_LENGTH: u64 = 3;
+pub const TRANSACTION_QUERY_LENGTH: u64 = 3;
 pub const SLEEP_DURATION_TO_LET_SYNC_ADVANCE: Duration = Duration::from_millis(10);
 // This should be substantially bigger than SLEEP_DURATION_TO_LET_SYNC_ADVANCE.
 pub const WAIT_PERIOD_FOR_NEW_DATA: Duration = Duration::from_millis(50);
@@ -27,6 +28,7 @@ lazy_static! {
     static ref TEST_CONFIG: P2PSyncConfig = P2PSyncConfig {
         num_headers_per_query: HEADER_QUERY_LENGTH,
         num_block_state_diffs_per_query: STATE_DIFF_QUERY_LENGTH,
+        num_transactions_per_query: TRANSACTION_QUERY_LENGTH,
         wait_period_for_new_data: WAIT_PERIOD_FOR_NEW_DATA,
         stop_sync_at_block_number: None,
     };

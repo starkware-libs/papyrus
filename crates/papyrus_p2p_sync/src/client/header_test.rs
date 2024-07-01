@@ -32,7 +32,8 @@ async fn signed_headers_basic_flow() {
         // The test will fail if we drop these
         state_diff_query_receiver: _state_diff_query_receiver,
         state_diffs_sender: _state_diffs_sender,
-        ..
+        transaction_query_receiver: _transaction_query_receiver,
+        transaction_sender: _transaction_sender,
     } = setup();
     let block_hashes_and_signatures =
         create_block_hashes_and_signatures((NUM_QUERIES * HEADER_QUERY_LENGTH).try_into().unwrap());
@@ -118,6 +119,8 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
         // The test will fail if we drop these
         state_diff_query_receiver: _state_diff_query_receiver,
         state_diffs_sender: _state_diffs_sender,
+        transaction_query_receiver: _transaction_query_receiver,
+        transaction_sender: _transaction_sender,
         ..
     } = setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);

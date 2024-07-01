@@ -23,7 +23,7 @@ use papyrus_network::gossipsub_impl::Topic;
 use papyrus_network::network_manager::{
     BroadcastSubscriberChannels,
     NetworkError,
-    SqmrQueryReceiver,
+    SqmrSubscriberChannels,
 };
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
@@ -31,13 +31,18 @@ use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::client::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
 use papyrus_p2p_sync::server::P2PSyncServer;
 use papyrus_protobuf::consensus::ConsensusMessage;
+use papyrus_protobuf::protobuf::transaction;
 use papyrus_protobuf::sync::{
     ClassQuery,
     DataOrFin,
+    DataOrFin,
     EventQuery,
     HeaderQuery,
+    HeaderQuery,
+    SignedBlockHeader,
     SignedBlockHeader,
     StateDiffChunk,
+    StateDiffQuery,
     StateDiffQuery,
     TransactionQuery,
 };
@@ -50,6 +55,7 @@ use papyrus_sync::sources::pending::PendingSource;
 use papyrus_sync::{StateSync, StateSyncError, SyncConfig};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::felt;
+use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use starknet_client::reader::objects::pending_data::{PendingBlock, PendingBlockOrDeprecated};
 use starknet_client::reader::PendingData;
@@ -261,10 +267,6 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         res = p2p_sync_client_handle => {
             error!("P2P Sync stopped.");
             res??
-        }
-        res = p2p_sync_server_handle => {
-            error!("P2P Sync server stopped");
-            res?
         }
         res = network_handle => {
             error!("Network stopped.");

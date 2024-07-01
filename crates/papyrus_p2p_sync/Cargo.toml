@@ -30,4 +30,6 @@ lazy_static.workspace = true
 papyrus_storage = { path = "../papyrus_storage", features = ["testing"] }
 static_assertions.workspace = true
 rand.workspace = true
+rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
+papyrus_protobuf = { path = "../papyrus_protobuf", features = ["testing"]}

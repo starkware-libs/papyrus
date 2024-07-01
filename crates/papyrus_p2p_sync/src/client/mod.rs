@@ -7,6 +7,9 @@ mod state_diff_test;
 mod stream_factory;
 #[cfg(test)]
 mod test_utils;
+mod transaction;
+#[cfg(test)]
+mod transaction_test;
 
 use std::collections::BTreeMap;
 use std::time::Duration;
@@ -15,7 +18,6 @@ use futures::channel::mpsc::SendError;
 use futures::future::{ready, Ready};
 use futures::sink::With;
 use futures::{Sink, SinkExt, Stream};
-use header::HeaderStreamFactory;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
@@ -34,11 +36,10 @@ use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockNumber, BlockSignature};
 use starknet_api::state::ThinStateDiff;
 use starknet_api::transaction::{Transaction, TransactionOutput};
-use state_diff::StateDiffStreamFactory;
-use stream_factory::{DataStreamFactory, DataStreamResult};
+use stream_factory::DataStreamResult;
 use tokio_stream::StreamExt;
 use tracing::instrument;
-
+use transaction::TransactionStreamFactory;
 const STEP: u64 = 1;
 const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 
@@ -48,6 +49,7 @@ const NETWORK_DATA_TIMEOUT: Duration = Duration::from_secs(300);
 pub struct P2PSyncConfig {
     pub num_headers_per_query: u64,
     pub num_block_state_diffs_per_query: u64,
+    pub num_transactions_per_query: u64,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
     pub stop_sync_at_block_number: Option<BlockNumber>,
@@ -66,6 +68,12 @@ impl SerializeConfig for P2PSyncConfig {
                 "num_block_state_diffs_per_query",
                 &self.num_block_state_diffs_per_query,
                 "The maximum amount of block's state diffs to ask from peers in each iteration.",
+                ParamPrivacyInput::Public,
+            ),
+            ser_param(
+                "num_transactions_per_query",
+                &self.num_transactions_per_query,
+                "The maximum amount of transactions to ask from peers in each iteration.",
                 ParamPrivacyInput::Public,
             ),
             ser_param(
@@ -95,6 +103,7 @@ impl Default for P2PSyncConfig {
             // State diffs are split into multiple messages, so big queries can lead to a lot of
             // messages in the network buffers.
             num_block_state_diffs_per_query: 100,
+            num_transactions_per_query: 100,
             wait_period_for_new_data: Duration::from_secs(5),
             stop_sync_at_block_number: None,
         }
@@ -200,8 +209,16 @@ impl P2PSyncChannels {
             config.num_block_state_diffs_per_query,
             config.stop_sync_at_block_number,
         );
+        let transaction_stream = TransactionStreamFactory::create_stream(
+            self.transaction_query_sender.with(|query| ready(Ok(TransactionQuery(query)))),
+            self.transaction_response_receiver,
+            storage_reader.clone(),
+            config.wait_period_for_new_data,
+            config.num_transactions_per_query,
+            config.stop_sync_at_block_number,
+        );
 
-        header_stream.merge(state_diff_stream)
+        header_stream.merge(state_diff_stream).merge(transaction_stream)
     }
 }
 
