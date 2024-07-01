@@ -347,7 +347,10 @@ impl FetchBlockDataFromDb for (Event, TransactionHash) {
 
 pub fn split_thin_state_diff(thin_state_diff: ThinStateDiff) -> Vec<StateDiffChunk> {
     let mut state_diff_chunks = Vec::new();
+    #[cfg(not(test))]
     let mut contract_addresses = std::collections::HashSet::new();
+    #[cfg(test)]
+    let mut contract_addresses = std::collections::BTreeSet::new();
 
     contract_addresses.extend(
         thin_state_diff
