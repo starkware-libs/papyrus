@@ -18,19 +18,23 @@ use papyrus_protobuf::sync::{
     TransactionQuery,
 };
 use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::state::StateStorageWriter;
 use papyrus_storage::test_utils::get_test_storage;
 use papyrus_storage::{StorageReader, StorageWriter};
 use rand::random;
 use starknet_api::block::{BlockBody, BlockHash, BlockHeader, BlockNumber, BlockSignature};
+use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
+use starknet_api::state::ContractClass;
 use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
-use test_utils::{get_rng, get_test_body};
+use test_utils::{get_rng, get_test_body, GetTestInstance};
 
 use super::{split_thin_state_diff, FetchBlockDataFromDb, P2PSyncServer};
 const BUFFER_SIZE: usize = 10;
 const NUM_OF_BLOCKS: u64 = 10;
 const NUM_TXS_PER_BLOCK: usize = 5;
+const EVENTS_PER_TX: usize = 2;
 const BLOCKS_DELTA: u64 = 5;
 
 enum StartBlockType {
@@ -57,7 +61,7 @@ async fn header_query_positive_flow() {
 async fn transaction_query_positive_flow() {
     let assert_transaction_and_output = |data: Vec<(Transaction, TransactionOutput)>| {
         let len = data.len();
-        assert!(len == NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK);
+        assert_eq!(len, NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK);
         for (i, (tx, tx_output)) in data.into_iter().enumerate() {
             assert_eq!(tx, TXS[i / NUM_TXS_PER_BLOCK][i % NUM_TXS_PER_BLOCK]);
             assert_eq!(tx_output, TX_OUTPUTS[i / NUM_TXS_PER_BLOCK][i % NUM_TXS_PER_BLOCK]);
@@ -79,6 +83,49 @@ async fn state_diff_query_positive_flow() {
     };
     run_test(assert_state_diff_chunk, 0, StartBlockType::Hash).await;
     run_test(assert_state_diff_chunk, 0, StartBlockType::Number).await;
+}
+
+#[tokio::test]
+async fn event_query_positive_flow() {
+    let assert_event = |data: Vec<(Event, TransactionHash)>| {
+        assert_eq!(data.len(), NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK * EVENTS_PER_TX);
+        for (i, (event, tx_hash)) in data.into_iter().enumerate() {
+            assert_eq!(
+                tx_hash,
+                TX_HASHES[i / (NUM_TXS_PER_BLOCK * EVENTS_PER_TX)]
+                    [i / EVENTS_PER_TX % NUM_TXS_PER_BLOCK]
+            );
+            assert_eq!(
+                event,
+                EVENTS[i / (NUM_TXS_PER_BLOCK * EVENTS_PER_TX)
+                    + i / EVENTS_PER_TX % NUM_TXS_PER_BLOCK]
+            );
+        }
+    };
+
+    run_test(assert_event, 0, StartBlockType::Hash).await;
+    run_test(assert_event, 0, StartBlockType::Number).await;
+}
+
+#[tokio::test]
+async fn class_query_positive_flow() {
+    let assert_class = |data: Vec<ApiContractClass>| {
+        // create_random_state_diff creates a state diff with 1 declared class
+        // and 1 deprecated declared class
+        assert_eq!(data.len(), CLASSES.len() + DEPRECATED_CLASSES.len());
+        for (i, data) in data.iter().enumerate() {
+            match data {
+                ApiContractClass::ContractClass(contract_class) => {
+                    assert_eq!(contract_class, &CLASSES[i / 2]);
+                }
+                ApiContractClass::DeprecatedContractClass(deprecated_contract_class) => {
+                    assert_eq!(deprecated_contract_class, &DEPRECATED_CLASSES[i / 2])
+                }
+            }
+        }
+    };
+    run_test(assert_class, 0, StartBlockType::Hash).await;
+    run_test(assert_class, 0, StartBlockType::Number).await;
 }
 
 #[tokio::test]
@@ -126,7 +173,7 @@ async fn state_diff_query_some_blocks_are_missing() {
     let assert_state_diff_chunk = |data: Vec<StateDiffChunk>| {
         // create_random_state_diff creates a state diff with 5 chunks.
         const STATE_DIFF_CHUNK_PER_BLOCK: usize = 5;
-        assert!(data.len() == BLOCKS_DELTA as usize * STATE_DIFF_CHUNK_PER_BLOCK);
+        assert_eq!(data.len(), BLOCKS_DELTA as usize * STATE_DIFF_CHUNK_PER_BLOCK);
         for (i, data) in data.into_iter().enumerate() {
             assert_eq!(
                 data,
@@ -138,6 +185,56 @@ async fn state_diff_query_some_blocks_are_missing() {
     };
 
     run_test(assert_state_diff_chunk, NUM_OF_BLOCKS - BLOCKS_DELTA, StartBlockType::Number).await;
+}
+
+#[tokio::test]
+async fn event_query_some_blocks_are_missing() {
+    let assert_event = |data: Vec<(Event, TransactionHash)>| {
+        let len = data.len();
+        assert_eq!(len, BLOCKS_DELTA as usize * NUM_TXS_PER_BLOCK * EVENTS_PER_TX);
+        for (i, (event, tx_hash)) in data.into_iter().enumerate() {
+            assert_eq!(
+                tx_hash,
+                TX_HASHES[i / (NUM_TXS_PER_BLOCK * EVENTS_PER_TX)
+                    + (NUM_OF_BLOCKS - BLOCKS_DELTA) as usize]
+                    [i / EVENTS_PER_TX % NUM_TXS_PER_BLOCK]
+            );
+            assert_eq!(
+                event,
+                EVENTS[i / (NUM_TXS_PER_BLOCK * EVENTS_PER_TX)
+                    + (NUM_OF_BLOCKS - BLOCKS_DELTA) as usize
+                    + i / EVENTS_PER_TX % NUM_TXS_PER_BLOCK]
+            );
+        }
+    };
+
+    run_test(assert_event, NUM_OF_BLOCKS - BLOCKS_DELTA, StartBlockType::Number).await;
+}
+
+#[tokio::test]
+async fn class_query_some_blocks_are_missing() {
+    let assert_class = |data: Vec<ApiContractClass>| {
+        // create_random_state_diff creates a state diff with 1 declared class
+        // and 1 deprecated declared class
+        assert_eq!(data.len(), BLOCKS_DELTA as usize * 2);
+        for (i, data) in data.iter().enumerate() {
+            match data {
+                ApiContractClass::ContractClass(contract_class) => {
+                    assert_eq!(
+                        contract_class,
+                        &CLASSES[i / 2 + (NUM_OF_BLOCKS - BLOCKS_DELTA) as usize]
+                    );
+                }
+                ApiContractClass::DeprecatedContractClass(deprecated_contract_class) => {
+                    assert_eq!(
+                        deprecated_contract_class,
+                        &DEPRECATED_CLASSES[i / 2 + (NUM_OF_BLOCKS - BLOCKS_DELTA) as usize]
+                    )
+                }
+            }
+        }
+    };
+    run_test(assert_class, NUM_OF_BLOCKS - BLOCKS_DELTA, StartBlockType::Number).await;
 }
 
 async fn run_test<T, F>(assert_fn: F, start_block_number: u64, start_block_type: StartBlockType)
@@ -270,7 +367,7 @@ fn setup() -> (
         event_sender,
     )
 }
-
+use starknet_api::core::ClassHash;
 fn insert_to_storage_test_blocks_up_to(storage_writer: &mut StorageWriter) {
     for i in 0..NUM_OF_BLOCKS {
         let i_usize = usize::try_from(i).unwrap();
@@ -293,6 +390,8 @@ fn insert_to_storage_test_blocks_up_to(storage_writer: &mut StorageWriter) {
             .append_body(BlockNumber(i), BlockBody{transactions: TXS[i_usize].clone(),
                 transaction_outputs: TX_OUTPUTS[i_usize].clone(),
                 transaction_hashes: TX_HASHES[i_usize].clone(),}).unwrap()
+            .append_classes(BlockNumber(i), &CLASSES_WITH_HASHES[i_usize], &DEPRECATED_CLASSES_WITH_HASHES[i_usize])
+            .unwrap()
             .commit()
             .unwrap();
     }
@@ -306,7 +405,7 @@ lazy_static! {
     static ref STATE_DIFF_CHUNCKS: Vec<StateDiffChunk> =
         THIN_STATE_DIFFS.iter().flat_map(|diff| split_thin_state_diff(diff.clone())).collect();
     static ref BODY: BlockBody =
-        get_test_body(NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK, None, None, None);
+        get_test_body(NUM_OF_BLOCKS as usize * NUM_TXS_PER_BLOCK, Some(EVENTS_PER_TX), None, None);
     static ref TXS: Vec<Vec<Transaction>> =
         BODY.clone().transactions.chunks(NUM_TXS_PER_BLOCK).map(|chunk| chunk.to_vec()).collect();
     static ref TX_OUTPUTS: Vec<Vec<TransactionOutput>> = BODY
@@ -326,4 +425,43 @@ lazy_static! {
         .into_iter()
         .flat_map(|tx_output| tx_output.into_iter().flat_map(|output| output.events().to_vec()))
         .collect();
+    static ref CLASSES: Vec<ContractClass> = {
+        (0..NUM_OF_BLOCKS)
+            .map(|_| ContractClass::get_test_instance(&mut get_rng()))
+            .collect::<Vec<_>>()
+    };
+    static ref CLASSES_WITH_HASHES: Vec<Vec<(ClassHash, &'static ContractClass)>> = {
+        THIN_STATE_DIFFS
+            .iter()
+            .enumerate()
+            .map(|(i, state_diff)| {
+                let contract_class = &CLASSES[i];
+                let class_vec = state_diff
+                    .declared_classes
+                    .iter()
+                    .map(|(class_hash, _)| (*class_hash, contract_class))
+                    .collect::<Vec<_>>();
+                class_vec
+            })
+            .collect::<Vec<_>>()
+    };
+    static ref DEPRECATED_CLASSES: Vec<DeprecatedContractClass> = {
+        (0..NUM_OF_BLOCKS)
+            .map(|_| DeprecatedContractClass::get_test_instance(&mut get_rng()))
+            .collect::<Vec<_>>()
+    };
+    static ref DEPRECATED_CLASSES_WITH_HASHES: Vec<Vec<(ClassHash, &'static DeprecatedContractClass)>> = {
+        THIN_STATE_DIFFS
+            .iter()
+            .enumerate()
+            .map(|(i, state_diff)| {
+                let deprecated_declared_classes_hashes =
+                    state_diff.deprecated_declared_classes.clone();
+                deprecated_declared_classes_hashes
+                    .iter()
+                    .map(|class_hash| (*class_hash, &DEPRECATED_CLASSES[i]))
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>()
+    };
 }
