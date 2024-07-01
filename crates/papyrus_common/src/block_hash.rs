@@ -114,9 +114,9 @@ fn calculate_block_hash_by_version(
                 Some(*ZERO)
             }
         })
-        .chain(&usize_into_felt(header.n_transactions.ok_or(BlockHashError::MissingHeaderData)?))
+        .chain(&usize_into_felt(header.n_transactions))
         .chain(&header.transaction_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
-        .chain(&usize_into_felt(header.n_events.ok_or(BlockHashError::MissingHeaderData)?))
+        .chain(&usize_into_felt(header.n_events))
         .chain(&header.event_commitment.ok_or(BlockHashError::MissingHeaderData)?.0)
         .chain(&ZERO) // Not implemented Element.
         .chain(&ZERO) // Not implemented Element.

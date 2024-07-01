@@ -8384,7 +8384,7 @@ dependencies = [
 [[package]]
 name = "starknet_api"
 version = "0.13.0-dev.8"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=61467b1#61467b18c217b9f48d49a606732a61a7e14b5065"
+source = "git+https://github.com/starkware-libs/starknet-api?rev=f76fe54#f76fe54efa11d4d4933a3c192156327251d9516c"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",

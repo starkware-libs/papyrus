@@ -87,9 +87,15 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .try_into()
             .map(GlobalRoot)?;
 
-        let n_transactions = value.transactions.as_ref().map(|transactions| {
-            transactions.n_leaves.try_into().expect("Failed converting u64 to usize")
-        });
+        let n_transactions = value
+            .transactions
+            .as_ref()
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "SignedBlockHeader::transactions",
+            })?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
 
         let transaction_commitment = value
             .transactions
@@ -108,7 +114,12 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
         let n_events = value
             .events
             .as_ref()
-            .map(|events| events.n_leaves.try_into().expect("Failed converting u64 to usize"));
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "SignedBlockHeader::events",
+            })?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
 
         let event_commitment = value
             .events
@@ -246,19 +257,18 @@ impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
                 root: Some(header.state_diff_commitment.0.0.into()),
             }),
             state_root: Some(header.state_root.0.into()),
-            // This will be Some only if both n_transactions and transaction_commitment are Some.
-            transactions: header.n_transactions.and_then(|n_transactions| {
-                header.transaction_commitment.map(|transaction_commitment| protobuf::Patricia {
-                    n_leaves: n_transactions.try_into().expect("Converting usize to u64 failed"),
+            transactions: header.transaction_commitment.map(|transaction_commitment| {
+                protobuf::Patricia {
+                    n_leaves: header
+                        .n_transactions
+                        .try_into()
+                        .expect("Converting usize to u64 failed"),
                     root: Some(transaction_commitment.0.into()),
-                })
+                }
             }),
-            // This will be Some only if both n_events and event_commitment are Some.
-            events: header.n_events.and_then(|n_events| {
-                header.event_commitment.map(|event_commitment| protobuf::Patricia {
-                    n_leaves: n_events.try_into().expect("Converting usize to u64 failed"),
-                    root: Some(event_commitment.0.into()),
-                })
+            events: header.event_commitment.map(|event_commitment| protobuf::Patricia {
+                n_leaves: header.n_events.try_into().expect("Converting usize to u64 failed"),
+                root: Some(event_commitment.0.into()),
             }),
             receipts: header
                 .receipt_commitment

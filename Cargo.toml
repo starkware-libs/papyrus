@@ -153,4 +153,4 @@ void = "1.0.2"
 zstd = "0.13.1"
 
 [patch.crates-io]
-starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "61467b1" }
+starknet_api = { git = "https://github.com/starkware-libs/starknet-api", rev = "f76fe54" }
