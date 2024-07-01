@@ -29,7 +29,7 @@ pub(crate) enum BlockNumberLimit {
     // TODO(shahak): Add variant for state diff marker once we support classes sync.
 }
 
-pub(crate) trait DataStreamFactory<InputFromNetwork>
+pub(crate) trait DataStreamBuilder<InputFromNetwork>
 where
     InputFromNetwork: Send + 'static,
     DataOrFin<InputFromNetwork>: TryFrom<Vec<u8>>,

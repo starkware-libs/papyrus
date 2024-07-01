@@ -5,7 +5,7 @@ use papyrus_storage::header::{HeaderStorageReader, HeaderStorageWriter};
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
-use super::stream_factory::{BlockData, BlockNumberLimit, DataStreamFactory};
+use super::stream_builder::{BlockData, BlockNumberLimit, DataStreamBuilder};
 use super::{P2PSyncError, ResponseReceiver, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
 
 impl BlockData for SignedBlockHeader {
@@ -30,9 +30,9 @@ impl BlockData for SignedBlockHeader {
     }
 }
 
-pub(crate) struct HeaderStreamFactory;
+pub(crate) struct HeaderStreamBuilder;
 
-impl DataStreamFactory<SignedBlockHeader> for HeaderStreamFactory {
+impl DataStreamBuilder<SignedBlockHeader> for HeaderStreamBuilder {
     type Output = SignedBlockHeader;
 
     const TYPE_DESCRIPTION: &'static str = "headers";
