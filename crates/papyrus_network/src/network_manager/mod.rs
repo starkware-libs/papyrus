@@ -98,7 +98,6 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         &mut self,
         protocol: Protocol,
         buffer_size: usize,
-        buffer_size: usize,
     ) -> SqmrQueryReceiver<Query, Response>
     where
         Bytes: From<Response>,
