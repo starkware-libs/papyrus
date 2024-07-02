@@ -433,7 +433,7 @@ auto_impl_get_test_instance! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub state_diff_commitment: StateDiffCommitment,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
         pub transaction_commitment: Option<TransactionCommitment>,
         pub event_commitment: Option<EventCommitment>,
         pub receipt_commitment: Option<ReceiptCommitment>,
