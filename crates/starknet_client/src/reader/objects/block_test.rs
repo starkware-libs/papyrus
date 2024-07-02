@@ -109,15 +109,16 @@ async fn to_starknet_api_block_and_version() {
     // TODO(yair): Add block.json for a 0.13.1 block.
     let raw_block = read_resource_file("reader/block_post_0_13_1.json");
     let block: Block = serde_json::from_str(&raw_block).unwrap();
-    let dummy_state_diff_hash = GlobalRoot::default();
     let expected_num_of_tx_outputs = block.transactions().len();
-    let starknet_api_block =
-        block.to_starknet_api_block_and_version(dummy_state_diff_hash).unwrap();
+    let starknet_api_block = block.to_starknet_api_block_and_version().unwrap();
     assert_eq!(expected_num_of_tx_outputs, starknet_api_block.body.transaction_outputs.len());
+    // Check that for pre 0.13.2 blocks, we erase their hash since it's a deprecated formula.
+    assert!(starknet_api_block.header.event_commitment.is_none());
+    assert!(starknet_api_block.header.transaction_commitment.is_none());
 
     let mut err_block: BlockPostV0_13_1 = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts.pop();
-    let err = err_block.to_starknet_api_block_and_version(dummy_state_diff_hash).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ReaderClientError::TransactionReceiptsError(
@@ -131,7 +132,7 @@ async fn to_starknet_api_block_and_version() {
 
     let mut err_block: BlockPostV0_13_1 = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_index = TransactionOffsetInBlock(1);
-    let err = err_block.to_starknet_api_block_and_version(dummy_state_diff_hash).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ReaderClientError::TransactionReceiptsError(
@@ -146,7 +147,7 @@ async fn to_starknet_api_block_and_version() {
 
     let mut err_block: BlockPostV0_13_1 = serde_json::from_str(&raw_block).unwrap();
     err_block.transaction_receipts[0].transaction_hash = TransactionHash(felt!("0x4"));
-    let err = err_block.to_starknet_api_block_and_version(dummy_state_diff_hash).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ReaderClientError::TransactionReceiptsError(
@@ -164,7 +165,7 @@ async fn to_starknet_api_block_and_version() {
         transaction_hash: err_block.transactions[1].transaction_hash(),
         ..err_block.transaction_receipts[0].clone()
     };
-    let err = err_block.to_starknet_api_block_and_version(dummy_state_diff_hash).unwrap_err();
+    let err = err_block.to_starknet_api_block_and_version().unwrap_err();
     assert_matches!(
         err,
         ReaderClientError::TransactionReceiptsError(

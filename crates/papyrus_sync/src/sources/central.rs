@@ -26,13 +26,12 @@ use papyrus_storage::state::StateStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{Block, BlockHash, BlockNumber, BlockSignature};
-use starknet_api::core::{ClassHash, CompiledClassHash, GlobalRoot, SequencerPublicKey};
+use starknet_api::core::{ClassHash, CompiledClassHash, SequencerPublicKey};
 use starknet_api::crypto::utils::Signature;
 use starknet_api::deprecated_contract_class::ContractClass as DeprecatedContractClass;
 use starknet_api::state::StateDiff;
 use starknet_api::StarknetApiError;
 use starknet_client::reader::{
-    Block as StarknetClientBlock,
     BlockSignatureData,
     ReaderClientError,
     StarknetFeederGatewayClient,
@@ -411,24 +410,10 @@ fn client_to_central_block(
 ) -> CentralResult<(Block, BlockSignature)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
-            let state_diff_commitment = if let StarknetClientBlock::PostV0_13_1(
-                starknet_client::reader::objects::block::BlockPostV0_13_1 {
-                    state_diff_commitment: Some(state_diff_commitment),
-                    ..
-                },
-            ) = &block
-            {
-                GlobalRoot(state_diff_commitment.0.0)
-            } else {
-                let BlockSignatureData::Deprecated { signature_input, .. } = signature_data else {
-                    return Err(CentralError::BlockAndSignatureVersionMismatch);
-                };
-                signature_input.state_diff_commitment
-            };
             debug!("Received new block {current_block_number} with hash {}.", block.block_hash());
             trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
             let block = block
-                .to_starknet_api_block_and_version(state_diff_commitment)
+                .to_starknet_api_block_and_version()
                 .map_err(|err| CentralError::ClientError(Arc::new(err)))?;
             let signature = match signature_data {
                 BlockSignatureData::Deprecated { signature, .. } => signature,
