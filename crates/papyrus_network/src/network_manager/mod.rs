@@ -120,7 +120,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     // TODO(shahak): rename to register_sqmr_protocol_client.
     /// Register a new subscriber for sending a single query and receiving multiple responses.
     /// Panics if the given protocol is already subscribed.
-    pub fn register_sqmr_subscriber<Query, Response>(
+    pub fn register_sqmr_protocol_client<Query, Response>(
         &mut self,
         protocol: Protocol,
     ) -> SqmrSubscriberChannels<Query, Response>
