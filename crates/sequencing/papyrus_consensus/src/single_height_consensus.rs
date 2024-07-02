@@ -6,6 +6,7 @@ use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
+use papyrus_protobuf::consensus::{ConsensusMessage, Vote, VoteType};
 use starknet_api::block::{BlockHash, BlockNumber};
 use tracing::{debug, info, instrument};
 
@@ -33,6 +34,8 @@ where
     id: ValidatorId,
     state_machine: StateMachine,
     proposals: HashMap<Round, BlockT>,
+    prevotes: HashMap<(Round, ValidatorId), Vote>,
+    precommits: HashMap<(Round, ValidatorId), Vote>,
 }
 
 impl<BlockT> SingleHeightConsensus<BlockT>
@@ -45,9 +48,17 @@ where
         id: ValidatorId,
     ) -> Self {
         let validators = context.validators(height).await;
-        // TODO(matan): Use actual weight to require voting.
-        let state_machine = StateMachine::new(1);
-        Self { height, context, validators, id, state_machine, proposals: HashMap::new() }
+        let state_machine = StateMachine::new(validators.len() as u32);
+        Self {
+            height,
+            context,
+            validators,
+            id,
+            state_machine,
+            proposals: HashMap::new(),
+            prevotes: HashMap::new(),
+            precommits: HashMap::new(),
+        }
     }
 
     #[instrument(skip(self), fields(height=self.height.0), level = "debug")]
@@ -117,19 +128,78 @@ where
         self.handle_state_machine_events(sm_events).await
     }
 
+    /// Handle messages from peer nodes.
+    #[instrument(skip(self), level = "debug")]
+    pub(crate) async fn handle_message(
+        &mut self,
+        message: ConsensusMessage,
+    ) -> Result<Option<BlockT>, ConsensusError> {
+        match message {
+            ConsensusMessage::Proposal(_) => {
+                unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
+            }
+            ConsensusMessage::Vote(vote) => match vote.vote_type {
+                papyrus_protobuf::consensus::VoteType::Prevote => self.handle_prevote(vote).await,
+                papyrus_protobuf::consensus::VoteType::Precommit => {
+                    self.handle_precommit(vote).await
+                }
+            },
+        }
+    }
+
+    async fn handle_prevote(&mut self, vote: Vote) -> Result<Option<BlockT>, ConsensusError> {
+        if let Some(old) = self.prevotes.get(&(0, vote.voter)) {
+            if old.block_hash != vote.block_hash {
+                return Err(ConsensusError::Equivocation(
+                    self.height,
+                    ConsensusMessage::Vote(old.clone()),
+                    ConsensusMessage::Vote(vote),
+                ));
+            } else {
+                // Replay, ignore.
+                return Ok(None);
+            }
+        }
+        let sm_prevote = StateMachineEvent::Prevote(vote.block_hash, 0);
+        self.prevotes.insert((0, vote.voter), vote);
+        let sm_events = self.state_machine.handle_event(sm_prevote);
+        self.handle_state_machine_events(sm_events).await
+    }
+
+    async fn handle_precommit(&mut self, vote: Vote) -> Result<Option<BlockT>, ConsensusError> {
+        if let Some(old) = self.precommits.get(&(0, vote.voter)) {
+            if old.block_hash != vote.block_hash {
+                return Err(ConsensusError::Equivocation(
+                    self.height,
+                    ConsensusMessage::Vote(old.clone()),
+                    ConsensusMessage::Vote(vote),
+                ));
+            } else {
+                // Replay, ignore.
+                return Ok(None);
+            }
+        }
+        let sm_precommit = StateMachineEvent::Precommit(vote.block_hash, 0);
+        self.precommits.insert((0, vote.voter), vote);
+        let sm_events = self.state_machine.handle_event(sm_precommit);
+        self.handle_state_machine_events(sm_events).await
+    }
+
     // Handle events output by the state machine.
     async fn handle_state_machine_events(
         &mut self,
         mut events: VecDeque<StateMachineEvent>,
     ) -> Result<Option<BlockT>, ConsensusError> {
         while let Some(event) = events.pop_front() {
-            match event {
+            let res = match event {
                 StateMachineEvent::StartRound(block_hash, round) => {
                     events.append(&mut self.handle_sm_start_round(block_hash, round).await);
+                    Ok(None)
                 }
                 StateMachineEvent::Proposal(_, _) => {
                     // Ignore proposals sent by the StateMachine as SHC already sent this out when
                     // responding to a StartRound.
+                    Ok(None)
                 }
                 StateMachineEvent::Decision(block_hash, round) => {
                     let block = self.proposals.remove(&round).expect("Block not found.");
@@ -140,9 +210,15 @@ where
                     );
                     return Ok(Some(block));
                 }
-                // TODO(matan): Handle voting.
-                StateMachineEvent::Prevote(_, _) => {}
-                StateMachineEvent::Precommit(_, _) => {}
+                StateMachineEvent::Prevote(block_hash, round) => {
+                    self.handle_sm_prevote(block_hash, round).await
+                }
+                StateMachineEvent::Precommit(block_hash, round) => {
+                    self.handle_sm_precommit(block_hash, round).await
+                }
+            };
+            if let Some(block) = res? {
+                return Ok(Some(block));
             }
         }
         Ok(None)
@@ -183,5 +259,49 @@ where
 
         // TODO(matan): Send to the state machine and handle voting.
         self.state_machine.handle_event(StateMachineEvent::StartRound(Some(id), round))
+    }
+
+    async fn handle_sm_prevote(
+        &mut self,
+        block_hash: BlockHash,
+        round: Round,
+    ) -> Result<Option<BlockT>, ConsensusError> {
+        let vote = Vote {
+            vote_type: VoteType::Prevote,
+            height: self.height.0,
+            block_hash,
+            voter: self.id,
+        };
+        let old = self.prevotes.insert((round, self.id), vote.clone());
+        assert!(
+            old.is_none(),
+            "The state machine should not send repeat votes: old={:?} new={:?}",
+            old,
+            vote
+        );
+        self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
+        Ok(None)
+    }
+
+    async fn handle_sm_precommit(
+        &mut self,
+        block_hash: BlockHash,
+        round: Round,
+    ) -> Result<Option<BlockT>, ConsensusError> {
+        let vote = Vote {
+            vote_type: VoteType::Precommit,
+            height: self.height.0,
+            block_hash,
+            voter: self.id,
+        };
+        let old = self.precommits.insert((round, self.id), vote.clone());
+        assert!(
+            old.is_none(),
+            "The state machine should not send repeat votes: old={:?} new={:?}",
+            old,
+            vote
+        );
+        self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
+        Ok(None)
     }
 }
