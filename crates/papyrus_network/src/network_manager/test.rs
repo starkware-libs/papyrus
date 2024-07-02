@@ -196,11 +196,14 @@ async fn register_sqmr_protocol_client_and_use_channels() {
     mock_swarm.first_polled_event_notifier = Some(event_notifier);
 
     // network manager to register subscriber and send query
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(crate::Protocol::SignedBlockHeader);
+        .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
+            crate::Protocol::SignedBlockHeader,
+            BUFFER_SIZE,
+        );
 
     let response_receiver_length = Arc::new(Mutex::new(0));
     let cloned_response_receiver_length = Arc::clone(&response_receiver_length);
@@ -252,10 +255,10 @@ async fn process_incoming_query() {
     // swarm.
     let get_responses_fut = mock_swarm.get_responses_sent_to_inbound_session(inbound_session_id);
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     let mut inbound_query_receiver =
-        network_manager.register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol);
+        network_manager.register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol, BUFFER_SIZE);
 
     let responses_clone = responses.clone();
     select! {
@@ -285,7 +288,7 @@ async fn broadcast_message() {
     let mut mock_swarm = MockSwarm::default();
     let mut messages_we_broadcasted_stream = mock_swarm.stream_messages_we_broadcasted();
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_topic(topic.clone(), BUFFER_SIZE)
@@ -321,7 +324,7 @@ async fn receive_broadcasted_message_and_report_it() {
     )));
     let mut reported_peer_receiver = mock_swarm.get_reported_peers_stream();
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     let mut broadcasted_messages_receiver = network_manager
         .register_broadcast_topic::<Bytes>(topic.clone(), BUFFER_SIZE)
