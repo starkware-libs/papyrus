@@ -1,20 +1,33 @@
 {{- if not .Values.backup.enabled }}
-{{- range $k, $v := .Values.services }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "papyrus.name" $ }}-{{ $k }}
+  name: {{ template "papyrus.name" $ }}-svc
   labels:
     {{- include "papyrus.labels" $ | nindent 4 }}
 spec:
   selector:
     {{- include "papyrus.selectorLabels" $ | nindent 6 }}
-  type: {{ $v.type }}
+  type: {{ .Values.services.rpc.type }}
   ports:
   - name: {{ template "papyrus.name" $ }}-port
-    protocol: "{{ $v.protocol }}"
-    port: {{ $v.port }}
-    targetPort: {{ $v.port }}
-{{- end }}
+    protocol: {{ .Values.services.rpc.protocol }}
+    port: {{ .Values.services.rpc.port }}
+    targetPort: {{ .Values.services.rpc.port }}
+    {{- if and (eq .Values.services.rpc.type "NodePort") .Values.services.rpc.nodePort }}
+    nodePort: {{ .Values.services.rpc.nodePort }}
+    {{- end }}
+  {{- if .Values.services.monitoring.enabled }}
+  - name: {{ template "papyrus.name" $ }}-monitoring
+    protocol: {{ .Values.services.monitoring.protocol }}
+    port: {{ .Values.services.monitoring.port }}
+    targetPort: {{ .Values.services.monitoring.port }}
+  {{- end}}
+  {{- if .Values.services.p2p.enabled }}
+  - name: {{ template "papyrus.name" $ }}-p2p
+    protocol: {{ .Values.services.p2p.protocol }}
+    port: {{ .Values.services.p2p.port }}
+    targetPort: {{ .Values.services.p2p.port }}
+  {{- end}}
 {{- end }}
