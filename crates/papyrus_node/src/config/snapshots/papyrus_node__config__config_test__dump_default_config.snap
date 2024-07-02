@@ -320,7 +320,7 @@ expression: dumped_default_config
   "storage.mmap_file_config.max_object_size": {
     "description": "The maximum size of a single object in the file in bytes",
     "value": {
-      "$serde_json::private::Number": "1048576"
+      "$serde_json::private::Number": "268435456"
     },
     "privacy": "Public"
   },

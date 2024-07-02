@@ -75,7 +75,7 @@ impl Default for MmapFileConfig {
         Self {
             max_size: 1 << 40,        // 1TB
             growth_step: 1 << 30,     // 1GB
-            max_object_size: 1 << 20, // 1MB
+            max_object_size: 1 << 28, // 256MB
         }
     }
 }

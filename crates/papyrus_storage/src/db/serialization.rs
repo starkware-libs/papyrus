@@ -33,6 +33,8 @@ impl<T: StorageSerde> StorageSerdeEx for T {
 pub trait StorageSerde: Sized {
     fn serialize_into(&self, res: &mut impl std::io::Write) -> Result<(), StorageSerdeError>;
 
+    // TODO(dan): consider returning a result here. We probably transform this into
+    // InnerDeserialization error, so having more context might be useful.
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self>;
 }
 
