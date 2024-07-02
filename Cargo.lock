@@ -8384,8 +8384,9 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.13.0-dev.8"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=f76fe54#f76fe54efa11d4d4933a3c192156327251d9516c"
+version = "0.13.0-dev.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66a6dc6b4f77fff0f28894cc36d5a691784550054d06c6850e901278aed2c7e6"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
