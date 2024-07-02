@@ -187,7 +187,7 @@ impl SwarmTrait for MockSwarm {
 const BUFFER_SIZE: usize = 100;
 
 #[tokio::test]
-async fn register_sqmr_subscriber_and_use_channels() {
+async fn register_sqmr_protocol_client_and_use_channels() {
     // mock swarm to send and track connection established event
     let mut mock_swarm = MockSwarm::default();
     let peer_id = PeerId::random();
@@ -200,7 +200,7 @@ async fn register_sqmr_subscriber_and_use_channels() {
 
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_subscriber::<Vec<u8>, Vec<u8>>(crate::Protocol::SignedBlockHeader);
+        .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(crate::Protocol::SignedBlockHeader);
 
     let response_receiver_length = Arc::new(Mutex::new(0));
     let cloned_response_receiver_length = Arc::clone(&response_receiver_length);

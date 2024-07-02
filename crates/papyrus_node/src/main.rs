@@ -340,10 +340,11 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
     let mut network_manager = network_manager::NetworkManager::new(network_config.clone());
     let local_peer_id = network_manager.get_local_peer_id();
     let header_client_channels =
-        network_manager.register_sqmr_subscriber(Protocol::SignedBlockHeader);
-    let state_diff_client_channels = network_manager.register_sqmr_subscriber(Protocol::StateDiff);
+        network_manager.register_sqmr_protocol_client(Protocol::SignedBlockHeader);
+    let state_diff_client_channels =
+        network_manager.register_sqmr_protocol_client(Protocol::StateDiff);
     let transaction_client_channels =
-        network_manager.register_sqmr_subscriber(Protocol::Transaction);
+        network_manager.register_sqmr_protocol_client(Protocol::Transaction);
 
     let header_server_channel =
         network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader);
