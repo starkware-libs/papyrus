@@ -45,15 +45,16 @@ const ALLOWED_SIGNATURES_LENGTH: usize = 1;
 const NETWORK_DATA_TIMEOUT: Duration = Duration::from_secs(300);
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
-pub struct P2PSyncConfig {
+pub struct P2PSyncClientConfig {
     pub num_headers_per_query: u64,
     pub num_block_state_diffs_per_query: u64,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
+    pub buffer_size: usize,
     pub stop_sync_at_block_number: Option<BlockNumber>,
 }
 
-impl SerializeConfig for P2PSyncConfig {
+impl SerializeConfig for P2PSyncClientConfig {
     fn dump(&self) -> BTreeMap<ParamPath, SerializedParam> {
         let mut config = BTreeMap::from_iter([
             ser_param(
@@ -75,6 +76,12 @@ impl SerializeConfig for P2PSyncConfig {
                  new query",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "buffer_size",
+                &self.buffer_size,
+                "Size of the buffer for read from the storage.",
+                ParamPrivacyInput::Public,
+            ),
         ]);
         config.extend(ser_optional_param(
             &self.stop_sync_at_block_number,
@@ -88,14 +95,15 @@ impl SerializeConfig for P2PSyncConfig {
     }
 }
 
-impl Default for P2PSyncConfig {
+impl Default for P2PSyncClientConfig {
     fn default() -> Self {
-        P2PSyncConfig {
+        P2PSyncClientConfig {
             num_headers_per_query: 10000,
             // State diffs are split into multiple messages, so big queries can lead to a lot of
             // messages in the network buffers.
             num_block_state_diffs_per_query: 100,
             wait_period_for_new_data: Duration::from_secs(5),
+            buffer_size: 100000,
             stop_sync_at_block_number: None,
         }
     }
@@ -168,7 +176,7 @@ type StateDiffResponseReceiver = ResponseReceiver<StateDiffChunk>;
 type TransactionQuerySender = QuerySender<TransactionQuery>;
 type TransactionResponseReceiver = ResponseReceiver<(Transaction, TransactionOutput)>;
 
-pub struct P2PSyncChannels {
+pub struct P2PSyncClientChannels {
     pub header_query_sender: HeaderQuerySender,
     pub header_response_receiver: HeaderResponseReceiver,
     pub state_diff_query_sender: StateDiffQuerySender,
@@ -177,11 +185,11 @@ pub struct P2PSyncChannels {
     pub transaction_response_receiver: TransactionResponseReceiver,
 }
 
-impl P2PSyncChannels {
+impl P2PSyncClientChannels {
     pub(crate) fn create_stream(
         self,
         storage_reader: StorageReader,
-        config: P2PSyncConfig,
+        config: P2PSyncClientConfig,
     ) -> impl Stream<Item = DataStreamResult> + Send + 'static {
         let header_stream = HeaderStreamBuilder::create_stream(
             self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
@@ -205,19 +213,19 @@ impl P2PSyncChannels {
     }
 }
 
-pub struct P2PSync {
-    config: P2PSyncConfig,
+pub struct P2PSyncClient {
+    config: P2PSyncClientConfig,
     storage_reader: StorageReader,
     storage_writer: StorageWriter,
-    p2p_sync_channels: P2PSyncChannels,
+    p2p_sync_channels: P2PSyncClientChannels,
 }
 
-impl P2PSync {
+impl P2PSyncClient {
     pub fn new(
-        config: P2PSyncConfig,
+        config: P2PSyncClientConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        p2p_sync_channels: P2PSyncChannels,
+        p2p_sync_channels: P2PSyncClientChannels,
     ) -> Self {
         Self { config, storage_reader, storage_writer, p2p_sync_channels }
     }
