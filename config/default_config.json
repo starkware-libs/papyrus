@@ -114,11 +114,6 @@
     "privacy": "TemporaryValue",
     "value": true
   },
-  "network.header_buffer_size": {
-    "description": "Size of the buffer for headers read from the storage.",
-    "privacy": "Public",
-    "value": 100000
-  },
   "network.idle_connection_timeout": {
     "description": "Amount of time in seconds that a connection with no active sessions will stay alive.",
     "privacy": "Public",
