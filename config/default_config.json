@@ -144,6 +144,11 @@
     "privacy": "TemporaryValue",
     "value": true
   },
+  "p2p_sync.buffer_size": {
+    "description": "Size of the buffer for read from the storage.",
+    "privacy": "Public",
+    "value": 100000
+  },
   "p2p_sync.num_block_state_diffs_per_query": {
     "description": "The maximum amount of block's state diffs to ask from peers in each iteration.",
     "privacy": "Public",

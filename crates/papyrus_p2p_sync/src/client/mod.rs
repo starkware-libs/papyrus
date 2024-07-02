@@ -50,6 +50,7 @@ pub struct P2PSyncConfig {
     pub num_block_state_diffs_per_query: u64,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub wait_period_for_new_data: Duration,
+    pub buffer_size: usize,
     pub stop_sync_at_block_number: Option<BlockNumber>,
 }
 
@@ -75,6 +76,12 @@ impl SerializeConfig for P2PSyncConfig {
                  new query",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "buffer_size",
+                &self.buffer_size,
+                "Size of the buffer for read from the storage.",
+                ParamPrivacyInput::Public,
+            ),
         ]);
         config.extend(ser_optional_param(
             &self.stop_sync_at_block_number,
@@ -96,6 +103,7 @@ impl Default for P2PSyncConfig {
             // messages in the network buffers.
             num_block_state_diffs_per_query: 100,
             wait_period_for_new_data: Duration::from_secs(5),
+            buffer_size: 100000,
             stop_sync_at_block_number: None,
         }
     }
