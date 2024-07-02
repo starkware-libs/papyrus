@@ -1,6 +1,7 @@
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use mockall::mock;
+use papyrus_protobuf::consensus::ConsensusMessage;
 use starknet_api::block::{BlockHash, BlockNumber};
 
 use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
@@ -47,6 +48,8 @@ mock! {
         async fn validators(&self, height: BlockNumber) -> Vec<ValidatorId>;
 
         fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
+
+        async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError>;
 
         async fn propose(
             &self,

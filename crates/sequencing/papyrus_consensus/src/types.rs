@@ -4,6 +4,7 @@ mod types_test;
 
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
+use papyrus_protobuf::consensus::ConsensusMessage;
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 
@@ -130,6 +131,8 @@ pub trait ConsensusContext: Send + Sync {
     /// Calculates the ID of the Proposer based on the inputs.
     fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
+    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError>;
+
     /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
     /// input channels in parallel (ie on a separate task).
     // TODO(matan): change to just be a generic broadcast function.
@@ -153,4 +156,6 @@ pub enum ConsensusError {
     Canceled(#[from] oneshot::Canceled),
     #[error("Invalid proposal sent by peer {0:?} at height {1}: {2}")]
     InvalidProposal(ValidatorId, BlockNumber, String),
+    #[error(transparent)]
+    SendError(#[from] mpsc::SendError),
 }
