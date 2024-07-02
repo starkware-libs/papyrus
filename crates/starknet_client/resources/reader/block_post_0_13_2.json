@@ -1,0 +1,70 @@
+{
+    "block_hash": "0x26a1b4d94a5d35895c9924249fc27593e0f7ee6ff3a8fa1e60ad76070bc7251",
+    "block_number": 1,
+    "event_commitment": "0x0",
+    "l1_da_mode": "CALLDATA",
+    "l1_data_gas_price": {
+        "price_in_fri": "0x3e8",
+        "price_in_wei": "0x186a0"
+    },
+    "l1_gas_price": {
+        "price_in_fri": "0x6fc23ac00",
+        "price_in_wei": "0x2540be400"
+    },
+    "parent_block_hash": "0x638e44cbea0a1c46ff915b2d2d3f26e57e993b597f6abfd60407302237b9bc7",
+    "receipt_commitment": "0x62c4810f6d3c10592ba3106ddb7b49a6fee1e3576c0707d94f49b63a79a1b22",
+    "sequencer_address": "0x795488c127693ffb36733cc054f9e2be39241a794a4877dc8fc1dbe52750488",
+    "starknet_version": "0.13.2",
+    "state_diff_commitment": "0x75137e8ea75384964ece1ff6f06cf231d889409081b2030fc9700d45d92e084",
+    "state_diff_length": 3,
+    "state_root": "0x36e170bb62c21bc0a913d281f6294ff15c7c948b5a9122ef194e19ecd359c0a",
+    "status": "ACCEPTED_ON_L2",
+    "timestamp": 1719829055,
+    "transaction_commitment": "0x34a8c619b2600ebb2c9e0cb89242e49fdbb7227a105c6293459a879d2e6a4f6",
+    "transaction_receipts": [
+        {
+            "actual_fee": "0x0",
+            "events": [],
+            "execution_resources": {
+                "builtin_instance_counter": {
+                    "ecdsa_builtin": 1,
+                    "pedersen_builtin": 25,
+                    "range_check_builtin": 66
+                },
+                "data_availability": {
+                    "l1_data_gas": 0,
+                    "l1_gas": 3305
+                },
+                "n_memory_holes": 0,
+                "n_steps": 3975,
+                "total_gas_consumed": {
+                    "l1_data_gas": 0,
+                    "l1_gas": 3315
+                }
+            },
+            "execution_status": "SUCCEEDED",
+            "l2_to_l1_messages": [],
+            "transaction_hash": "0xeeed489eb468ea78fd187a3aa5e872cfa94c51139b84b2c6bb8d5431f804af",
+            "transaction_index": 0
+        }
+    ],
+    "transactions": [
+        {
+            "class_hash": "0x5253fc1990a26cf6bee7cac703261daf0b78d7d1f28921e09d564bcc03637f4",
+            "constructor_calldata": [
+                "0x19d717905f7fd4a616392485cd42a357c2d5809dd7ffca089c5f7fcabb20a1a"
+            ],
+            "contract_address": "0x6e00fd2d239b1cf26f5180301c14b39258683ff927f8dbcbbee5d1314a1b2b9",
+            "contract_address_salt": "0x26fa4d8f1c895849a91080badfecb0a66e33b50055b68b97247b2c41b744f53",
+            "max_fee": "0x0",
+            "nonce": "0x0",
+            "signature": [
+                "0x3d7852381ae47aa6b92f9344ba95326bfd4c38c23a6ce1cc6bfab7f33362a60",
+                "0x770552e1fdd813b7ad8563bb175b35a955283a93f0483a0e64e05c30cf19dd1"
+            ],
+            "transaction_hash": "0xeeed489eb468ea78fd187a3aa5e872cfa94c51139b84b2c6bb8d5431f804af",
+            "type": "DEPLOY_ACCOUNT",
+            "version": "0x1"
+        }
+    ]
+}
