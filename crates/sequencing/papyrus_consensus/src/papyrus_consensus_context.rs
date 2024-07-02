@@ -158,7 +158,7 @@ impl ConsensusContext for PapyrusConsensusContext {
     }
 
     async fn validators(&self, _height: BlockNumber) -> Vec<ValidatorId> {
-        vec![0u8.into(), 1u8.into()]
+        vec![0u8.into(), 1u8.into(), 2u8.into(), 3u8.into()]
     }
 
     fn proposer(&self, _validators: &[ValidatorId], height: BlockNumber) -> ValidatorId {
@@ -193,7 +193,13 @@ impl ConsensusContext for PapyrusConsensusContext {
                 transactions,
                 block_hash,
             };
-            debug!("Sending proposal: {proposal:?}");
+            debug!(
+                "Sending proposal: height={:?} id={:?} num_txs={} block_hash={:?}",
+                proposal.height,
+                proposal.proposer,
+                proposal.transactions.len(),
+                proposal.block_hash
+            );
 
             broadcast_sender
                 .lock()
