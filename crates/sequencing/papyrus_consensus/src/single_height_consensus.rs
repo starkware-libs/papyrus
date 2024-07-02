@@ -130,11 +130,11 @@ where
     }
 
     /// Handle messages from peer nodes.
-    #[instrument(skip(self), level = "debug")]
     pub(crate) async fn handle_message(
         &mut self,
         message: ConsensusMessage,
     ) -> Result<Option<BlockT>, ConsensusError> {
+        debug!("Received message: {:?}", message);
         match message {
             ConsensusMessage::Proposal(_) => {
                 unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
@@ -280,13 +280,9 @@ where
             block_hash,
             voter: self.id,
         };
-        let old = self.prevotes.insert((round, self.id), vote.clone());
-        assert!(
-            old.is_none(),
-            "The state machine should not send repeat votes: old={:?} new={:?}",
-            old,
-            vote
-        );
+        if let Some(old) = self.prevotes.insert((round, self.id), vote.clone()) {
+            panic!("State machine should not send repeat votes: old={:?}, new={:?}", old, vote);
+        }
         self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
         Ok(None)
     }
@@ -302,13 +298,9 @@ where
             block_hash,
             voter: self.id,
         };
-        let old = self.precommits.insert((round, self.id), vote.clone());
-        assert!(
-            old.is_none(),
-            "The state machine should not send repeat votes: old={:?} new={:?}",
-            old,
-            vote
-        );
+        if let Some(old) = self.precommits.insert((round, self.id), vote.clone()) {
+            panic!("State machine should not send repeat votes: old={:?}, new={:?}", old, vote);
+        }
         self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
         Ok(None)
     }
