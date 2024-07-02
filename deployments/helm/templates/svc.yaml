@@ -9,25 +9,33 @@ metadata:
 spec:
   selector:
     {{- include "papyrus.selectorLabels" $ | nindent 6 }}
-  type: {{ .Values.services.rpc.type }}
+  type: {{ .Values.service.type }}
   ports:
+  {{- if .Values.service.rpc.enabled }}
   - name: {{ template "papyrus.name" $ }}-port
-    protocol: {{ .Values.services.rpc.protocol }}
-    port: {{ .Values.services.rpc.port }}
-    targetPort: {{ .Values.services.rpc.port }}
-    {{- if and (eq .Values.services.rpc.type "NodePort") .Values.services.rpc.nodePort }}
-    nodePort: {{ .Values.services.rpc.nodePort }}
+    protocol: {{ .Values.service.rpc.protocol }}
+    port: {{ .Values.service.rpc.port }}
+    targetPort: {{ .Values.service.rpc.port }}
+    {{- if and (eq .Values.service.type "NodePort") .Values.service.rpc.nodePort }}
+    nodePort: {{ .Values.service.rpc.nodePort }}
     {{- end }}
-  {{- if .Values.services.monitoring.enabled }}
-  - name: {{ template "papyrus.name" $ }}-monitoring
-    protocol: {{ .Values.services.monitoring.protocol }}
-    port: {{ .Values.services.monitoring.port }}
-    targetPort: {{ .Values.services.monitoring.port }}
   {{- end}}
-  {{- if .Values.services.p2p.enabled }}
+  {{- if .Values.service.monitoring.enabled }}
+  - name: {{ template "papyrus.name" $ }}-monitoring
+    protocol: {{ .Values.service.monitoring.protocol }}
+    port: {{ .Values.service.monitoring.port }}
+    targetPort: {{ .Values.service.monitoring.port }}
+    {{- if and (eq .Values.service.type "NodePort") .Values.service.monitoring.nodePort }}
+    nodePort: {{ .Values.service.monitoring.nodePort }}
+    {{- end }}
+  {{- end}}
+  {{- if .Values.service.p2p.enabled }}
   - name: {{ template "papyrus.name" $ }}-p2p
-    protocol: {{ .Values.services.p2p.protocol }}
-    port: {{ .Values.services.p2p.port }}
-    targetPort: {{ .Values.services.p2p.port }}
+    protocol: {{ .Values.service.p2p.protocol }}
+    port: {{ .Values.service.p2p.port }}
+    targetPort: {{ .Values.service.p2p.port }}
+    {{- if and (eq .Values.service.type "NodePort") .Values.service.p2p.nodePort }}
+    nodePort: {{ .Values.service.p2p.nodePort }}
+    {{- end }}
   {{- end}}
 {{- end }}
