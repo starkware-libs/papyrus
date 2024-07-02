@@ -10,12 +10,12 @@ async-stream.workspace = true
 futures.workspace = true
 indexmap.workspace = true
 metrics.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
-papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.3" }
-papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.3" }
-papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.3" }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.3" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.4" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.4" }
+papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.4" }
+papyrus_proc_macros = { path = "../papyrus_proc_macros", version = "0.4.0-dev.4" }
+papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.4" }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.4" }
 serde.workspace = true
 starknet_api.workspace = true
 starknet-types-core.workspace = true

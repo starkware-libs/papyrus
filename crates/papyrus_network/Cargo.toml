@@ -36,8 +36,8 @@ libp2p = { workspace = true, features = [
 ] }
 metrics.workspace = true
 replace_with.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.4" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.4" }
 serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 thiserror.workspace = true

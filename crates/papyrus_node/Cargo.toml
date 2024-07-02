@@ -28,17 +28,17 @@ jsonrpsee = { workspace = true, features = ["full"] }
 libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 once_cell.workspace = true
-papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.3" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.3" }
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.3" }
-papyrus_consensus = { path = "../sequencing/papyrus_consensus", version = "0.4.0-dev.3" }
-papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway", version = "0.4.0-dev.3" }
-papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.3" }
-papyrus_p2p_sync = { path = "../papyrus_p2p_sync", version = "0.4.0-dev.3" }
-papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.3" }
-papyrus_rpc = { path = "../papyrus_rpc", version = "0.4.0-dev.3", optional = true }
-papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.3" }
-papyrus_sync = { path = "../papyrus_sync", version = "0.4.0-dev.3" }
+papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.4" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.4" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.4" }
+papyrus_consensus = { path = "../sequencing/papyrus_consensus", version = "0.4.0-dev.4" }
+papyrus_monitoring_gateway = { path = "../papyrus_monitoring_gateway", version = "0.4.0-dev.4" }
+papyrus_network = { path = "../papyrus_network", version = "0.4.0-dev.4" }
+papyrus_p2p_sync = { path = "../papyrus_p2p_sync", version = "0.4.0-dev.4" }
+papyrus_protobuf = { path = "../papyrus_protobuf", version = "0.4.0-dev.4" }
+papyrus_rpc = { path = "../papyrus_rpc", version = "0.4.0-dev.4", optional = true }
+papyrus_storage = { path = "../papyrus_storage", version = "0.4.0-dev.4" }
+papyrus_sync = { path = "../papyrus_sync", version = "0.4.0-dev.4" }
 reqwest = { workspace = true, features = ["json", "blocking"] }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
