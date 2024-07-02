@@ -24,21 +24,21 @@ fn events_arrive_in_ideal_order(is_proposer: bool) {
         events = state_machine.handle_event(StateMachineEvent::Proposal(BLOCK_HASH, ROUND));
     }
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     events = state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     events = state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     events = state_machine.handle_event(StateMachineEvent::Precommit(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     events = state_machine.handle_event(StateMachineEvent::Precommit(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Decision(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 }
 
 #[test]
@@ -47,9 +47,9 @@ fn validator_receives_votes_first() {
 
     let mut events = state_machine.start();
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::StartRound(None, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
     events = state_machine.handle_event(StateMachineEvent::StartRound(None, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     // Receives votes from all the other nodes first (more than minimum for a quorum).
     events.append(&mut state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND)));
@@ -58,14 +58,14 @@ fn validator_receives_votes_first() {
     events.append(&mut state_machine.handle_event(StateMachineEvent::Precommit(BLOCK_HASH, ROUND)));
     events.append(&mut state_machine.handle_event(StateMachineEvent::Precommit(BLOCK_HASH, ROUND)));
     events.append(&mut state_machine.handle_event(StateMachineEvent::Precommit(BLOCK_HASH, ROUND)));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     // Finally the proposal arrives.
     events = state_machine.handle_event(StateMachineEvent::Proposal(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Decision(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn buffer_events_during_start_round() {
     let mut state_machine = StateMachine::new(4);
     let mut events = state_machine.start();
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::StartRound(None, 0));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     // TODO(matan): When we support NIL votes, we should send them. Real votes without the proposal
     // doesn't make sense.
@@ -81,11 +81,11 @@ fn buffer_events_during_start_round() {
     events.append(&mut state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND)));
     events.append(&mut state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND)));
     events.append(&mut state_machine.handle_event(StateMachineEvent::Prevote(BLOCK_HASH, ROUND)));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 
     // Node finishes building the proposal.
     events = state_machine.handle_event(StateMachineEvent::StartRound(None, 0));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Prevote(BLOCK_HASH, ROUND));
     assert_eq!(events.pop_front().unwrap(), StateMachineEvent::Precommit(BLOCK_HASH, ROUND));
-    assert!(events.is_empty());
+    assert!(events.is_empty(), "{:?}", events);
 }
