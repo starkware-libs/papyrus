@@ -57,6 +57,13 @@ spec:
             cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
+        {{- if .Values.deployment.extraEnv }}
+        env:
+        {{ range $key, $value := .Values.deployment.extraEnv }}
+          - name: {{ $key }}
+            value: {{ $value | quote }}
+        {{ end }}
+        {{- end }}
         args:
           - --config_file 
           - /app/config/presets/{{ .Values.starknet.preset }}
