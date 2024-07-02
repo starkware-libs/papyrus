@@ -130,11 +130,11 @@ where
     }
 
     /// Handle messages from peer nodes.
-    #[instrument(skip(self), level = "debug")]
     pub(crate) async fn handle_message(
         &mut self,
         message: ConsensusMessage,
     ) -> Result<Option<BlockT>, ConsensusError> {
+        debug!("Received message: {:?}", message);
         match message {
             ConsensusMessage::Proposal(_) => {
                 unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
