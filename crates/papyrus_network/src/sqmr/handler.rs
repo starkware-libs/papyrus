@@ -41,8 +41,8 @@ pub enum RequestFromBehaviourEvent {
         outbound_session_id: OutboundSessionId,
         protocol_name: StreamProtocol,
     },
-    SendData {
-        data: Bytes,
+    SendResponse {
+        response: Bytes,
         inbound_session_id: InboundSessionId,
     },
     CloseInboundSession {
@@ -195,11 +195,11 @@ impl ConnectionHandler for Handler {
         // Handle outbound sessions.
         self.id_to_outbound_session.retain(|outbound_session_id, outbound_session| {
             match outbound_session.poll_next_unpin(cx) {
-                Poll::Ready(Some(Ok(data))) => {
+                Poll::Ready(Some(Ok(response))) => {
                     self.pending_events.push_back(ConnectionHandlerEvent::NotifyBehaviour(
-                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
+                        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedResponse {
                             outbound_session_id: *outbound_session_id,
-                            data,
+                            response,
                             peer_id: self.peer_id,
                         }),
                     ));
@@ -256,7 +256,7 @@ impl ConnectionHandler for Handler {
                     .with_timeout(self.config.session_timeout),
                 });
             }
-            RequestFromBehaviourEvent::SendData { data, inbound_session_id } => {
+            RequestFromBehaviourEvent::SendResponse { response, inbound_session_id } => {
                 if let Some(inbound_session) =
                     self.id_to_inbound_session.get_mut(&inbound_session_id)
                 {
@@ -264,17 +264,17 @@ impl ConnectionHandler for Handler {
                         // TODO(shahak): Consider handling this in a different way than just
                         // logging.
                         debug!(
-                            "Got a request to send data on a closed inbound session with id \
+                            "Got a request to send response on a closed inbound session with id \
                              {inbound_session_id}. Ignoring request."
                         );
                     } else {
-                        inbound_session.add_message_to_queue(data);
+                        inbound_session.add_message_to_queue(response);
                     }
                 } else {
                     // TODO(shahak): Consider handling this in a different way than just logging.
                     debug!(
-                        "Got a request to send data on a non-existing or closed inbound session \
-                         with id {inbound_session_id}. Ignoring request."
+                        "Got a request to send response on a non-existing or closed inbound \
+                         session with id {inbound_session_id}. Ignoring request."
                     );
                 }
             }
@@ -335,7 +335,7 @@ impl ConnectionHandler for Handler {
                         loop {
                             let result_opt = read_message(&mut read_stream).await;
                             let result = match result_opt {
-                                Ok(Some(data)) => Ok(data),
+                                Ok(Some(response)) => Ok(response),
                                 Ok(None) => break,
                                 Err(error) => Err(error),
                             };

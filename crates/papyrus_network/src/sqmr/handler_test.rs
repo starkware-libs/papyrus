@@ -53,12 +53,15 @@ lazy_static! {
         Config::get_test_config().supported_inbound_protocols.first().unwrap().clone();
 }
 
-fn simulate_request_to_send_data_from_swarm(
+fn simulate_request_to_send_response_from_swarm(
     handler: &mut Handler,
-    data: Bytes,
+    response: Bytes,
     inbound_session_id: InboundSessionId,
 ) {
-    handler.on_behaviour_event(RequestFromBehaviourEvent::SendData { data, inbound_session_id });
+    handler.on_behaviour_event(RequestFromBehaviourEvent::SendResponse {
+        response,
+        inbound_session_id,
+    });
 }
 
 fn simulate_request_to_send_query_from_swarm(
@@ -142,9 +145,9 @@ async fn validate_new_inbound_session_event(
     );
 }
 
-async fn validate_received_data_event(
+async fn validate_received_response_event(
     handler: &mut Handler,
-    data: &Bytes,
+    response: &Bytes,
     outbound_session_id: OutboundSessionId,
 ) {
     let event = handler.next().await.unwrap();
@@ -152,12 +155,12 @@ async fn validate_received_data_event(
         event,
         ConnectionHandlerEvent::NotifyBehaviour(
             RequestToBehaviourEvent::GenerateEvent(
-                GenericEvent::ReceivedData {
-                    data: event_data, outbound_session_id: event_outbound_session_id, peer_id : event_peer_id
+                GenericEvent::ReceivedResponse {
+                    response: event_response, outbound_session_id: event_outbound_session_id, peer_id : event_peer_id
 
                 }
             )
-        ) if event_data == *data &&  event_outbound_session_id == outbound_session_id && event_peer_id == handler.peer_id
+        ) if event_response == *response &&  event_outbound_session_id == outbound_session_id && event_peer_id == handler.peer_id
     );
 }
 
@@ -234,7 +237,7 @@ async fn read_messages(handler: Handler, stream: &mut Stream, num_messages: usiz
 
     let mut fused_handler = handler.fuse();
     select! {
-        data = read_messages_inner(stream, num_messages).fuse() => data,
+        response = read_messages_inner(stream, num_messages).fuse() => response,
         _ = fused_handler.next() => panic!("There shouldn't be another event from the handler"),
     }
 }
@@ -255,16 +258,21 @@ async fn process_inbound_session() {
     );
     validate_new_inbound_session_event(&mut handler, &QUERY, inbound_session_id).await;
     let dummy_data_vec = dummy_data();
-    for data in &dummy_data_vec {
-        simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
+    for response in &dummy_data_vec {
+        simulate_request_to_send_response_from_swarm(
+            &mut handler,
+            response.clone(),
+            inbound_session_id,
+        );
     }
 
-    let data_received = read_messages(handler, &mut outbound_stream, dummy_data_vec.len()).await;
-    assert_eq!(dummy_data_vec, data_received);
+    let responses_received =
+        read_messages(handler, &mut outbound_stream, dummy_data_vec.len()).await;
+    assert_eq!(dummy_data_vec, responses_received);
 }
 
 #[tokio::test]
-async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
+async fn closed_inbound_session_ignores_behaviour_request_to_send_response() {
     let mut handler =
         Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
 
@@ -285,11 +293,15 @@ async fn closed_inbound_session_ignores_behaviour_request_to_send_data() {
     validate_session_finished_successfully_event(&mut handler, inbound_session_id.into()).await;
 
     let dummy_data_vec = dummy_data();
-    for data in &dummy_data_vec {
-        simulate_request_to_send_data_from_swarm(&mut handler, data.clone(), inbound_session_id);
+    for response in &dummy_data_vec {
+        simulate_request_to_send_response_from_swarm(
+            &mut handler,
+            response.clone(),
+            inbound_session_id,
+        );
     }
-    let data_received = read_messages(handler, &mut outbound_stream, 1).await;
-    assert!(data_received.is_empty());
+    let responses_received = read_messages(handler, &mut outbound_stream, 1).await;
+    assert!(responses_received.is_empty());
 }
 
 #[test]
@@ -338,12 +350,12 @@ async fn process_outbound_session() {
     );
 
     let dummy_data_vec = dummy_data();
-    for data in &dummy_data_vec {
-        write_message(data, &mut inbound_stream).await.unwrap();
+    for response in &dummy_data_vec {
+        write_message(response, &mut inbound_stream).await.unwrap();
     }
 
-    for data in &dummy_data_vec {
-        validate_received_data_event(&mut handler, data, outbound_session_id).await;
+    for response in &dummy_data_vec {
+        validate_received_response_event(&mut handler, response, outbound_session_id).await;
     }
 
     validate_no_events(&mut handler);

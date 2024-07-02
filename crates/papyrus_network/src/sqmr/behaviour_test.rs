@@ -93,17 +93,17 @@ fn simulate_new_inbound_session(
     );
 }
 
-fn simulate_received_data(
+fn simulate_received_response(
     behaviour: &mut Behaviour,
     peer_id: PeerId,
-    data: Bytes,
+    response: Bytes,
     outbound_session_id: OutboundSessionId,
 ) {
     behaviour.on_connection_handler_event(
         peer_id,
         ConnectionId::new_unchecked(0),
-        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedData {
-            data,
+        RequestToBehaviourEvent::GenerateEvent(GenericEvent::ReceivedResponse {
+            response,
             outbound_session_id,
             peer_id,
         }),
@@ -189,26 +189,26 @@ async fn validate_new_inbound_session_event(
     );
 }
 
-async fn validate_received_data_event(
+async fn validate_received_response_event(
     behaviour: &mut Behaviour,
-    data: &Bytes,
+    response: &Bytes,
     outbound_session_id: OutboundSessionId,
     peer_id: PeerId,
 ) {
     let event = behaviour.next().await.unwrap();
     assert_matches!(
         event,
-        ToSwarm::GenerateEvent(Event::External(ExternalEvent::ReceivedData {
-            data: event_data, outbound_session_id: event_outbound_session_id,
+        ToSwarm::GenerateEvent(Event::External(ExternalEvent::ReceivedResponse {
+            response: event_response, outbound_session_id: event_outbound_session_id,
             peer_id: event_peer_id,
-        })) if event_data == *data && event_outbound_session_id == outbound_session_id && peer_id == event_peer_id
+        })) if event_response == *response && event_outbound_session_id == outbound_session_id && peer_id == event_peer_id
     );
 }
 
-async fn validate_request_send_data_event(
+async fn validate_request_send_response_event(
     behaviour: &mut Behaviour,
     peer_id: &PeerId,
-    data: &Bytes,
+    response: &Bytes,
     inbound_session_id: InboundSessionId,
 ) {
     let event = behaviour.next().await.unwrap();
@@ -216,13 +216,13 @@ async fn validate_request_send_data_event(
         event,
         ToSwarm::NotifyHandler {
             peer_id: event_peer_id,
-            event: RequestFromBehaviourEvent::SendData {
-                inbound_session_id: event_inbound_session_id, data: event_data
+            event: RequestFromBehaviourEvent::SendResponse {
+                inbound_session_id: event_inbound_session_id, response: event_response
             },
             ..
         } if *peer_id == event_peer_id
             && inbound_session_id == event_inbound_session_id
-            && *data == event_data
+            && *response == event_response
     );
 }
 
@@ -295,12 +295,18 @@ async fn process_inbound_session() {
     validate_no_events(&mut behaviour);
 
     let dummy_data_vec = dummy_data();
-    for data in &dummy_data_vec {
-        behaviour.send_data(data.clone(), inbound_session_id).unwrap();
+    for response in &dummy_data_vec {
+        behaviour.send_response(response.clone(), inbound_session_id).unwrap();
     }
 
-    for data in &dummy_data_vec {
-        validate_request_send_data_event(&mut behaviour, &peer_id, data, inbound_session_id).await;
+    for response in &dummy_data_vec {
+        validate_request_send_response_event(
+            &mut behaviour,
+            &peer_id,
+            response,
+            inbound_session_id,
+        )
+        .await;
     }
     validate_no_events(&mut behaviour);
 
@@ -330,12 +336,13 @@ async fn create_and_process_outbound_session() {
     validate_no_events(&mut behaviour);
 
     let dummy_data_vec = dummy_data();
-    for data in &dummy_data_vec {
-        simulate_received_data(&mut behaviour, peer_id, data.clone(), outbound_session_id);
+    for response in &dummy_data_vec {
+        simulate_received_response(&mut behaviour, peer_id, response.clone(), outbound_session_id);
     }
 
-    for data in &dummy_data_vec {
-        validate_received_data_event(&mut behaviour, data, outbound_session_id, peer_id).await;
+    for response in &dummy_data_vec {
+        validate_received_response_event(&mut behaviour, response, outbound_session_id, peer_id)
+            .await;
     }
     validate_no_events(&mut behaviour);
 
@@ -411,8 +418,8 @@ async fn drop_outbound_session() {
     behaviour.drop_session(outbound_session_id.into()).unwrap();
     validate_request_drop_session_event(&mut behaviour, &peer_id, outbound_session_id.into()).await;
 
-    for data in dummy_data() {
-        simulate_received_data(&mut behaviour, peer_id, data, outbound_session_id);
+    for response in dummy_data() {
+        simulate_received_response(&mut behaviour, peer_id, response, outbound_session_id);
     }
 
     validate_no_events(&mut behaviour);
@@ -461,10 +468,10 @@ fn close_non_existing_session_fails() {
 }
 
 #[test]
-fn send_data_non_existing_session_fails() {
+fn send_response_non_existing_session_fails() {
     let mut behaviour = Behaviour::new(Config::get_test_config());
-    for data in dummy_data() {
-        behaviour.send_data(data, InboundSessionId::default()).unwrap_err();
+    for response in dummy_data() {
+        behaviour.send_response(response, InboundSessionId::default()).unwrap_err();
     }
 }
 

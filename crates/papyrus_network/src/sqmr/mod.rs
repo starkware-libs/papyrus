@@ -51,9 +51,9 @@ pub enum GenericEvent<SessionError> {
         peer_id: PeerId,
         protocol_name: StreamProtocol,
     },
-    ReceivedData {
+    ReceivedResponse {
         outbound_session_id: OutboundSessionId,
-        data: Bytes,
+        response: Bytes,
         peer_id: PeerId,
     },
     SessionFailed {

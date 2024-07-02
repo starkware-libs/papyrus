@@ -42,8 +42,8 @@ pub async fn read_message<Stream: AsyncRead + Unpin>(
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!(
-                "Received data size ({message_len} bytes) exceeds maximum ({MAX_MESSAGE_SIZE} \
-                 bytes)"
+                "Received message of size ({message_len} bytes), which exceeds maximum \
+                 ({MAX_MESSAGE_SIZE} bytes)"
             ),
         ));
     }

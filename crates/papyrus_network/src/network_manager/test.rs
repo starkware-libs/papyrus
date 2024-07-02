@@ -99,10 +99,10 @@ impl MockSwarm {
         outbound_session_id: OutboundSessionId,
         peer_id: PeerId,
     ) {
-        for data in query {
+        for response in query {
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
-                    data: vec![data],
+                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedResponse {
+                    response: vec![response],
                     outbound_session_id,
                     peer_id,
                 }),
@@ -112,16 +112,16 @@ impl MockSwarm {
 }
 
 impl SwarmTrait for MockSwarm {
-    fn send_data(
+    fn send_response(
         &mut self,
-        data: Vec<u8>,
+        response: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let responses_sender = self
-            .inbound_session_id_to_response_sender
-            .get(&inbound_session_id)
-            .expect("Called send_data without calling get_responses_sent_to_inbound_session first");
-        responses_sender.unbounded_send(data).unwrap();
+        let responses_sender =
+            self.inbound_session_id_to_response_sender.get(&inbound_session_id).expect(
+                "Called send_response without calling get_responses_sent_to_inbound_session first",
+            );
+        responses_sender.unbounded_send(response).unwrap();
         Ok(())
     }
 
@@ -231,7 +231,7 @@ async fn register_sqmr_subscriber_and_use_channels() {
 // TODO(shahak): Add multiple protocols and multiple queries in the test.
 #[tokio::test]
 async fn process_incoming_query() {
-    // Create data for test.
+    // Create responses for test.
     let query = VEC1.clone();
     let responses = vec![VEC1.clone(), VEC2.clone(), VEC3.clone()];
     let protocol = crate::Protocol::SignedBlockHeader;
@@ -248,7 +248,8 @@ async fn process_incoming_query() {
         }),
     )));
 
-    // Create a future that will return when the session is closed with the data sent on the swarm.
+    // Create a future that will return when the session is closed with the responses sent on the
+    // swarm.
     let get_responses_fut = mock_swarm.get_responses_sent_to_inbound_session(inbound_session_id);
 
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
