@@ -189,18 +189,19 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .map(|receipts| receipts.try_into().map(ReceiptCommitment))
             .transpose()?;
 
-        let state_diff_commitment = StateDiffCommitment(PoseidonHash(
-            value
-                .state_diff_commitment
-                .ok_or(ProtobufConversionError::MissingField {
-                    field_description: "SignedBlockHeader::state_diff_commitment",
-                })?
-                .root
-                .ok_or(ProtobufConversionError::MissingField {
-                    field_description: "StateDiffCommitment::root",
-                })?
-                .try_into()?,
-        ));
+        let state_diff_commitment = value
+            .state_diff_commitment
+            .map(|state_diff_commitment| {
+                Ok::<_, ProtobufConversionError>(StateDiffCommitment(PoseidonHash(
+                    state_diff_commitment
+                        .root
+                        .ok_or(ProtobufConversionError::MissingField {
+                            field_description: "StateDiffCommitment::root",
+                        })?
+                        .try_into()?,
+                )))
+            })
+            .transpose()?;
 
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
@@ -240,22 +241,24 @@ impl From<DataOrFin<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
 
 impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
     fn from((header, signatures): (BlockHeader, Vec<BlockSignature>)) -> Self {
+        let state_diff_commitment = match (header.state_diff_commitment, header.state_diff_length) {
+            (Some(state_diff_commitment), Some(state_diff_length)) => {
+                Some(protobuf::StateDiffCommitment {
+                    state_diff_length: state_diff_length
+                        .try_into()
+                        .expect("Converting usize to u64 failed"),
+                    root: Some(state_diff_commitment.0.0.into()),
+                })
+            }
+            _ => None,
+        };
         Self {
             block_hash: Some(header.block_hash.into()),
             parent_hash: Some(header.parent_hash.into()),
             number: header.block_number.0,
             time: header.timestamp.0,
             sequencer_address: Some(header.sequencer.0.into()),
-            state_diff_commitment: Some(protobuf::StateDiffCommitment {
-                state_diff_length: header
-                    .state_diff_length
-                    // If state_diff_length is None, then state_diff_commitment is also None and the
-                    // other peer will know that this node doesn't know about the state diff.
-                    .unwrap_or(0)
-                    .try_into()
-                    .expect("Converting usize to u64 failed"),
-                root: Some(header.state_diff_commitment.0.0.into()),
-            }),
+            state_diff_commitment,
             state_root: Some(header.state_root.0.into()),
             transactions: header.transaction_commitment.map(|transaction_commitment| {
                 protobuf::Patricia {
