@@ -74,6 +74,26 @@
     "privacy": "Public",
     "value": false
   },
+  "consensus.#is_none": {
+    "description": "Flag for an optional field",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
+  "consensus.start_height": {
+    "description": "The height to start the consensus from.",
+    "privacy": "Public",
+    "value": 0
+  },
+  "consensus.topic": {
+    "description": "The topic of the consensus.",
+    "privacy": "Public",
+    "value": "consensus"
+  },
+  "consensus.validator_id": {
+    "description": "A required param! The validator id of the node.",
+    "param_type": "String",
+    "privacy": "Public"
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "pointer_target": "collect_metrics",
