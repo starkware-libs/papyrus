@@ -18,9 +18,11 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if .Values.service.ports.monitoring.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/path: "/monitoring/metrics"
-        prometheus.io/port: {{ .Values.services.monitoring.port | quote }}
+        prometheus.io/port: {{ .Values.service.ports.monitoring.port | quote }}
+        {{- end }}
       labels:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
@@ -57,12 +59,9 @@ spec:
             cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
-        {{- if .Values.deployment.extraEnv }}
+        {{- with .Values.deployment.extraEnv }}
         env:
-        {{ range $key, $value := .Values.deployment.extraEnv }}
-          - name: {{ $key }}
-            value: {{ $value | quote }}
-        {{ end }}
+          {{- toYaml . | nindent 12 }}
         {{- end }}
         args:
           - --config_file 
@@ -77,10 +76,17 @@ spec:
           - --{{ $key }}
           {{- end }}
           {{ end }}
-        {{- if .Values.services }}
+        {{- if .Values.service }}
         ports:
-        - containerPort: {{ .Values.services.rpc.port }}
-        - containerPort: {{ .Values.services.monitoring.port }}
+        {{- if .Values.service.ports.rpc.enabled }}
+        - containerPort: {{ .Values.service.ports.rpc.port }}
+        {{- end }}
+        {{- if .Values.service.ports.monitoring.enabled }}
+        - containerPort: {{ .Values.service.ports.monitoring.port }}
+        {{- end }}
+        {{- if .Values.service.ports.p2p.enabled }}
+        - containerPort: {{ .Values.service.ports.p2p.port }}
+        {{- end }}
         {{- end }}
         volumeMounts:
         - name: data
