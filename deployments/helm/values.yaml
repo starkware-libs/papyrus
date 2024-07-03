@@ -22,6 +22,8 @@ deployment:
     tag: 0.4.0
   # The container's pullPolicy
   pullPolicy: Always
+  # Optional - pod annotations
+  annotations: {}
   # Optional - nodeSelector
   nodeSelector:
   # Optional - tolerations

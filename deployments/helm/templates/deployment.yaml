@@ -18,7 +18,10 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if .Values.service.ports.monitoring.enabled }}
+      {{- if .Values.deployment.annotations }}
+        {{ toYaml .Values.deployment.annotations | nindent 8 }}
+      {{- end}}
+      {{- if .Values.service.ports.monitoring.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/path: "/monitoring/metrics"
         prometheus.io/port: {{ .Values.service.ports.monitoring.port | quote }}
