@@ -34,21 +34,35 @@ deployment:
     requests:
       cpu: 500m
       memory: 1Gi
+  ## Optionally specify extra environment variables to add to papyrus container
+  extraEnv: []
+    # - name: FOO
+    #   value: BAR
   extraArgs: {} # Optional additional deployment args
     # collect_metrics: "true"
 
 # Service variables for a papyrus pod.
-services:
-  # RPC API.
-  rpc:
-    type: ClusterIP
-    port: 8080
-    protocol: TCP
-  # Monitoring API.
-  monitoring:
-    type: ClusterIP
-    port: 8081
-    protocol: TCP
+service:
+  # Specify service type, options are ClusterIP | NodePort | LoadBalancer
+  type: ClusterIP  
+  ports:
+    rpc:
+      enabled: true
+      port: 8080
+      protocol: TCP
+      # Optional If service type is "NodePort" you can sepcify a custom node port.
+      # If left empty a random port between range (30000-32767) will be selected.
+      nodePort: 
+    monitoring:
+      enabled: true
+      port: 8081
+      protocol: TCP
+      nodePort:
+    p2p:
+      enabled: true
+      port: 10000
+      protocol: TCP
+      nodePort:
 
 # Persistent volume claim variables for a papyrus pod.
 pvc:
