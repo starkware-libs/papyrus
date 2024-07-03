@@ -15,7 +15,7 @@ spec:
   - name: rpc
     port: {{ .Values.service.ports.rpc.port }}
     protocol: {{ .Values.service.ports.rpc.protocol }}
-    targetPort: {{ .Values.service.ports.rpc.port }}
+    targetPort: rpc
     {{- if and (eq .Values.service.type "NodePort") .Values.service.ports.rpc.nodePort }}
     nodePort: {{ .Values.service.ports.rpc.nodePort }}
     {{- end }}
@@ -24,7 +24,7 @@ spec:
   - name: monitoring
     port: {{ .Values.service.ports.monitoring.port }}
     protocol: {{ .Values.service.ports.monitoring.protocol }}
-    targetPort: {{ .Values.service.ports.monitoring.port }}
+    targetPort: monitoring
     {{- if and (eq .Values.service.type "NodePort") .Values.service.ports.monitoring.nodePort }}
     nodePort: {{ .Values.service.ports.monitoring.nodePort }}
     {{- end }}
@@ -33,7 +33,7 @@ spec:
   - name: p2p
     port: {{ .Values.service.ports.p2p.port }}
     protocol: {{ .Values.service.ports.p2p.protocol }}
-    targetPort: {{ .Values.service.ports.p2p.port }}
+    targetPort: p2p
     {{- if and (eq .Values.service.type "NodePort") .Values.service.ports.p2p.nodePort }}
     nodePort: {{ .Values.service.ports.p2p.nodePort }}
     {{- end }}
