@@ -28,7 +28,12 @@ use papyrus_network::network_manager::{
 use papyrus_network::{network_manager, NetworkConfig, Protocol};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
-use papyrus_p2p_sync::client::{P2PSync, P2PSyncChannels, P2PSyncConfig, P2PSyncError};
+use papyrus_p2p_sync::client::{
+    P2PSyncClient,
+    P2PSyncClientChannels,
+    P2PSyncClientConfig,
+    P2PSyncError,
+};
 use papyrus_p2p_sync::server::P2PSyncServer;
 use papyrus_p2p_sync::BUFFER_SIZE;
 use papyrus_protobuf::consensus::ConsensusMessage;
@@ -185,16 +190,16 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     // P2P Sync Server task.
     let p2p_sync_server_future = match maybe_sync_server_channels {
         Some((
-            header_sync_server_channel,
-            state_diff_sync_server_channel,
+            header_server_channel,
+            state_diff_server_channel,
             transaction_server_channel,
             class_server_channel,
             event_server_channel,
         )) => {
             let p2p_sync_server = P2PSyncServer::new(
                 storage_reader.clone(),
-                header_sync_server_channel,
-                state_diff_sync_server_channel,
+                header_server_channel,
+                state_diff_server_channel,
                 transaction_server_channel,
                 class_server_channel,
                 event_server_channel,
@@ -217,13 +222,13 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
                 run_sync(configs, shared_highest_block, pending_data, pending_classes, storage);
             (sync_fut.boxed(), pending().boxed())
         }
-        (None, Some(p2p_sync_config)) => {
+        (None, Some(p2p_sync_client_config)) => {
             let p2p_sync_client_channels = maybe_sync_client_channels
                 .expect("If p2p sync is enabled, network needs to be enabled too");
             (
                 pending().boxed(),
                 run_p2p_sync_client(
-                    p2p_sync_config,
+                    p2p_sync_client_config,
                     storage_reader.clone(),
                     storage_writer,
                     p2p_sync_client_channels,
@@ -310,19 +315,24 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
     }
 
     async fn run_p2p_sync_client(
-        p2p_sync_config: P2PSyncConfig,
+        p2p_sync_client_config: P2PSyncClientConfig,
         storage_reader: StorageReader,
         storage_writer: StorageWriter,
-        p2p_sync_channels: P2PSyncChannels,
+        p2p_sync_client_channels: P2PSyncClientChannels,
     ) -> Result<(), P2PSyncError> {
-        let sync = P2PSync::new(p2p_sync_config, storage_reader, storage_writer, p2p_sync_channels);
-        sync.run().await
+        let p2p_sync = P2PSyncClient::new(
+            p2p_sync_client_config,
+            storage_reader,
+            storage_writer,
+            p2p_sync_client_channels,
+        );
+        p2p_sync.run().await
     }
 }
 
 type NetworkRunReturn = (
     BoxFuture<'static, Result<(), NetworkError>>,
-    Option<P2PSyncChannels>,
+    Option<P2PSyncClientChannels>,
     Option<(
         SqmrQueryReceiver<HeaderQuery, DataOrFin<SignedBlockHeader>>,
         SqmrQueryReceiver<StateDiffQuery, DataOrFin<StateDiffChunk>>,
@@ -362,7 +372,7 @@ fn run_network(config: Option<NetworkConfig>) -> anyhow::Result<NetworkRunReturn
         Ok(_) => Some(network_manager.register_broadcast_topic(Topic::new("consensus"), 100)?),
         Err(_) => None,
     };
-    let p2p_sync_channels = P2PSyncChannels {
+    let p2p_sync_channels = P2PSyncClientChannels {
         header_query_sender: Box::new(header_client_channels.query_sender),
         header_response_receiver: Box::new(header_client_channels.response_receiver),
         state_diff_query_sender: Box::new(state_diff_client_channels.query_sender),
