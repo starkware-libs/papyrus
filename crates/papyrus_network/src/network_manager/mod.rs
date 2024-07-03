@@ -34,7 +34,7 @@ pub enum NetworkError {
 
 pub struct GenericNetworkManager<SwarmT: SwarmTrait> {
     swarm: SwarmT,
-    header_buffer_size: usize,
+    inbound_protocol_to_buffer_size: HashMap<Protocol, usize>,
     sqmr_inbound_response_receivers:
         StreamHashMap<InboundSessionId, BoxStream<'static, Option<Bytes>>>,
     sqmr_inbound_query_senders: HashMap<Protocol, Sender<(Bytes, Sender<Bytes>)>>,
@@ -74,12 +74,12 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         }
     }
 
-    pub(crate) fn generic_new(swarm: SwarmT, header_buffer_size: usize) -> Self {
+    pub(crate) fn generic_new(swarm: SwarmT) -> Self {
         gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
         let (reported_peer_sender, reported_peer_receiver) = futures::channel::mpsc::unbounded();
         Self {
             swarm,
-            header_buffer_size,
+            inbound_protocol_to_buffer_size: HashMap::new(),
             sqmr_inbound_response_receivers: StreamHashMap::new(HashMap::new()),
             sqmr_inbound_query_senders: HashMap::new(),
             sqmr_outbound_query_receivers: StreamHashMap::new(HashMap::new()),
@@ -97,13 +97,20 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     pub fn register_sqmr_protocol_server<Query, Response>(
         &mut self,
         protocol: Protocol,
+        buffer_size: usize,
+        buffer_size: usize,
     ) -> SqmrQueryReceiver<Query, Response>
     where
         Bytes: From<Response>,
         Query: TryFrom<Bytes>,
     {
+        if let Some(_old_buffer_size) =
+            self.inbound_protocol_to_buffer_size.insert(protocol, buffer_size)
+        {
+            panic!("Protocol '{}' has already been registered as a server.", protocol);
+        }
         let (inbound_query_sender, inbound_query_receiver) =
-            futures::channel::mpsc::channel(self.header_buffer_size);
+            futures::channel::mpsc::channel(buffer_size);
         let result = self.sqmr_inbound_query_senders.insert(protocol, inbound_query_sender);
         if result.is_some() {
             panic!("Protocol '{}' has already been registered as a server.", protocol);
@@ -122,6 +129,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     pub fn register_sqmr_protocol_client<Query, Response>(
         &mut self,
         protocol: Protocol,
+        buffer_size: usize,
     ) -> SqmrSubscriberChannels<Query, Response>
     where
         Bytes: From<Query>,
@@ -129,10 +137,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     {
         // TODO(shahak): Remove header_buffer_size from config and add buffer_size as an argument
         // to this function.
-        let (query_sender, query_receiver) =
-            futures::channel::mpsc::channel(self.header_buffer_size);
-        let (response_sender, response_receiver) =
-            futures::channel::mpsc::channel(self.header_buffer_size);
+        let (query_sender, query_receiver) = futures::channel::mpsc::channel(buffer_size);
+        let (response_sender, response_receiver) = futures::channel::mpsc::channel(buffer_size);
 
         let insert_result = self.sqmr_outbound_query_receivers.insert(protocol, query_receiver);
         if insert_result.is_some() {
@@ -321,8 +327,11 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                 let Some(query_sender) = self.sqmr_inbound_query_senders.get_mut(&protocol) else {
                     return;
                 };
-                let (response_sender, response_receiver) =
-                    futures::channel::mpsc::channel(self.header_buffer_size);
+                let (response_sender, response_receiver) = futures::channel::mpsc::channel(
+                    *self.inbound_protocol_to_buffer_size.get(&protocol).expect(
+                        "A protocol is registered in NetworkManager but it has no buffer size.",
+                    ),
+                );
                 // TODO(shahak): Close the inbound session if the buffer is full.
                 send_now(
                     query_sender,
@@ -494,7 +503,6 @@ impl NetworkManager {
             quic_port: _,
             session_timeout,
             idle_connection_timeout,
-            header_buffer_size,
             bootstrap_peer_multiaddr,
             secret_key,
         } = config;
@@ -521,7 +529,7 @@ impl NetworkManager {
             )
         });
 
-        Self::generic_new(swarm, header_buffer_size)
+        Self::generic_new(swarm)
     }
 
     pub fn get_local_peer_id(&self) -> String {

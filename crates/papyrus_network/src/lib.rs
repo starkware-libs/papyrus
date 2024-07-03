@@ -42,7 +42,6 @@ pub struct NetworkConfig {
     pub session_timeout: Duration,
     #[serde(deserialize_with = "deserialize_seconds_to_duration")]
     pub idle_connection_timeout: Duration,
-    pub header_buffer_size: usize,
     pub bootstrap_peer_multiaddr: Option<Multiaddr>,
     #[validate(custom = "validate_vec_u256")]
     #[serde(deserialize_with = "deserialize_optional_vec_u8")]
@@ -127,12 +126,6 @@ impl SerializeConfig for NetworkConfig {
                  alive.",
                 ParamPrivacyInput::Public,
             ),
-            ser_param(
-                "header_buffer_size",
-                &self.header_buffer_size,
-                "Size of the buffer for headers read from the storage.",
-                ParamPrivacyInput::Public,
-            ),
         ]);
         config.extend(ser_optional_param(
             &self.bootstrap_peer_multiaddr,
@@ -159,7 +152,6 @@ impl Default for NetworkConfig {
             quic_port: 10001,
             session_timeout: Duration::from_secs(120),
             idle_connection_timeout: Duration::from_secs(120),
-            header_buffer_size: 100000,
             bootstrap_peer_multiaddr: None,
             secret_key: None,
         }
