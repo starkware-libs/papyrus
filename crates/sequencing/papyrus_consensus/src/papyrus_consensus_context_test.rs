@@ -115,6 +115,7 @@ fn test_setup() -> (Block, PapyrusConsensusContext, BroadcastNetworkMock<Consens
     let papyrus_context = PapyrusConsensusContext::new(
         storage_reader.clone(),
         test_channels.subscriber_channels.messages_to_broadcast_sender,
+        4,
     );
     (block, papyrus_context, test_channels.mock_network)
 }

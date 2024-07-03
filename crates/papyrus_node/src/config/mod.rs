@@ -25,6 +25,7 @@ use papyrus_config::dumping::{
 };
 use papyrus_config::loading::load_and_process_config;
 use papyrus_config::{ConfigError, ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_consensus::config::ConsensusConfig;
 use papyrus_monitoring_gateway::MonitoringGatewayConfig;
 use papyrus_network::NetworkConfig;
 use papyrus_p2p_sync::client::{P2PSyncClient, P2PSyncClientConfig};
@@ -62,6 +63,7 @@ pub struct NodeConfig {
     /// If P2P sync is active, then network must be active too.
     // TODO(yair): Change NodeConfig to have an option of enum of SyncConfig or P2PSyncConfig.
     pub p2p_sync: Option<P2PSyncClientConfig>,
+    pub consensus: Option<ConsensusConfig>,
     // TODO(shahak): Make network non-optional once it's developed enough.
     pub network: Option<NetworkConfig>,
     pub collect_profiling_metrics: bool,
@@ -79,6 +81,7 @@ impl Default for NodeConfig {
             storage: StorageConfig::default(),
             sync: Some(SyncConfig::default()),
             p2p_sync: None,
+            consensus: None,
             network: None,
             collect_profiling_metrics: false,
         }
@@ -90,12 +93,12 @@ impl SerializeConfig for NodeConfig {
         #[allow(unused_mut)]
         let mut sub_configs = vec![
             append_sub_config_name(self.central.dump(), "central"),
-            append_sub_config_name(self.central.dump(), "central"),
             append_sub_config_name(self.base_layer.dump(), "base_layer"),
             append_sub_config_name(self.monitoring_gateway.dump(), "monitoring_gateway"),
             append_sub_config_name(self.storage.dump(), "storage"),
             ser_optional_sub_config(&self.sync, "sync"),
             ser_optional_sub_config(&self.p2p_sync, "p2p_sync"),
+            ser_optional_sub_config(&self.consensus, "consensus"),
             ser_optional_sub_config(&self.network, "network"),
             BTreeMap::from_iter([ser_param(
                 "collect_profiling_metrics",
