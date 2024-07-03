@@ -13,17 +13,17 @@ use starknet_api::block::{BlockHash, BlockNumber};
 use tracing::{debug, info, instrument};
 use types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
 
-// TODO(matan): Remove dead code allowance at the end of milestone 1.
+/// The module contains `ConsensusConfig`, which holds the
+/// configuration details for the consensus mechanism.
+pub mod config;
 #[allow(missing_docs)]
 pub mod papyrus_consensus_context;
-#[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod single_height_consensus;
 #[allow(missing_docs)]
 pub mod state_machine;
 #[cfg(test)]
 pub(crate) mod test_utils;
-#[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod types;
 
