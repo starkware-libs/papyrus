@@ -84,6 +84,28 @@ expression: dumped_default_config
     "value": false,
     "privacy": "Public"
   },
+  "consensus.#is_none": {
+    "description": "Flag for an optional field",
+    "value": true,
+    "privacy": "TemporaryValue"
+  },
+  "consensus.start_height": {
+    "description": "The height to start the consensus from.",
+    "value": {
+      "$serde_json::private::Number": "0"
+    },
+    "privacy": "Public"
+  },
+  "consensus.topic": {
+    "description": "The topic of the consensus.",
+    "value": "consensus",
+    "privacy": "Public"
+  },
+  "consensus.validator_id": {
+    "description": "A required param! The validator id of the node.",
+    "param_type": "String",
+    "privacy": "Public"
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "value": false,
