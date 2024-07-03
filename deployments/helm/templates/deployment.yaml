@@ -83,12 +83,15 @@ spec:
         ports:
         {{- if .Values.service.ports.rpc.enabled }}
         - containerPort: {{ .Values.service.ports.rpc.port }}
+          name: rpc
         {{- end }}
         {{- if .Values.service.ports.monitoring.enabled }}
         - containerPort: {{ .Values.service.ports.monitoring.port }}
+          name: monitoring
         {{- end }}
         {{- if .Values.service.ports.p2p.enabled }}
         - containerPort: {{ .Values.service.ports.p2p.port }}
+          name: p2p
         {{- end }}
         {{- end }}
         volumeMounts:
