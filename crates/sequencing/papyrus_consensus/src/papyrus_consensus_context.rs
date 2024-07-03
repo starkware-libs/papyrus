@@ -50,8 +50,6 @@ pub struct PapyrusConsensusContext {
 }
 
 impl PapyrusConsensusContext {
-    // TODO(dvir): remove the dead code attribute after we will use this function.
-    #[allow(dead_code)]
     pub fn new(
         storage_reader: StorageReader,
         broadcast_sender: SubscriberSender<ConsensusMessage>,

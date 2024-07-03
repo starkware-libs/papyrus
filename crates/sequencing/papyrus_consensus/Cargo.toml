@@ -9,9 +9,11 @@ description = "Reach consensus for Starknet"
 [dependencies]
 async-trait.workspace = true
 futures.workspace = true
+papyrus_config = { path = "../../papyrus_config", version = "0.4.0-dev.2" }
 papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
 papyrus_protobuf = { path = "../../papyrus_protobuf", version = "0.4.0-dev.2" }
 papyrus_storage = { path = "../../papyrus_storage", version = "0.4.0-dev.2" }
+serde = { workspace = true, features = ["derive"] }
 starknet_api.workspace = true
 starknet-types-core.workspace = true
 thiserror.workspace = true
