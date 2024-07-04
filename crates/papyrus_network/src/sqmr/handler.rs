@@ -22,11 +22,10 @@ use libp2p::swarm::handler::{
 use libp2p::swarm::{
     ConnectionHandler,
     ConnectionHandlerEvent,
-    StreamProtocol,
     StreamUpgradeError,
     SubstreamProtocol,
 };
-use libp2p::PeerId;
+use libp2p::{PeerId, StreamProtocol};
 use tracing::debug;
 
 use self::inbound_session::InboundSession;
@@ -88,11 +87,17 @@ pub struct Handler {
     pending_events: VecDeque<HandlerEvent<Self>>,
     inbound_sessions_marked_to_end: HashSet<InboundSessionId>,
     dropped_outbound_sessions_non_negotiated: HashSet<OutboundSessionId>,
+    supported_inbound_protocols: Vec<String>,
 }
 
 impl Handler {
     // TODO(shahak) If we'll add more parameters, consider creating a HandlerConfig struct.
-    pub fn new(config: Config, next_inbound_session_id: Arc<AtomicUsize>, peer_id: PeerId) -> Self {
+    pub fn new(
+        config: Config,
+        next_inbound_session_id: Arc<AtomicUsize>,
+        peer_id: PeerId,
+        supported_inbound_protocols: Vec<StreamProtocol>,
+    ) -> Self {
         Self {
             config,
             next_inbound_session_id,
@@ -102,6 +107,7 @@ impl Handler {
             pending_events: Default::default(),
             inbound_sessions_marked_to_end: Default::default(),
             dropped_outbound_sessions_non_negotiated: Default::default(),
+            supported_inbound_protocols,
         }
     }
 
@@ -152,7 +158,7 @@ impl ConnectionHandler for Handler {
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol, Self::InboundOpenInfo> {
         SubstreamProtocol::new(
-            InboundProtocol::new(self.config.supported_inbound_protocols.clone()),
+            InboundProtocol::new(self.supported_inbound_protocols.clone()),
             InboundSessionId { value: self.next_inbound_session_id.fetch_add(1, Ordering::AcqRel) },
         )
         .with_timeout(self.config.session_timeout)

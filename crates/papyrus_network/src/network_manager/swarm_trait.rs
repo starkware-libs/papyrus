@@ -2,14 +2,14 @@ use futures::stream::Stream;
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::{DialError, NetworkBehaviour, SwarmEvent};
-use libp2p::{Multiaddr, PeerId, Swarm};
+use libp2p::{Multiaddr, PeerId, StreamProtocol, Swarm};
 use tracing::error;
 
 use crate::gossipsub_impl::Topic;
+use crate::mixed_behaviour;
 use crate::peer_manager::ReputationModifier;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, InboundSessionId, OutboundSessionId};
-use crate::{mixed_behaviour, Protocol};
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
@@ -24,7 +24,7 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
-        protocol: Protocol,
+        protocol: StreamProtocol,
     ) -> Result<OutboundSessionId, PeerNotConnected>;
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError>;
@@ -45,6 +45,8 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     fn broadcast_message(&mut self, message: Bytes, topic_hash: TopicHash);
 
     fn report_peer(&mut self, peer_id: PeerId);
+
+    fn add_new_supported_inbound_protocol(&mut self, protocol_name: String);
 }
 
 impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
@@ -61,9 +63,9 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
         &mut self,
         query: Vec<u8>,
         _peer_id: PeerId,
-        protocol: Protocol,
+        protocol: StreamProtocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
-        Ok(self.behaviour_mut().sqmr.start_query(query, protocol.into()))
+        Ok(self.behaviour_mut().sqmr.start_query(query, protocol))
     }
 
     fn dial(&mut self, peer_multiaddr: Multiaddr) -> Result<(), DialError> {
@@ -106,5 +108,9 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
 
     fn report_peer(&mut self, peer_id: PeerId) {
         let _ = self.behaviour_mut().peer_manager.report_peer(peer_id, ReputationModifier::Bad {});
+    }
+
+    fn add_new_supported_inbound_protocol(&mut self, protocol_name: String) {
+        self.behaviour_mut().sqmr.add_new_supported_inbound_protocol(protocol_name);
     }
 }
