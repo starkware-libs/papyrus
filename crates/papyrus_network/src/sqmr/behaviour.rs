@@ -22,7 +22,7 @@ use libp2p::swarm::{
     NotifyHandler,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId, StreamProtocol};
+use libp2p::{Multiaddr, PeerId};
 use tracing::{error, info};
 
 use super::handler::{
@@ -117,7 +117,11 @@ pub struct Behaviour {
     next_inbound_session_id: Arc<AtomicUsize>,
     dropped_sessions: HashSet<SessionId>,
     wakers_waiting_for_event: Vec<Waker>,
-    outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, StreamProtocol)>,
+    outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, String)>,
+    // If we put multiple versions of the same protocol, they should be inserted sorted where the
+    // latest is the first (They don't have to appear continuously among the other protocols).
+    // TODO(shahak): Sort protocols upon construction by version
+    supported_inbound_protocols: Vec<String>,
 }
 
 impl Behaviour {
@@ -132,6 +136,7 @@ impl Behaviour {
             dropped_sessions: Default::default(),
             wakers_waiting_for_event: Default::default(),
             outbound_sessions_pending_peer_assignment: Default::default(),
+            supported_inbound_protocols: Default::default(),
         }
     }
 
@@ -142,7 +147,7 @@ impl Behaviour {
         &mut self,
         query: Bytes,
         peer_id: PeerId,
-        protocol_name: StreamProtocol,
+        protocol_name: String,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let connection_id =
             *self.connection_ids_map.get(peer_id).iter().next().ok_or(PeerNotConnected)?;
@@ -167,11 +172,7 @@ impl Behaviour {
     }
 
     /// Assign some peer and start a query. Return the id of the new session.
-    pub fn start_query(
-        &mut self,
-        query: Bytes,
-        protocol_name: StreamProtocol,
-    ) -> OutboundSessionId {
+    pub fn start_query(&mut self, query: Bytes, protocol_name: String) -> OutboundSessionId {
         let outbound_session_id = self.next_outbound_session_id;
         self.next_outbound_session_id.value += 1;
 
@@ -248,6 +249,11 @@ impl Behaviour {
             waker.wake();
         }
     }
+    pub(crate) fn add_new_supported_inbound_protocol(&mut self, protocol_name: String) {
+        if !self.supported_inbound_protocols.contains(&protocol_name) {
+            self.supported_inbound_protocols.push(protocol_name);
+        }
+    }
 }
 
 impl NetworkBehaviour for Behaviour {
@@ -261,7 +267,12 @@ impl NetworkBehaviour for Behaviour {
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn handle_established_outbound_connection(
@@ -271,7 +282,12 @@ impl NetworkBehaviour for Behaviour {
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_>) {

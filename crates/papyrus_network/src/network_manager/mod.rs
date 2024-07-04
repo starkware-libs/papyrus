@@ -24,7 +24,7 @@ use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour::{self, BridgedBehaviour};
 use crate::sqmr::{self, InboundSessionId, OutboundSessionId, SessionId};
 use crate::utils::StreamHashMap;
-use crate::{gossipsub_impl, NetworkConfig, Protocol};
+use crate::{gossipsub_impl, NetworkConfig};
 
 #[derive(thiserror::Error, Debug)]
 pub enum NetworkError {
@@ -34,21 +34,21 @@ pub enum NetworkError {
 
 pub struct GenericNetworkManager<SwarmT: SwarmTrait> {
     swarm: SwarmT,
-    inbound_protocol_to_buffer_size: HashMap<Protocol, usize>,
+    inbound_protocol_to_buffer_size: HashMap<String, usize>,
     sqmr_inbound_response_receivers:
         StreamHashMap<InboundSessionId, BoxStream<'static, Option<Bytes>>>,
-    sqmr_inbound_query_senders: HashMap<Protocol, Sender<(Bytes, Sender<Bytes>)>>,
+    sqmr_inbound_query_senders: HashMap<String, Sender<(Bytes, Sender<Bytes>)>>,
     // Splitting the response receivers from the query senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
-    sqmr_outbound_query_receivers: StreamHashMap<Protocol, Receiver<Bytes>>,
-    sqmr_outbound_response_senders: HashMap<Protocol, Sender<(Bytes, ReportCallback)>>,
+    sqmr_outbound_query_receivers: StreamHashMap<String, Receiver<Bytes>>,
+    sqmr_outbound_response_senders: HashMap<String, Sender<(Bytes, ReportCallback)>>,
     // Splitting the broadcast receivers from the broadcasted senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
     messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
     broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
-    outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
+    outbound_session_id_to_protocol: HashMap<OutboundSessionId, String>,
     reported_peer_receiver: UnboundedReceiver<PeerId>,
     // We keep this just for giving a clone of it for subscribers.
     reported_peer_sender: UnboundedSender<PeerId>,
@@ -96,7 +96,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
 
     pub fn register_sqmr_protocol_server<Query, Response>(
         &mut self,
-        protocol: Protocol,
+        protocol: String,
         buffer_size: usize,
     ) -> SqmrQueryReceiver<Query, Response>
     where
@@ -104,13 +104,13 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         Query: TryFrom<Bytes>,
     {
         if let Some(_old_buffer_size) =
-            self.inbound_protocol_to_buffer_size.insert(protocol, buffer_size)
+            self.inbound_protocol_to_buffer_size.insert(protocol.clone(), buffer_size)
         {
             panic!("Protocol '{}' has already been registered as a server.", protocol);
         }
         let (inbound_query_sender, inbound_query_receiver) =
             futures::channel::mpsc::channel(buffer_size);
-        let result = self.sqmr_inbound_query_senders.insert(protocol, inbound_query_sender);
+        let result = self.sqmr_inbound_query_senders.insert(protocol.clone(), inbound_query_sender);
         if result.is_some() {
             panic!("Protocol '{}' has already been registered as a server.", protocol);
         }
@@ -127,7 +127,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     /// Panics if the given protocol is already subscribed.
     pub fn register_sqmr_protocol_client<Query, Response>(
         &mut self,
-        protocol: Protocol,
+        protocol: String,
         buffer_size: usize,
     ) -> SqmrSubscriberChannels<Query, Response>
     where
@@ -139,11 +139,13 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         let (query_sender, query_receiver) = futures::channel::mpsc::channel(buffer_size);
         let (response_sender, response_receiver) = futures::channel::mpsc::channel(buffer_size);
 
-        let insert_result = self.sqmr_outbound_query_receivers.insert(protocol, query_receiver);
+        let insert_result =
+            self.sqmr_outbound_query_receivers.insert(protocol.clone(), query_receiver);
         if insert_result.is_some() {
             panic!("Protocol '{}' has already been registered as a client.", protocol);
         }
-        let insert_result = self.sqmr_outbound_response_senders.insert(protocol, response_sender);
+        let insert_result =
+            self.sqmr_outbound_response_senders.insert(protocol.clone(), response_sender);
         if insert_result.is_some() {
             panic!("Protocol '{}' has already been registered as a client.", protocol);
         }
@@ -321,13 +323,12 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     self.num_active_inbound_sessions as f64
                 );
                 // TODO: consider returning error instead of panic.
-                let protocol =
-                    Protocol::try_from(protocol_name).expect("Encountered unknown protocol");
-                let Some(query_sender) = self.sqmr_inbound_query_senders.get_mut(&protocol) else {
+                let Some(query_sender) = self.sqmr_inbound_query_senders.get_mut(&protocol_name)
+                else {
                     return;
                 };
                 let (response_sender, response_receiver) = futures::channel::mpsc::channel(
-                    *self.inbound_protocol_to_buffer_size.get(&protocol).expect(
+                    *self.inbound_protocol_to_buffer_size.get(&protocol_name).expect(
                         "A protocol is registered in NetworkManager but it has no buffer size.",
                     ),
                 );
@@ -439,8 +440,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         };
     }
 
-    fn handle_local_sqmr_query(&mut self, protocol: Protocol, query: Bytes) {
-        match self.swarm.send_query(query, PeerId::random(), protocol) {
+    fn handle_local_sqmr_query(&mut self, protocol: String, query: Bytes) {
+        match self.swarm.send_query(query, PeerId::random(), protocol.clone()) {
             Ok(outbound_session_id) => {
                 debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");
                 self.num_active_outbound_sessions += 1;
@@ -515,19 +516,9 @@ impl NetworkManager {
             mixed_behaviour::MixedBehaviour::new(
                 key,
                 bootstrap_peer_multiaddr.clone(),
-                sqmr::Config {
-                    session_timeout,
-                    supported_inbound_protocols: vec![
-                        Protocol::SignedBlockHeader.into(),
-                        Protocol::StateDiff.into(),
-                        Protocol::Transaction.into(),
-                        Protocol::Class.into(),
-                        Protocol::Event.into(),
-                    ],
-                },
+                sqmr::Config { session_timeout },
             )
         });
-
         Self::generic_new(swarm)
     }
 

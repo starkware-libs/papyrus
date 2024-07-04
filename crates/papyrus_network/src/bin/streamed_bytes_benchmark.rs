@@ -9,7 +9,7 @@ use papyrus_network::bin_utils::{build_swarm, dial};
 use papyrus_network::sqmr::behaviour::{Behaviour, Event, ExternalEvent, SessionError};
 use papyrus_network::sqmr::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
 
-const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/papyrus/bench/1");
+const PROTOCOL_NAME: &str = "/papyrus/bench/1";
 const CONST_BYTE: u8 = 1;
 
 fn pretty_size(mut size: f64) -> String {
@@ -91,8 +91,10 @@ fn create_outbound_sessions_if_all_peers_connected(
     if peers_pending_outbound_session.len() >= args.num_expected_connections {
         for peer_id in peers_pending_outbound_session {
             for _ in 0..args.num_queries_per_connection {
-                let outbound_session_id =
-                    swarm.behaviour_mut().send_query(vec![], *peer_id, PROTOCOL_NAME).expect(
+                let outbound_session_id = swarm
+                    .behaviour_mut()
+                    .send_query(vec![], *peer_id, PROTOCOL_NAME.into())
+                    .expect(
                         "There's no connection to a peer immediately after we got a \
                          ConnectionEstablished event",
                     );
@@ -219,14 +221,9 @@ async fn main() {
         vec![args.listen_address.clone()],
         Duration::from_secs(args.idle_connection_timeout),
         None,
-        |_| {
-            Behaviour::new(Config {
-                session_timeout: Duration::from_secs(3600),
-                supported_inbound_protocols: vec![PROTOCOL_NAME],
-            })
-        },
+        |_| Behaviour::new(Config { session_timeout: Duration::from_secs(3600) }),
     );
-
+    swarm.add_new_supported_inbound_protocol(PROTOCOL_NAME.into());
     let mut outbound_session_measurements = HashMap::new();
     let mut inbound_session_to_messages = HashMap::new();
     let mut connected_in_the_past = false;

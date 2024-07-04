@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
 use futures::StreamExt;
-use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
+use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
 use libp2p::{PeerId, Swarm};
 
 use super::behaviour::{Behaviour, Event, ExternalEvent};
@@ -16,8 +16,8 @@ use crate::utils::StreamHashMap;
 const NUM_PEERS: usize = 3;
 const NUM_MESSAGES_PER_SESSION: usize = 5;
 
-pub const PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/example");
-pub const OTHER_PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/other");
+pub const PROTOCOL_NAME: &str = "/example";
+pub const OTHER_PROTOCOL_NAME: &str = "/other";
 
 type SwarmEventAlias<BehaviourTrait> = SwarmEvent<<BehaviourTrait as NetworkBehaviour>::ToSwarm>;
 
@@ -70,7 +70,7 @@ fn send_query_and_update_map(
         .send_query(
             get_bytes_from_query_indices(outbound_peer_id, inbound_peer_id),
             inbound_peer_id,
-            PROTOCOL_NAME,
+            PROTOCOL_NAME.into(),
         )
         .unwrap();
     outbound_session_id_to_peer_id.insert((outbound_peer_id, outbound_session_id), inbound_peer_id);
@@ -189,10 +189,12 @@ fn get_response_from_indices(peer_id1: PeerId, peer_id2: PeerId, message_index: 
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::new(Config {
-            session_timeout: Duration::from_secs(5),
-            supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
-        })
+        let mut behaviour = Behaviour::new(Config { session_timeout: Duration::from_secs(5) });
+        let supported_inbound_protocols = vec![PROTOCOL_NAME.into(), OTHER_PROTOCOL_NAME.into()];
+        for protocol_name in supported_inbound_protocols {
+            behaviour.add_new_supported_inbound_protocol(protocol_name);
+        }
+        behaviour
     })
     .await;
 

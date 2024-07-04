@@ -44,6 +44,7 @@ struct MockSwarm {
     inbound_session_id_to_response_sender: HashMap<InboundSessionId, UnboundedSender<Bytes>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
+    supported_inbound_protocols: Vec<String>,
 }
 
 impl Stream for MockSwarm {
@@ -129,7 +130,7 @@ impl SwarmTrait for MockSwarm {
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
-        _protocol: crate::Protocol,
+        _protocol: String,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_response_events_for_query_each_num_becomes_response(
@@ -182,9 +183,15 @@ impl SwarmTrait for MockSwarm {
             sender.unbounded_send(peer_id).unwrap();
         }
     }
+    fn add_new_supported_inbound_protocol(&mut self, protocol_name: String) {
+        if !self.supported_inbound_protocols.contains(&protocol_name) {
+            self.supported_inbound_protocols.push(protocol_name);
+        }
+    }
 }
 
 const BUFFER_SIZE: usize = 100;
+const SIGNED_BLOCK_HEADER_PROTOCOL: &str = "/starknet/headers/1";
 
 #[tokio::test]
 async fn register_sqmr_protocol_client_and_use_channels() {
@@ -201,7 +208,7 @@ async fn register_sqmr_protocol_client_and_use_channels() {
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
         .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
-            crate::Protocol::SignedBlockHeader,
+            SIGNED_BLOCK_HEADER_PROTOCOL.into(),
             BUFFER_SIZE,
         );
 
@@ -237,7 +244,7 @@ async fn process_incoming_query() {
     // Create responses for test.
     let query = VEC1.clone();
     let responses = vec![VEC1.clone(), VEC2.clone(), VEC3.clone()];
-    let protocol = crate::Protocol::SignedBlockHeader;
+    let protocol: String = SIGNED_BLOCK_HEADER_PROTOCOL.into();
 
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
@@ -247,7 +254,7 @@ async fn process_incoming_query() {
             query: query.clone(),
             inbound_session_id,
             peer_id: PeerId::random(),
-            protocol_name: protocol.into(),
+            protocol_name: protocol.clone(),
         }),
     )));
 
