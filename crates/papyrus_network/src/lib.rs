@@ -13,13 +13,10 @@ pub mod sqmr;
 mod test_utils;
 mod utils;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::time::Duration;
 
-use derive_more::Display;
-use enum_iterator::Sequence;
-use lazy_static::lazy_static;
-use libp2p::{Multiaddr, StreamProtocol};
+use libp2p::Multiaddr;
 use papyrus_config::converters::{
     deserialize_optional_vec_u8,
     deserialize_seconds_to_duration,
@@ -46,56 +43,6 @@ pub struct NetworkConfig {
     #[validate(custom = "validate_vec_u256")]
     #[serde(deserialize_with = "deserialize_optional_vec_u8")]
     pub(crate) secret_key: Option<Vec<u8>>,
-}
-
-/// This is a part of the exposed API of the network manager.
-/// This is meant to represent the different underlying p2p protocols the network manager supports.
-// TODO(shahak): Change protocol to a wrapper of string.
-#[derive(Debug, Display, PartialEq, Eq, Clone, Copy, Hash, Sequence)]
-pub enum Protocol {
-    SignedBlockHeader,
-    StateDiff,
-    Transaction,
-    Class,
-    Event,
-}
-
-impl Protocol {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            Protocol::SignedBlockHeader => "/starknet/headers/1",
-            Protocol::StateDiff => "/starknet/state_diffs/1",
-            Protocol::Transaction => "/starknet/transactions/1",
-            Protocol::Class => "/starknet/classes/1",
-            Protocol::Event => "/starknet/events/1",
-        }
-    }
-}
-
-impl From<Protocol> for StreamProtocol {
-    fn from(protocol: Protocol) -> StreamProtocol {
-        StreamProtocol::new(protocol.as_str())
-    }
-}
-
-#[derive(thiserror::Error, Debug)]
-#[error("Unknown protocol: {0}")]
-pub struct UnknownProtocolConversionError(String);
-
-lazy_static! {
-    static ref PROTOCOL_NAME_TO_PROTOCOL: HashMap<&'static str, Protocol> =
-        enum_iterator::all::<Protocol>().map(|protocol| (protocol.as_str(), protocol)).collect();
-}
-
-impl TryFrom<StreamProtocol> for Protocol {
-    type Error = UnknownProtocolConversionError;
-
-    fn try_from(protocol: StreamProtocol) -> Result<Self, Self::Error> {
-        PROTOCOL_NAME_TO_PROTOCOL
-            .get(protocol.as_ref())
-            .ok_or(UnknownProtocolConversionError(protocol.as_ref().to_string()))
-            .copied()
-    }
 }
 
 impl SerializeConfig for NetworkConfig {

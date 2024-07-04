@@ -19,7 +19,6 @@ bytes.workspace = true
 chrono.workspace = true
 defaultmap.workspace = true
 derive_more.workspace = true
-enum-iterator.workspace = true
 futures.workspace = true
 lazy_static.workspace = true
 libp2p = { workspace = true, features = [

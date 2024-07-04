@@ -14,11 +14,10 @@ use libp2p::swarm::{
     FromSwarm,
     NetworkBehaviour,
     Stream,
-    StreamProtocol,
     SubstreamProtocol,
     ToSwarm,
 };
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 #[derive(Default)]
 pub(crate) struct Behaviour {
