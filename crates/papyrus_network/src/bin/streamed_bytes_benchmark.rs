@@ -220,13 +220,12 @@ async fn main() {
         Duration::from_secs(args.idle_connection_timeout),
         None,
         |_| {
-            Behaviour::new(Config {
-                session_timeout: Duration::from_secs(3600),
-                supported_inbound_protocols: vec![PROTOCOL_NAME],
-            })
+            let mut behaviour =
+                Behaviour::new(Config { session_timeout: Duration::from_secs(3600) });
+            behaviour.add_new_supported_inbound_protocol(PROTOCOL_NAME);
+            behaviour
         },
     );
-
     let mut outbound_session_measurements = HashMap::new();
     let mut inbound_session_to_messages = HashMap::new();
     let mut connected_in_the_past = false;

@@ -8,15 +8,8 @@ use futures::{FutureExt, Stream, StreamExt};
 use lazy_static::lazy_static;
 use libp2p::core::{ConnectedPoint, Endpoint};
 use libp2p::swarm::behaviour::ConnectionEstablished;
-use libp2p::swarm::{
-    ConnectionClosed,
-    ConnectionId,
-    FromSwarm,
-    NetworkBehaviour,
-    StreamProtocol,
-    ToSwarm,
-};
-use libp2p::{Multiaddr, PeerId};
+use libp2p::swarm::{ConnectionClosed, ConnectionId, FromSwarm, NetworkBehaviour, ToSwarm};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 
 use super::super::handler::{RequestFromBehaviourEvent, RequestToBehaviourEvent};
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
@@ -38,8 +31,7 @@ impl Stream for Behaviour {
 
 lazy_static! {
     static ref QUERY: Bytes = vec![1u8, 2u8, 3u8];
-    static ref PROTOCOL_NAME: StreamProtocol =
-        Config::get_test_config().supported_inbound_protocols.first().unwrap().clone();
+    static ref PROTOCOL_NAME: StreamProtocol = StreamProtocol::new("/");
 }
 
 fn simulate_connection_established(behaviour: &mut Behaviour, peer_id: PeerId) {
