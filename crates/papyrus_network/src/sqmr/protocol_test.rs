@@ -1,6 +1,6 @@
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
-use libp2p::swarm::StreamProtocol;
+use libp2p::StreamProtocol;
 use pretty_assertions::assert_eq;
 
 use super::super::messages::{read_message, write_message};

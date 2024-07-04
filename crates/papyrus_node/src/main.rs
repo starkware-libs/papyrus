@@ -26,7 +26,7 @@ use papyrus_network::network_manager::{
     NetworkError,
     SqmrQueryReceiver,
 };
-use papyrus_network::{network_manager, NetworkConfig, Protocol};
+use papyrus_network::{network_manager, NetworkConfig};
 use papyrus_node::config::NodeConfig;
 use papyrus_node::version::VERSION_FULL;
 use papyrus_p2p_sync::client::{
@@ -36,7 +36,7 @@ use papyrus_p2p_sync::client::{
     P2PSyncError,
 };
 use papyrus_p2p_sync::server::P2PSyncServer;
-use papyrus_p2p_sync::BUFFER_SIZE;
+use papyrus_p2p_sync::{Protocol, BUFFER_SIZE};
 use papyrus_protobuf::consensus::ConsensusMessage;
 use papyrus_protobuf::sync::{
     ClassQuery,
@@ -355,23 +355,23 @@ fn run_network(
     };
     let mut network_manager = network_manager::NetworkManager::new(network_config.clone());
     let local_peer_id = network_manager.get_local_peer_id();
-    let header_client_channels =
-        network_manager.register_sqmr_protocol_client(Protocol::SignedBlockHeader, BUFFER_SIZE);
+    let header_client_channels = network_manager
+        .register_sqmr_protocol_client(Protocol::SignedBlockHeader.into(), BUFFER_SIZE);
     let state_diff_client_channels =
-        network_manager.register_sqmr_protocol_client(Protocol::StateDiff, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_client(Protocol::StateDiff.into(), BUFFER_SIZE);
     let transaction_client_channels =
-        network_manager.register_sqmr_protocol_client(Protocol::Transaction, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_client(Protocol::Transaction.into(), BUFFER_SIZE);
 
-    let header_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::SignedBlockHeader, BUFFER_SIZE);
+    let header_server_channel = network_manager
+        .register_sqmr_protocol_server(Protocol::SignedBlockHeader.into(), BUFFER_SIZE);
     let state_diff_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::StateDiff, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_server(Protocol::StateDiff.into(), BUFFER_SIZE);
     let transaction_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::Transaction, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_server(Protocol::Transaction.into(), BUFFER_SIZE);
     let class_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::Class, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_server(Protocol::Class.into(), BUFFER_SIZE);
     let event_server_channel =
-        network_manager.register_sqmr_protocol_server(Protocol::Event, BUFFER_SIZE);
+        network_manager.register_sqmr_protocol_server(Protocol::Event.into(), BUFFER_SIZE);
 
     let consensus_channels = match consensus_config {
         Some(consensus_config) => Some(
