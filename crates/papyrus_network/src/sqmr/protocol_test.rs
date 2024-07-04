@@ -1,6 +1,6 @@
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade};
 use libp2p::core::UpgradeInfo;
-use libp2p::swarm::StreamProtocol;
+use libp2p::StreamProtocol;
 use pretty_assertions::assert_eq;
 
 use super::super::messages::{read_message, write_message};
@@ -33,8 +33,10 @@ async fn positive_flow() {
 
     tokio::join!(
         async move {
-            let (received_query, mut stream, protocol_name) =
-                inbound_protocol.upgrade_inbound(inbound_stream, PROTOCOL_NAME).await.unwrap();
+            let (received_query, mut stream, protocol_name) = inbound_protocol
+                .upgrade_inbound(inbound_stream, PROTOCOL_NAME.into())
+                .await
+                .unwrap();
             assert_eq!(query, received_query);
             assert_eq!(protocol_name, PROTOCOL_NAME);
             for response in dummy_data() {

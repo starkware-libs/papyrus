@@ -10,8 +10,7 @@ use std::time::Duration;
 
 pub use behaviour::{Behaviour, ToOtherBehaviourEvent};
 use derive_more::Display;
-use libp2p::swarm::StreamProtocol;
-use libp2p::PeerId;
+use libp2p::{PeerId, StreamProtocol};
 
 pub type Bytes = Vec<u8>;
 
@@ -68,8 +67,4 @@ pub enum GenericEvent<SessionError> {
 #[derive(Clone, Debug, Default, Eq, Hash, PartialEq)]
 pub struct Config {
     pub session_timeout: Duration,
-    // If we put multiple versions of the same protocol, they should be inserted sorted where the
-    // latest is the first (They don't have to appear continuously among the other protocols).
-    // TODO(shahak): Sort protocols upon construction by version
-    pub supported_inbound_protocols: Vec<StreamProtocol>,
 }

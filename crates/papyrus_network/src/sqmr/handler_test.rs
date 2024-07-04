@@ -14,14 +14,8 @@ use libp2p::swarm::handler::{
     FullyNegotiatedInbound,
     FullyNegotiatedOutbound,
 };
-use libp2p::swarm::{
-    ConnectionHandler,
-    ConnectionHandlerEvent,
-    Stream,
-    StreamProtocol,
-    StreamUpgradeError,
-};
-use libp2p::PeerId;
+use libp2p::swarm::{ConnectionHandler, ConnectionHandlerEvent, Stream, StreamUpgradeError};
+use libp2p::{PeerId, StreamProtocol};
 
 use super::super::messages::{read_message, write_message};
 use super::super::{Bytes, Config, GenericEvent, InboundSessionId, OutboundSessionId, SessionId};
@@ -32,6 +26,7 @@ use super::{
     RequestToBehaviourEvent,
     SessionError,
 };
+use crate::sqmr::handler;
 use crate::test_utils::{dummy_data, get_connected_streams};
 
 impl Unpin for Handler {}
@@ -49,8 +44,10 @@ impl StreamTrait for Handler {
 
 lazy_static! {
     static ref QUERY: Bytes = vec![1u8, 2u8, 3u8];
-    static ref PROTOCOL_NAME: StreamProtocol =
-        Config::get_test_config().supported_inbound_protocols.first().unwrap().clone();
+    static ref PROTOCOL_NAME: StreamProtocol = handler::Handler::get_test_supported_protocols()
+        .into_iter()
+        .next()
+        .expect("No supported protocol in test set");
 }
 
 fn simulate_request_to_send_response_from_swarm(
@@ -244,8 +241,12 @@ async fn read_messages(handler: Handler, stream: &mut Stream, num_messages: usiz
 
 #[tokio::test]
 async fn process_inbound_session() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     let inbound_session_id = InboundSessionId { value: 1 };
@@ -273,8 +274,12 @@ async fn process_inbound_session() {
 
 #[tokio::test]
 async fn closed_inbound_session_ignores_behaviour_request_to_send_response() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     let inbound_session_id = InboundSessionId { value: 1 };
@@ -312,8 +317,12 @@ fn listen_protocol_across_multiple_handlers() {
     let thread_handles = (0..NUM_HANDLERS).map(|_| {
         let next_inbound_session_id = next_inbound_session_id.clone();
         std::thread::spawn(|| {
-            let handler =
-                Handler::new(Config::get_test_config(), next_inbound_session_id, PeerId::random());
+            let handler = Handler::new(
+                Config::get_test_config(),
+                next_inbound_session_id,
+                PeerId::random(),
+                Handler::get_test_supported_protocols(),
+            );
             (0..NUM_PROTOCOLS_PER_HANDLER)
                 .map(|_| handler.listen_protocol().info().value)
                 .collect::<Vec<_>>()
@@ -329,8 +338,12 @@ fn listen_protocol_across_multiple_handlers() {
 
 #[tokio::test]
 async fn process_outbound_session() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
     let outbound_session_id = OutboundSessionId { value: 1 };
@@ -371,7 +384,12 @@ async fn test_outbound_session_negotiation_failure(
     config: Config,
 ) {
     let outbound_session_id = OutboundSessionId { value: 1 };
-    let mut handler = Handler::new(config, Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        config,
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
     simulate_outbound_negotiation_failed(&mut handler, outbound_session_id, upgrade_error);
     validate_session_failed_event(&mut handler, outbound_session_id.into(), session_error_matcher)
         .await;
@@ -429,8 +447,12 @@ async fn outbound_session_negotiation_failure() {
 
 #[tokio::test]
 async fn outbound_session_dropped_after_negotiation() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
     let outbound_session_id = OutboundSessionId { value: 1 };
@@ -462,8 +484,12 @@ async fn outbound_session_dropped_after_negotiation() {
 
 #[tokio::test]
 async fn outbound_session_dropped_before_negotiation() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (mut inbound_stream, outbound_stream, _) = get_connected_streams().await;
     let outbound_session_id = OutboundSessionId { value: 1 };
@@ -495,8 +521,12 @@ async fn outbound_session_dropped_before_negotiation() {
 
 #[tokio::test]
 async fn inbound_session_dropped() {
-    let mut handler =
-        Handler::new(Config::get_test_config(), Arc::new(Default::default()), PeerId::random());
+    let mut handler = Handler::new(
+        Config::get_test_config(),
+        Arc::new(Default::default()),
+        PeerId::random(),
+        Handler::get_test_supported_protocols(),
+    );
 
     let (inbound_stream, mut outbound_stream, _) = get_connected_streams().await;
     let inbound_session_id = InboundSessionId { value: 1 };
