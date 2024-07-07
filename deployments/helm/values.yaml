@@ -21,21 +21,21 @@ p2p:
   bootstrap: false
   # General config
   config:
-    # Optional, The node self port to listen | default "10000"
+    # Optional - The node self port to listen | default "10000"
     network_tcp_port:
-    # Optional, The node data path | default "data"
+    # Optional - The node data path | default "data"
     storage_db_config_path_prefix:
-    # Optional, network.#is_none flag | default "false"
+    # Optional - network.#is_none flag | default "false"
     network_is_none:
   # Config to include only if "bootstrap: false"
   nodeConfig:
-    # Mandatory, The network.#is_none flag on the bootsrap server
+    # Mandatory - The network.#is_none flag on the bootsrap server
     network_bootstrap_peer_multiaddr_is_none:
-    # Mandatory,The bootstrap server to connect to, ip adress
+    # Mandatory - The bootstrap server to connect to, ip adress
     network_bootstrap_peer_multiaddr_ip:
-    # Mandatory,The bootstrap server to connect to, port 
+    # Mandatory - The bootstrap server to connect to, port 
     network_bootstrap_peer_multiaddr_port:
-    # Mandatory,The bootstrap server to connect to, uid
+    # Mandatory - The bootstrap server to connect to, uid
     network_bootstrap_peer_multiaddr_uid:
   service:
     # Specify service type, options are ClusterIP | NodePort | LoadBalancer
@@ -51,12 +51,17 @@ deployment:
     tag: 0.4.0
   # The container's pullPolicy
   pullPolicy: Always
-  # Optional - pod annotations
+  # Set pod annotations
   annotations: {}
-  # Optional - nodeSelector
-  nodeSelector:
-  # Optional - tolerations
-  tolerations:
+  # Set deployment nodeSelector
+  nodeSelector: {}
+  # Set deployment tolerations
+  tolerations: []
+  # - key: "key1"
+  #   operator: "Equal"
+  #   value: "value1"
+  #   effect: "NoSchedule"
+  
   # The default resources for a pod.
   resources:
     limits:
@@ -81,7 +86,7 @@ service:
       enabled: true
       port: 8080
       protocol: TCP
-      # Optional If service type is "NodePort" you can sepcify a custom node port.
+      # Optional - If service type is "NodePort" you can sepcify a custom node port.
       # If left empty a random port between range (30000-32767) will be selected.
       nodePort:
     monitoring:
