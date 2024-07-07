@@ -122,6 +122,11 @@
             "step_gas_cost": 50,
             "syscall_base_gas_cost": 1
         },
+        "sha256_process_block_gas_cost": {
+            "range_check_gas_cost": 0,
+            "step_gas_cost": 0,
+            "syscall_base_gas_cost": 0
+        },
         "sierra_array_len_bound": 4294967296,
         "step_gas_cost": 100,
         "storage_read_gas_cost": {
@@ -338,6 +343,11 @@
                 "n_memory_holes": 0,
                 "n_steps": 84
             },
+            "Sha256ProcessBlock": {
+                "builtin_instance_counter": {},
+                "n_memory_holes": 0,
+                "n_steps": 0
+            },
             "StorageRead": {
                 "builtin_instance_counter": {},
                 "n_memory_holes": 0,
@@ -482,6 +492,10 @@
     },
     "validate_max_n_steps": 1000000,
     "vm_resource_fee_cost": {
+        "add_mod_builtin": [
+            0,
+            1
+        ],
         "bitwise_builtin": [
             32,
             100
@@ -498,6 +512,10 @@
             1024,
             100
         ],
+        "mul_mod_builtin": [
+            0,
+            1
+        ],
         "n_steps": [
             5,
             1000
@@ -513,6 +531,10 @@
         "poseidon_builtin": [
             16,
             100
+        ],
+        "range_check96_builtin": [
+            0,
+            1
         ],
         "range_check_builtin": [
             8,
