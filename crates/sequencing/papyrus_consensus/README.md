@@ -9,7 +9,8 @@ versions. Breaking changes are expected to happen in the near future.
 ## How to run
 1. You must turn consensus on and provide a validator ID by passing: `--consensus.#is_none false --consensus.validator_id 0x<UNIQUE>`
 2. Start by running any nodes which are validators for `consensus.start_height` which is by default 0 to avoid them missing the proposal.
-   1. You can change the default topic by passing: `--consensus.topic "TOPIC"`
+   1. You can change the default number of validators by passing: `--consensus.num_of_validators <NUM_OF_VALIDATORS>` 
+   2. You can change the default topic by passing: `--consensus.topic "TOPIC"`
 
 #### Bootstrap Node
 This must be run first:
