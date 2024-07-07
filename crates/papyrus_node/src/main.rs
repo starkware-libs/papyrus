@@ -120,6 +120,7 @@ fn run_consensus(
     let context = PapyrusConsensusContext::new(
         storage_reader.clone(),
         consensus_channels.messages_to_broadcast_sender,
+        config.num_of_validators,
     );
     let start_height = config.start_height;
 

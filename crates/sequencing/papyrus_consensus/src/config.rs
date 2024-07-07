@@ -20,6 +20,8 @@ pub struct ConsensusConfig {
     pub topic: String,
     /// The height to start the consensus from.
     pub start_height: BlockNumber,
+    /// The number of validators in the consensus.
+    pub num_of_validators: u64,
 }
 
 impl SerializeConfig for ConsensusConfig {
@@ -43,6 +45,12 @@ impl SerializeConfig for ConsensusConfig {
                 "The height to start the consensus from.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "num_of_validators",
+                &self.num_of_validators,
+                "The number of validators in the consensus.",
+                ParamPrivacyInput::Public,
+            ),
         ])
     }
 }
@@ -53,6 +61,7 @@ impl Default for ConsensusConfig {
             validator_id: ValidatorId::default(),
             topic: "consensus".to_string(),
             start_height: BlockNumber::default(),
+            num_of_validators: 4,
         }
     }
 }

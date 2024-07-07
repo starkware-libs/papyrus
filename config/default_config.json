@@ -79,6 +79,11 @@
     "privacy": "TemporaryValue",
     "value": true
   },
+  "consensus.num_of_validators": {
+    "description": "The number of validators in the consensus.",
+    "privacy": "Public",
+    "value": 4
+  },
   "consensus.start_height": {
     "description": "The height to start the consensus from.",
     "privacy": "Public",
