@@ -389,7 +389,12 @@ impl<
     }
 
     #[latency_histogram("sync_store_block_latency_seconds", false)]
-    #[instrument(skip(self, block), level = "debug", fields(block_hash = %block.header.block_hash), err)]
+    #[instrument(
+        skip(self, block),
+        level = "debug",
+        fields(block_hash = format_args!("{:#064x}", block.header.block_hash.0)),
+        err
+    )]
     fn store_block(
         &mut self,
         block_number: BlockNumber,
@@ -471,7 +476,7 @@ impl<
         );
 
         // Info the user on syncing the block once all the data is stored.
-        info!("Added block {} with hash {}.", block_number, block_hash);
+        info!("Added block {} with hash {:#064x}.", block_number, block_hash.0);
 
         Ok(())
     }
