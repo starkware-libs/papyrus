@@ -26,6 +26,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use blockifier::blockifier::block::{pre_process_block, BlockInfo, BlockNumberHashPair, GasPrices};
+use blockifier::bouncer::BouncerConfig;
 use blockifier::context::{BlockContext, ChainInfo, FeeTokenAddresses, TransactionContext};
 use blockifier::execution::call_info::CallExecution;
 use blockifier::execution::contract_class::{ClassInfo, ContractClass as BlockifierContractClass};
@@ -376,14 +377,16 @@ fn create_block_context(
     let versioned_constants: &VersionedConstants =
         get_versioned_constants(starknet_version.as_ref())?;
 
-    Ok(pre_process_block(
-        cached_state,
-        ten_blocks_ago,
+    let block_context = BlockContext::new(
         block_info,
         chain_info,
         versioned_constants.clone(),
-        false, // concurrency_mode, TODO: check if this is the correct value.
-    )?)
+        BouncerConfig::max(),
+    );
+    let next_block_number = block_context.block_info().block_number;
+
+    pre_process_block(cached_state, ten_blocks_ago, next_block_number)?;
+    Ok(block_context)
 }
 
 /// The size of the json string representing the abi of a class or deprecated class.
@@ -860,6 +863,7 @@ fn to_blockifier_tx(
     }
 }
 
+// TODO(dan): add 0_13_1_1 support
 fn get_versioned_constants(
     starknet_version: Option<&StarknetVersion>,
 ) -> ExecutionResult<&'static VersionedConstants> {
