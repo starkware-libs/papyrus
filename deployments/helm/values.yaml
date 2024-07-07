@@ -15,6 +15,35 @@ starknet:
   preset: mainnet.json
   additionalHeaders: # optional addtional headers for SN communication
 
+p2p:
+  enabled: true
+  # Set to true if node is "bootstrap"
+  bootstrap: false
+  # General config
+  config:
+    # Optional, The node self port to listen | default "10000"
+    network_tcp_port:
+    # Optional, The node data path | default "data"
+    storage_db_config_path_prefix:
+    # Optional, network.#is_none flag | default "false"
+    network_is_none:
+  # Config to include only if "bootstrap: false"
+  nodeConfig:
+    # Mandatory, The network.#is_none flag on the bootsrap server
+    network_bootstrap_peer_multiaddr_is_none:
+    # Mandatory,The bootstrap server to connect to, ip adress
+    network_bootstrap_peer_multiaddr_ip:
+    # Mandatory,The bootstrap server to connect to, port 
+    network_bootstrap_peer_multiaddr_port:
+    # Mandatory,The bootstrap server to connect to, uid
+    network_bootstrap_peer_multiaddr_uid:
+  service:
+    # Specify service type, options are ClusterIP | NodePort | LoadBalancer
+    type: LoadBalancer
+    port: 10000
+    protocol: TCP
+    nodePort:
+    
 deployment:
   # The container image
   image:
@@ -54,15 +83,10 @@ service:
       protocol: TCP
       # Optional If service type is "NodePort" you can sepcify a custom node port.
       # If left empty a random port between range (30000-32767) will be selected.
-      nodePort: 
+      nodePort:
     monitoring:
       enabled: true
       port: 8081
-      protocol: TCP
-      nodePort:
-    p2p:
-      enabled: true
-      port: 10000
       protocol: TCP
       nodePort:
 
