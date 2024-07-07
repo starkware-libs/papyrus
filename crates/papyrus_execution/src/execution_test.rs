@@ -782,10 +782,13 @@ fn simulate_with_query_bit_outputs_same_as_no_query_bit() {
 fn blockifier_error_mapping() {
     let child = blockifier::execution::errors::EntryPointExecutionError::RecursionDepthExceeded;
     let storage_address = contract_address!("0x123");
+    let storage_address_felt = storage_address.0.key();
     let class_hash = class_hash!("0x321");
+    let class_hash_felt = class_hash.0;
     let expected = format!(
         "Contract constructor execution has failed:\n0: Error in the contract class constructor \
-         (contract address: 291, class hash: {class_hash}, selector: UNKNOWN):\n{child}\n"
+         (contract address: {storage_address_felt:#064x}, class hash: {class_hash_felt:#064x}, \
+         selector: UNKNOWN):\n{child}\n"
     );
     let blockifier_err = BlockifierTransactionExecutionError::ContractConstructorExecutionFailed(
         ConstructorEntryPointExecutionError::ExecutionError {
