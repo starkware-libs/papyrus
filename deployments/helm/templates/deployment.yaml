@@ -25,7 +25,7 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/path: "/monitoring/metrics"
         prometheus.io/port: {{ .Values.service.ports.monitoring.port | quote }}
-        {{- end }}
+      {{- end }}
       labels:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
@@ -71,6 +71,20 @@ spec:
           - /app/config/presets/{{ .Values.starknet.preset }}
           - --base_layer.node_url 
           - {{ .Values.base_layer_node_url }}
+          {{- if .Values.p2p.enabled }}
+          - --network.tcp_port
+          - {{ default "10000" .Values.p2p.config.network_tcp_port | quote }}
+          - --storage.db_config.path_prefix
+          - {{ default "data" .Values.p2p.config.storage_db_config_path_prefix | quote }}
+          - --network.#is_none
+          - {{ default false .Values.p2p.config.network_is_none | quote }}
+          {{- if not .Values.p2p.bootstrap }}
+          - --network.bootstrap_peer_multiaddr.#is_none
+          - {{ default false .Values.p2p.nodeConfig.network_bootstrap_peer_multiaddr_is_none | quote }}
+          - --network.bootstrap_peer_multiaddr
+          - {{ include "p2p.bootstrapPeerMultiaddr" . | quote }}
+          {{- end}}
+          {{- end }}
           {{ range $key, $value := .Values.deployment.extraArgs }}
           {{- if $value }}
           - --{{ $key }}
@@ -89,8 +103,8 @@ spec:
         - containerPort: {{ .Values.service.ports.monitoring.port }}
           name: monitoring
         {{- end }}
-        {{- if .Values.service.ports.p2p.enabled }}
-        - containerPort: {{ .Values.service.ports.p2p.port }}
+        {{- if .Values.p2p.enabled }}
+        - containerPort: {{ default "10000" .Values.p2p.config.network_tcp_port | quote }}
           name: p2p
         {{- end }}
         {{- end }}

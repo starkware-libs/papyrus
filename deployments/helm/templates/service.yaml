@@ -29,13 +29,4 @@ spec:
     nodePort: {{ .Values.service.ports.monitoring.nodePort }}
     {{- end }}
   {{- end }}
-  {{- if and .Values.service.ports.p2p .Values.service.ports.p2p.enabled }}
-  - name: p2p
-    port: {{ .Values.service.ports.p2p.port }}
-    protocol: {{ .Values.service.ports.p2p.protocol }}
-    targetPort: p2p
-    {{- if and (eq .Values.service.type "NodePort") .Values.service.ports.p2p.nodePort }}
-    nodePort: {{ .Values.service.ports.p2p.nodePort }}
-    {{- end }}
-  {{- end }}
 {{- end }}
