@@ -36,7 +36,18 @@ fn required_args() -> Vec<String> {
     for (param_path, serialized_param) in default_config.dump() {
         let serialization_type = match serialized_param.content {
             SerializedContent::DefaultValue(_) | SerializedContent::PointerTarget(_) => continue,
-            SerializedContent::ParamType(serialization_type) => serialization_type,
+            SerializedContent::ParamType(serialization_type) => {
+                let parent_path = param_path.split('.').next().unwrap().to_string();
+                let parent_json_value =
+                    parent_path.split('.').fold(&mut config_presentation, |entry, config_name| {
+                        entry.index_mut(config_name)
+                    });
+                // Skip the param if it is a field of an optional component and by default is None.
+                if parent_json_value.is_null() {
+                    continue;
+                }
+                serialization_type
+            }
         };
         args.push(format!("--{param_path}"));
 
