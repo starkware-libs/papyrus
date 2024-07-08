@@ -229,7 +229,7 @@ pub fn ser_is_param_none(name: &str, is_none: bool) -> (String, SerializedParam)
     common_ser_param(
         format!("{name}.{IS_NONE_MARK}").as_str(),
         SerializedContent::DefaultValue(json!(is_none)),
-        "Flag for an optional field",
+        "Flag for an optional field.",
         ParamPrivacy::TemporaryValue,
     )
 }
