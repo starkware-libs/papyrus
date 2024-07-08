@@ -9,7 +9,7 @@ use crate::gossipsub_impl::Topic;
 use crate::mixed_behaviour;
 use crate::peer_manager::ReputationModifier;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
-use crate::sqmr::{Bytes, InboundSessionId, OutboundSessionId};
+use crate::sqmr::{Bytes, InboundSessionId, OutboundSessionId, SessionId};
 
 pub type Event = SwarmEvent<<mixed_behaviour::MixedBehaviour as NetworkBehaviour>::ToSwarm>;
 
@@ -37,6 +37,11 @@ pub trait SwarmTrait: Stream<Item = Event> + Unpin {
     ) -> Result<(), SessionIdNotFoundError>;
 
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour;
+
+    fn get_peer_id_from_session_id(
+        &self,
+        session_id: SessionId,
+    ) -> Result<PeerId, SessionIdNotFoundError>;
 
     fn add_external_address(&mut self, address: Multiaddr);
 
@@ -84,6 +89,16 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
 
     fn behaviour_mut(&mut self) -> &mut mixed_behaviour::MixedBehaviour {
         self.behaviour_mut()
+    }
+
+    fn get_peer_id_from_session_id(
+        &self,
+        session_id: SessionId,
+    ) -> Result<PeerId, SessionIdNotFoundError> {
+        self.behaviour()
+            .sqmr
+            .get_peer_id_and_connection_id_from_session_id(session_id)
+            .map(|(peer_id, _)| peer_id)
     }
 
     fn add_external_address(&mut self, address: Multiaddr) {
