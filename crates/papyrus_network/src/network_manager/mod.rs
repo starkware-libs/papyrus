@@ -5,11 +5,12 @@ mod test;
 
 use std::collections::HashMap;
 
-use futures::channel::mpsc::{Receiver, SendError, Sender, UnboundedReceiver, UnboundedSender};
-use futures::future::{ready, Ready};
+use futures::channel::mpsc::{Receiver, SendError, Sender};
+use futures::channel::oneshot;
+use futures::future::{ready, BoxFuture, Ready};
 use futures::sink::With;
-use futures::stream::{self, BoxStream, Map};
-use futures::{SinkExt, StreamExt};
+use futures::stream::{self, BoxStream, FuturesUnordered, Map};
+use futures::{FutureExt, SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, Swarm};
@@ -49,9 +50,7 @@ pub struct GenericNetworkManager<SwarmT: SwarmTrait> {
     messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
     broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, Protocol>,
-    reported_peer_receiver: UnboundedReceiver<PeerId>,
-    // We keep this just for giving a clone of it for subscribers.
-    reported_peer_sender: UnboundedSender<PeerId>,
+    reported_peer_receivers: FuturesUnordered<BoxFuture<'static, Option<PeerId>>>,
     // Fields for metrics
     num_active_inbound_sessions: usize,
     num_active_outbound_sessions: usize,
@@ -69,14 +68,15 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                 Some((topic_hash, message)) = self.messages_to_broadcast_receivers.next() => {
                     self.broadcast_message(message, topic_hash);
                 }
-                Some(peer_id) = self.reported_peer_receiver.next() => self.swarm.report_peer(peer_id),
+                Some(Some(peer_id)) = self.reported_peer_receivers.next() => self.swarm.report_peer(peer_id),
             }
         }
     }
 
     pub(crate) fn generic_new(swarm: SwarmT) -> Self {
         gauge!(papyrus_metrics::PAPYRUS_NUM_CONNECTED_PEERS, 0f64);
-        let (reported_peer_sender, reported_peer_receiver) = futures::channel::mpsc::unbounded();
+        let reported_peer_receivers = FuturesUnordered::new();
+        reported_peer_receivers.push(futures::future::pending().boxed());
         Self {
             swarm,
             inbound_protocol_to_buffer_size: HashMap::new(),
@@ -87,8 +87,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             messages_to_broadcast_receivers: StreamHashMap::new(HashMap::new()),
             broadcasted_messages_senders: HashMap::new(),
             outbound_session_id_to_protocol: HashMap::new(),
-            reported_peer_sender,
-            reported_peer_receiver,
+            reported_peer_receivers,
             num_active_inbound_sessions: 0,
             num_active_outbound_sessions: 0,
         }
@@ -358,13 +357,14 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     .outbound_session_id_to_protocol
                     .get(&outbound_session_id)
                     .expect("Received response from an unknown session id");
-                let report_callback = self.create_external_callback_for_received_data(peer_id);
+                let report_callback_sender =
+                    self.create_external_callback_for_received_data(peer_id);
                 if let Some(response_sender) = self.sqmr_outbound_response_senders.get_mut(protocol)
                 {
                     // TODO(shahak): Close the channel if the buffer is full.
                     send_now(
                         response_sender,
-                        (response, report_callback),
+                        (response, report_callback_sender),
                         format!(
                             "Received response for an outbound query while the buffer is full. \
                              Dropping it. Session: {outbound_session_id:?}"
@@ -393,7 +393,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     fn handle_gossipsub_behaviour_event(&mut self, event: gossipsub_impl::ExternalEvent) {
         match event {
             gossipsub_impl::ExternalEvent::Received { originated_peer_id, message, topic_hash } => {
-                let report_callback =
+                let report_callback_sender =
                     self.create_external_callback_for_received_data(originated_peer_id);
                 let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic_hash) else {
                     error!(
@@ -402,7 +402,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     );
                     return;
                 };
-                let send_result = sender.try_send((message, report_callback));
+                let send_result = sender.try_send((message, report_callback_sender));
                 if let Err(e) = send_result {
                     if e.is_disconnected() {
                         panic!("Receiver was dropped. This should never happen.")
@@ -483,12 +483,20 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     }
     fn create_external_callback_for_received_data(
         &self,
-        originated_peer_id: PeerId,
-    ) -> Box<dyn Fn() + Send> {
-        let reported_peer_sender = self.reported_peer_sender.clone();
+        peer_id: PeerId,
+    ) -> Box<dyn FnOnce() + Send> {
+        let (report_callback_sender, report_callback_receiver) = oneshot::channel::<()>();
+        self.reported_peer_receivers.push(
+            report_callback_receiver
+                .map(move |result| match result {
+                    Ok(_) => Some(peer_id),
+                    Err(_) => None,
+                })
+                .boxed(),
+        );
         Box::new(move || {
             // TODO(shahak): Check if we can panic in case of error.
-            let _ = reported_peer_sender.unbounded_send(originated_peer_id);
+            let _ = report_callback_sender.send(());
         })
     }
 }
@@ -590,7 +598,7 @@ pub fn dummy_report_callback() -> ReportCallback {
 }
 
 // TODO(shahak): Create a custom struct if Box dyn becomes an overhead.
-pub type ReportCallback = Box<dyn Fn() + Send>;
+pub type ReportCallback = Box<dyn FnOnce() + Send>;
 
 // TODO(shahak): Add report callback.
 pub type SqmrQueryReceiver<Query, Response> =
