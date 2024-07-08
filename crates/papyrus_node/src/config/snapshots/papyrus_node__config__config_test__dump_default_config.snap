@@ -89,6 +89,13 @@ expression: dumped_default_config
     "value": true,
     "privacy": "TemporaryValue"
   },
+  "consensus.num_validators": {
+    "description": "The number of validators in the consensus.",
+    "value": {
+      "$serde_json::private::Number": "4"
+    },
+    "privacy": "Public"
+  },
   "consensus.start_height": {
     "description": "The height to start the consensus from.",
     "value": {
