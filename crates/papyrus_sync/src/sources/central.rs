@@ -410,7 +410,10 @@ fn client_to_central_block(
 ) -> CentralResult<(Block, BlockSignature)> {
     match maybe_client_block {
         Ok((Some(block), Some(signature_data))) => {
-            debug!("Received new block {current_block_number} with hash {}.", block.block_hash());
+            debug!(
+                "Received new block {current_block_number} with hash {:#064x}.",
+                block.block_hash().0
+            );
             trace!("Block: {block:#?}, signature data: {signature_data:#?}.");
             let block = block
                 .to_starknet_api_block_and_version()
