@@ -10,20 +10,26 @@ mod state_machine_test;
 use std::collections::{HashMap, VecDeque};
 
 use starknet_api::block::BlockHash;
+use tracing::trace;
 
 use crate::types::Round;
 
 /// Events which the state machine sends/receives.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineEvent {
-    /// Outbound - Sent by the StateMachine when it starts a new round with the block hash set to
-    /// `validValue`. This removes the state machine's dependency to calculate the proposer or get
-    /// a new block, by forcing the caller to run LOC 14-18.
+    /// StartRound is effective 2 questions:
+    /// 1. Is the local node the proposer for this round?
+    /// 2. If so, what value should be proposed?
+    /// While waiting for the response to this event, the state machine will buffer all other
+    /// events.
     ///
-    /// Inbound - Sent in response to `StartRound` from the state machine. Block hash is set to
-    /// None if we are not this round's proposer. If we are the proposer the block hash is
-    /// reflected back, and if no block hash was given then the caller is free to return any valid
-    /// block hash.
+    /// How should the caller handle this event?
+    /// 1. If the local node is not the proposer, the caller responds with with `None` as the block
+    ///    hash.
+    /// 2. If the local node is the proposer and a block hash was supplied by the state machine,
+    ///   the caller responds with the supplied block hash.
+    /// 3. If the local node is the proposer and no block hash was supplied by the state machine,
+    ///   the caller must find/build a block to respond with.
     StartRound(Option<BlockHash>, Round),
     /// Consensus message, can be both sent from and to the state machine.
     Proposal(BlockHash, Round),
@@ -95,6 +101,7 @@ impl StateMachine {
     // This means that the StateMachine handles events the same regardless of whether it was sent by
     // self or a peer. This is in line with the Algorithm 1 in the paper and keeps the code simpler.
     pub fn handle_event(&mut self, event: StateMachineEvent) -> VecDeque<StateMachineEvent> {
+        trace!("Handling event: {:?}", event);
         // Mimic LOC 18 in the paper; the state machine doesn't
         // handle any events until `getValue` completes.
         if self.starting_round {

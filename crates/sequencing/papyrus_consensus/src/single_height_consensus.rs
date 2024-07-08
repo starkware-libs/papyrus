@@ -8,7 +8,7 @@ use std::sync::Arc;
 use futures::channel::{mpsc, oneshot};
 use papyrus_protobuf::consensus::{ConsensusMessage, Vote, VoteType};
 use starknet_api::block::{BlockHash, BlockNumber};
-use tracing::{debug, info, instrument};
+use tracing::{debug, info, instrument, trace};
 
 use crate::state_machine::{StateMachine, StateMachineEvent};
 use crate::types::{
@@ -133,11 +133,12 @@ where
     }
 
     /// Handle messages from peer nodes.
-    #[instrument(skip(self), level = "debug")]
+    #[instrument(skip_all)]
     pub(crate) async fn handle_message(
         &mut self,
         message: ConsensusMessage,
     ) -> Result<Option<BlockT>, ConsensusError> {
+        debug!("Received message: {:?}", message);
         match message {
             ConsensusMessage::Proposal(_) => {
                 unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
@@ -146,6 +147,7 @@ where
         }
     }
 
+    #[instrument(skip_all)]
     async fn handle_vote(&mut self, vote: Vote) -> Result<Option<BlockT>, ConsensusError> {
         let (votes, sm_vote) = match vote.vote_type {
             VoteType::Prevote => {
@@ -174,11 +176,13 @@ where
     }
 
     // Handle events output by the state machine.
+    #[instrument(skip_all)]
     async fn handle_state_machine_events(
         &mut self,
         mut events: VecDeque<StateMachineEvent>,
     ) -> Result<Option<BlockT>, ConsensusError> {
         while let Some(event) = events.pop_front() {
+            trace!("Handling event: {:?}", event);
             match event {
                 StateMachineEvent::StartRound(block_hash, round) => {
                     events.append(
