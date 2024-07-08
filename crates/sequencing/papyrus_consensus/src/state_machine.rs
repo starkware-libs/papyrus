@@ -84,6 +84,10 @@ impl StateMachine {
         }
     }
 
+    pub fn quorum_size(&self) -> u32 {
+        self.quorum
+    }
+
     /// Starts the state machine, effectively calling `StartRound(0)` from the paper. This is needed
     /// to trigger the first leader to propose. See [`StartRound`](StateMachineEvent::StartRound)
     pub fn start(&mut self) -> VecDeque<StateMachineEvent> {

@@ -12,7 +12,14 @@ use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use single_height_consensus::SingleHeightConsensus;
 use starknet_api::block::{BlockHash, BlockNumber};
 use tracing::{debug, info, instrument};
-use types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
+use types::{
+    ConsensusBlock,
+    ConsensusContext,
+    ConsensusError,
+    Decision,
+    ProposalInit,
+    ValidatorId,
+};
 
 pub mod config;
 #[allow(missing_docs)]
@@ -36,7 +43,7 @@ async fn run_height<BlockT: ConsensusBlock>(
     validator_id: ValidatorId,
     network_receiver: &mut SubscriberReceiver<ConsensusMessage>,
     cached_messages: &mut Vec<ConsensusMessage>,
-) -> Result<BlockT, ConsensusError>
+) -> Result<Decision<BlockT>, ConsensusError>
 where
     ProposalWrapper:
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
@@ -75,7 +82,7 @@ where
             continue;
         }
 
-        let maybe_block = match message {
+        let maybe_decision = match message {
             ConsensusMessage::Proposal(proposal) => {
                 // Special case due to fake streaming.
                 let (proposal_init, content_receiver, fin_receiver) =
@@ -85,8 +92,8 @@ where
             _ => shc.handle_message(message).await?,
         };
 
-        if let Some(block) = maybe_block {
-            return Ok(block);
+        if let Some(decision) = maybe_decision {
+            return Ok(decision);
         }
     }
 }
@@ -107,7 +114,7 @@ where
     let mut current_height = start_height;
     let mut future_messages = Vec::new();
     loop {
-        let block = run_height(
+        let decision = run_height(
             Arc::clone(&context),
             current_height,
             validator_id,
@@ -118,8 +125,9 @@ where
 
         info!(
             "Finished consensus for height: {current_height}. Agreed on block with id: {:x}",
-            block.id().0
+            decision.block.id().0
         );
+        debug!("Decision: {:?}", decision);
         metrics::gauge!(papyrus_metrics::PAPYRUS_CONSENSUS_HEIGHT, current_height.0 as f64);
         current_height = current_height.unchecked_next();
     }
