@@ -15,6 +15,7 @@ use crate::types::{
     ConsensusBlock,
     ConsensusContext,
     ConsensusError,
+    Decision,
     ProposalInit,
     Round,
     ValidatorId,
@@ -26,10 +27,7 @@ const ROUND_ZERO: Round = 0;
 /// call to `start`, which is relevant if we are the proposer for this height's first round.
 /// SingleHeightConsensus receives messages directly as parameters to function calls. It can send
 /// out messages "directly" to the network, and returning a decision to the caller.
-pub(crate) struct SingleHeightConsensus<BlockT>
-where
-    BlockT: ConsensusBlock,
-{
+pub(crate) struct SingleHeightConsensus<BlockT: ConsensusBlock> {
     height: BlockNumber,
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     validators: Vec<ValidatorId>,
@@ -40,10 +38,7 @@ where
     precommits: HashMap<(Round, ValidatorId), Vote>,
 }
 
-impl<BlockT> SingleHeightConsensus<BlockT>
-where
-    BlockT: ConsensusBlock,
-{
+impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     pub(crate) async fn new(
         height: BlockNumber,
         context: Arc<dyn ConsensusContext<Block = BlockT>>,
@@ -65,7 +60,7 @@ where
     }
 
     #[instrument(skip(self), fields(height=self.height.0), level = "debug")]
-    pub(crate) async fn start(&mut self) -> Result<Option<BlockT>, ConsensusError> {
+    pub(crate) async fn start(&mut self) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         info!("Starting consensus with validators {:?}", self.validators);
         let events = self.state_machine.start();
         self.handle_state_machine_events(events).await
@@ -83,7 +78,7 @@ where
         init: ProposalInit,
         p2p_messages_receiver: mpsc::Receiver<<BlockT as ConsensusBlock>::ProposalChunk>,
         fin_receiver: oneshot::Receiver<BlockHash>,
-    ) -> Result<Option<BlockT>, ConsensusError> {
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         debug!(
             "Received proposal: proposal_height={}, proposer={:?}",
             init.height.0, init.proposer
@@ -137,7 +132,7 @@ where
     pub(crate) async fn handle_message(
         &mut self,
         message: ConsensusMessage,
-    ) -> Result<Option<BlockT>, ConsensusError> {
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         debug!("Received message: {:?}", message);
         match message {
             ConsensusMessage::Proposal(_) => {
@@ -148,7 +143,10 @@ where
     }
 
     #[instrument(skip_all)]
-    async fn handle_vote(&mut self, vote: Vote) -> Result<Option<BlockT>, ConsensusError> {
+    async fn handle_vote(
+        &mut self,
+        vote: Vote,
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         let (votes, sm_vote) = match vote.vote_type {
             VoteType::Prevote => {
                 (&mut self.prevotes, StateMachineEvent::Prevote(vote.block_hash, ROUND_ZERO))
@@ -180,7 +178,7 @@ where
     async fn handle_state_machine_events(
         &mut self,
         mut events: VecDeque<StateMachineEvent>,
-    ) -> Result<Option<BlockT>, ConsensusError> {
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         while let Some(event) = events.pop_front() {
             trace!("Handling event: {:?}", event);
             match event {
@@ -203,7 +201,20 @@ where
                         block_hash,
                         "StateMachine block hash should match the stored block"
                     );
-                    return Ok(Some(block));
+                    let precommits: Vec<Vote> = self
+                        .validators
+                        .iter()
+                        .filter_map(|v| {
+                            let vote = self.precommits.get(&(round, *v))?;
+                            if vote.block_hash != block_hash {
+                                return None;
+                            }
+                            Some(vote.clone())
+                        })
+                        .collect();
+                    // TODO(matan): Check actual weights.
+                    assert!(precommits.len() >= self.state_machine.quorum_size() as usize);
+                    return Ok(Some(Decision { precommits, block }));
                 }
                 StateMachineEvent::Prevote(block_hash, round) => {
                     self.handle_state_machine_vote(block_hash, round, VoteType::Prevote).await?;
@@ -260,7 +271,7 @@ where
         block_hash: BlockHash,
         round: Round,
         vote_type: VoteType,
-    ) -> Result<Option<BlockT>, ConsensusError> {
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         let votes = match vote_type {
             VoteType::Prevote => &mut self.prevotes,
             VoteType::Precommit => &mut self.precommits,

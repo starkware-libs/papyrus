@@ -2,9 +2,11 @@
 #[path = "types_test.rs"]
 mod types_test;
 
+use std::fmt::Debug;
+
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
-use papyrus_protobuf::consensus::ConsensusMessage;
+use papyrus_protobuf::consensus::{ConsensusMessage, Vote};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 
@@ -142,6 +144,24 @@ pub trait ConsensusContext: Send + Sync {
         content_receiver: mpsc::Receiver<<Self::Block as ConsensusBlock>::ProposalChunk>,
         fin_receiver: oneshot::Receiver<BlockHash>,
     ) -> Result<(), ConsensusError>;
+}
+
+#[derive(PartialEq)]
+pub struct Decision<BlockT>
+where
+    BlockT: ConsensusBlock,
+{
+    pub precommits: Vec<Vote>,
+    pub block: BlockT,
+}
+
+impl<BlockT: ConsensusBlock> Debug for Decision<BlockT> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Decision")
+            .field("block_id", &self.block.id())
+            .field("precommits", &self.precommits)
+            .finish()
+    }
 }
 
 #[derive(PartialEq, Debug, Clone)]
