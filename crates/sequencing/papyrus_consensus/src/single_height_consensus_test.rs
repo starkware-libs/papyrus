@@ -63,10 +63,23 @@ async fn proposer() {
 
     assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
     assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
-    assert_eq!(shc.handle_message(precommit(block.id(), 0, 2_u32.into())).await, Ok(None));
-    let decision =
-        shc.handle_message(precommit(block.id(), 0, 3_u32.into())).await.unwrap().unwrap();
-    assert_eq!(decision, block);
+
+    let precommits = vec![
+        precommit(block.id(), 0, 1_u32.into()),
+        precommit(BlockHash(Felt::TWO), 0, 4_u32.into()), // Ignores since disagrees.
+        precommit(block.id(), 0, 2_u32.into()),
+        precommit(block.id(), 0, 3_u32.into()),
+    ];
+    assert_eq!(shc.handle_message(precommits[1].clone()).await, Ok(None));
+    assert_eq!(shc.handle_message(precommits[2].clone()).await, Ok(None));
+    let decision = shc.handle_message(precommits[3].clone()).await.unwrap().unwrap();
+    assert_eq!(decision.block, block);
+    assert!(
+        decision
+            .precommits
+            .into_iter()
+            .all(|item| precommits.contains(&ConsensusMessage::Vote(item)))
+    );
 
     // Check the fin sent to the network.
     let fin = Arc::into_inner(fin_receiver).unwrap().take().unwrap().await.unwrap();
@@ -120,9 +133,19 @@ async fn validator() {
 
     assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
     assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
-    assert_eq!(shc.handle_message(precommit(block.id(), 0, 2_u32.into())).await, Ok(None));
 
-    let decision =
-        shc.handle_message(precommit(block.id(), 0, 3_u32.into())).await.unwrap().unwrap();
-    assert_eq!(decision, block);
+    let precommits = vec![
+        precommit(block.id(), 0, 2_u32.into()),
+        precommit(block.id(), 0, 3_u32.into()),
+        precommit(block.id(), 0, node_id),
+    ];
+    assert_eq!(shc.handle_message(precommits[0].clone()).await, Ok(None));
+    let decision = shc.handle_message(precommits[1].clone()).await.unwrap().unwrap();
+    assert_eq!(decision.block, block);
+    assert!(
+        decision
+            .precommits
+            .into_iter()
+            .all(|item| precommits.contains(&ConsensusMessage::Vote(item)))
+    );
 }
