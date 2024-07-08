@@ -46,11 +46,14 @@ COPY Cargo.lock /app/
 # changed.
 # Use this image to compile the project to an alpine compatible binary.
 FROM clux/muslrust:1.78.0-stable AS builder
+
 WORKDIR /app/
 
 RUN apt update && apt install -y clang unzip
+
 ENV PROTOC_VERSION=25.1
-RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip \
+
+RUN curl -sL "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip \
     && unzip ./protoc.zip -d $HOME/.local \
     && rm ./protoc.zip
 
