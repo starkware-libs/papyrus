@@ -5943,7 +5943,9 @@ version = "0.4.0-dev.4"
 dependencies = [
  "async-trait",
  "futures",
+ "metrics",
  "mockall",
+ "papyrus_common",
  "papyrus_config",
  "papyrus_network",
  "papyrus_protobuf",

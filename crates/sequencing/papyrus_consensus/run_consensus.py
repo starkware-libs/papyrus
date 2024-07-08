@@ -88,6 +88,7 @@ def main(base_layer_node_url, num_validators, duration):
         f"--storage.db_config.path_prefix {temp_dir}/data1 "
         f"--consensus.#is_none false --consensus.validator_id 0x1 "
         f"--consensus.num_of_validators {num_validators} "
+        f"--collect_metrics true"
         # Use sed to strip special formatting characters
         f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator1.txt"
     )
