@@ -6,6 +6,7 @@
 use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
+use papyrus_common::metrics as papyrus_metrics;
 use papyrus_network::network_manager::SubscriberReceiver;
 use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use single_height_consensus::SingleHeightConsensus;
@@ -119,6 +120,7 @@ where
             "Finished consensus for height: {current_height}. Agreed on block with id: {:x}",
             block.id().0
         );
+        metrics::gauge!(papyrus_metrics::PAPYRUS_CONSENSUS_HEIGHT, current_height.0 as f64);
         current_height = current_height.unchecked_next();
     }
 }
