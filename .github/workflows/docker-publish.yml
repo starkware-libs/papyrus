@@ -50,7 +50,7 @@ jobs:
             type=ref,event=pr
             # set `dev` tag for the default branch (`main`).
             type=raw,value=dev,enable={{is_default_branch}}
-            type=raw,value={{branch}}-{{sha}},enable=${{ github.event_name == 'workflow_dispatch' }}
+            type=raw,value={{branch}}{{tag}}-{{sha}},enable=${{ github.event_name == 'workflow_dispatch' }}
 
       # Build and push Docker image with Buildx
       # https://github.com/docker/build-push-action

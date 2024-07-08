@@ -942,9 +942,9 @@ dependencies = [
 
 [[package]]
 name = "blockifier"
-version = "0.8.0-dev.0"
+version = "0.8.0-dev.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4f57ce711234b75654cda8d80198b4623a4a5390b8cb2e2c8d740d8def8d8d"
+checksum = "01029cc5149e250cf8357bc08fb9301fac2c4edfe55ef6cc102d3b3712c22eda"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -970,8 +970,8 @@ dependencies = [
  "phf",
  "serde",
  "serde_json",
+ "sha2",
  "sha3",
- "starknet-crypto 0.5.2",
  "starknet-types-core",
  "starknet_api",
  "strum 0.24.1",
@@ -8371,9 +8371,9 @@ dependencies = [
 
 [[package]]
 name = "starknet-types-core"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65799574816ba83cb04b21a3cb16f791b9882687cd9093415fd1b3821dbac29d"
+checksum = "ce6bacf0ba19bc721e518bc4bf389ff13daa8a7c5db5fd320600473b8aa9fcbd"
 dependencies = [
  "lambdaworks-crypto",
  "lambdaworks-math",
