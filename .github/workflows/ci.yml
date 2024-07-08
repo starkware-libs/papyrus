@@ -246,10 +246,11 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         continue-on-error: true # ignore the failure of a step and avoid terminating the job.
         with:
+          push: false
           context: .
           file: papyrus_utilities.Dockerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=buildkit-ci
+          cache-to: type=gha,mode=max,scope=buildkit-ci
 
   random-table-test:
     runs-on: ubuntu-latest
