@@ -73,7 +73,7 @@ RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release
 COPY crates/ /app/crates
 
 # Touching the lib.rs files to mark them for re-compilation. Then re-compile now that all the source
-# code is available
+# code is available 
 RUN touch crates/*/src/lib.rs; \
     CARGO_INCREMENTAL=0 cargo build --release --package papyrus_node --bin papyrus_node;
 
