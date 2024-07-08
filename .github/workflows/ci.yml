@@ -250,6 +250,9 @@ jobs:
           file: papyrus_utilities.Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-
 
   random-table-test:
     runs-on: ubuntu-latest
