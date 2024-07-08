@@ -69,7 +69,7 @@ COPY crates/papyrus_proc_macros /app/crates/papyrus_proc_macros
 
 RUN CARGO_INCREMENTAL=0 cargo build -q --target x86_64-unknown-linux-musl --release --package papyrus_node
 
-# Copy the rest of the files.
+# Copy the rest of the files.#
 COPY crates/ /app/crates
 
 # Touching the lib.rs files to mark them for re-compilation. Then re-compile now that all the source
