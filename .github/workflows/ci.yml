@@ -246,13 +246,11 @@ jobs:
         uses: docker/build-push-action@v3.2.0
         continue-on-error: true # ignore the failure of a step and avoid terminating the job.
         with:
+          push: false
           context: .
           file: papyrus_utilities.Dockerfile
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          key: ${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-
 
   random-table-test:
     runs-on: ubuntu-latest
