@@ -50,7 +50,9 @@ WORKDIR /app/
 
 RUN apt update && apt install -y clang unzip
 ENV PROTOC_VERSION=25.1
-RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local &&  rm ./protoc.zip
+RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip
+RUN unzip ./protoc.zip -d $HOME/.local
+RUN rm ./protoc.zip
 ENV PROTOC=/root/.local/bin/protoc
 
 
