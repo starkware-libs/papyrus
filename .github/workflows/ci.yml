@@ -249,8 +249,8 @@ jobs:
           push: false
           context: .
           file: papyrus_utilities.Dockerfile
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=buildkit-ci
+          cache-to: type=gha,mode=max,scope=buildkit-ci
 
   random-table-test:
     runs-on: ubuntu-latest
