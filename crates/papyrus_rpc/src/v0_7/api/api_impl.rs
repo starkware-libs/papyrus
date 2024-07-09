@@ -1461,7 +1461,7 @@ impl JsonRpcServer for JsonRpcServerImpl {
 
         // Check if this class exists in the Cairo0 classes table.
         let state_number = StateNumber::right_after_block(block_number)
-            .ok_or(internal_server_error("Could not compute state number"))?;
+            .ok_or_else(|| internal_server_error("Could not compute state number"))?;
         let deprecated_compiled_contract_class = state_reader
             .get_deprecated_class_definition_at(state_number, &class_hash)
             .map_err(internal_server_error)?
