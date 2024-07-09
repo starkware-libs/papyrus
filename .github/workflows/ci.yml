@@ -238,10 +238,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # enable docker layer caching, speeds up the building of the image
-      - uses: satackey/action-docker-layer-caching@v0.0.11
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Papyrus utilites docker image
+        uses: docker/build-push-action@v3.2.0
         continue-on-error: true # ignore the failure of a step and avoid terminating the job.
-      - run: DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker build -f papyrus_utilities.Dockerfile .
+        with:
+          push: false
+          context: .
+          file: papyrus_utilities.Dockerfile
+          cache-from: type=gha,scope=buildkit-ci
+          cache-to: type=gha,mode=max,scope=buildkit-ci
 
   random-table-test:
     runs-on: ubuntu-latest
