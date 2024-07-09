@@ -32,13 +32,14 @@ p2p:
     bootstrapServer:
       # Mandatory - The network.#is_none flag on the bootsrap server
       multiaddrIsNone: 
-      # Mandatory - The bootstrap server to connect to, ip adress
+      # Mandatory - The bootstrap server ip address. If service is used, use the service address. If not, use the pod address.
       multiaddrIp:
       # Mandatory - The bootstrap server to connect to, port 
       multiaddrPort:
       # Mandatory - The bootstrap server to connect to, uid
       multiaddrUid:
   service:
+    enabled: false
     type: ClusterIP
     port: 10000
     protocol: TCP
@@ -75,7 +76,7 @@ deployment:
     #   value: BAR
   extraArgs: {} # Optional additional deployment args
     # foo: "bar"
-  extraConfig
+
 # Service variables for a papyrus pod.
 service:
   # Specify service type, supported options are ClusterIP, LoadBalancer

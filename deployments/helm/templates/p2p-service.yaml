@@ -1,4 +1,4 @@
-{{- if and ( not .Values.backup.enabled ) .Values.p2p.enabled }}
+{{- if and ( not .Values.backup.enabled ) .Values.p2p.service.enabled }}
 ---
 apiVersion: v1
 kind: Service
@@ -15,10 +15,4 @@ spec:
     port: {{ .Values.p2p.service.port }}
     protocol: {{ .Values.p2p.service.protocol }}
     targetPort: p2p
-<<<<<<< HEAD
-=======
-    {{- if and (eq .Values.p2p.service.type "NodePort") .Values.p2p.service.nodePort }}
-    nodePort: {{ .Values.p2p.service.nodePort }}
-    {{- end }}
->>>>>>> 009ca93a3c6613c4331390333df158fc31ed809d
 {{- end }}
