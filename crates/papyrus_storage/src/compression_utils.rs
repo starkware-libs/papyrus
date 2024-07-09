@@ -9,7 +9,9 @@ use crate::db::serialization::{StorageSerde, StorageSerdeError};
 // TODO: fine tune the compression hyperparameters (and maybe even the compression algorithm).
 
 // The maximum size of the decompressed data.
-const MAX_DECOMPRESSED_SIZE: usize = 1 << 20; // 1MB
+// TODO(Dvir): consider defining this for each type separately and pass it as an argument to the
+// decompress function.
+pub(crate) const MAX_DECOMPRESSED_SIZE: usize = 1 << 28; // 256 MB
 // The compression level to use. Higher levels are slower but compress better.
 const COMPRESSION_LEVEL: i32 = zstd::DEFAULT_COMPRESSION_LEVEL;
 

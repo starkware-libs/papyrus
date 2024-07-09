@@ -15,7 +15,7 @@ use lazy_static::lazy_static;
 use libp2p::core::ConnectedPoint;
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 use tokio::select;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
@@ -41,6 +41,7 @@ struct MockSwarm {
     pub subscribed_topics: HashSet<TopicHash>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, TopicHash)>>,
     reported_peer_senders: Vec<UnboundedSender<PeerId>>,
+    supported_inbound_protocols_senders: Vec<UnboundedSender<StreamProtocol>>,
     inbound_session_id_to_response_sender: HashMap<InboundSessionId, UnboundedSender<Bytes>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -93,16 +94,22 @@ impl MockSwarm {
         receiver
     }
 
+    pub fn get_supported_inbound_protocol(&mut self) -> impl Stream<Item = StreamProtocol> {
+        let (sender, receiver) = unbounded();
+        self.supported_inbound_protocols_senders.push(sender);
+        receiver
+    }
+
     fn create_response_events_for_query_each_num_becomes_response(
         &self,
         query: Vec<u8>,
         outbound_session_id: OutboundSessionId,
         peer_id: PeerId,
     ) {
-        for data in query {
+        for response in query {
             self.pending_events.push(Event::Behaviour(mixed_behaviour::Event::ExternalEvent(
-                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedData {
-                    data: vec![data],
+                mixed_behaviour::ExternalEvent::Sqmr(GenericEvent::ReceivedResponse {
+                    response: vec![response],
                     outbound_session_id,
                     peer_id,
                 }),
@@ -112,16 +119,16 @@ impl MockSwarm {
 }
 
 impl SwarmTrait for MockSwarm {
-    fn send_data(
+    fn send_response(
         &mut self,
-        data: Vec<u8>,
+        response: Vec<u8>,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
-        let responses_sender = self
-            .inbound_session_id_to_response_sender
-            .get(&inbound_session_id)
-            .expect("Called send_data without calling get_responses_sent_to_inbound_session first");
-        responses_sender.unbounded_send(data).unwrap();
+        let responses_sender =
+            self.inbound_session_id_to_response_sender.get(&inbound_session_id).expect(
+                "Called send_response without calling get_responses_sent_to_inbound_session first",
+            );
+        responses_sender.unbounded_send(response).unwrap();
         Ok(())
     }
 
@@ -129,7 +136,7 @@ impl SwarmTrait for MockSwarm {
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
-        _protocol: crate::Protocol,
+        _protocol: StreamProtocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_response_events_for_query_each_num_becomes_response(
@@ -182,12 +189,18 @@ impl SwarmTrait for MockSwarm {
             sender.unbounded_send(peer_id).unwrap();
         }
     }
+    fn add_new_supported_inbound_protocol(&mut self, protocol_name: StreamProtocol) {
+        for sender in &self.supported_inbound_protocols_senders {
+            sender.unbounded_send(protocol_name.clone()).unwrap();
+        }
+    }
 }
 
 const BUFFER_SIZE: usize = 100;
+const SIGNED_BLOCK_HEADER_PROTOCOL: StreamProtocol = StreamProtocol::new("/starknet/headers/1");
 
 #[tokio::test]
-async fn register_sqmr_subscriber_and_use_channels() {
+async fn register_sqmr_protocol_client_and_use_channels() {
     // mock swarm to send and track connection established event
     let mut mock_swarm = MockSwarm::default();
     let peer_id = PeerId::random();
@@ -196,11 +209,14 @@ async fn register_sqmr_subscriber_and_use_channels() {
     mock_swarm.first_polled_event_notifier = Some(event_notifier);
 
     // network manager to register subscriber and send query
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_subscriber::<Vec<u8>, Vec<u8>>(crate::Protocol::SignedBlockHeader);
+        .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
+            SIGNED_BLOCK_HEADER_PROTOCOL.to_string(),
+            BUFFER_SIZE,
+        );
 
     let response_receiver_length = Arc::new(Mutex::new(0));
     let cloned_response_receiver_length = Arc::clone(&response_receiver_length);
@@ -231,10 +247,10 @@ async fn register_sqmr_subscriber_and_use_channels() {
 // TODO(shahak): Add multiple protocols and multiple queries in the test.
 #[tokio::test]
 async fn process_incoming_query() {
-    // Create data for test.
+    // Create responses for test.
     let query = VEC1.clone();
     let responses = vec![VEC1.clone(), VEC2.clone(), VEC3.clone()];
-    let protocol = crate::Protocol::SignedBlockHeader;
+    let protocol: StreamProtocol = SIGNED_BLOCK_HEADER_PROTOCOL;
 
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
@@ -244,17 +260,22 @@ async fn process_incoming_query() {
             query: query.clone(),
             inbound_session_id,
             peer_id: PeerId::random(),
-            protocol_name: protocol.into(),
+            protocol_name: protocol.clone(),
         }),
     )));
 
-    // Create a future that will return when the session is closed with the data sent on the swarm.
+    // Create a future that will return when the session is closed with the responses sent on the
+    // swarm.
     let get_responses_fut = mock_swarm.get_responses_sent_to_inbound_session(inbound_session_id);
+    let mut get_supported_inbound_protocol_fut = mock_swarm.get_supported_inbound_protocol();
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
-    let mut inbound_query_receiver =
-        network_manager.register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol);
+    let mut inbound_query_receiver = network_manager
+        .register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol.to_string(), BUFFER_SIZE);
+
+    let actual_protocol = get_supported_inbound_protocol_fut.next().await.unwrap();
+    assert_eq!(protocol, actual_protocol);
 
     let responses_clone = responses.clone();
     select! {
@@ -284,7 +305,7 @@ async fn broadcast_message() {
     let mut mock_swarm = MockSwarm::default();
     let mut messages_we_broadcasted_stream = mock_swarm.stream_messages_we_broadcasted();
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     let mut messages_to_broadcast_sender = network_manager
         .register_broadcast_topic(topic.clone(), BUFFER_SIZE)
@@ -320,7 +341,7 @@ async fn receive_broadcasted_message_and_report_it() {
     )));
     let mut reported_peer_receiver = mock_swarm.get_reported_peers_stream();
 
-    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm, BUFFER_SIZE);
+    let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
     let mut broadcasted_messages_receiver = network_manager
         .register_broadcast_topic::<Bytes>(topic.clone(), BUFFER_SIZE)

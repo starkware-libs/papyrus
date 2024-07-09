@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
 use futures::StreamExt;
-use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
-use libp2p::{PeerId, Swarm};
+use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
+use libp2p::{PeerId, StreamProtocol, Swarm};
 
 use super::behaviour::{Behaviour, Event, ExternalEvent};
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
@@ -76,7 +76,7 @@ fn send_query_and_update_map(
     outbound_session_id_to_peer_id.insert((outbound_peer_id, outbound_session_id), inbound_peer_id);
 }
 
-fn send_data(
+fn send_response(
     inbound_swarm: &mut Swarm<Behaviour>,
     outbound_peer_id: PeerId,
     inbound_session_ids: &HashMap<(PeerId, PeerId), InboundSessionId>,
@@ -85,8 +85,8 @@ fn send_data(
     for i in 0..NUM_MESSAGES_PER_SESSION {
         inbound_swarm
             .behaviour_mut()
-            .send_data(
-                get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, i),
+            .send_response(
+                get_response_from_indices(inbound_peer_id, outbound_peer_id, i),
                 inbound_session_ids[&(inbound_peer_id, outbound_peer_id)],
             )
             .unwrap();
@@ -126,7 +126,7 @@ fn check_new_inbound_session_event_and_return_id(
     Some((outbound_peer_id, inbound_session_id))
 }
 
-fn check_received_data_event(
+fn check_received_response_event(
     outbound_peer_id: PeerId,
     swarm_event: SwarmEventAlias<Behaviour>,
     current_message: &mut DefaultHashMap<(PeerId, PeerId), usize>,
@@ -135,20 +135,23 @@ fn check_received_data_event(
     let SwarmEvent::Behaviour(event) = swarm_event else {
         return None;
     };
-    let Event::External(ExternalEvent::ReceivedData {
+    let Event::External(ExternalEvent::ReceivedResponse {
         outbound_session_id: _outbound_session_id,
-        data,
+        response,
         peer_id: inbound_peer_id,
     }) = event
     else {
-        panic!("Got unexpected event {:?} when expecting ReceivedData", event);
+        panic!("Got unexpected event {:?} when expecting ReceivedResponse", event);
     };
     assert_eq!(
         outbound_session_id_to_peer_id[&(outbound_peer_id, _outbound_session_id)],
         inbound_peer_id
     );
     let message_index = *current_message.get((outbound_peer_id, inbound_peer_id));
-    assert_eq!(data, get_bytes_from_data_indices(inbound_peer_id, outbound_peer_id, message_index),);
+    assert_eq!(
+        response,
+        get_response_from_indices(inbound_peer_id, outbound_peer_id, message_index),
+    );
     current_message.insert((outbound_peer_id, inbound_peer_id), message_index + 1);
     Some((inbound_peer_id, ()))
 }
@@ -175,7 +178,7 @@ fn get_bytes_from_query_indices(peer_id1: PeerId, peer_id2: PeerId) -> Bytes {
     hasher.finish().to_be_bytes().to_vec()
 }
 
-fn get_bytes_from_data_indices(peer_id1: PeerId, peer_id2: PeerId, message_index: usize) -> Bytes {
+fn get_response_from_indices(peer_id1: PeerId, peer_id2: PeerId, message_index: usize) -> Bytes {
     let mut hasher = DefaultHasher::new();
     peer_id1.hash(&mut hasher);
     peer_id2.hash(&mut hasher);
@@ -186,10 +189,12 @@ fn get_bytes_from_data_indices(peer_id1: PeerId, peer_id2: PeerId, message_index
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::new(Config {
-            session_timeout: Duration::from_secs(5),
-            supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
-        })
+        let mut behaviour = Behaviour::new(Config { session_timeout: Duration::from_secs(5) });
+        let supported_inbound_protocols = vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME];
+        for protocol in supported_inbound_protocols {
+            behaviour.add_new_supported_inbound_protocol(protocol);
+        }
+        behaviour
     })
     .await;
 
@@ -219,7 +224,7 @@ async fn everyone_sends_to_everyone() {
         &mut swarms_stream,
         &peer_ids,
         &mut |inbound_swarm, outbound_peer_id| {
-            send_data(inbound_swarm, outbound_peer_id, &inbound_session_ids);
+            send_response(inbound_swarm, outbound_peer_id, &inbound_session_ids);
         },
     );
 
@@ -227,7 +232,7 @@ async fn everyone_sends_to_everyone() {
     collect_events_from_swarms(
         &mut swarms_stream,
         |peer_id, event| {
-            check_received_data_event(
+            check_received_response_event(
                 peer_id,
                 event,
                 &mut current_message,
@@ -238,14 +243,6 @@ async fn everyone_sends_to_everyone() {
     )
     .await;
 
-    // TODO(shahak): Create a test where the outbound closes the session, and use the code below
-    // in it.
-    // let peer_id_to_outbound_session_id = outbound_session_id_to_peer_id
-    //     .iter()
-    //     .map(|((outbound_peer_id, outbound_session_id), inbound_peer_id)| {
-    //         ((*outbound_peer_id, *inbound_peer_id), *outbound_session_id)
-    //     })
-    //     .collect::<HashMap<_, _>>();
     perform_action_on_swarms(
         &mut swarms_stream,
         &peer_ids,

@@ -74,6 +74,31 @@
     "privacy": "Public",
     "value": false
   },
+  "consensus.#is_none": {
+    "description": "Flag for an optional field.",
+    "privacy": "TemporaryValue",
+    "value": true
+  },
+  "consensus.num_validators": {
+    "description": "The number of validators in the consensus.",
+    "privacy": "Public",
+    "value": 4
+  },
+  "consensus.start_height": {
+    "description": "The height to start the consensus from.",
+    "privacy": "Public",
+    "value": 0
+  },
+  "consensus.topic": {
+    "description": "The topic of the consensus.",
+    "privacy": "Public",
+    "value": "consensus"
+  },
+  "consensus.validator_id": {
+    "description": "A required param! The validator id of the node.",
+    "param_type": "String",
+    "privacy": "Public"
+  },
   "monitoring_gateway.collect_metrics": {
     "description": "If true, collect and return metrics in the monitoring gateway.",
     "pointer_target": "collect_metrics",
@@ -100,7 +125,7 @@
     "privacy": "Public"
   },
   "network.#is_none": {
-    "description": "Flag for an optional field",
+    "description": "Flag for an optional field.",
     "privacy": "TemporaryValue",
     "value": true
   },
@@ -110,14 +135,9 @@
     "value": ""
   },
   "network.bootstrap_peer_multiaddr.#is_none": {
-    "description": "Flag for an optional field",
+    "description": "Flag for an optional field.",
     "privacy": "TemporaryValue",
     "value": true
-  },
-  "network.header_buffer_size": {
-    "description": "Size of the buffer for headers read from the storage.",
-    "privacy": "Public",
-    "value": 100000
   },
   "network.idle_connection_timeout": {
     "description": "Amount of time in seconds that a connection with no active sessions will stay alive.",
@@ -145,9 +165,14 @@
     "value": 10000
   },
   "p2p_sync.#is_none": {
-    "description": "Flag for an optional field",
+    "description": "Flag for an optional field.",
     "privacy": "TemporaryValue",
     "value": true
+  },
+  "p2p_sync.buffer_size": {
+    "description": "Size of the buffer for read from the storage and for incoming responses.",
+    "privacy": "Public",
+    "value": 100000
   },
   "p2p_sync.num_block_state_diffs_per_query": {
     "description": "The maximum amount of block's state diffs to ask from peers in each iteration.",
@@ -165,7 +190,7 @@
     "value": 1000
   },
   "p2p_sync.stop_sync_at_block_number.#is_none": {
-    "description": "Flag for an optional field",
+    "description": "Flag for an optional field.",
     "privacy": "TemporaryValue",
     "value": true
   },
@@ -277,7 +302,7 @@
   "storage.mmap_file_config.max_object_size": {
     "description": "The maximum size of a single object in the file in bytes",
     "privacy": "Public",
-    "value": 1048576
+    "value": 268435456
   },
   "storage.mmap_file_config.max_size": {
     "description": "The maximum size of a memory mapped file in bytes. Must be greater than growth_step.",
@@ -290,7 +315,7 @@
     "value": "FullArchive"
   },
   "sync.#is_none": {
-    "description": "Flag for an optional field",
+    "description": "Flag for an optional field.",
     "privacy": "TemporaryValue",
     "value": false
   },

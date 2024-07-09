@@ -16,12 +16,12 @@ use starknet_api::block::{
 use starknet_api::core::{
     EventCommitment,
     GlobalRoot,
+    ReceiptCommitment,
     SequencerContractAddress,
     StateDiffCommitment,
     TransactionCommitment,
 };
 use starknet_api::data_availability::L1DataAvailabilityMode;
-use starknet_api::hash::PoseidonHash;
 #[cfg(doc)]
 use starknet_api::transaction::TransactionOutput as starknet_api_transaction_output;
 use starknet_api::transaction::{TransactionHash, TransactionOffsetInBlock};
@@ -60,19 +60,22 @@ pub struct BlockPostV0_13_1 {
     pub l1_data_gas_price: GasPricePerToken,
     pub transaction_commitment: TransactionCommitment,
     pub event_commitment: EventCommitment,
-    // Additions to the block structure in V0.13.2
+    // Additions to the block structure in V0.13.2. These additions do not appear in older blocks
+    // even if the Feeder Gateway is of this version.
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state_diff_commitment: Option<StateDiffCommitment>,
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub receipt_commitment: Option<ReceiptCommitment>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state_diff_length: Option<usize>,
 }
 
 impl BlockPostV0_13_1 {
-    pub fn to_starknet_api_block_and_version(
-        self,
-        state_diff_hash: GlobalRoot,
-    ) -> ReaderClientResult<starknet_api_block> {
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         let block_or_deprecated = Block::PostV0_13_1(self);
-        block_or_deprecated.to_starknet_api_block_and_version(state_diff_hash)
+        block_or_deprecated.to_starknet_api_block_and_version()
     }
 }
 
@@ -234,12 +237,28 @@ impl Block {
         }
     }
 
+    pub fn state_diff_commitment(&self) -> Option<StateDiffCommitment> {
+        match self {
+            // TODO(shahak): in SN API, make StateDiffCommitment implement Copy and remove this
+            // clone.
+            Block::PostV0_13_1(block) => block.state_diff_commitment.clone(),
+        }
+    }
+
+    pub fn receipt_commitment(&self) -> Option<ReceiptCommitment> {
+        match self {
+            Block::PostV0_13_1(block) => block.receipt_commitment,
+        }
+    }
+
+    pub fn state_diff_length(&self) -> Option<usize> {
+        match self {
+            Block::PostV0_13_1(block) => block.state_diff_length,
+        }
+    }
+
     // TODO(shahak): Rename to to_starknet_api_block.
-    pub fn to_starknet_api_block_and_version(
-        self,
-        // TODO(yair): Change to StateDiffCommitment.
-        state_diff_commitment: GlobalRoot,
-    ) -> ReaderClientResult<starknet_api_block> {
+    pub fn to_starknet_api_block_and_version(self) -> ReaderClientResult<starknet_api_block> {
         // Check that the number of receipts is the same as the number of transactions.
         let num_of_txs = self.transactions().len();
         let num_of_receipts = self.transaction_receipts().len();
@@ -253,30 +272,20 @@ impl Block {
             ));
         }
 
-        let (transaction_commitment, event_commitment, n_transactions, n_events) = match &self {
-            Block::PostV0_13_1(block) => {
-                // In some older starknet versions, the transaction and event commitments are not
-                // available from the feeder gateway. In such cases, we return None for these
-                // fields.
-                if block.transaction_commitment == TransactionCommitment::default()
-                    && block.event_commitment == EventCommitment::default()
-                {
-                    (None, None, None, None)
-                } else {
-                    (
-                        Some(block.transaction_commitment),
-                        Some(block.event_commitment),
-                        Some(block.transactions.len()),
-                        Some(
-                            block
-                                .transaction_receipts
-                                .iter()
-                                .fold(0, |acc, receipt| acc + receipt.events.len()),
-                        ),
-                    )
-                }
-            }
+        // TODO(shahak): Consider deducing this from the starknet_version field instead.
+        let is_post_v0_13_2 = self.receipt_commitment().is_some();
+        let (transaction_commitment, event_commitment) = if is_post_v0_13_2 {
+            (Some(self.transaction_commitment()), Some(self.event_commitment()))
+        } else {
+            // In some older starknet versions, the transaction and event commitment are
+            // calculated with a deprecated formula. We prefer not storing those hashes rather than
+            // storing incorrect hashes.
+            (None, None)
         };
+
+        let n_transactions = self.transactions().len();
+        let n_events =
+            self.transaction_receipts().iter().fold(0, |acc, receipt| acc + receipt.events.len());
 
         // Get the header.
         let header = starknet_api::block::BlockHeader {
@@ -289,13 +298,11 @@ impl Block {
             timestamp: self.timestamp(),
             l1_data_gas_price: self.l1_data_gas_price(),
             l1_da_mode: self.l1_da_mode(),
-            state_diff_commitment: StateDiffCommitment(PoseidonHash(state_diff_commitment.0)),
+            state_diff_commitment: self.state_diff_commitment(),
             transaction_commitment,
             event_commitment,
-            // TODO(shahak): Add receipt commitment once it's added to the FGW
-            receipt_commitment: None,
-            // TODO(shahak): Add state diff length once it's added to the FGW
-            state_diff_length: None,
+            receipt_commitment: self.receipt_commitment(),
+            state_diff_length: self.state_diff_length(),
             n_transactions,
             n_events,
             starknet_version: StarknetVersion(self.starknet_version()),

@@ -7,7 +7,7 @@ license-file.workspace = true
 description = "A block-builder for Starknet blocks"
 
 [dependencies]
-papyrus_storage = { path = "../../papyrus_storage", version = "0.4.0-dev.3", features = ["testing"] }
+papyrus_storage = { path = "../../papyrus_storage", version = "0.4.0-dev.4", features = ["testing"] }
 starknet_api.workspace = true
 thiserror.workspace = true
 tracing.workspace = true

@@ -123,6 +123,7 @@ use starknet_api::transaction::{
     TransactionVersion,
 };
 use starknet_types_core::felt::Felt;
+use tracing::warn;
 
 use crate::body::events::EventIndex;
 use crate::body::TransactionIndex;
@@ -159,13 +160,13 @@ auto_storage_serde! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub state_diff_commitment: StateDiffCommitment,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
         pub transaction_commitment: Option<TransactionCommitment>,
         pub event_commitment: Option<EventCommitment>,
         pub receipt_commitment: Option<ReceiptCommitment>,
         pub state_diff_length: Option<usize>,
-        pub n_transactions: Option<usize>,
-        pub n_events: Option<usize>,
+        pub n_transactions: usize,
+        pub n_events: usize,
     }
     pub struct BlockSignature(pub Signature);
     pub enum BlockStatus {
@@ -965,6 +966,13 @@ impl StorageSerde for DeprecatedContractClass {
         let mut to_compress: Vec<u8> = Vec::new();
         self.abi.serialize_into(&mut to_compress)?;
         self.program.serialize_into(&mut to_compress)?;
+        if to_compress.len() > crate::compression_utils::MAX_DECOMPRESSED_SIZE {
+            warn!(
+                "DeprecatedContractClass serialization size is too large and will lead to \
+                 deserialization error: {}",
+                to_compress.len()
+            );
+        }
         let compressed = compress(to_compress.as_slice())?;
         compressed.serialize_into(res)?;
         self.entry_points_by_type.serialize_into(res)?;
@@ -973,7 +981,8 @@ impl StorageSerde for DeprecatedContractClass {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = decompress(compressed_data.as_slice())
+            .expect("destination buffer should be large enough");
         let data = &mut data.as_slice();
         Some(Self {
             abi: Option::<Vec<ContractClassAbiEntry>>::deserialize_from(data)?,
@@ -1018,7 +1027,13 @@ impl StorageSerde for CasmContractClass {
         self.hints.serialize_into(&mut to_compress)?;
         self.pythonic_hints.serialize_into(&mut to_compress)?;
         self.entry_points_by_type.serialize_into(&mut to_compress)?;
-
+        if to_compress.len() > crate::compression_utils::MAX_DECOMPRESSED_SIZE {
+            warn!(
+                "CasmContractClass serialization size is too large and will lead to \
+                 deserialization error: {}",
+                to_compress.len()
+            );
+        }
         let compressed = compress(to_compress.as_slice())?;
         compressed.serialize_into(res)?;
 
@@ -1027,7 +1042,8 @@ impl StorageSerde for CasmContractClass {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = decompress(compressed_data.as_slice())
+            .expect("destination buffer should be large enough");
         let data = &mut data.as_slice();
         Some(Self {
             prime: BigUint::deserialize_from(data)?,
@@ -1053,6 +1069,13 @@ impl StorageSerde for ThinStateDiff {
         self.deprecated_declared_classes.serialize_into(&mut to_compress)?;
         self.nonces.serialize_into(&mut to_compress)?;
         self.replaced_classes.serialize_into(&mut to_compress)?;
+        if to_compress.len() > crate::compression_utils::MAX_DECOMPRESSED_SIZE {
+            warn!(
+                "ThinStateDiff serialization size is too large and will lead to deserialization \
+                 error: {}",
+                to_compress.len()
+            );
+        }
         let compressed = compress(to_compress.as_slice())?;
         compressed.serialize_into(res)?;
         Ok(())
@@ -1060,7 +1083,8 @@ impl StorageSerde for ThinStateDiff {
 
     fn deserialize_from(bytes: &mut impl std::io::Read) -> Option<Self> {
         let compressed_data = Vec::<u8>::deserialize_from(bytes)?;
-        let data = decompress(compressed_data.as_slice()).ok()?;
+        let data = decompress(compressed_data.as_slice())
+            .expect("destination buffer should be large enough");
         let data = &mut data.as_slice();
         Some(Self {
             deployed_contracts: IndexMap::deserialize_from(data)?,
@@ -1088,6 +1112,14 @@ macro_rules! auto_storage_serde_conditionally_compressed {
                 )*
                 if to_compress.len() > COMPRESSION_THRESHOLD_BYTES {
                     IsCompressed::Yes.serialize_into(res)?;
+                    if to_compress.len() > crate::compression_utils::MAX_DECOMPRESSED_SIZE {
+                        warn!(
+                            "{} serialization size is too large and will lead to deserialization \
+                            error: {}",
+                            stringify!($name),
+                            to_compress.len()
+                        );
+                    }
                     let compressed = compress(to_compress.as_slice())?;
                     compressed.serialize_into(res)?;
                 } else {
@@ -1101,7 +1133,9 @@ macro_rules! auto_storage_serde_conditionally_compressed {
                 let maybe_compressed_data = Vec::<u8>::deserialize_from(bytes)?;
                 let data = match is_compressed {
                     IsCompressed::No => maybe_compressed_data,
-                    IsCompressed::Yes => decompress(maybe_compressed_data.as_slice()).ok()?,
+                    IsCompressed::Yes => decompress(
+                        maybe_compressed_data.as_slice())
+                            .expect("destination buffer should be large enough"),
                 };
                 let data = &mut data.as_slice();
                 Some(Self {

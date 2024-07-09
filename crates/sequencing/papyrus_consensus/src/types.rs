@@ -2,8 +2,11 @@
 #[path = "types_test.rs"]
 mod types_test;
 
+use std::fmt::Debug;
+
 use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
+use papyrus_protobuf::consensus::{ConsensusMessage, Vote};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 
@@ -13,6 +16,7 @@ use starknet_api::core::ContractAddress;
 ///    signatures.
 // TODO(matan): Determine the actual type of NodeId.
 pub type ValidatorId = ContractAddress;
+pub type Round = u32;
 
 /// Interface that any concrete block type must implement to be used by consensus.
 ///
@@ -129,6 +133,8 @@ pub trait ConsensusContext: Send + Sync {
     /// Calculates the ID of the Proposer based on the inputs.
     fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
+    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError>;
+
     /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
     /// input channels in parallel (ie on a separate task).
     // TODO(matan): change to just be a generic broadcast function.
@@ -140,16 +146,35 @@ pub trait ConsensusContext: Send + Sync {
     ) -> Result<(), ConsensusError>;
 }
 
+#[derive(PartialEq)]
+pub struct Decision<BlockT: ConsensusBlock> {
+    pub precommits: Vec<Vote>,
+    pub block: BlockT,
+}
+
+impl<BlockT: ConsensusBlock> Debug for Decision<BlockT> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Decision")
+            .field("block_id", &self.block.id())
+            .field("precommits", &self.precommits)
+            .finish()
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub struct ProposalInit {
     pub height: BlockNumber,
     pub proposer: ValidatorId,
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, PartialEq, Debug)]
 pub enum ConsensusError {
     #[error(transparent)]
     Canceled(#[from] oneshot::Canceled),
     #[error("Invalid proposal sent by peer {0:?} at height {1}: {2}")]
     InvalidProposal(ValidatorId, BlockNumber, String),
+    #[error(transparent)]
+    SendError(#[from] mpsc::SendError),
+    #[error("Conflicting messages for block {0}. Old: {1:?}, New: {2:?}")]
+    Equivocation(BlockNumber, ConsensusMessage, ConsensusMessage),
 }

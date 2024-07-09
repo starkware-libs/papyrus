@@ -60,8 +60,8 @@ impl From<GenericEvent<HandlerSessionError>> for GenericEvent<SessionError> {
                 peer_id,
                 protocol_name,
             } => Self::NewInboundSession { query, inbound_session_id, peer_id, protocol_name },
-            GenericEvent::ReceivedData { outbound_session_id, data, peer_id } => {
-                Self::ReceivedData { outbound_session_id, data, peer_id }
+            GenericEvent::ReceivedResponse { outbound_session_id, response, peer_id } => {
+                Self::ReceivedResponse { outbound_session_id, response, peer_id }
             }
             GenericEvent::SessionFailed {
                 session_id,
@@ -118,6 +118,7 @@ pub struct Behaviour {
     dropped_sessions: HashSet<SessionId>,
     wakers_waiting_for_event: Vec<Waker>,
     outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, StreamProtocol)>,
+    supported_inbound_protocols: HashSet<StreamProtocol>,
 }
 
 impl Behaviour {
@@ -132,6 +133,7 @@ impl Behaviour {
             dropped_sessions: Default::default(),
             wakers_waiting_for_event: Default::default(),
             outbound_sessions_pending_peer_assignment: Default::default(),
+            supported_inbound_protocols: Default::default(),
         }
     }
 
@@ -185,10 +187,10 @@ impl Behaviour {
         outbound_session_id
     }
 
-    /// Send a data message to an open inbound session.
-    pub fn send_data(
+    /// Send a response message to an open inbound session.
+    pub fn send_response(
         &mut self,
-        data: Bytes,
+        response: Bytes,
         inbound_session_id: InboundSessionId,
     ) -> Result<(), SessionIdNotFoundError> {
         let (peer_id, connection_id) =
@@ -196,7 +198,7 @@ impl Behaviour {
         self.add_event_to_queue(ToSwarm::NotifyHandler {
             peer_id,
             handler: NotifyHandler::One(connection_id),
-            event: RequestFromBehaviourEvent::SendData { data, inbound_session_id },
+            event: RequestFromBehaviourEvent::SendResponse { response, inbound_session_id },
         });
         Ok(())
     }
@@ -248,6 +250,11 @@ impl Behaviour {
             waker.wake();
         }
     }
+    pub fn add_new_supported_inbound_protocol(&mut self, protocol: StreamProtocol) {
+        if !self.supported_inbound_protocols.contains(&protocol) {
+            self.supported_inbound_protocols.insert(protocol);
+        }
+    }
 }
 
 impl NetworkBehaviour for Behaviour {
@@ -261,7 +268,12 @@ impl NetworkBehaviour for Behaviour {
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn handle_established_outbound_connection(
@@ -271,7 +283,12 @@ impl NetworkBehaviour for Behaviour {
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_>) {
@@ -331,7 +348,7 @@ impl NetworkBehaviour for Behaviour {
                             is_event_muted = true;
                         }
                     }
-                    ExternalEvent::ReceivedData { outbound_session_id, .. } => {
+                    ExternalEvent::ReceivedResponse { outbound_session_id, .. } => {
                         if self.dropped_sessions.contains(&outbound_session_id.into()) {
                             is_event_muted = true;
                         }

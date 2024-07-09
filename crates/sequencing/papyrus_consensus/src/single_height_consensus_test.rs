@@ -1,6 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
 use futures::channel::{mpsc, oneshot};
+use papyrus_protobuf::consensus::{ConsensusMessage, Vote, VoteType};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_types_core::felt::Felt;
 use tokio;
@@ -9,12 +10,21 @@ use super::SingleHeightConsensus;
 use crate::test_utils::{MockTestContext, TestBlock};
 use crate::types::{ConsensusBlock, ProposalInit, ValidatorId};
 
+fn prevote(block_hash: BlockHash, height: u64, voter: ValidatorId) -> ConsensusMessage {
+    ConsensusMessage::Vote(Vote { vote_type: VoteType::Prevote, height, block_hash, voter })
+}
+
+fn precommit(block_hash: BlockHash, height: u64, voter: ValidatorId) -> ConsensusMessage {
+    ConsensusMessage::Vote(Vote { vote_type: VoteType::Precommit, height, block_hash, voter })
+}
+
 #[tokio::test]
 async fn proposer() {
     let mut context = MockTestContext::new();
 
     let node_id: ValidatorId = 1_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
+    let block_id = block.id();
     // Set expectations for how the test should run:
     context
         .expect_validators()
@@ -37,11 +47,39 @@ async fn proposer() {
         fin_receiver_clone.set(fin_receiver).unwrap();
         Ok(())
     });
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
 
     let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
 
-    let decision = shc.start().await.unwrap().unwrap();
-    assert_eq!(decision, block);
+    // Sends proposal and prevote.
+    assert!(matches!(shc.start().await, Ok(None)));
+
+    assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+
+    let precommits = vec![
+        precommit(block.id(), 0, 1_u32.into()),
+        precommit(BlockHash(Felt::TWO), 0, 4_u32.into()), // Ignores since disagrees.
+        precommit(block.id(), 0, 2_u32.into()),
+        precommit(block.id(), 0, 3_u32.into()),
+    ];
+    assert_eq!(shc.handle_message(precommits[1].clone()).await, Ok(None));
+    assert_eq!(shc.handle_message(precommits[2].clone()).await, Ok(None));
+    let decision = shc.handle_message(precommits[3].clone()).await.unwrap().unwrap();
+    assert_eq!(decision.block, block);
+    assert!(
+        decision
+            .precommits
+            .into_iter()
+            .all(|item| precommits.contains(&ConsensusMessage::Vote(item)))
+    );
 
     // Check the fin sent to the network.
     let fin = Arc::into_inner(fin_receiver).unwrap().take().unwrap().await.unwrap();
@@ -55,6 +93,7 @@ async fn validator() {
     let node_id: ValidatorId = 1_u32.into();
     let proposer: ValidatorId = 2_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
+    let block_id = block.id();
 
     // Set expectations for how the test should run:
     context
@@ -67,6 +106,14 @@ async fn validator() {
         block_sender.send(block_clone.clone()).unwrap();
         block_receiver
     });
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
 
     // Creation calls to `context.validators`.
     let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
@@ -74,15 +121,31 @@ async fn validator() {
     // Send the proposal from the peer.
     let (fin_sender, fin_receiver) = oneshot::channel();
     fin_sender.send(block.id()).unwrap();
-    let decision = shc
+
+    let res = shc
         .handle_proposal(
             ProposalInit { height: BlockNumber(0), proposer },
             mpsc::channel(1).1, // content - ignored by SHC.
             fin_receiver,
         )
-        .await
-        .unwrap()
-        .unwrap();
+        .await;
+    assert_eq!(res, Ok(None));
 
-    assert_eq!(decision, block);
+    assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+
+    let precommits = vec![
+        precommit(block.id(), 0, 2_u32.into()),
+        precommit(block.id(), 0, 3_u32.into()),
+        precommit(block.id(), 0, node_id),
+    ];
+    assert_eq!(shc.handle_message(precommits[0].clone()).await, Ok(None));
+    let decision = shc.handle_message(precommits[1].clone()).await.unwrap().unwrap();
+    assert_eq!(decision.block, block);
+    assert!(
+        decision
+            .precommits
+            .into_iter()
+            .all(|item| precommits.contains(&ConsensusMessage::Vote(item)))
+    );
 }

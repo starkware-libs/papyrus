@@ -87,9 +87,15 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .try_into()
             .map(GlobalRoot)?;
 
-        let n_transactions = value.transactions.as_ref().map(|transactions| {
-            transactions.n_leaves.try_into().expect("Failed converting u64 to usize")
-        });
+        let n_transactions = value
+            .transactions
+            .as_ref()
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "SignedBlockHeader::transactions",
+            })?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
 
         let transaction_commitment = value
             .transactions
@@ -108,7 +114,12 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
         let n_events = value
             .events
             .as_ref()
-            .map(|events| events.n_leaves.try_into().expect("Failed converting u64 to usize"));
+            .ok_or(ProtobufConversionError::MissingField {
+                field_description: "SignedBlockHeader::events",
+            })?
+            .n_leaves
+            .try_into()
+            .expect("Failed converting u64 to usize");
 
         let event_commitment = value
             .events
@@ -178,18 +189,19 @@ impl TryFrom<protobuf::SignedBlockHeader> for SignedBlockHeader {
             .map(|receipts| receipts.try_into().map(ReceiptCommitment))
             .transpose()?;
 
-        let state_diff_commitment = StateDiffCommitment(PoseidonHash(
-            value
-                .state_diff_commitment
-                .ok_or(ProtobufConversionError::MissingField {
-                    field_description: "SignedBlockHeader::state_diff_commitment",
-                })?
-                .root
-                .ok_or(ProtobufConversionError::MissingField {
-                    field_description: "StateDiffCommitment::root",
-                })?
-                .try_into()?,
-        ));
+        let state_diff_commitment = value
+            .state_diff_commitment
+            .map(|state_diff_commitment| {
+                Ok::<_, ProtobufConversionError>(StateDiffCommitment(PoseidonHash(
+                    state_diff_commitment
+                        .root
+                        .ok_or(ProtobufConversionError::MissingField {
+                            field_description: "StateDiffCommitment::root",
+                        })?
+                        .try_into()?,
+                )))
+            })
+            .transpose()?;
 
         Ok(SignedBlockHeader {
             block_header: BlockHeader {
@@ -229,36 +241,37 @@ impl From<DataOrFin<SignedBlockHeader>> for protobuf::BlockHeadersResponse {
 
 impl From<(BlockHeader, Vec<BlockSignature>)> for protobuf::SignedBlockHeader {
     fn from((header, signatures): (BlockHeader, Vec<BlockSignature>)) -> Self {
+        let state_diff_commitment = match (header.state_diff_commitment, header.state_diff_length) {
+            (Some(state_diff_commitment), Some(state_diff_length)) => {
+                Some(protobuf::StateDiffCommitment {
+                    state_diff_length: state_diff_length
+                        .try_into()
+                        .expect("Converting usize to u64 failed"),
+                    root: Some(state_diff_commitment.0.0.into()),
+                })
+            }
+            _ => None,
+        };
         Self {
             block_hash: Some(header.block_hash.into()),
             parent_hash: Some(header.parent_hash.into()),
             number: header.block_number.0,
             time: header.timestamp.0,
             sequencer_address: Some(header.sequencer.0.into()),
-            state_diff_commitment: Some(protobuf::StateDiffCommitment {
-                state_diff_length: header
-                    .state_diff_length
-                    // If state_diff_length is None, then state_diff_commitment is also None and the
-                    // other peer will know that this node doesn't know about the state diff.
-                    .unwrap_or(0)
-                    .try_into()
-                    .expect("Converting usize to u64 failed"),
-                root: Some(header.state_diff_commitment.0.0.into()),
-            }),
+            state_diff_commitment,
             state_root: Some(header.state_root.0.into()),
-            // This will be Some only if both n_transactions and transaction_commitment are Some.
-            transactions: header.n_transactions.and_then(|n_transactions| {
-                header.transaction_commitment.map(|transaction_commitment| protobuf::Patricia {
-                    n_leaves: n_transactions.try_into().expect("Converting usize to u64 failed"),
+            transactions: header.transaction_commitment.map(|transaction_commitment| {
+                protobuf::Patricia {
+                    n_leaves: header
+                        .n_transactions
+                        .try_into()
+                        .expect("Converting usize to u64 failed"),
                     root: Some(transaction_commitment.0.into()),
-                })
+                }
             }),
-            // This will be Some only if both n_events and event_commitment are Some.
-            events: header.n_events.and_then(|n_events| {
-                header.event_commitment.map(|event_commitment| protobuf::Patricia {
-                    n_leaves: n_events.try_into().expect("Converting usize to u64 failed"),
-                    root: Some(event_commitment.0.into()),
-                })
+            events: header.event_commitment.map(|event_commitment| protobuf::Patricia {
+                n_leaves: header.n_events.try_into().expect("Converting usize to u64 failed"),
+                root: Some(event_commitment.0.into()),
             }),
             receipts: header
                 .receipt_commitment

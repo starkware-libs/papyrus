@@ -942,9 +942,9 @@ dependencies = [
 
 [[package]]
 name = "blockifier"
-version = "0.8.0-dev.0"
+version = "0.8.0-dev.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb4f57ce711234b75654cda8d80198b4623a4a5390b8cb2e2c8d740d8def8d8d"
+checksum = "01029cc5149e250cf8357bc08fb9301fac2c4edfe55ef6cc102d3b3712c22eda"
 dependencies = [
  "anyhow",
  "ark-ec",
@@ -970,8 +970,8 @@ dependencies = [
  "phf",
  "serde",
  "serde_json",
+ "sha2",
  "sha3",
- "starknet-crypto 0.5.2",
  "starknet-types-core",
  "starknet_api",
  "strum 0.24.1",
@@ -5865,7 +5865,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_base_layer"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "async-trait",
  "ethers",
@@ -5887,7 +5887,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_block_builder"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "papyrus_storage",
  "pretty_assertions",
@@ -5899,7 +5899,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_common"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "bitvec",
@@ -5922,7 +5922,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_config"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "clap",
@@ -5939,14 +5939,18 @@ dependencies = [
 
 [[package]]
 name = "papyrus_consensus"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "async-trait",
  "futures",
+ "metrics",
  "mockall",
+ "papyrus_common",
+ "papyrus_config",
  "papyrus_network",
  "papyrus_protobuf",
  "papyrus_storage",
+ "serde",
  "starknet-types-core",
  "starknet_api",
  "test-case",
@@ -5958,7 +5962,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_execution"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -5988,7 +5992,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_load_test"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -6005,7 +6009,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_monitoring_gateway"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "axum",
  "futures-util",
@@ -6030,7 +6034,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_network"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -6040,7 +6044,6 @@ dependencies = [
  "deadqueue",
  "defaultmap",
  "derive_more",
- "enum-iterator",
  "futures",
  "lazy_static",
  "libp2p",
@@ -6064,7 +6067,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_node"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "anyhow",
  "assert-json-diff",
@@ -6112,10 +6115,12 @@ dependencies = [
 
 [[package]]
 name = "papyrus_p2p_sync"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-stream",
+ "derive_more",
+ "enum-iterator",
  "futures",
  "indexmap 2.2.6",
  "lazy_static",
@@ -6127,6 +6132,7 @@ dependencies = [
  "papyrus_protobuf",
  "papyrus_storage",
  "rand 0.8.5",
+ "rand_chacha 0.3.1",
  "serde",
  "starknet-types-core",
  "starknet_api",
@@ -6140,7 +6146,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_proc_macros"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "metrics",
  "metrics-exporter-prometheus",
@@ -6153,7 +6159,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_protobuf"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "bytes",
  "indexmap 2.2.6",
@@ -6173,7 +6179,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_rpc"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -6230,7 +6236,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_storage"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "byteorder",
@@ -6281,7 +6287,7 @@ dependencies = [
 
 [[package]]
 name = "papyrus_sync"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-stream",
@@ -8368,9 +8374,9 @@ dependencies = [
 
 [[package]]
 name = "starknet-types-core"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65799574816ba83cb04b21a3cb16f791b9882687cd9093415fd1b3821dbac29d"
+checksum = "ce6bacf0ba19bc721e518bc4bf389ff13daa8a7c5db5fd320600473b8aa9fcbd"
 dependencies = [
  "lambdaworks-crypto",
  "lambdaworks-math",
@@ -8383,8 +8389,9 @@ dependencies = [
 
 [[package]]
 name = "starknet_api"
-version = "0.13.0-dev.8"
-source = "git+https://github.com/starkware-libs/starknet-api?rev=61467b1#61467b18c217b9f48d49a606732a61a7e14b5065"
+version = "0.13.0-dev.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66a6dc6b4f77fff0f28894cc36d5a691784550054d06c6850e901278aed2c7e6"
 dependencies = [
  "bitvec",
  "cairo-lang-starknet-classes",
@@ -8406,7 +8413,7 @@ dependencies = [
 
 [[package]]
 name = "starknet_client"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-trait",
@@ -8728,7 +8735,7 @@ dependencies = [
 
 [[package]]
 name = "test_utils"
-version = "0.4.0-dev.3"
+version = "0.4.0-dev.4"
 dependencies = [
  "cairo-lang-casm",
  "cairo-lang-starknet-classes",

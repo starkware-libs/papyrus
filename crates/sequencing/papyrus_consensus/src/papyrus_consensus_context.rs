@@ -16,6 +16,7 @@ use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber};
+use starknet_api::core::ContractAddress;
 use starknet_api::transaction::Transaction;
 use tokio::sync::Mutex;
 use tracing::debug;
@@ -47,6 +48,7 @@ impl ConsensusBlock for PapyrusConsensusBlock {
 pub struct PapyrusConsensusContext {
     storage_reader: StorageReader,
     broadcast_sender: Arc<Mutex<SubscriberSender<ConsensusMessage>>>,
+    validators: Vec<ValidatorId>,
 }
 
 impl PapyrusConsensusContext {
@@ -55,8 +57,13 @@ impl PapyrusConsensusContext {
     pub fn new(
         storage_reader: StorageReader,
         broadcast_sender: SubscriberSender<ConsensusMessage>,
+        num_validators: u64,
     ) -> Self {
-        Self { storage_reader, broadcast_sender: Arc::new(Mutex::new(broadcast_sender)) }
+        Self {
+            storage_reader,
+            broadcast_sender: Arc::new(Mutex::new(broadcast_sender)),
+            validators: (0..num_validators).map(ContractAddress::from).collect(),
+        }
     }
 }
 
@@ -158,11 +165,17 @@ impl ConsensusContext for PapyrusConsensusContext {
     }
 
     async fn validators(&self, _height: BlockNumber) -> Vec<ValidatorId> {
-        vec![0u8.into(), 1u8.into()]
+        self.validators.clone()
     }
 
-    fn proposer(&self, _validators: &[ValidatorId], height: BlockNumber) -> ValidatorId {
-        (height.0 % 2).into()
+    fn proposer(&self, _validators: &[ValidatorId], _height: BlockNumber) -> ValidatorId {
+        *self.validators.first().expect("validators should have at least 2 validators")
+    }
+
+    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError> {
+        debug!("Broadcasting message: {message:?}");
+        self.broadcast_sender.lock().await.send(message).await?;
+        Ok(())
     }
 
     async fn propose(
@@ -187,6 +200,13 @@ impl ConsensusContext for PapyrusConsensusContext {
                 transactions,
                 block_hash,
             };
+            debug!(
+                "Sending proposal: height={:?} id={:?} num_txs={} block_hash={:?}",
+                proposal.height,
+                proposal.proposer,
+                proposal.transactions.len(),
+                proposal.block_hash
+            );
 
             broadcast_sender
                 .lock()

@@ -34,13 +34,13 @@ auto_impl_get_test_instance! {
         pub sequencer: SequencerContractAddress,
         pub timestamp: BlockTimestamp,
         pub l1_da_mode: L1DataAvailabilityMode,
-        pub state_diff_commitment: StateDiffCommitment,
+        pub state_diff_commitment: Option<StateDiffCommitment>,
         pub transaction_commitment: Option<TransactionCommitment>,
         pub event_commitment: Option<EventCommitment>,
         pub receipt_commitment: Option<ReceiptCommitment>,
         pub state_diff_length: Option<usize>,
-        pub n_transactions: Option<usize>,
-        pub n_events: Option<usize>,
+        pub n_transactions: usize,
+        pub n_events: usize,
     }
 
     struct EventIndex(pub TransactionIndex, pub EventIndexInTransactionOutput);
