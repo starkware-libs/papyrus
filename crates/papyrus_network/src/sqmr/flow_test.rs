@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use defaultmap::DefaultHashMap;
 use futures::StreamExt;
-use libp2p::swarm::{NetworkBehaviour, StreamProtocol, SwarmEvent};
-use libp2p::{PeerId, Swarm};
+use libp2p::swarm::{NetworkBehaviour, SwarmEvent};
+use libp2p::{PeerId, StreamProtocol, Swarm};
 
 use super::behaviour::{Behaviour, Event, ExternalEvent};
 use super::{Bytes, Config, InboundSessionId, OutboundSessionId, SessionId};
@@ -189,10 +189,12 @@ fn get_response_from_indices(peer_id1: PeerId, peer_id2: PeerId, message_index: 
 #[tokio::test]
 async fn everyone_sends_to_everyone() {
     let mut swarms_stream = create_fully_connected_swarms_stream(NUM_PEERS, || {
-        Behaviour::new(Config {
-            session_timeout: Duration::from_secs(5),
-            supported_inbound_protocols: vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME],
-        })
+        let mut behaviour = Behaviour::new(Config { session_timeout: Duration::from_secs(5) });
+        let supported_inbound_protocols = vec![PROTOCOL_NAME, OTHER_PROTOCOL_NAME];
+        for protocol in supported_inbound_protocols {
+            behaviour.add_new_supported_inbound_protocol(protocol);
+        }
+        behaviour
     })
     .await;
 

@@ -118,6 +118,7 @@ pub struct Behaviour {
     dropped_sessions: HashSet<SessionId>,
     wakers_waiting_for_event: Vec<Waker>,
     outbound_sessions_pending_peer_assignment: HashMap<OutboundSessionId, (Bytes, StreamProtocol)>,
+    supported_inbound_protocols: HashSet<StreamProtocol>,
 }
 
 impl Behaviour {
@@ -132,6 +133,7 @@ impl Behaviour {
             dropped_sessions: Default::default(),
             wakers_waiting_for_event: Default::default(),
             outbound_sessions_pending_peer_assignment: Default::default(),
+            supported_inbound_protocols: Default::default(),
         }
     }
 
@@ -248,6 +250,11 @@ impl Behaviour {
             waker.wake();
         }
     }
+    pub fn add_new_supported_inbound_protocol(&mut self, protocol: StreamProtocol) {
+        if !self.supported_inbound_protocols.contains(&protocol) {
+            self.supported_inbound_protocols.insert(protocol);
+        }
+    }
 }
 
 impl NetworkBehaviour for Behaviour {
@@ -261,7 +268,12 @@ impl NetworkBehaviour for Behaviour {
         _local_addr: &Multiaddr,
         _remote_addr: &Multiaddr,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn handle_established_outbound_connection(
@@ -271,7 +283,12 @@ impl NetworkBehaviour for Behaviour {
         _addr: &Multiaddr,
         _role_override: Endpoint,
     ) -> Result<Self::ConnectionHandler, ConnectionDenied> {
-        Ok(Handler::new(self.config.clone(), self.next_inbound_session_id.clone(), peer_id))
+        Ok(Handler::new(
+            self.config.clone(),
+            self.next_inbound_session_id.clone(),
+            peer_id,
+            self.supported_inbound_protocols.clone(),
+        ))
     }
 
     fn on_swarm_event(&mut self, event: FromSwarm<'_>) {

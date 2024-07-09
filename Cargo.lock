@@ -6044,7 +6044,6 @@ dependencies = [
  "deadqueue",
  "defaultmap",
  "derive_more",
- "enum-iterator",
  "futures",
  "lazy_static",
  "libp2p",
@@ -6120,6 +6119,8 @@ version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-stream",
+ "derive_more",
+ "enum-iterator",
  "futures",
  "indexmap 2.2.6",
  "lazy_static",
