@@ -268,7 +268,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             | SwarmEvent::Dialing { .. }
             | SwarmEvent::NewExternalAddrCandidate { .. } => {}
             _ => {
-                panic!("Unexpected event {event:?}");
+                error!("Unexpected event {event:?}");
             }
         }
     }
