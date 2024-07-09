@@ -698,6 +698,16 @@ impl FileHandlers<RW> {
         self.clone().deprecated_contract_class.append(deprecated_contract_class)
     }
 
+    // Appends a thin transaction output to the corresponding file and returns its location.
+    fn append_transaction_output(&self, transaction_output: &TransactionOutput) -> LocationInFile {
+        self.clone().transaction_output.append(transaction_output)
+    }
+
+    // Appends a transaction to the corresponding file and returns its location.
+    fn append_transaction(&self, transaction: &Transaction) -> LocationInFile {
+        self.clone().transaction.append(transaction)
+    }
+
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
     #[latency_histogram("storage_file_handler_flush_latency_seconds", false)]
     fn flush(&self) {
@@ -708,16 +718,6 @@ impl FileHandlers<RW> {
         self.deprecated_contract_class.flush();
         self.transaction_output.flush();
         self.transaction.flush();
-    }
-
-    // Appends a thin transaction output to the corresponding file and returns its location.
-    fn append_transaction_output(&self, transaction_output: &TransactionOutput) -> LocationInFile {
-        self.clone().transaction_output.append(transaction_output)
-    }
-
-    // Appends a transaction to the corresponding file and returns its location.
-    fn append_transaction(&self, transaction: &Transaction) -> LocationInFile {
-        self.clone().transaction.append(transaction)
     }
 }
 

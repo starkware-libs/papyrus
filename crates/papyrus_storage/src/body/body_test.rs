@@ -6,9 +6,10 @@ use test_case::test_case;
 use test_utils::{get_test_block, get_test_body};
 
 use crate::body::{BodyStorageReader, BodyStorageWriter, TransactionIndex};
+use crate::db::table_types::Table;
 use crate::db::{DbError, KeyAlreadyExistsError};
 use crate::test_utils::{get_test_storage, get_test_storage_by_scope};
-use crate::{StorageError, StorageScope, StorageWriter};
+use crate::{OffsetKind, StorageError, StorageScope, StorageWriter};
 
 #[tokio::test]
 async fn append_body() {
@@ -385,4 +386,28 @@ fn append_2_bodies(writer: &mut StorageWriter) {
         .unwrap()
         .commit()
         .unwrap();
+}
+
+#[test]
+fn update_offset_table() {
+    let ((reader, mut writer), _temp_dir) = get_test_storage();
+    let body = get_test_block(3, None, None, None).body;
+    writer.begin_rw_txn().unwrap().append_body(BlockNumber(0), body).unwrap().commit().unwrap();
+
+    let txn = reader.begin_ro_txn().unwrap();
+    let file_offset_table = txn.txn.open_table(&txn.tables.file_offsets).unwrap();
+    let transaction_metadata_table = txn.txn.open_table(&txn.tables.transaction_metadata).unwrap();
+    let last_tx_metadata = transaction_metadata_table
+        .get(&txn.txn, &TransactionIndex(BlockNumber(0), TransactionOffsetInBlock(2)))
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        last_tx_metadata.tx_location.next_offset(),
+        file_offset_table.get(&txn.txn, &OffsetKind::Transaction).unwrap().unwrap()
+    );
+    assert_eq!(
+        last_tx_metadata.tx_output_location.next_offset(),
+        file_offset_table.get(&txn.txn, &OffsetKind::TransactionOutput).unwrap().unwrap()
+    );
 }
