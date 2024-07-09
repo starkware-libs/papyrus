@@ -15,7 +15,7 @@ use lazy_static::lazy_static;
 use libp2p::core::ConnectedPoint;
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::ConnectionId;
-use libp2p::{Multiaddr, PeerId};
+use libp2p::{Multiaddr, PeerId, StreamProtocol};
 use tokio::select;
 use tokio::sync::Mutex;
 use tokio::time::sleep;
@@ -41,6 +41,7 @@ struct MockSwarm {
     pub subscribed_topics: HashSet<TopicHash>,
     broadcasted_messages_senders: Vec<UnboundedSender<(Bytes, TopicHash)>>,
     reported_peer_senders: Vec<UnboundedSender<PeerId>>,
+    supported_inbound_protocols_senders: Vec<UnboundedSender<StreamProtocol>>,
     inbound_session_id_to_response_sender: HashMap<InboundSessionId, UnboundedSender<Bytes>>,
     next_outbound_session_id: usize,
     first_polled_event_notifier: Option<oneshot::Sender<()>>,
@@ -93,6 +94,12 @@ impl MockSwarm {
         receiver
     }
 
+    pub fn get_supported_inbound_protocol(&mut self) -> impl Stream<Item = StreamProtocol> {
+        let (sender, receiver) = unbounded();
+        self.supported_inbound_protocols_senders.push(sender);
+        receiver
+    }
+
     fn create_response_events_for_query_each_num_becomes_response(
         &self,
         query: Vec<u8>,
@@ -129,7 +136,7 @@ impl SwarmTrait for MockSwarm {
         &mut self,
         query: Vec<u8>,
         peer_id: PeerId,
-        _protocol: crate::Protocol,
+        _protocol: StreamProtocol,
     ) -> Result<OutboundSessionId, PeerNotConnected> {
         let outbound_session_id = OutboundSessionId { value: self.next_outbound_session_id };
         self.create_response_events_for_query_each_num_becomes_response(
@@ -182,9 +189,15 @@ impl SwarmTrait for MockSwarm {
             sender.unbounded_send(peer_id).unwrap();
         }
     }
+    fn add_new_supported_inbound_protocol(&mut self, protocol_name: StreamProtocol) {
+        for sender in &self.supported_inbound_protocols_senders {
+            sender.unbounded_send(protocol_name.clone()).unwrap();
+        }
+    }
 }
 
 const BUFFER_SIZE: usize = 100;
+const SIGNED_BLOCK_HEADER_PROTOCOL: StreamProtocol = StreamProtocol::new("/starknet/headers/1");
 
 #[tokio::test]
 async fn register_sqmr_protocol_client_and_use_channels() {
@@ -201,7 +214,7 @@ async fn register_sqmr_protocol_client_and_use_channels() {
     // register subscriber and send query
     let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
         .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
-            crate::Protocol::SignedBlockHeader,
+            SIGNED_BLOCK_HEADER_PROTOCOL.to_string(),
             BUFFER_SIZE,
         );
 
@@ -237,7 +250,7 @@ async fn process_incoming_query() {
     // Create responses for test.
     let query = VEC1.clone();
     let responses = vec![VEC1.clone(), VEC2.clone(), VEC3.clone()];
-    let protocol = crate::Protocol::SignedBlockHeader;
+    let protocol: StreamProtocol = SIGNED_BLOCK_HEADER_PROTOCOL;
 
     // Setup mock swarm and tell it to return an event of new inbound query.
     let mut mock_swarm = MockSwarm::default();
@@ -247,18 +260,22 @@ async fn process_incoming_query() {
             query: query.clone(),
             inbound_session_id,
             peer_id: PeerId::random(),
-            protocol_name: protocol.into(),
+            protocol_name: protocol.clone(),
         }),
     )));
 
     // Create a future that will return when the session is closed with the responses sent on the
     // swarm.
     let get_responses_fut = mock_swarm.get_responses_sent_to_inbound_session(inbound_session_id);
+    let mut get_supported_inbound_protocol_fut = mock_swarm.get_supported_inbound_protocol();
 
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
-    let mut inbound_query_receiver =
-        network_manager.register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol, BUFFER_SIZE);
+    let mut inbound_query_receiver = network_manager
+        .register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol.to_string(), BUFFER_SIZE);
+
+    let actual_protocol = get_supported_inbound_protocol_fut.next().await.unwrap();
+    assert_eq!(protocol, actual_protocol);
 
     let responses_clone = responses.clone();
     select! {
