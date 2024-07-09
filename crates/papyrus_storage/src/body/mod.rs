@@ -64,6 +64,7 @@ use crate::{
     FileHandlers,
     MarkerKind,
     MarkersTable,
+    OffsetKind,
     StorageError,
     StorageResult,
     StorageScope,
@@ -71,6 +72,8 @@ use crate::{
     TransactionMetadata,
 };
 
+type FileOffsetsTable<'env> =
+    TableHandle<'env, OffsetKind, NoVersionValueWrapper<usize>, SimpleTable>;
 type TransactionMetadataTable<'env> =
     TableHandle<'env, TransactionIndex, VersionZeroWrapper<TransactionMetadata>, SimpleTable>;
 type TransactionHashToIdxTable<'env> =
@@ -349,11 +352,13 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
             let transaction_hash_to_idx_table =
                 self.open_table(&self.tables.transaction_hash_to_idx)?;
             let transaction_metadata_table = self.open_table(&self.tables.transaction_metadata)?;
+            let file_offset_table = self.txn.open_table(&self.tables.file_offsets)?;
 
             write_transactions(
                 &block_body,
                 &self.txn,
                 &self.file_handlers,
+                &file_offset_table,
                 &transaction_hash_to_idx_table,
                 &transaction_metadata_table,
                 &events_table,
@@ -427,10 +432,12 @@ impl<'env> BodyStorageWriter for StorageTxn<'env, RW> {
 
 // TODO(dvir): consider enforcing that the block_body transactions, transaction_outputs and
 // transaction_hashes to be the same size.
+#[allow(clippy::too_many_arguments)]
 fn write_transactions<'env>(
     block_body: &BlockBody,
     txn: &DbTransaction<'env, RW>,
     file_handlers: &FileHandlers<RW>,
+    file_offset_table: &'env FileOffsetsTable<'env>,
     transaction_hash_to_idx_table: &'env TransactionHashToIdxTable<'env>,
     transaction_metadata_table: &'env TransactionMetadataTable<'env>,
     events_table: &'env EventsTable<'env>,
@@ -454,7 +461,18 @@ fn write_transactions<'env>(
             &transaction_index,
             &TransactionMetadata { tx_location, tx_output_location, tx_hash: *tx_hash },
         )?;
+
+        // If this is the last iteration, update the file offset table.
+        if index == block_body.transactions.len() - 1 {
+            file_offset_table.upsert(txn, &OffsetKind::Transaction, &tx_location.next_offset())?;
+            file_offset_table.upsert(
+                txn,
+                &OffsetKind::TransactionOutput,
+                &tx_output_location.next_offset(),
+            )?;
+        }
     }
+
     Ok(())
 }
 
