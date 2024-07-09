@@ -66,9 +66,9 @@ Build the p2p peer multiaddress string
 */}}
 {{- define "p2p.bootstrapPeerMultiaddr" -}}
 {{- if and .Values.p2p.enabled (not .Values.p2p.bootstrap) -}}
-  {{- $ip :=  .Values.p2p.nodeConfig.network_bootstrap_peer_multiaddr_ip -}}
-  {{- $port :=  .Values.p2p.nodeConfig.network_bootstrap_peer_multiaddr_port -}}
-  {{- $uid :=  .Values.p2p.nodeConfig.network_bootstrap_peer_multiaddr_uid -}}
+  {{- $ip :=  .Values.p2p.nodeConfig.bootstrapServer.multiaddrIp -}}
+  {{- $port :=  .Values.p2p.nodeConfig.bootstrapServer.multiaddrPort -}}
+  {{- $uid :=  .Values.p2p.nodeConfig.bootstrapServer.multiaddrUid -}}
   {{- printf "/ip4/%s/tcp/%s/p2p/%s" $ip $port $uid -}}
 {{- else -}}
   {{- "" -}}

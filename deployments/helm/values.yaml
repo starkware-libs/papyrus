@@ -17,33 +17,34 @@ starknet:
 
 p2p:
   enabled: true
-  # Set to true if node is "bootstrap"
+  # Set to true if node act as bootstrap server
   bootstrap: false
   # General config
   config:
     # Optional - The node self port to listen | default "10000"
-    network_tcp_port:
+    networkTcpPort:
     # Optional - The node data path | default "data"
-    storage_db_config_path_prefix:
+    storageDbConfigPathPrefix:
     # Optional - network.#is_none flag | default "false"
-    network_is_none:
+    networkIsNone:
   # Config to include only if "bootstrap: false"
   nodeConfig:
-    # Mandatory - The network.#is_none flag on the bootsrap server
-    network_bootstrap_peer_multiaddr_is_none:
-    # Mandatory - The bootstrap server to connect to, ip adress
-    network_bootstrap_peer_multiaddr_ip:
-    # Mandatory - The bootstrap server to connect to, port 
-    network_bootstrap_peer_multiaddr_port:
-    # Mandatory - The bootstrap server to connect to, uid
-    network_bootstrap_peer_multiaddr_uid:
+    bootstrapServer:
+      # Mandatory - The network.#is_none flag on the bootsrap server
+      multiaddrIsNone: 
+      # Mandatory - The bootstrap server to connect to, ip adress
+      multiaddrIp:
+      # Mandatory - The bootstrap server to connect to, port 
+      multiaddrPort:
+      # Mandatory - The bootstrap server to connect to, uid
+      multiaddrUid:
   service:
     # Specify service type, options are ClusterIP | NodePort | LoadBalancer
-    type: LoadBalancer
+    type: ClusterIP
     port: 10000
     protocol: TCP
     nodePort:
-    
+
 deployment:
   # The container image
   image:
@@ -71,7 +72,7 @@ deployment:
       cpu: 500m
       memory: 1Gi
   ## Optionally specify extra environment variables to add to papyrus container
-  extraEnv: []
+  env: []
     # - name: FOO
     #   value: BAR
   extraArgs: {} # Optional additional deployment args

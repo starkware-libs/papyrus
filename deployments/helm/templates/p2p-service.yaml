@@ -1,9 +1,9 @@
-{{- if and (.Values.backup.enabled) .Values.p2p.enabled }}
+{{- if and ( not .Values.backup.enabled ) .Values.p2p.enabled }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ template "papyrus.name" . }}-p2p-svc
+  name: {{ template "papyrus.name" . }}-p2p
   labels:
     {{- include "papyrus.labels" . | nindent 4 }}
 spec:
@@ -15,7 +15,7 @@ spec:
     port: {{ .Values.p2p.service.port }}
     protocol: {{ .Values.p2p.service.protocol }}
     targetPort: p2p
-    {{- if and (eq .Values.p2p.service.tpye "NodePort") .Values.p2p.service.nodePort }}
+    {{- if and (eq .Values.p2p.service.type "NodePort") .Values.p2p.service.nodePort }}
     nodePort: {{ .Values.p2p.service.nodePort }}
     {{- end }}
 {{- end }}
