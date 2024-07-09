@@ -18,11 +18,11 @@ pub enum Protocol {
 impl Protocol {
     pub fn as_str(&self) -> &'static str {
         match self {
-            Protocol::SignedBlockHeader => "/starknet/headers/1",
-            Protocol::StateDiff => "/starknet/state_diffs/1",
-            Protocol::Transaction => "/starknet/transactions/1",
-            Protocol::Class => "/starknet/classes/1",
-            Protocol::Event => "/starknet/events/1",
+            Protocol::SignedBlockHeader => "/starknet/headers/0.1.0-rc.0",
+            Protocol::StateDiff => "/starknet/state_diffs/0.1.0-rc.0",
+            Protocol::Transaction => "/starknet/transactions/0.1.0-rc.0",
+            Protocol::Class => "/starknet/classes/0.1.0-rc.0",
+            Protocol::Event => "/starknet/events/0.1.0-rc.0",
         }
     }
 }
