@@ -8,7 +8,7 @@ use futures::future::BoxFuture;
 use futures::io::{ReadHalf, WriteHalf};
 use futures::{AsyncRead, AsyncReadExt, AsyncWrite, FutureExt};
 use libp2p::core::upgrade::{InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use libp2p::swarm::StreamProtocol;
+use libp2p::StreamProtocol;
 
 use super::messages::{read_message_without_length_prefix, write_message_without_length_prefix};
 use super::Bytes;

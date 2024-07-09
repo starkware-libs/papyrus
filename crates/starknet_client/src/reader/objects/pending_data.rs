@@ -1,6 +1,13 @@
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockTimestamp, GasPrice, GasPricePerToken};
-use starknet_api::core::{GlobalRoot, SequencerContractAddress, TransactionCommitment};
+use starknet_api::core::{
+    EventCommitment,
+    GlobalRoot,
+    ReceiptCommitment,
+    SequencerContractAddress,
+    StateDiffCommitment,
+    TransactionCommitment,
+};
 use starknet_api::data_availability::L1DataAvailabilityMode;
 
 use super::block::BlockStatus;
@@ -200,7 +207,13 @@ pub struct PendingBlock {
     #[serde(default)]
     pub transaction_commitment: Option<TransactionCommitment>,
     #[serde(default)]
-    pub event_commitment: Option<TransactionCommitment>,
+    pub event_commitment: Option<EventCommitment>,
+    #[serde(default)]
+    pub receipt_commitment: Option<ReceiptCommitment>,
+    #[serde(default)]
+    pub state_diff_commitment: Option<StateDiffCommitment>,
+    #[serde(default)]
+    pub state_diff_length: Option<usize>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize, Clone, Eq, PartialEq)]

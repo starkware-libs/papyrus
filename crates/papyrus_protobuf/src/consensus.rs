@@ -29,3 +29,12 @@ pub enum ConsensusMessage {
     Proposal(Proposal),
     Vote(Vote),
 }
+
+impl ConsensusMessage {
+    pub fn height(&self) -> u64 {
+        match self {
+            ConsensusMessage::Proposal(proposal) => proposal.height,
+            ConsensusMessage::Vote(vote) => vote.height,
+        }
+    }
+}
