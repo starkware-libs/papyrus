@@ -74,8 +74,8 @@ deployment:
     # - name: FOO
     #   value: BAR
   extraArgs: {} # Optional additional deployment args
-    # collect_metrics: "true"
-
+    # foo: "bar"
+  extraConfig
 # Service variables for a papyrus pod.
 service:
   # Specify service type, supported options are ClusterIP, LoadBalancer

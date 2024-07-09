@@ -25,11 +25,5 @@ spec:
     port: {{ .Values.service.ports.monitoring.port }}
     protocol: {{ .Values.service.ports.monitoring.protocol }}
     targetPort: monitoring
-<<<<<<< HEAD
-=======
-    {{- if and (eq .Values.service.type "NodePort") .Values.service.ports.monitoring.nodePort }}
-    nodePort: {{ .Values.service.ports.monitoring.nodePort }}
-    {{- end }}
->>>>>>> 009ca93a3c6613c4331390333df158fc31ed809d
   {{- end }}
 {{- end }}
