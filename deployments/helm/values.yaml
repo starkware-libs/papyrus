@@ -15,6 +15,35 @@ starknet:
   preset: mainnet.json
   additionalHeaders: # optional addtional headers for SN communication
 
+p2p:
+  enabled: true
+  # Set to true if node act as bootstrap server
+  bootstrap: false
+  # General config
+  config:
+    # Optional - The node self port to listen | default "10000"
+    networkTcpPort:
+    # Optional - The node data path | default "data"
+    storageDbConfigPathPrefix:
+    # Optional - network.#is_none flag | default "false"
+    networkIsNone:
+  # Config to include only if "bootstrap: false"
+  nodeConfig:
+    bootstrapServer:
+      # Mandatory - The network.#is_none flag on the bootsrap server
+      multiaddrIsNone: 
+      # Mandatory - The bootstrap server ip address. If service is used, use the service address. If not, use the pod address.
+      multiaddrIp:
+      # Mandatory - The bootstrap server to connect to, port 
+      multiaddrPort:
+      # Mandatory - The bootstrap server to connect to, uid
+      multiaddrUid:
+  service:
+    enabled: false
+    type: ClusterIP
+    port: 10000
+    protocol: TCP
+
 deployment:
   # The container image
   image:
@@ -22,10 +51,17 @@ deployment:
     tag: 0.4.0
   # The container's pullPolicy
   pullPolicy: Always
-  # Optional - nodeSelector
-  nodeSelector:
-  # Optional - tolerations
-  tolerations:
+  # Set pod annotations
+  annotations: {}
+  # Set deployment nodeSelector
+  nodeSelector: {}
+  # Set deployment tolerations
+  tolerations: []
+  # - key: "key1"
+  #   operator: "Equal"
+  #   value: "value1"
+  #   effect: "NoSchedule"
+  
   # The default resources for a pod.
   resources:
     limits:
@@ -34,21 +70,26 @@ deployment:
     requests:
       cpu: 500m
       memory: 1Gi
+  ## Optionally specify extra environment variables to add to papyrus container
+  env: []
+    # - name: FOO
+    #   value: BAR
   extraArgs: {} # Optional additional deployment args
-    # collect_metrics: "true"
+    # foo: "bar"
 
 # Service variables for a papyrus pod.
-services:
-  # RPC API.
-  rpc:
-    type: ClusterIP
-    port: 8080
-    protocol: TCP
-  # Monitoring API.
-  monitoring:
-    type: ClusterIP
-    port: 8081
-    protocol: TCP
+service:
+  # Specify service type, supported options are ClusterIP, LoadBalancer
+  type: ClusterIP  
+  ports:
+    rpc:
+      enabled: true
+      port: 8080
+      protocol: TCP
+    monitoring:
+      enabled: true
+      port: 8081
+      protocol: TCP
 
 # Persistent volume claim variables for a papyrus pod.
 pvc:
