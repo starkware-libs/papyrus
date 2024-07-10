@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use futures::channel::mpsc::{Receiver, Sender};
 use lazy_static::lazy_static;
+use papyrus_network::network_manager::ReportReceiver;
 use papyrus_protobuf::sync::{
     HeaderQuery,
     SignedBlockHeader,
@@ -42,10 +43,10 @@ pub struct TestArgs {
     #[allow(clippy::type_complexity)]
     pub p2p_sync: P2PSyncClient,
     pub storage_reader: StorageReader,
-    pub header_query_receiver: Receiver<HeaderQuery>,
-    pub state_diff_query_receiver: Receiver<StateDiffQuery>,
+    pub header_query_receiver: Receiver<(HeaderQuery, ReportReceiver)>,
+    pub state_diff_query_receiver: Receiver<(StateDiffQuery, ReportReceiver)>,
     #[allow(dead_code)]
-    pub transaction_query_receiver: Receiver<TransactionQuery>,
+    pub transaction_query_receiver: Receiver<(TransactionQuery, ReportReceiver)>,
     pub headers_sender: Sender<Response<SignedBlockHeader>>,
     pub state_diffs_sender: Sender<Response<StateDiffChunk>>,
     #[allow(dead_code)]

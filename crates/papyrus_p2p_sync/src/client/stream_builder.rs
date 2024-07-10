@@ -2,6 +2,7 @@ use std::cmp::min;
 use std::time::Duration;
 
 use async_stream::stream;
+use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{SinkExt, StreamExt};
@@ -83,14 +84,17 @@ where
                     current_block_number.0,
                     end_block_number,
                 );
+                // TODO(shahak): Use the report callback.
+                //TODO(Eitan): abstract report functionality to the channel struct
+                let (_report_sender, report_receiver) = oneshot::channel::<()>();
                 query_sender
-                    .send(
+                    .send((
                         Query {
                             start_block: BlockHashOrNumber::Number(current_block_number),
                             direction: Direction::Forward,
                             limit,
                             step: STEP,
-                        },
+                        }, report_receiver,)
                     )
                     .await?;
 
@@ -122,7 +126,7 @@ where
 
                 // Consume the None message signaling the end of the query.
                 match data_receiver.next().await {
-                    Some((Ok(DataOrFin(None)), _report_callback)) => {
+                    Some(Ok(DataOrFin(None))) => {
                         debug!("Query sent to network for {:?} finished", Self::TYPE_DESCRIPTION);
                     },
                     Some(_) => Err(P2PSyncError::TooManyResponses)?,
