@@ -13,7 +13,6 @@ base_layer_node_url:
 starknet:
   # possible values: "mainnet.json, sepolia_testnet" and "sepolia_integration".
   preset: mainnet.json
-  additionalHeaders: # optional addtional headers for SN communication
 
 p2p:
   enabled: true
@@ -21,12 +20,12 @@ p2p:
   bootstrap: false
   # General config
   config:
-    # Optional - The node self port to listen | default "10000"
-    networkTcpPort:
-    # Optional - The node data path | default "data"
-    storageDbConfigPathPrefix:
-    # Optional - network.#is_none flag | default "false"
-    networkIsNone:
+    # Optional - The node self port to listen
+    networkTcpPort: 10000
+    # Optional - The node data path
+    storageDbConfigPathPrefix: data
+    # Optional - network.#is_none flag
+    networkIsNone: false
   # Config to include only if "bootstrap: false"
   nodeConfig:
     bootstrapServer:

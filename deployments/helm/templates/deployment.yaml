@@ -64,7 +64,7 @@ spec:
         {{- if not .Values.backup.enabled }}
         {{- with .Values.deployment.env }}
         env:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         args:
           - --config_file 
@@ -73,14 +73,14 @@ spec:
           - {{ .Values.base_layer_node_url }}
           {{- if .Values.p2p.enabled }}
           - --network.tcp_port
-          - {{ default "10000" .Values.p2p.config.networkTcpPort | quote }}
+          - {{ .Values.p2p.config.networkTcpPort | quote }}
           - --storage.db_config.path_prefix
-          - {{ default "data" .Values.p2p.config.storageDbConfigPathPrefix | quote }}
+          - {{ .Values.p2p.config.storageDbConfigPathPrefix | quote }}
           - --network.#is_none
-          - {{ default false .Values.p2p.config.networkIsNone | quote }}
+          - {{ .Values.p2p.config.networkIsNone | quote }}
           {{- if not .Values.p2p.bootstrap }}
           - --network.bootstrap_peer_multiaddr.#is_none
-          - {{ default false .Values.p2p.nodeConfig.bootstrapServer.multiaddrIsNone | quote }}
+          - {{ .Values.p2p.nodeConfig.bootstrapServer.multiaddrIsNone | quote }}
           - --network.bootstrap_peer_multiaddr
           - {{ include "p2p.bootstrapPeerMultiaddr" . | quote }}
           {{- end}}
@@ -103,7 +103,7 @@ spec:
           name: monitoring
         {{- end }}
         {{- if .Values.p2p.enabled }}
-        - containerPort: {{ default 10000 .Values.p2p.config.networkTcpPort }}
+        - containerPort: {{ .Values.p2p.config.networkTcpPort }}
           name: p2p
         {{- end }}
         volumeMounts:
