@@ -1,0 +1,143 @@
+# Default values for a papyrus deployment.
+
+# The verbosity level of logs ("debug", "info", "error", etc.)
+rustLogLevel: "info"
+
+node:
+  # Number of concurrent requests to the SN feeder gateway
+  concurrentFgRequests: 50
+
+# Ethereum node URL. A value for this variable is mandatory.
+base_layer_node_url: https://sepolia.infura.io/v3/
+
+starknet:
+  # possible values: "mainnet.json, sepolia_testnet" and "sepolia_integration".
+  preset: sepolia_testnet.json
+  additionalHeaders: # optional addtional headers for SN communication
+
+p2p:
+  enabled: true
+  # Set to true if node act as bootstrap server
+  bootstrap: true
+  # General config
+  config:
+    # Optional - The node self port to listen | default "10000"
+    networkTcpPort:
+    # Optional - The node data path | default "data"
+    storageDbConfigPathPrefix:
+    # Optional - network.#is_none flag | default "false"
+    networkIsNone:
+  # Config to include only if "bootstrap: false"
+  nodeConfig:
+    bootstrapServer:
+      # Mandatory - The network.#is_none flag on the bootsrap server
+      multiaddrIsNone:
+      # Mandatory - The bootstrap server ip address. If service is used, use the service address. If not, use the pod address.
+      multiaddrIp:
+      # Mandatory - The bootstrap server to connect to, port
+      multiaddrPort:
+      # Mandatory - The bootstrap server to connect to, uid
+      multiaddrUid:
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 10000
+    protocol: TCP
+
+deployment:
+  # The container image
+  image:
+    repository: ghcr.io/starkware-libs/papyrus
+    tag: asmaa-consensus-kubernetes_first-1e6f69a
+  # The container's pullPolicy
+  pullPolicy: Always
+  # Set pod annotations
+  annotations: {}
+  # Set deployment nodeSelector
+  nodeSelector: {}
+  # Set deployment tolerations
+  tolerations: []
+  # - key: "key1"
+  #   operator: "Equal"
+  #   value: "value1"
+  #   effect: "NoSchedule"
+
+  # The default resources for a pod.
+  resources:
+    limits:
+      cpu: "1"
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+  ## Optionally specify extra environment variables to add to papyrus container
+  env:
+    []
+    # - name: FOO
+    #   value: BAR
+  extraArgs:
+    collect_metrics: "true"
+    consensus.#is_none: "false"
+    consensus.validator_id: "0x1"
+    consensus.num_validators: 4
+    network.secret_key: "0xabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd"
+
+# Service variables for a papyrus pod.
+service:
+  # Specify service type, supported options are ClusterIP, LoadBalancer
+  type: ClusterIP
+  ports:
+    rpc:
+      enabled: true
+      port: 8080
+      protocol: TCP
+    monitoring:
+      enabled: true
+      port: 8081
+      protocol: TCP
+
+# Persistent volume claim variables for a papyrus pod.
+pvc:
+  # Recommended size is at least 512Gi.
+  size: 512Gi
+  # Is is recommended to use an SSD volume (such as GKE premium-rwo).
+  storageClass: "premium-rwo"
+  # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
+  # exist in the same namespace as the rest of the resources.
+  restoreFromSnapshot:
+    enabled: false
+    snapshotName: my-snapshot
+
+# Configure Ingress.
+ingress:
+  # Should an ingress object be created
+  enabled: false
+  # Ingress class type.
+  type:
+  # Ingress object name in Kubernetes.
+  name:
+  # Host name to create Ingress rules.
+  host:
+  # Ingress path type.
+  pathType:
+  # Annotations to apply to the node ingress.
+  annotations: {}
+
+# GrafanaDashboad CRD configuration
+# This is relevant for Grafana Operator users https://grafana.github.io/grafana-operator/docs/
+grafanaDashboard:
+  # Should the GrafanaDashboard object be installed
+  enabled: false
+grafanaAlerts:
+  enabled: false
+
+# Backup mode
+backup:
+  enabled: false
+  sleepInterval: 6h
+  compress: false
+  aws:
+    s3BucketName: my-backup-bucket-name
+    s3BucketRegion: my-backup-bucket-region
+    accessKeyId: my aws_access_key_id
+    secretAccessKey: my aws_secret_access_key
