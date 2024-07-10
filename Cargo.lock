@@ -5902,7 +5902,6 @@ name = "papyrus_common"
 version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
- "bitvec",
  "cairo-lang-starknet-classes",
  "hex",
  "indexmap 2.2.6",
@@ -5913,7 +5912,6 @@ dependencies = [
  "serde",
  "serde_json",
  "sha3",
- "starknet-crypto 0.5.2",
  "starknet-types-core",
  "starknet_api",
  "test_utils",
@@ -6012,7 +6010,6 @@ name = "papyrus_monitoring_gateway"
 version = "0.4.0-dev.4"
 dependencies = [
  "axum",
- "futures-util",
  "http-body",
  "hyper",
  "metrics",
@@ -6055,7 +6052,6 @@ dependencies = [
  "pretty_assertions",
  "replace_with",
  "serde",
- "starknet_api",
  "thiserror",
  "tokio",
  "tokio-stream",
@@ -6071,7 +6067,6 @@ version = "0.4.0-dev.4"
 dependencies = [
  "anyhow",
  "assert-json-diff",
- "async-stream",
  "clap",
  "colored",
  "const_format",
@@ -6079,9 +6074,7 @@ dependencies = [
  "futures-util",
  "insta",
  "itertools 0.10.5",
- "jsonrpsee",
  "lazy_static",
- "libmdbx",
  "metrics-exporter-prometheus",
  "once_cell",
  "papyrus_base_layer",
@@ -6104,12 +6097,10 @@ dependencies = [
  "strum 0.25.0",
  "tempfile",
  "test_utils",
- "thiserror",
  "tokio",
  "tokio-stream",
  "tracing",
  "tracing-subscriber",
- "url",
  "validator",
 ]
 
@@ -6119,7 +6110,6 @@ version = "0.4.0-dev.4"
 dependencies = [
  "assert_matches",
  "async-stream",
- "derive_more",
  "enum-iterator",
  "futures",
  "indexmap 2.2.6",
@@ -6161,14 +6151,12 @@ dependencies = [
 name = "papyrus_protobuf"
 version = "0.4.0-dev.4"
 dependencies = [
- "bytes",
  "indexmap 2.2.6",
  "lazy_static",
  "papyrus_common",
  "primitive-types",
  "prost",
  "prost-build",
- "prost-types",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "starknet-types-core",
@@ -6192,7 +6180,6 @@ dependencies = [
  "enum-iterator",
  "ethers",
  "flate2",
- "futures",
  "futures-util",
  "hex",
  "hyper",
@@ -6225,12 +6212,9 @@ dependencies = [
  "strum 0.25.0",
  "strum_macros 0.25.3",
  "test_utils",
- "thiserror",
  "tokio",
- "tokio-stream",
  "tower",
  "tracing",
- "url",
  "validator",
 ]
 
@@ -6295,12 +6279,9 @@ dependencies = [
  "cairo-lang-starknet-classes",
  "chrono",
  "futures",
- "futures-channel",
  "futures-util",
- "hex",
  "indexmap 2.2.6",
  "itertools 0.10.5",
- "libmdbx",
  "lru 0.12.1",
  "metrics",
  "mockall",
@@ -6321,7 +6302,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
- "url",
 ]
 
 [[package]]
@@ -8752,7 +8732,6 @@ dependencies = [
  "serde_json",
  "starknet-types-core",
  "starknet_api",
- "tracing",
 ]
 
 [[package]]

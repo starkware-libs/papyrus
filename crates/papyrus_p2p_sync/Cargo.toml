@@ -7,7 +7,6 @@ license-file.workspace = true
 
 [dependencies]
 async-stream.workspace = true
-derive_more.workspace = true
 enum-iterator.workspace = true
 futures.workspace = true
 indexmap.workspace = true
@@ -36,3 +35,7 @@ rand.workspace = true
 rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
 papyrus_protobuf = { path = "../papyrus_protobuf", features = ["testing"]}
+
+# The `metrics` crate is used by `latency_histogram` proc macro, which is used in this crate.
+[package.metadata.cargo-machete]
+ignored = ["metrics"]
