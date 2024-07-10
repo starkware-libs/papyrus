@@ -217,6 +217,14 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     }
 
     fn handle_swarm_event(&mut self, event: SwarmEvent<mixed_behaviour::Event>) {
+        if let SwarmEvent::Behaviour(mixed_behaviour::Event::ToOtherBehaviourEvent(
+            mixed_behaviour::ToOtherBehaviourEvent::NoOp,
+        )) = event
+        {
+        } else {
+            info!("ASMAA -- Received swarm event: {event:?}");
+        }
+
         match event {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 debug!("Connected to peer id: {peer_id:?}");
