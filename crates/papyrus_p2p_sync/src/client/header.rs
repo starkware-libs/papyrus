@@ -45,7 +45,7 @@ impl DataStreamBuilder<SignedBlockHeader> for HeaderStreamBuilder {
     ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
         async move {
             // TODO(shahak): Use the report callback.
-            let (maybe_signed_header, _report_callback) =
+            let maybe_signed_header =
                 tokio::time::timeout(NETWORK_DATA_TIMEOUT, signed_headers_receiver.next())
                     .await?
                     .ok_or(P2PSyncError::ReceiverChannelTerminated {

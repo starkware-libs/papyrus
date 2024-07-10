@@ -44,7 +44,7 @@ async fn signed_headers_basic_flow() {
             let end_block_number = (query_index + 1) * HEADER_QUERY_LENGTH;
 
             // Receive query and validate it.
-            let query = header_query_receiver.next().await.unwrap();
+            let (query, _report_receiver) = header_query_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 HeaderQuery(Query {
@@ -63,18 +63,15 @@ async fn signed_headers_basic_flow() {
             {
                 // Send responses
                 headers_sender
-                    .send((
-                        (Ok(DataOrFin(Some(SignedBlockHeader {
-                            block_header: BlockHeader {
-                                block_number: BlockNumber(i.try_into().unwrap()),
-                                block_hash: *block_hash,
-                                state_diff_length: Some(0),
-                                ..Default::default()
-                            },
-                            signatures: vec![*block_signature],
-                        })))),
-                        Box::new(|| {}),
-                    ))
+                    .send(Ok(DataOrFin(Some(SignedBlockHeader {
+                        block_header: BlockHeader {
+                            block_number: BlockNumber(i.try_into().unwrap()),
+                            block_hash: *block_hash,
+                            state_diff_length: Some(0),
+                            ..Default::default()
+                        },
+                        signatures: vec![*block_signature],
+                    }))))
                     .await
                     .unwrap();
 
@@ -93,7 +90,7 @@ async fn signed_headers_basic_flow() {
                     txn.get_block_signature(block_number).unwrap().unwrap();
                 assert_eq!(*block_signature, actual_block_signature);
             }
-            headers_sender.send((Ok(DataOrFin(None)), Box::new(|| {}))).await.unwrap();
+            headers_sender.send(Ok(DataOrFin(None))).await.unwrap();
         }
     };
 
@@ -128,25 +125,22 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
             headers_sender
-                .send((
-                    Ok(DataOrFin(Some(SignedBlockHeader {
-                        block_header: BlockHeader {
-                            block_number: BlockNumber(i.try_into().unwrap()),
-                            block_hash,
-                            state_diff_length: Some(0),
-                            ..Default::default()
-                        },
-                        signatures: vec![signature],
-                    }))),
-                    Box::new(|| {}),
-                ))
+                .send(Ok(DataOrFin(Some(SignedBlockHeader {
+                    block_header: BlockHeader {
+                        block_number: BlockNumber(i.try_into().unwrap()),
+                        block_hash,
+                        state_diff_length: Some(0),
+                        ..Default::default()
+                    },
+                    signatures: vec![signature],
+                }))))
                 .await
                 .unwrap();
         }
-        headers_sender.send((Ok(DataOrFin(None)), Box::new(|| {}))).await.unwrap();
+        headers_sender.send(Ok(DataOrFin(None))).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let query =
+        let (query, _report_receiver) =
             timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, header_query_receiver.next())
                 .await
                 .unwrap()
