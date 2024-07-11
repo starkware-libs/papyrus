@@ -194,6 +194,13 @@ impl SwarmTrait for MockSwarm {
             sender.unbounded_send(protocol_name.clone()).unwrap();
         }
     }
+
+    fn get_peer_id_from_session_id(
+        &self,
+        _session_id: crate::sqmr::SessionId,
+    ) -> Result<PeerId, SessionIdNotFoundError> {
+        Ok(PeerId::random())
+    }
 }
 
 const BUFFER_SIZE: usize = 100;

@@ -234,7 +234,7 @@ impl Behaviour {
         Ok(())
     }
 
-    fn get_peer_id_and_connection_id_from_session_id(
+    pub(crate) fn get_peer_id_and_connection_id_from_session_id(
         &self,
         session_id: SessionId,
     ) -> Result<(PeerId, ConnectionId), SessionIdNotFoundError> {
