@@ -58,6 +58,25 @@ definitions:
               dst:
                 $ref: "#/definitions/CellRef"
         additionalProperties: false
+      - description: Variant of TestLessThanOrEqual that compares addresses.
+        type: object
+        required:
+          - TestLessThanOrEqualAddress
+        properties:
+          TestLessThanOrEqualAddress:
+            type: object
+            required:
+              - dst
+              - lhs
+              - rhs
+            properties:
+              lhs:
+                $ref: "#/definitions/ResOperand"
+              rhs:
+                $ref: "#/definitions/ResOperand"
+              dst:
+                $ref: "#/definitions/CellRef"
+        additionalProperties: false
       - description: "Multiplies two 128-bit integers and returns two 128-bit integers: the high and low parts of the product."
         type: object
         required:
@@ -552,6 +571,27 @@ definitions:
                 $ref: "#/definitions/CellRef"
               t_or_k1:
                 $ref: "#/definitions/CellRef"
+        additionalProperties: false
+      - type: object
+        required:
+          - EvalCircuit
+        properties:
+          EvalCircuit:
+            type: object
+            required:
+              - add_mod_builtin
+              - mul_mod_builtin
+              - n_add_mods
+              - n_mul_mods
+            properties:
+              n_add_mods:
+                $ref: "#/definitions/ResOperand"
+              add_mod_builtin:
+                $ref: "#/definitions/ResOperand"
+              n_mul_mods:
+                $ref: "#/definitions/ResOperand"
+              mul_mod_builtin:
+                $ref: "#/definitions/ResOperand"
         additionalProperties: false
   CellRef:
     description: "Represents an operand of the form [reg + offset]."
