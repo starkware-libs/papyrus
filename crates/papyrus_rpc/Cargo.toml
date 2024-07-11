@@ -12,7 +12,6 @@ base64.workspace = true
 cairo-lang-starknet-classes.workspace = true
 ethers.workspace = true
 flate2.workspace = true
-futures.workspace = true
 futures-util.workspace = true
 hex.workspace = true
 hyper = { workspace = true, features = ["full"] }
@@ -30,12 +29,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api.workspace = true
 starknet-types-core.workspace = true
-thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
-tokio-stream.workspace = true
 tower = { workspace = true, features = ["full"] }
 tracing.workspace = true
-url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]

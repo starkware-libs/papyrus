@@ -22,7 +22,6 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["arbitrary_precision"]}
 starknet_api = { workspace = true, features = ["testing"] }
 starknet-types-core = { workspace = true, features = ["hash"] }
-tracing = { workspace = true, features = ["log"] }
 
 [dev-dependencies]
 pretty_assertions.workspace = true

@@ -41,3 +41,7 @@ pretty_assertions.workspace = true
 rand.workspace = true
 rand_chacha.workspace = true
 test_utils = { path = "../test_utils" }
+
+[package.metadata.cargo-machete]
+# The `rand` crate is used in the `testing` feature, which is optional.
+ignored = ["rand"]

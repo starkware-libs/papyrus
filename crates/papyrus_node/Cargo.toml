@@ -19,13 +19,10 @@ path = "src/bin/central_source_integration_test.rs"
 
 [dependencies]
 anyhow.workspace = true
-async-stream.workspace = true
 clap = { workspace = true }
 const_format.workspace = true
 futures.workspace = true
 itertools.workspace = true
-jsonrpsee = { workspace = true, features = ["full"] }
-libmdbx = { workspace = true, features = ["lifetimed-bytes"] }
 lazy_static.workspace = true
 once_cell.workspace = true
 papyrus_base_layer = { path = "../papyrus_base_layer", version = "0.4.0-dev.4" }
@@ -45,11 +42,9 @@ serde_json = { workspace = true, features = ["arbitrary_precision"] }
 starknet_api = { workspace = true, features = ["testing"] }
 starknet_client = { path = "../starknet_client" }
 strum.workspace = true
-thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 tracing.workspace = true
-url.workspace = true
 validator = { workspace = true, features = ["derive"] }
 
 # Binaries dependencies
