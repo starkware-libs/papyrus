@@ -1,14 +1,14 @@
 # Default values for a papyrus deployment.
 
 # The verbosity level of logs ("debug", "info", "error", etc.)
-rustLogLevel: "info"
+rustLogLevel: "debug"
 
 node:
   # Number of concurrent requests to the SN feeder gateway
   concurrentFgRequests: 50
 
 # Ethereum node URL. A value for this variable is mandatory.
-base_layer_node_url:
+base_layer_node_url: https://mainnet.infura.io/v3/43d4bd45111b4764ad938a3b89d76fca
 
 starknet:
   # possible values: "mainnet.json, sepolia_testnet" and "sepolia_integration".
@@ -19,23 +19,45 @@ deployment:
   # The container image
   image:
     repository: ghcr.io/starkware-libs/papyrus
-    tag: 0.4.0
+    tag: avi-papyrus-for-batch-replayer-6853d17
   # The container's pullPolicy
   pullPolicy: Always
   # Optional - nodeSelector
   nodeSelector:
   # Optional - tolerations
+    role: gps-ambassador
   tolerations:
   # The default resources for a pod.
+  - effect: NoSchedule
+    key: key
+    operator: Equal
+    value: gps-ambassador
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
   resources:
     limits:
-      cpu: "1"
-      memory: 1Gi
+      cpu: "2"
+      memory: 128Gi
     requests:
-      cpu: 500m
-      memory: 1Gi
-  extraArgs: {} # Optional additional deployment args
-    # collect_metrics: "true"
+      cpu: "2"
+      memory: 100Gi
+  extraArgs: # Optional additional deployment args
+    collect_metrics: "true"
+    sync.block_propagation_sleep_duration: "2"
+    sync.recoverable_error_sleep_duration: "3"
+    central.concurrent_requests: "700"
+    central.http_headers: X-Throttling-Bypass:dlaxszinf1zggax2xfbqeujanj603hhry8vli3vma34j
+    central.max_state_updates_to_download: "700"
+    central.max_state_updates_to_store_in_memory: "700"
+    central.max_classes_to_download: "100"
+    storage.scope: StateOnly
+
 
 # Service variables for a papyrus pod.
 services:
@@ -53,9 +75,9 @@ services:
 # Persistent volume claim variables for a papyrus pod.
 pvc:
   # Recommended size is at least 512Gi.
-  size:
+  size: 512Gi
   # Is is recommended to use an SSD volume (such as GKE premium-rwo).
-  storageClass: ""
+  storageClass: premium-rwo
   # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
   # exist in the same namespace as the rest of the resources.
   restoreFromSnapshot:
