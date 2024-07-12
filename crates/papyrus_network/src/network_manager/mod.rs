@@ -319,9 +319,6 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                 peer_id: _,
                 protocol_name,
             } => {
-                info!(
-                    "Received new inbound query: {query:?} for session id: {inbound_session_id:?}"
-                );
                 self.num_active_inbound_sessions += 1;
                 gauge!(
                     papyrus_metrics::PAPYRUS_NUM_ACTIVE_INBOUND_SESSIONS,
