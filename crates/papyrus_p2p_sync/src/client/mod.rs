@@ -200,17 +200,7 @@ impl P2PSyncClientChannels {
             config.num_headers_per_query,
             config.stop_sync_at_block_number,
         );
-
-        let state_diff_stream = StateDiffStreamBuilder::create_stream(
-            self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
-            self.state_diff_response_receiver,
-            storage_reader.clone(),
-            config.wait_period_for_new_data,
-            config.num_block_state_diffs_per_query,
-            config.stop_sync_at_block_number,
-        );
-
-        header_stream.merge(state_diff_stream)
+        header_stream
     }
 }
 
