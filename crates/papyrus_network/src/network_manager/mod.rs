@@ -449,7 +449,10 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     fn handle_local_sqmr_query(&mut self, protocol: StreamProtocol, query: Bytes) {
         match self.swarm.send_query(query, PeerId::random(), protocol.clone()) {
             Ok(outbound_session_id) => {
-                debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");
+                debug!(
+                    "Network received new query. waiting for peer assignment. \
+                     outbound_session_id: {outbound_session_id:?}"
+                );
                 self.num_active_outbound_sessions += 1;
                 gauge!(
                     papyrus_metrics::PAPYRUS_NUM_ACTIVE_OUTBOUND_SESSIONS,
