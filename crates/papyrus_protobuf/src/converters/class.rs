@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 
+use papyrus_common::deprecated_class_abi::PythonJsonFormatter;
 use papyrus_common::pending_classes::ApiContractClass;
 use prost::Message;
+use serde::ser::Serialize;
 use starknet_api::core::EntryPointSelector;
 use starknet_api::data_availability::DataAvailabilityMode;
 use starknet_api::{deprecated_contract_class, state};
@@ -126,8 +128,27 @@ impl TryFrom<protobuf::Cairo0Class> for deprecated_contract_class::ContractClass
     }
 }
 
+pub fn compress_and_encode(value: serde_json::Value) -> Result<String, std::io::Error> {
+    let mut compressor = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+    serde_json::to_writer(&mut compressor, &value)?;
+    let compressed_data = compressor.finish()?;
+    Ok(base64::encode(compressed_data))
+}
+
 impl From<deprecated_contract_class::ContractClass> for protobuf::Cairo0Class {
     fn from(value: deprecated_contract_class::ContractClass) -> Self {
+        let mut abi_chars = vec![];
+        if let Some(abi) = value.abi {
+            abi.serialize(&mut serde_json::Serializer::with_formatter(
+                &mut abi_chars,
+                PythonJsonFormatter,
+            ))
+            .expect("VERY BAD serialization error");
+        }
+        let program = compress_and_encode(
+            serde_json::to_value(value.program).expect("VERY BAD serde json program error"),
+        )
+        .expect("VERY BAD compress program error");
         protobuf::Cairo0Class {
             constructors: value
                 .entry_points_by_type
@@ -154,8 +175,8 @@ impl From<deprecated_contract_class::ContractClass> for protobuf::Cairo0Class {
                 .map(protobuf::EntryPoint::from)
                 .collect(),
             // TODO: fill abi and program
-            abi: "".to_string(),
-            program: "".to_string(),
+            abi: String::from_utf8(abi_chars).expect("VERY BAD utf error"),
+            program,
         }
     }
 }

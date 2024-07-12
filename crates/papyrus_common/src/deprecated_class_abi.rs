@@ -16,7 +16,7 @@ pub fn calculate_deprecated_class_abi_length(
 }
 
 /// Formats a json object in the same way that python's json.dumps() formats.
-struct PythonJsonFormatter;
+pub struct PythonJsonFormatter;
 
 impl Formatter for PythonJsonFormatter {
     fn begin_array_value<W>(&mut self, writer: &mut W, first: bool) -> IOResult<()>

@@ -9,12 +9,16 @@ license-file.workspace = true
 testing = ["rand", "rand_chacha", "test_utils"]
 
 [dependencies]
+base64.workspace = true
+flate2.workspace = true
 indexmap.workspace = true
 lazy_static.workspace = true
 primitive-types.workspace = true
 prost.workspace = true
 rand = { workspace = true, optional = true }
 rand_chacha = { workspace = true, optional = true }
+serde.workspace = true
+serde_json.workspace = true
 starknet_api.workspace = true
 starknet-types-core.workspace = true
 test_utils = { path = "../test_utils", optional = true }

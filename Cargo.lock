@@ -6151,6 +6151,8 @@ dependencies = [
 name = "papyrus_protobuf"
 version = "0.4.0-dev.4"
 dependencies = [
+ "base64 0.13.1",
+ "flate2",
  "indexmap 2.2.6",
  "lazy_static",
  "papyrus_common",
@@ -6159,6 +6161,8 @@ dependencies = [
  "prost-build",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
+ "serde",
+ "serde_json",
  "starknet-types-core",
  "starknet_api",
  "test_utils",
