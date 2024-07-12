@@ -25,7 +25,7 @@ use papyrus_config::dumping::{ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use papyrus_proc_macros::latency_histogram;
 use papyrus_storage::base_layer::{BaseLayerStorageReader, BaseLayerStorageWriter};
-use papyrus_storage::body::BodyStorageWriter;
+use papyrus_storage::body::{BodyStorageReader, BodyStorageWriter};
 use papyrus_storage::class::ClassStorageWriter;
 use papyrus_storage::compiled_class::{CasmStorageReader, CasmStorageWriter};
 use papyrus_storage::db::DbError;
@@ -409,8 +409,8 @@ impl<
         trace!("Block data: {block:#?}, signature: {signature:?}");
         self.writer
             .begin_rw_txn()?
-            .append_header(block_number, &block.header)?
-            .append_block_signature(block_number, signature)?
+            // .append_header(block_number, &block.header)?
+            // .append_block_signature(block_number, signature)?
             .append_body(block_number, block.body)?
             .commit()?;
         metrics::gauge!(
@@ -669,12 +669,10 @@ fn stream_new_blocks<
 ) -> impl Stream<Item = Result<SyncEvent, StateSyncError>> {
     try_stream! {
         loop {
-            let header_marker = reader.begin_ro_txn()?.get_header_marker()?;
+            let header_marker = reader.begin_ro_txn()?.get_body_marker()?;
             let latest_central_block = central_source.get_latest_block().await?;
             *shared_highest_block.write().await = latest_central_block;
-            let central_block_marker = latest_central_block.map_or(
-                BlockNumber::default(), |block| block.block_number.unchecked_next()
-            );
+            let central_block_marker = reader.begin_ro_txn()?.get_header_marker()?;
             metrics::gauge!(
                 papyrus_metrics::PAPYRUS_CENTRAL_BLOCK_MARKER, central_block_marker.0 as f64
             );
