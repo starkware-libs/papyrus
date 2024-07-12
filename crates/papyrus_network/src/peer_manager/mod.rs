@@ -139,7 +139,10 @@ where
                 }
                 info!("Dialing peer {:?} with multiaddr {:?}", peer_id, peer.multiaddr());
                 self.pending_events.push(ToSwarm::Dial {
-                    opts: DialOpts::peer_id(*peer_id).addresses(vec![peer.multiaddr()]).build(),
+                    opts: DialOpts::peer_id(*peer_id)
+                        .addresses(vec![peer.multiaddr()])
+                        .condition(libp2p::swarm::dial_opts::PeerCondition::Always)
+                        .build(),
                 });
             }
             *peer_id

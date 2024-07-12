@@ -126,6 +126,7 @@ where
                 connection_id,
                 ..
             }) => {
+                tracing::info!("Connection established with {peer_id:?}");
                 if let Some(sessions) = self.peers_pending_dial_with_sessions.remove(&peer_id) {
                     self.pending_events.extend(sessions.iter().map(|outbound_session_id| {
                         ToSwarm::GenerateEvent(ToOtherBehaviourEvent::SessionAssigned {
