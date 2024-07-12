@@ -105,6 +105,10 @@ where
             .or_else(|| {
                 self.peers.iter().take(self.last_peer_index).find(|(_, peer)| !peer.is_blocked())
             });
+        info!(
+            "Peer manager chose {:?} for {outbound_session_id:?}, checking for connection.",
+            peer.map(|(peer_id, _)| peer_id)
+        );
         self.last_peer_index = (self.last_peer_index + 1) % self.peers.len();
         peer.map(|(peer_id, peer)| {
             // TODO: consider not allowing reassignment of the same session
