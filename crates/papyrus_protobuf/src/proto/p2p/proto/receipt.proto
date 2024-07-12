@@ -29,16 +29,11 @@ message Receipt {
       uint32 output = 8;
     }
 
-    message GasVector {
-      uint64 l1_gas = 1;
-      uint64 l1_data_gas = 2;
-    }
-
     BuiltinCounter builtins = 1;
     uint32 steps = 2;
     uint32 memory_holes = 3;
-    GasVector da_gas_consumed = 4;
-    GasVector gas_consumed = 5;
+    Felt252 l1_gas = 4;
+    Felt252 l1_data_gas = 5;
   }
 
   message Common {

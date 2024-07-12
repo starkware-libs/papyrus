@@ -308,61 +308,49 @@ impl TryFrom<protobuf::receipt::ExecutionResources> for ExecutionResources {
         let builtin_instance_counter = HashMap::<Builtin, u64>::try_from(builtin_instance_counter)?;
 
         // TODO: remove all non-da gas consumed
-        let gas_consumed = value
-            .gas_consumed
+        let l1_gas: Felt = value
+            .l1_gas
             .ok_or(ProtobufConversionError::MissingField {
-                field_description: "ExecutionResources::gas_consumed",
+                field_description: "ExecutionResources::l1_gas",
             })?
-            .into();
-        let da_gas_consumed = value
-            .da_gas_consumed
+            .try_into()?;
+        let l1_data_gas: Felt = value
+            .l1_data_gas
             .ok_or(ProtobufConversionError::MissingField {
-                field_description: "ExecutionResources::da_gas_consumed",
+                field_description: "ExecutionResources::l1_data_gas",
             })?
-            .into();
+            .try_into()?;
 
         let execution_resources = ExecutionResources {
             steps: u64::from(value.steps),
             builtin_instance_counter,
             memory_holes: u64::from(value.memory_holes),
-            gas_consumed,
-            da_gas_consumed,
+            gas_consumed: GasVector::default(),
+            da_gas_consumed: GasVector {
+                l1_gas: l1_gas.to_le_digits()[0],
+                l1_data_gas: l1_data_gas.to_le_digits()[0],
+            },
         };
         Ok(execution_resources)
-    }
-}
-
-impl From<protobuf::receipt::execution_resources::GasVector> for GasVector {
-    fn from(value: protobuf::receipt::execution_resources::GasVector) -> Self {
-        GasVector { l1_gas: value.l1_gas, l1_data_gas: value.l1_data_gas }
     }
 }
 
 impl From<ExecutionResources> for protobuf::receipt::ExecutionResources {
     fn from(value: ExecutionResources) -> Self {
         let builtin_instance_counter = ProtobufBuiltinCounter::from(value.builtin_instance_counter);
-        // TODO: add all l1 gas consumed, not just da
-        let gas_consumed = value.gas_consumed.into();
-        let da_gas_consumed = value.da_gas_consumed.into();
         // TODO: should not panic
         let steps = u32::try_from(value.steps).expect("Failed to convert u64 to u32");
         let memory_holes = u32::try_from(value.memory_holes).expect("Failed to convert u64 to u32");
+
+        let l1_gas: Felt = value.da_gas_consumed.l1_gas.into();
+        let l1_data_gas: Felt = value.da_gas_consumed.l1_data_gas.into();
 
         protobuf::receipt::ExecutionResources {
             builtins: Some(builtin_instance_counter),
             steps,
             memory_holes,
-            gas_consumed: Some(gas_consumed),
-            da_gas_consumed: Some(da_gas_consumed),
-        }
-    }
-}
-
-impl From<GasVector> for protobuf::receipt::execution_resources::GasVector {
-    fn from(value: GasVector) -> Self {
-        protobuf::receipt::execution_resources::GasVector {
-            l1_gas: value.l1_gas,
-            l1_data_gas: value.l1_data_gas,
+            l1_gas: Some(l1_gas.into()),
+            l1_data_gas: Some(l1_data_gas.into()),
         }
     }
 }
