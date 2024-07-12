@@ -240,10 +240,8 @@ impl FetchBlockDataFromDb for SignedBlockHeader {
         if header.state_diff_length.is_none() {
             header.state_diff_length = Some(
                 txn.get_state_diff(block_number)?
-                    .ok_or(P2PSyncServerError::BlockNotFound {
-                        block_hash_or_number: BlockHashOrNumber::Number(block_number),
-                    })?
-                    .len(),
+                    .map(|state_diff| state_diff.len())
+                    .unwrap_or_default(),
             );
         }
         let signature = txn
