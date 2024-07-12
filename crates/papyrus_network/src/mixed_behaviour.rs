@@ -5,7 +5,7 @@ use libp2p::kad::store::MemoryStore;
 use libp2p::swarm::behaviour::toggle::Toggle;
 use libp2p::swarm::dial_opts::DialOpts;
 use libp2p::swarm::NetworkBehaviour;
-use libp2p::{gossipsub, identify, kad, Multiaddr, PeerId};
+use libp2p::{gossipsub, identify, kad, Multiaddr, PeerId, StreamProtocol};
 
 use crate::discovery::identify_impl::{IdentifyToOtherBehaviourEvent, IDENTIFY_PROTOCOL_VERSION};
 use crate::discovery::kad_impl::KadToOtherBehaviourEvent;
@@ -78,7 +78,13 @@ impl MixedBehaviour {
                 public_key,
             )),
             // TODO: change kademlia protocol name
-            kademlia: kad::Behaviour::new(local_peer_id, MemoryStore::new(local_peer_id)),
+            kademlia: kad::Behaviour::with_config(
+                local_peer_id,
+                MemoryStore::new(local_peer_id),
+                kad::Config::default()
+                    .set_protocol_names(vec![StreamProtocol::new("/starknet/kad/1.0.0")])
+                    .clone(),
+            ),
             sqmr: sqmr::Behaviour::new(streamed_bytes_config),
             gossipsub: gossipsub::Behaviour::new(
                 gossipsub::MessageAuthenticity::Signed(keypair),
