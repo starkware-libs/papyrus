@@ -138,7 +138,7 @@ impl NetworkBehaviour for Behaviour {
                 opts: DialOpts::peer_id(self.bootstrap_peer_id)
                     .addresses(vec![self.bootstrap_peer_address.clone()])
                     // The peer manager might also be dialing to the bootstrap node.
-                    .condition(PeerCondition::DisconnectedAndNotDialing)
+                    // .condition(PeerCondition::DisconnectedAndNotDialing)
                     .build(),
             });
         }
