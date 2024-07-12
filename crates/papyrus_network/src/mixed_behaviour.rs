@@ -82,7 +82,7 @@ impl MixedBehaviour {
                 local_peer_id,
                 MemoryStore::new(local_peer_id),
                 kad::Config::default()
-                    .set_protocol_names(vec![StreamProtocol::new("/starknet/kad/1.0.0")])
+                    .set_protocol_names(vec![StreamProtocol::new("/starknet/juno-papyrus")])
                     .clone(),
             ),
             sqmr: sqmr::Behaviour::new(streamed_bytes_config),
