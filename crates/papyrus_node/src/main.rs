@@ -237,7 +237,10 @@ async fn run_threads(config: NodeConfig) -> anyhow::Result<()> {
         (None, None) => (pending().boxed(), pending().boxed()),
     };
     let sync_handle = tokio::spawn(sync_future);
-    let p2p_sync_client_handle = tokio::spawn(p2p_sync_client_future);
+    let p2p_sync_client_handle = tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        p2p_sync_client_future.await
+    });
 
     let consensus_handle = if let Some(consensus_channels) = maybe_consensus_channels {
         run_consensus(
