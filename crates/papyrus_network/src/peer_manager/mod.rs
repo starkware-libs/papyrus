@@ -53,7 +53,7 @@ pub(crate) enum PeerManagerError {
 
 impl Default for PeerManagerConfig {
     fn default() -> Self {
-        Self { target_num_for_peers: 100, blacklist_timeout: Duration::max_value() }
+        Self { target_num_for_peers: 100, blacklist_timeout: Duration::milliseconds(10) }
     }
 }
 
