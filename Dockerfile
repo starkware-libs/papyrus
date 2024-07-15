@@ -1,42 +1,12 @@
-# We split the Dockerfile into four stages
-# The reason for that is to use Cargo Chef to compile dependecies before compiling the rest of the crates.
-# This allows proper docker caching, and this stage will be cached until a dependecy change.
-# When we change code in our crates this won't affect our cached layers.
-# Before the stages we create a base image using 'clux/muslrust' with some additional required tools
-# For more on docker stages, visit https://docs.docker.com/build/building/multi-stage/
+# Dockerfile with multi-stage builds for efficient dependency caching and lightweight final image.
+# For more on Docker stages, visit: https://docs.docker.com/build/building/multi-stage/
 
-#####################
-# Stage 1 (planer): #
-##################### 
-# * Copy all src files
-# * Running Cargo Chef prepare to generate recipe.json
+# We use Cargo Chef to compile dependencies before compiling the rest of the crates.
+# This approach ensures proper Docker caching, where dependency layers are cached until a dependency changes.
+# Code changes in our crates won't affect these cached layers, making the build process more efficient.
+# More info on Cargo Chef: https://github.com/LukeMathWalker/cargo-chef
 
-#####################
-# Stage 2 (cacher): #
-##################### 
-# * Copy recipe.json from planner stage
-# * Compile all the dependecies using Cargo Chef cook
-
-######################
-# Stage 3 (builder): #
-###################### 
-# * Copy target dir (compiled deps) from cacher stage
-# * Copy all repo src
-# * Compile all crates and create a release
-
-###########################
-# Stage 4 (papyrus_node): #
-###########################
-# * Using Alpine Linux to run a lightweight and secured container
-# * Copy our config directory from src
-# * Copy the papyrus_node binary from our builder stage
-# * Installing tini, for lightweight init system do be used to call our executable
-# * Creating new user called papyrus with home directory /app
-# * We expose ports 8080(RPC) and 8081(monitoring)
-# * Finally we run papyrus_node with tini as an entrypoint
-
-
-# Preparing the base image:
+# We start by creating a base image using 'clux/muslrust' with additional required tools.
 FROM clux/muslrust:1.78.0-stable AS chef
 WORKDIR /app
 RUN apt update && apt install -y clang unzip
@@ -45,45 +15,68 @@ ENV PROTOC_VERSION=25.1
 RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local &&  rm ./protoc.zip
 ENV PROTOC=/root/.local/bin/protoc
 
-# Stage 1:
+#####################
+# Stage 1 (planer): #
+##################### 
 FROM chef AS planner
 COPY . .
+# * Running Cargo Chef prepare that will generate recipe.json which will be used in the next stage.
 RUN cargo chef prepare
 
-# Stage 2:
+#####################
+# Stage 2 (cacher): #
+##################### 
+# Compile all the dependecies using Cargo Chef cook.
 FROM chef AS cacher
+
+# Copy recipe.json from planner stage
 COPY --from=planner /app/recipe.json recipe.json
+
 # Build dependencies - this is the caching Docker layer!
 RUN cargo chef cook --target x86_64-unknown-linux-musl --release --package papyrus_node
 
-# Stage 3:
+######################
+# Stage 3 (builder): #
+###################### 
 FROM chef AS builder
 COPY . .
 COPY --from=cacher /app/target target
+# Disable incremental compilation for a cleaner build.
 ENV CARGO_INCREMENTAL=0
+
+# Add the target for x86_64-unknown-linux-musl and compile papyrus_node.
 RUN rustup target add x86_64-unknown-linux-musl \
 && cargo build --target x86_64-unknown-linux-musl --release --package papyrus_node --locked
 
-# Stage 4:
-# Starting this stage so we have a clean lightweight and secured final image
+###########################
+# Stage 4 (papyrus_node): #
+###########################
+# Uses Alpine Linux to run a lightweight and secure container.
 FROM alpine:3.17.0 AS papyrus_node
 ENV ID=1000
 WORKDIR /app
-# Copy the node executable and its config.
+
+# Copy the node executable and its configuration.
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/papyrus_node /app/target/release/papyrus_node
 COPY config config
-# Installing tini
+
+# Install tini, a lightweight init system, to call our executable.
 RUN set -ex; \
     apk update; \
     apk add --no-cache tini; \
     mkdir data
-# Creating new user "papyrus"
+
+# Create a new user "papyrus".
 RUN set -ex; \
     addgroup --gid ${ID} papyrus; \
     adduser --ingroup $(getent group ${ID} | cut -d: -f1) --uid ${ID} --gecos "" --disabled-password --home /app papyrus; \
     chown -R papyrus:papyrus /app
-# Exposing rpc and monitoring ports
+
+# Expose RPC and monitoring ports.
 EXPOSE 8080 8081
+
+# Switch to the new user.
 USER ${ID}
-# Finishing with our entrypoint
+
+# Set the entrypoint to use tini to manage the process.
 ENTRYPOINT ["/sbin/tini", "--", "/app/target/release/papyrus_node"]
