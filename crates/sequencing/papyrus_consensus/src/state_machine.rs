@@ -222,7 +222,7 @@ impl StateMachine {
         if self.step != Step::Prevote {
             return VecDeque::new();
         }
-
+        print!("\nASMAA - handle_prevote block_hash: {:?}\n", block_hash);
         self.send_precommit(block_hash, round)
     }
 
@@ -278,6 +278,7 @@ impl StateMachine {
         if *count < self.quorum {
             return VecDeque::new();
         }
+        print!("\nASMAA - check_precommit_quorum block_hash: {:?}", block_hash);
         VecDeque::from([StateMachineEvent::Decision(*block_hash, round)])
     }
 

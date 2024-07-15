@@ -214,6 +214,7 @@ fn app(
 
     let db_tables_stats_reader = storage_reader.clone();
     let mmap_files_stats_reader = storage_reader.clone();
+    let prometheus_handle_clone = prometheus_handle.clone();
 
     Router::new()
         .route(
@@ -252,10 +253,36 @@ fn app(
             get(move || metrics(prometheus_handle)),
         )
         .route(
+            format!("/{MONITORING_PREFIX}/metrics/:metric_name").as_str(),
+            get(move |Path(metric_name): Path<String>| {
+                metric_value(metric_name, prometheus_handle_clone.clone())
+            }),
+        )
+        .route(
             format!("/{MONITORING_PREFIX}/ready").as_str(),
             get(move || is_ready(starknet_client, starknet_feeder_client)),
         )
         .route(format!("/{MONITORING_PREFIX}/peer_id").as_str(), get(move || async { own_peer_id }))
+}
+
+async fn metric_value(
+    metric_name: String,
+    prometheus_handle: Option<PrometheusHandle>,
+) -> impl IntoResponse {
+    if let Some(handle) = prometheus_handle {
+        let metrics = handle.render();
+        for line in metrics.lines() {
+            let trimmed_line = line.trim();
+            if trimmed_line.starts_with(&metric_name) {
+                if let Some(value) = trimmed_line.split_whitespace().last() {
+                    return format!("{}\n", value).into_response();
+                }
+            }
+        }
+        StatusCode::NOT_FOUND.into_response()
+    } else {
+        StatusCode::METHOD_NOT_ALLOWED.into_response()
+    }
 }
 
 async fn is_ready<TStarknetWriter: StarknetWriter, TStarknetReader: StarknetReader>(

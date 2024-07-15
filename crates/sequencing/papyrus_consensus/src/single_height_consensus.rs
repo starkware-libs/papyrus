@@ -138,7 +138,10 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             ConsensusMessage::Proposal(_) => {
                 unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
             }
-            ConsensusMessage::Vote(vote) => self.handle_vote(vote).await,
+            ConsensusMessage::Vote(vote) => {
+                println!("\nASMAA - handle_message validator id:{:?} vote: {:?}", self.id, vote);
+                self.handle_vote(vote).await
+            }
         }
     }
 
@@ -260,6 +263,10 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             // TODO(matan): Consider refactoring not to panic, rather log and return the error.
             panic!("State machine should not send repeat votes: old={:?}, new={:?}", old, vote);
         }
+        println!(
+            "\nASMAA - handle_state_machine_vote - round: {:?}, id: {:?}, vote: {:?}",
+            round, self.id, vote
+        );
         self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
         Ok(None)
     }

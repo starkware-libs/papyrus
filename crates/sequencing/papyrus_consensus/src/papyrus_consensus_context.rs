@@ -174,6 +174,7 @@ impl ConsensusContext for PapyrusConsensusContext {
 
     async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError> {
         debug!("Broadcasting message: {message:?}");
+        println!("\nASMAA -broadcast  message: {message:?}");
         self.broadcast_sender.lock().await.send(message).await?;
         Ok(())
     }

@@ -11,6 +11,7 @@ use crate::discovery::identify_impl::{IdentifyToOtherBehaviourEvent, IDENTIFY_PR
 use crate::discovery::kad_impl::KadToOtherBehaviourEvent;
 use crate::peer_manager::PeerManagerConfig;
 use crate::{discovery, gossipsub_impl, peer_manager, sqmr};
+const ONE_MEGA: usize = 1 << 20;
 
 // TODO: consider reducing the pulicity of all behaviour to pub(crate)
 #[derive(NetworkBehaviour)]
@@ -82,7 +83,10 @@ impl MixedBehaviour {
             sqmr: sqmr::Behaviour::new(streamed_bytes_config),
             gossipsub: gossipsub::Behaviour::new(
                 gossipsub::MessageAuthenticity::Signed(keypair),
-                gossipsub::Config::default(),
+                gossipsub::ConfigBuilder::default()
+                    .max_transmit_size(ONE_MEGA)
+                    .build()
+                    .expect("Failed to build gossipsub config"),
             )
             .unwrap_or_else(|err_string| {
                 panic!(

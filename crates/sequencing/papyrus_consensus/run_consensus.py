@@ -123,6 +123,7 @@ def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
     subprocess.run("cargo build --release --package papyrus_node", shell=True, check=True)
 
     temp_dir = tempfile.mkdtemp()
+    # temp_dir="output"
     print(f"Output files will be stored in: {temp_dir}")
 
     # Create data directories
@@ -137,7 +138,7 @@ def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
 
     nodes = []
     # Ensure validator 1 runs first
-    monitoring_gateway_server_port = find_free_port()
+    monitoring_gateway_server_port = 8081
     bootnode_command = (
         f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
         f"target/release/papyrus_node --network.#is_none false "
@@ -181,7 +182,7 @@ if __name__ == "__main__":
         "--stagnation_threshold",
         type=int,
         required=False,
-        default=60,
+        default=240,
         help="Time in seconds to check for height stagnation.",
     )
     parser.add_argument("--duration", type=int, required=False, default=None)
