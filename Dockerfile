@@ -1,4 +1,4 @@
-# We split the Dockerfile into three stages
+# We split the Dockerfile into four stages
 # The reason for that is to use Cargo Chef to compile dependecies before compiling the rest of the crates.
 # This allows proper docker caching, and this stage will be cached until a dependecy change.
 # When we change code in our crates this won't affect our cached layers.
