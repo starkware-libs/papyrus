@@ -41,7 +41,7 @@ class Node:
         height = self.get_height()
         if self.height_and_timestamp[0] != height:
             if self.height_and_timestamp[0] is not None and height is not None:
-                assert height > self.height_and_timestamp[0] , "Height should be increasing."
+                assert height > self.height_and_timestamp[0], "Height should be increasing."
             self.height_and_timestamp = (height, time.time())
 
         return self.height_and_timestamp
@@ -53,6 +53,9 @@ def find_free_port():
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         return s.getsockname()[1]
+
+
+BOOTNODE_TCP_PORT = find_free_port()
 
 
 # Returns if the simulation should exit.
@@ -91,8 +94,11 @@ def run_simulation(nodes, duration, stagnation_timeout):
             node.stop()
 
 
-def build_peernode(base_layer_node_url, temp_dir, num_validators, i):
+def build_node(base_layer_node_url, temp_dir, num_validators, i):
+    is_bootstrap = i == 1
+    tcp_port = BOOTNODE_TCP_PORT if is_bootstrap else find_free_port()
     monitoring_gateway_server_port = find_free_port()
+
     cmd = (
         f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
         f"target/release/papyrus_node --network.#is_none false "
@@ -100,20 +106,47 @@ def build_peernode(base_layer_node_url, temp_dir, num_validators, i):
         f"--storage.db_config.path_prefix {temp_dir}/data{i} "
         f"--consensus.#is_none false --consensus.validator_id 0x{i} "
         f"--consensus.num_validators {num_validators} "
-        f"--network.tcp_port {find_free_port()} "
+        f"--network.tcp_port {tcp_port} "
         f"--rpc.server_address 127.0.0.1:{find_free_port()} "
         f"--monitoring_gateway.server_address 127.0.0.1:{monitoring_gateway_server_port} "
-        f"--network.bootstrap_peer_multiaddr.#is_none false "
-        f"--network.bootstrap_peer_multiaddr /ip4/127.0.0.1/tcp/10000/p2p/{BOOT_NODE_PEER_ID} "
-        f"--collect_metrics true"
-        # Use sed to strip special formatting characters
-        f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator{i}.txt"
+        f"--collect_metrics true "
     )
+
+    if is_bootstrap:
+        cmd += (
+            f"--network.secret_key {SECRET_KEY} "
+            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator{i}.txt"
+        )
+
+    else:
+        cmd += (
+            f"--network.bootstrap_peer_multiaddr.#is_none false "
+            f"--network.bootstrap_peer_multiaddr /ip4/127.0.0.1/tcp/{BOOTNODE_TCP_PORT}/p2p/{BOOT_NODE_PEER_ID} "
+            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator{i}.txt"
+        )
+
     return Node(
         validator_id=i,
         monitoring_gateway_server_port=monitoring_gateway_server_port,
         cmd=cmd,
     )
+
+
+def build_all_nodes(base_layer_node_url, temp_dir, num_validators):
+    # Validators are started in a specific order to ensure proper network formation:
+    # 1. The bootnode (validator 1) is started first for network peering.
+    # 2. Validators 2+ are started next to join the network through the bootnode.
+    # 3. Validator 0, which is the proposer, is started last so the validators don't miss the proposals.
+    nodes = []
+
+    nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, 1)) # Bootstrap
+
+    for i in range(2, num_validators):
+        nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, i))
+
+    nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, 0)) # Proposer
+
+    return nodes
 
 
 def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
@@ -130,46 +163,12 @@ def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
         data_dir = os.path.join(temp_dir, f"data{i}")
         os.makedirs(data_dir)
 
-    # Validators are started in a specific order to ensure proper network formation:
-    # 1. The bootnode (validator 1) is started first for network peering.
-    # 2. Validators 2+ are started next to join the network through the bootnode.
-    # 3. Validator 0, which is the proposer, is started last so the validators don't miss the proposals.
-
-    nodes = []
-    # Ensure validator 1 runs first
-    monitoring_gateway_server_port = find_free_port()
-    bootnode_command = (
-        f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
-        f"target/release/papyrus_node --network.#is_none false "
-        f"--base_layer.node_url {base_layer_node_url} "
-        f"--network.secret_key {SECRET_KEY} "
-        f"--storage.db_config.path_prefix {temp_dir}/data1 "
-        f"--consensus.#is_none false --consensus.validator_id 0x1 "
-        f"--consensus.num_validators {num_validators} "
-        f"--monitoring_gateway.server_address 127.0.0.1:{monitoring_gateway_server_port} "
-        f"--collect_metrics true"
-        # Use sed to strip special formatting characters
-        f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator1.txt"
-    )
-    nodes.append(
-        Node(
-            validator_id=1,
-            monitoring_gateway_server_port=monitoring_gateway_server_port,
-            cmd=bootnode_command,
-        )
-    )
-
-    # Add other validators
-    nodes.extend(
-        build_peernode(base_layer_node_url, temp_dir, num_validators, i)
-        for i in range(2, num_validators)
-    )
-    # Ensure validator 0 runs last
-    nodes.append(build_peernode(base_layer_node_url, temp_dir, num_validators, 0))
+    nodes = build_all_nodes(base_layer_node_url, temp_dir, num_validators)
 
     # Run validator commands in parallel and manage duration time
     print("Running validators...")
     run_simulation(nodes, duration, stagnation_threshold)
+    print(f"Output files were stored in: {temp_dir}")
     print("Simulation complete.")
 
 
