@@ -375,7 +375,8 @@ fn run_network(
 
     let consensus_channels = match consensus_config {
         Some(consensus_config) => Some(
-            network_manager.register_broadcast_topic(Topic::new(consensus_config.topic), 100)?,
+            network_manager
+                .register_broadcast_topic(Topic::new(consensus_config.topic), BUFFER_SIZE)?,
         ),
         None => None,
     };
