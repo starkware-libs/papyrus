@@ -118,6 +118,8 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
                 "Error occured while broadcasting a message to the topic with hash \
                  {topic_hash:?}: {err:?}"
             );
+        } else {
+            println!("ASMAAMAGDOUB - broadcast_message: {:?}", result.unwrap());
         }
     }
 

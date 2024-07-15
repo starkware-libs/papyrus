@@ -19,11 +19,14 @@ pub enum ExternalEvent {
 
 impl From<gossipsub::Event> for mixed_behaviour::Event {
     fn from(event: gossipsub::Event) -> Self {
+        // println!("ASMAAAAAA: event: {:?}", event);
         match event {
             gossipsub::Event::Message {
                 message: gossipsub::Message { data, topic, source, .. },
+                message_id,
                 ..
             } => {
+                println!("ASMAAMAGDOUB: received message: {:?}", message_id);
                 let Some(originated_peer_id) = source else {
                     error!(
                         "Received a message from gossipsub without source even though we've \
