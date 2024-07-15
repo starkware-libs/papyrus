@@ -35,8 +35,8 @@ libp2p = { workspace = true, features = [
 ] }
 metrics.workspace = true
 replace_with.workspace = true
-papyrus_common = { path = "../papyrus_common", version = "0.4.0-dev.4" }
-papyrus_config = { path = "../papyrus_config", version = "0.4.0-dev.4" }
+papyrus_common = { path = "../papyrus_common", version = "0.4.0-rc.0" }
+papyrus_config = { path = "../papyrus_config", version = "0.4.0-rc.0" }
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["full", "sync"] }
