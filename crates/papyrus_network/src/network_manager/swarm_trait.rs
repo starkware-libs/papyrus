@@ -119,7 +119,10 @@ impl SwarmTrait for Swarm<mixed_behaviour::MixedBehaviour> {
                  {topic_hash:?}: {err:?}"
             );
         } else {
-            println!("ASMAAMAGDOUB - broadcast_message: {:?}", result.unwrap());
+            println!(
+                "ASMAAMAGDOUB - broadcast_message: {:?} topic_hash: {:?}",
+                result.unwrap(), topic_hash
+            );
         }
     }
 

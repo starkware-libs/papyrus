@@ -11,7 +11,7 @@ pub mod sources;
 use std::cmp::min;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{self, Duration};
 
 use async_stream::try_stream;
 use cairo_lang_starknet_classes::casm_contract_class::CasmContractClass;
@@ -361,6 +361,7 @@ impl<
 
     // Tries to store the incoming data.
     async fn process_sync_event(&mut self, sync_event: SyncEvent) -> StateSyncResult {
+        tokio::time::sleep(time::Duration::from_secs(1)).await;
         match sync_event {
             SyncEvent::BlockAvailable { block_number, block, signature } => {
                 self.store_block(block_number, block, &signature)

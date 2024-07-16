@@ -182,7 +182,7 @@ if __name__ == "__main__":
         "--stagnation_threshold",
         type=int,
         required=False,
-        default=60,
+        default=500,
         help="Time in seconds to check for height stagnation.",
     )
     parser.add_argument("--duration", type=int, required=False, default=None)

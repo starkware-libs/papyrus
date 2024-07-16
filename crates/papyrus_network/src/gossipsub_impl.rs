@@ -14,7 +14,12 @@ pub type Topic = gossipsub::Sha256Topic;
 #[derive(Debug)]
 pub enum ExternalEvent {
     #[allow(dead_code)]
-    Received { originated_peer_id: PeerId, message: Bytes, topic_hash: TopicHash },
+    Received {
+        originated_peer_id: PeerId,
+        message: Bytes,
+        topic_hash: TopicHash,
+        message_id: gossipsub::MessageId,
+    },
 }
 
 impl From<gossipsub::Event> for mixed_behaviour::Event {
@@ -26,7 +31,7 @@ impl From<gossipsub::Event> for mixed_behaviour::Event {
                 message_id,
                 ..
             } => {
-                println!("ASMAAMAGDOUB: received message: {:?}", message_id);
+                println!("ASMAAMAGDOUB: received message: {message_id:?} topic: {topic:?}");
                 let Some(originated_peer_id) = source else {
                     error!(
                         "Received a message from gossipsub without source even though we've \
@@ -41,6 +46,7 @@ impl From<gossipsub::Event> for mixed_behaviour::Event {
                         originated_peer_id,
                         message: data,
                         topic_hash: topic,
+                        message_id,
                     },
                 ))
             }

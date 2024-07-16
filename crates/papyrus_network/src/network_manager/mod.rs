@@ -399,7 +399,16 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
 
     fn handle_gossipsub_behaviour_event(&mut self, event: gossipsub_impl::ExternalEvent) {
         match event {
-            gossipsub_impl::ExternalEvent::Received { originated_peer_id, message, topic_hash } => {
+            gossipsub_impl::ExternalEvent::Received {
+                originated_peer_id,
+                message,
+                topic_hash,
+                message_id,
+            } => {
+                println!(
+                    "ASMAAMAGDOUB: handle_gossipsub_behaviour_event  originated_peer_id: \
+                     {originated_peer_id:?} topic: {topic_hash:?} message_id: {message_id:?}",
+                );
                 let report_callback_sender =
                     self.create_external_callback_for_received_data(originated_peer_id);
                 let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic_hash) else {
@@ -418,6 +427,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                             "Receiver buffer is full. Dropping broadcasted message for topic with \
                              hash: {topic_hash:?}."
                         );
+                    } else {
+                        panic!("ASMAAMAGDOUB: Unexpected error: {e:?}");
                     }
                 }
             }

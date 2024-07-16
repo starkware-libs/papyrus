@@ -55,6 +55,7 @@ where
     }
 
     let mut current_height_messages = Vec::new();
+    println!("ASMAAMAGDOUB: cached_messages: {:?}", cached_messages);
     for msg in std::mem::take(cached_messages) {
         match height.0.cmp(&msg.height()) {
             std::cmp::Ordering::Less => cached_messages.push(msg),
