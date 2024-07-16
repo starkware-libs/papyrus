@@ -230,17 +230,18 @@ async fn register_sqmr_protocol_client_and_use_channels() {
     let response_receiver_collector = response_receiver
         .enumerate()
         .take(VEC1.len())
-        .map(|(i, (result, _report_callback))| {
+        .map(|(i, result)| {
             let result = result.unwrap();
             // this simulates how the mock swarm parses the query and sends responses to it
             assert_eq!(result, vec![VEC1[i]]);
             result
         })
         .collect::<Vec<_>>();
+    let (_report_callback, report_receiver) = oneshot::channel::<()>();
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(VEC1.clone()).await.unwrap()})
+            query_sender.send((VEC1.clone(), report_receiver)).await.unwrap()})
             .then(|_| async move {
                 *cloned_response_receiver_length.lock().await = response_receiver_collector.await.len();
             }) => {},
