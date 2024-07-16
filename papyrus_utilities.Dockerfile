@@ -9,9 +9,7 @@
 INCLUDE Dockerfile
 
 # Build papyrus utilities.
-FROM chef AS utilities_builder
-
-ENV CARGO_INCREMENTAL=0
+FROM builder AS utilities_builder
 
 # Build papyrus_load_test and copy its resources.
 RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_load_test --bin papyrus_load_test
