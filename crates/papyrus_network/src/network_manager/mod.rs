@@ -9,8 +9,8 @@ use futures::channel::mpsc::{Receiver, SendError, Sender};
 use futures::channel::oneshot;
 use futures::future::{ready, BoxFuture, Ready};
 use futures::sink::With;
-use futures::stream::{self, BoxStream, FuturesUnordered, Map};
-use futures::{FutureExt, SinkExt, StreamExt};
+use futures::stream::{self, BoxStream, FuturesUnordered, Map, Stream};
+use futures::{FutureExt, Sink, SinkExt, StreamExt};
 use libp2p::gossipsub::{SubscriptionError, TopicHash};
 use libp2p::swarm::SwarmEvent;
 use libp2p::{PeerId, StreamProtocol, Swarm};
@@ -611,6 +611,38 @@ where
 #[cfg(feature = "testing")]
 pub fn dummy_report_sender() -> ReportSender {
     Box::new(|| {})
+}
+
+pub type GenericSender<T> = Box<dyn Sink<T, Error = SendError>>;
+pub type GenericReceiver<T> = Box<dyn Stream<Item = T>>;
+
+pub struct SqmrClientQuery<Query, Response: TryFrom<Bytes>> {
+    pub query: Query,
+    pub report_receiver: oneshot::Receiver<()>,
+    pub responses_sender: GenericSender<Result<Response, <Response as TryFrom<Bytes>>::Error>>,
+}
+// TODO(shahak): Return this type in register_sqmr_protocol_client
+pub type SqmrClientChannel<Query, Response> = GenericSender<SqmrClientQuery<Query, Response>>;
+
+pub struct SqmrServerQuery<Query, Response: TryFrom<Bytes>> {
+    pub query: Query,
+    pub report_sender: oneshot::Sender<()>,
+    pub responses_sender: GenericSender<Result<Response, <Response as TryFrom<Bytes>>::Error>>,
+}
+// TODO(shahak): Return this type in register_sqmr_protocol_server
+pub type SqmrServerChannel<Query, Response> = GenericReceiver<SqmrServerQuery<Query, Response>>;
+
+#[allow(dead_code)]
+struct SqmrClientQueryForNetwork {
+    pub query: Bytes,
+    pub report_receiver: BoxFuture<'static, SessionId>,
+    pub responses_sender: GenericSender<Bytes>,
+}
+#[allow(dead_code)]
+struct SqmrServerQueryForNetwork {
+    pub query: Bytes,
+    pub report_sender: oneshot::Sender<()>,
+    pub responses_sender: GenericSender<Bytes>,
 }
 
 // TODO(shahak): Create a custom struct if Box dyn becomes an overhead.
