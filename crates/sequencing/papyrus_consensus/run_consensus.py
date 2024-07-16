@@ -94,7 +94,7 @@ def run_simulation(nodes, duration, stagnation_timeout):
 def build_peernode(base_layer_node_url, temp_dir, num_validators, i):
     monitoring_gateway_server_port = find_free_port()
     cmd = (
-        f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
+        f"RUST_LOG=debug "
         f"target/release/papyrus_node --network.#is_none false "
         f"--base_layer.node_url {base_layer_node_url} "
         f"--storage.db_config.path_prefix {temp_dir}/data{i} "
@@ -139,7 +139,7 @@ def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
     # Ensure validator 1 runs first
     monitoring_gateway_server_port = find_free_port()
     bootnode_command = (
-        f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
+        f"RUST_LOG=debug "
         f"target/release/papyrus_node --network.#is_none false "
         f"--base_layer.node_url {base_layer_node_url} "
         f"--network.secret_key {SECRET_KEY} "

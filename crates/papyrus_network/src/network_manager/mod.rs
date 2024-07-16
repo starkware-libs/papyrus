@@ -430,6 +430,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     } else {
                         panic!("ASMAAMAGDOUB: Unexpected error: {e:?}");
                     }
+                } else {
+                    debug!("ASMAAMAGDOUB: Sent message to broadcast subscriber. {send_result:?}");
                 }
             }
         }

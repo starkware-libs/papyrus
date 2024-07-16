@@ -114,10 +114,12 @@ impl TryFrom<protobuf::ConsensusMessage> for ConsensusMessage {
             return Err(ProtobufConversionError::MissingField { field_description: "message" });
         };
 
-        match message {
+        let res = match message {
             Message::Proposal(proposal) => Ok(ConsensusMessage::Proposal(proposal.try_into()?)),
             Message::Vote(vote) => Ok(ConsensusMessage::Vote(vote.try_into()?)),
-        }
+        };
+        println!("ASMAAMAGDOUB: deserialized ConsensusMessage: {:?}", &res);
+        res
     }
 }
 

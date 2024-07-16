@@ -173,8 +173,9 @@ impl ConsensusContext for PapyrusConsensusContext {
     }
 
     async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError> {
+        let mut sender = self.broadcast_sender.lock().await;
         debug!("Broadcasting message: {message:?}");
-        self.broadcast_sender.lock().await.send(message).await?;
+        sender.send(message).await?;
         Ok(())
     }
 
@@ -200,6 +201,7 @@ impl ConsensusContext for PapyrusConsensusContext {
                 transactions,
                 block_hash,
             };
+            let mut sender = broadcast_sender.lock().await;
             debug!(
                 "Sending proposal: height={:?} id={:?} num_txs={} block_hash={:?}",
                 proposal.height,
@@ -208,9 +210,7 @@ impl ConsensusContext for PapyrusConsensusContext {
                 proposal.block_hash
             );
 
-            broadcast_sender
-                .lock()
-                .await
+            sender
                 .send(ConsensusMessage::Proposal(proposal))
                 .await
                 .expect("Failed to send proposal");
