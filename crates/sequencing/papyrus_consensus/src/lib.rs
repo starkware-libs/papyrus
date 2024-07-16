@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
 use papyrus_common::metrics as papyrus_metrics;
-use papyrus_network::network_manager::SubscriberReceiver;
+use papyrus_network::network_manager::BroadcastSubscriberReceiver;
 use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use single_height_consensus::SingleHeightConsensus;
 use starknet_api::block::{BlockHash, BlockNumber};
@@ -41,7 +41,7 @@ async fn run_height<BlockT: ConsensusBlock>(
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     height: BlockNumber,
     validator_id: ValidatorId,
-    network_receiver: &mut SubscriberReceiver<ConsensusMessage>,
+    network_receiver: &mut BroadcastSubscriberReceiver<ConsensusMessage>,
     cached_messages: &mut Vec<ConsensusMessage>,
 ) -> Result<Decision<BlockT>, ConsensusError>
 where
@@ -105,7 +105,7 @@ pub async fn run_consensus<BlockT: ConsensusBlock>(
     context: Arc<dyn ConsensusContext<Block = BlockT>>,
     start_height: BlockNumber,
     validator_id: ValidatorId,
-    mut network_receiver: SubscriberReceiver<ConsensusMessage>,
+    mut network_receiver: BroadcastSubscriberReceiver<ConsensusMessage>,
 ) -> Result<(), ConsensusError>
 where
     ProposalWrapper:

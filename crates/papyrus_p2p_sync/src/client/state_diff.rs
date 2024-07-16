@@ -53,7 +53,7 @@ impl DataStreamBuilder<StateDiffChunk> for StateDiffStreamBuilder {
                 })?;
 
             while current_state_diff_len < target_state_diff_len {
-                let (maybe_state_diff_chunk, _report_callback) =
+                let maybe_state_diff_chunk =
                     tokio::time::timeout(NETWORK_DATA_TIMEOUT, state_diff_chunks_receiver.next())
                         .await?
                         .ok_or(P2PSyncError::ReceiverChannelTerminated {
