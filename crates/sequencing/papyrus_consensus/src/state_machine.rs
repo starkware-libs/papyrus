@@ -97,7 +97,7 @@ impl StateMachine {
 
     /// Process the incoming event.
     ///
-    /// If we are waiting for a a response to `StartRound` all other incoming events are buffered
+    /// If we are waiting for a response to `StartRound` all other incoming events are buffered
     /// until that response arrives.
     ///
     /// Returns a set of events for the caller to handle. The caller should not mirror the output
