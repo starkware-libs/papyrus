@@ -14,6 +14,7 @@ RUN cargo install cargo-chef
 ENV PROTOC_VERSION=25.1
 RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local &&  rm ./protoc.zip
 ENV PROTOC=/root/.local/bin/protoc
+RUN rustup target add x86_64-unknown-linux-musl
 
 #####################
 # Stage 1 (planer): #
@@ -45,8 +46,7 @@ COPY --from=cacher /app/target target
 ENV CARGO_INCREMENTAL=0
 
 # Add the target for x86_64-unknown-linux-musl and compile papyrus_node.
-RUN rustup target add x86_64-unknown-linux-musl \
-&& cargo build --target x86_64-unknown-linux-musl --release --package papyrus_node --locked
+RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_node --locked
 
 ###########################
 # Stage 4 (papyrus_node): #

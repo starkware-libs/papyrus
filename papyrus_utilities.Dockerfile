@@ -8,21 +8,21 @@
 
 INCLUDE Dockerfile
 
-
 # Build papyrus utilities.
-FROM builder AS utilities_builder
+FROM chef AS utilities_builder
+
+ENV CARGO_INCREMENTAL=0
 
 # Build papyrus_load_test and copy its resources.
-RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_load_test --bin papyrus_load_test
+RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_load_test --bin papyrus_load_test
 
 # Build dump_declared_classes.
-RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --features "clap" \
+RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage --features "clap" \
     --bin dump_declared_classes
 
 # Build storage_benchmark.
-RUN CARGO_INCREMENTAL=0 cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage \
+RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_storage \
     --features "clap statistical" --bin storage_benchmark
-
 
 # Starting a new stage so that the final image will contain only the executables.
 FROM alpine:3.17.0 AS papyrus_utilities
