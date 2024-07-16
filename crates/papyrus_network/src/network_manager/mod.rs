@@ -614,32 +614,55 @@ pub fn dummy_report_sender() -> ReportSender {
 }
 
 pub type GenericSender<T> = Box<dyn Sink<T, Error = SendError>>;
-pub type GenericReceiver<T> = Box<dyn Stream<Item = T>>;
+// Box<S> implements Stream only if S: Stream + Unpin
+pub type GenericReceiver<T> = Box<dyn Stream<Item = T> + Unpin>;
 
-pub struct SqmrClientQuery<Query, Response: TryFrom<Bytes>> {
+pub struct SqmrClientPayload<Query, Response: TryFrom<Bytes>> {
     pub query: Query,
     pub report_receiver: oneshot::Receiver<()>,
     pub responses_sender: GenericSender<Result<Response, <Response as TryFrom<Bytes>>::Error>>,
 }
-// TODO(shahak): Return this type in register_sqmr_protocol_client
-pub type SqmrClientChannel<Query, Response> = GenericSender<SqmrClientQuery<Query, Response>>;
-
-pub struct SqmrServerQuery<Query, Response: TryFrom<Bytes>> {
+pub struct SqmrServerPayload<Query, Response: TryFrom<Bytes>> {
     pub query: Query,
     pub report_sender: oneshot::Sender<()>,
     pub responses_sender: GenericSender<Result<Response, <Response as TryFrom<Bytes>>::Error>>,
 }
-// TODO(shahak): Return this type in register_sqmr_protocol_server
-pub type SqmrServerChannel<Query, Response> = GenericReceiver<SqmrServerQuery<Query, Response>>;
 
 #[allow(dead_code)]
-struct SqmrClientQueryForNetwork {
+struct SqmrClientPayloadForNetwork {
     pub query: Bytes,
     pub report_receiver: BoxFuture<'static, SessionId>,
     pub responses_sender: GenericSender<Bytes>,
 }
+
+// TODO(shahak): Return this type in register_sqmr_protocol_client
+pub type SqmrClientSender<Query, Response> = GenericSender<SqmrClientPayload<Query, Response>>;
 #[allow(dead_code)]
-struct SqmrServerQueryForNetwork {
+type SqmrClientReceiver = GenericReceiver<SqmrClientPayloadForNetwork>;
+
+// TODO(shahak): Return this type in register_sqmr_protocol_server
+pub type SqmrServerReceiver<Query, Response> = GenericReceiver<SqmrServerPayload<Query, Response>>;
+#[allow(dead_code)]
+type SqmrServerSender = GenericSender<SqmrServerPayloadForNetwork>;
+
+impl<Query, Response: TryFrom<Bytes>> From<SqmrClientPayload<Query, Response>>
+    for SqmrClientPayloadForNetwork
+{
+    fn from(_query: SqmrClientPayload<Query, Response>) -> Self {
+        unimplemented!()
+    }
+}
+
+impl<Query, Response: TryFrom<Bytes>> From<SqmrServerPayloadForNetwork>
+    for SqmrServerPayload<Query, Response>
+{
+    fn from(_query: SqmrServerPayloadForNetwork) -> Self {
+        unimplemented!()
+    }
+}
+
+#[allow(dead_code)]
+struct SqmrServerPayloadForNetwork {
     pub query: Bytes,
     pub report_sender: oneshot::Sender<()>,
     pub responses_sender: GenericSender<Bytes>,
