@@ -613,7 +613,7 @@ pub fn dummy_report_sender() -> ReportSender {
     Box::new(|| {})
 }
 
-pub type GenericSender<T> = Box<dyn Sink<T, Error = SendError>>;
+pub type GenericSender<T> = Box<dyn Sink<T, Error = SendError> + Unpin>;
 // Box<S> implements Stream only if S: Stream + Unpin
 pub type GenericReceiver<T> = Box<dyn Stream<Item = T> + Unpin>;
 
@@ -631,7 +631,14 @@ pub struct SqmrServerPayload<Query, Response: TryFrom<Bytes>> {
 #[allow(dead_code)]
 struct SqmrClientPayloadForNetwork {
     pub query: Bytes,
-    pub report_receiver: BoxFuture<'static, SessionId>,
+    pub report_receiver: oneshot::Receiver<()>,
+    pub responses_sender: GenericSender<Bytes>,
+}
+
+#[allow(dead_code)]
+struct SqmrServerPayloadForNetwork {
+    pub query: Bytes,
+    pub report_sender: oneshot::Sender<()>,
     pub responses_sender: GenericSender<Bytes>,
 }
 
@@ -645,11 +652,18 @@ pub type SqmrServerReceiver<Query, Response> = GenericReceiver<SqmrServerPayload
 #[allow(dead_code)]
 type SqmrServerSender = GenericSender<SqmrServerPayloadForNetwork>;
 
-impl<Query, Response: TryFrom<Bytes>> From<SqmrClientPayload<Query, Response>>
-    for SqmrClientPayloadForNetwork
+impl<Query, Response> From<SqmrClientPayload<Query, Response>> for SqmrClientPayloadForNetwork
+where
+    Bytes: From<Query>,
+    Response: TryFrom<Bytes> + 'static,
+    <Response as TryFrom<Bytes>>::Error: 'static,
 {
-    fn from(_query: SqmrClientPayload<Query, Response>) -> Self {
-        unimplemented!()
+    fn from(payload: SqmrClientPayload<Query, Response>) -> Self {
+        let SqmrClientPayload { query, report_receiver, responses_sender } = payload;
+        let query = Bytes::from(query);
+        let responses_sender =
+            Box::new(responses_sender.with(|response| ready(Ok(Response::try_from(response)))));
+        Self { query, report_receiver, responses_sender }
     }
 }
 
@@ -659,13 +673,6 @@ impl<Query, Response: TryFrom<Bytes>> From<SqmrServerPayloadForNetwork>
     fn from(_query: SqmrServerPayloadForNetwork) -> Self {
         unimplemented!()
     }
-}
-
-#[allow(dead_code)]
-struct SqmrServerPayloadForNetwork {
-    pub query: Bytes,
-    pub report_sender: oneshot::Sender<()>,
-    pub responses_sender: GenericSender<Bytes>,
 }
 
 // TODO(shahak): Create a custom struct if Box dyn becomes an overhead.
