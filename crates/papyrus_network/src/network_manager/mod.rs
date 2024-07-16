@@ -42,13 +42,13 @@ pub struct GenericNetworkManager<SwarmT: SwarmTrait> {
     // Splitting the response receivers from the query senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
-    sqmr_outbound_query_receivers: StreamHashMap<StreamProtocol, Receiver<Bytes>>,
-    sqmr_outbound_response_senders: HashMap<StreamProtocol, Sender<(Bytes, ReportCallback)>>,
+    sqmr_outbound_query_receivers: StreamHashMap<StreamProtocol, Receiver<(Bytes, ReportReceiver)>>,
+    sqmr_outbound_response_senders: HashMap<StreamProtocol, Sender<Bytes>>,
     // Splitting the broadcast receivers from the broadcasted senders in order to poll all
     // receivers simultaneously.
     // Each receiver has a matching sender and vice versa (i.e the maps have the same keys).
     messages_to_broadcast_receivers: StreamHashMap<TopicHash, Receiver<Bytes>>,
-    broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportCallback)>>,
+    broadcasted_messages_senders: HashMap<TopicHash, Sender<(Bytes, ReportSender)>>,
     outbound_session_id_to_protocol: HashMap<OutboundSessionId, StreamProtocol>,
     reported_peer_receivers: FuturesUnordered<BoxFuture<'static, Option<PeerId>>>,
     // Fields for metrics
@@ -62,8 +62,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             tokio::select! {
                 Some(event) = self.swarm.next() => self.handle_swarm_event(event),
                 Some(res) = self.sqmr_inbound_response_receivers.next() => self.handle_response_for_inbound_query(res),
-                Some((protocol, query)) = self.sqmr_outbound_query_receivers.next() => {
-                    self.handle_local_sqmr_query(protocol, query)
+                Some((protocol, (query, report_receiver))) = self.sqmr_outbound_query_receivers.next() => {
+                    self.handle_local_sqmr_query(protocol, query, report_receiver)
                 }
                 Some((topic_hash, message)) = self.messages_to_broadcast_receivers.next() => {
                     self.broadcast_message(message, topic_hash);
@@ -155,12 +155,11 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             panic!("Protocol '{}' has already been registered as a client.", protocol);
         }
 
-        let query_fn: fn(Query) -> Ready<Result<Bytes, SendError>> =
-            |query| ready(Ok(Bytes::from(query)));
+        let query_fn: SendQueryConverterFn<Query> =
+            |(query, report_receiver)| ready(Ok((Bytes::from(query), report_receiver)));
         let query_sender = query_sender.with(query_fn);
 
-        let response_fn: ReceivedMessagesConverterFn<Response> =
-            |(x, report_callback)| (Response::try_from(x), report_callback);
+        let response_fn: ReceivedMessagesConverterFn<Response> = |x| Response::try_from(x);
         let response_receiver = response_receiver.map(response_fn);
 
         SqmrSubscriberChannels { query_sender, response_receiver }
@@ -205,8 +204,8 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         let messages_to_broadcast_sender =
             messages_to_broadcast_sender.with(messages_to_broadcast_fn);
 
-        let broadcasted_messages_fn: ReceivedMessagesConverterFn<T> =
-            |(x, report_callback)| (T::try_from(x), report_callback);
+        let broadcasted_messages_fn: BroadcastReceivedMessagesConverterFn<T> =
+            |(x, report_sender)| (T::try_from(x), report_sender);
         let broadcasted_messages_receiver =
             broadcasted_messages_receiver.map(broadcasted_messages_fn);
 
@@ -354,7 +353,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             sqmr::behaviour::ExternalEvent::ReceivedResponse {
                 outbound_session_id,
                 response,
-                peer_id,
+                peer_id: _peer_id,
             } => {
                 trace!(
                     "Received response from peer for session id: {outbound_session_id:?}. sending \
@@ -364,14 +363,12 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     .outbound_session_id_to_protocol
                     .get(&outbound_session_id)
                     .expect("Received response from an unknown session id");
-                let report_callback_sender =
-                    self.create_external_callback_for_received_data(peer_id);
                 if let Some(response_sender) = self.sqmr_outbound_response_senders.get_mut(protocol)
                 {
                     // TODO(shahak): Close the channel if the buffer is full.
                     send_now(
                         response_sender,
-                        (response, report_callback_sender),
+                        response,
                         format!(
                             "Received response for an outbound query while the buffer is full. \
                              Dropping it. Session: {outbound_session_id:?}"
@@ -400,8 +397,16 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
     fn handle_gossipsub_behaviour_event(&mut self, event: gossipsub_impl::ExternalEvent) {
         match event {
             gossipsub_impl::ExternalEvent::Received { originated_peer_id, message, topic_hash } => {
-                let report_callback_sender =
-                    self.create_external_callback_for_received_data(originated_peer_id);
+                let (report_sender, report_receiver) = oneshot::channel::<()>();
+                let peer_id = originated_peer_id;
+                let report_sender = Box::new(move || {
+                    error!("Report sender was called for message from {peer_id:?}");
+                    let res = report_sender.send(());
+                    if let Err(e) = res {
+                        error!("Failed to send report. Error: {e:?}");
+                    }
+                });
+                self.handle_new_report_receiver(originated_peer_id, report_receiver);
                 let Some(sender) = self.broadcasted_messages_senders.get_mut(&topic_hash) else {
                     error!(
                         "Received a message from a topic we're not subscribed to with hash \
@@ -409,7 +414,7 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     );
                     return;
                 };
-                let send_result = sender.try_send((message, report_callback_sender));
+                let send_result = sender.try_send((message, report_sender));
                 if let Err(e) = send_result {
                     if e.is_disconnected() {
                         panic!("Receiver was dropped. This should never happen.")
@@ -446,7 +451,12 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
         };
     }
 
-    fn handle_local_sqmr_query(&mut self, protocol: StreamProtocol, query: Bytes) {
+    fn handle_local_sqmr_query(
+        &mut self,
+        protocol: StreamProtocol,
+        query: Bytes,
+        report_receiver: ReportReceiver,
+    ) {
         match self.swarm.send_query(query, PeerId::random(), protocol.clone()) {
             Ok(outbound_session_id) => {
                 debug!("Sent query to peer. outbound_session_id: {outbound_session_id:?}");
@@ -456,6 +466,23 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
                     self.num_active_outbound_sessions as f64
                 );
                 self.outbound_session_id_to_protocol.insert(outbound_session_id, protocol);
+                // TODO(eitan): this match always results in error as the session isnt assigned yet.
+                // save map between outbound_session_id and report_receiver. once session is
+                // assigned call handle_new_report_receiver
+                match self
+                    .swarm
+                    .get_peer_id_from_session_id(SessionId::OutboundSessionId(outbound_session_id))
+                {
+                    Ok(peer_id) => {
+                        self.handle_new_report_receiver(peer_id, report_receiver);
+                    }
+                    Err(e) => {
+                        error!(
+                            "Got a report before any message was received. Ignoring report. \
+                             Error: {e:?}"
+                        );
+                    }
+                }
             }
             Err(e) => {
                 info!(
@@ -488,23 +515,15 @@ impl<SwarmT: SwarmTrait> GenericNetworkManager<SwarmT> {
             }
         }
     }
-    fn create_external_callback_for_received_data(
-        &self,
-        peer_id: PeerId,
-    ) -> Box<dyn FnOnce() + Send> {
-        let (report_callback_sender, report_callback_receiver) = oneshot::channel::<()>();
+    fn handle_new_report_receiver(&self, peer_id: PeerId, report_receiver: oneshot::Receiver<()>) {
         self.reported_peer_receivers.push(
-            report_callback_receiver
+            report_receiver
                 .map(move |result| match result {
                     Ok(_) => Some(peer_id),
                     Err(_) => None,
                 })
                 .boxed(),
         );
-        Box::new(move || {
-            // TODO(shahak): Check if we can panic in case of error.
-            let _ = report_callback_sender.send(());
-        })
     }
 }
 
@@ -560,8 +579,8 @@ where
         |x| ready(Ok(Bytes::from(x)));
     let messages_to_broadcast_sender = messages_to_broadcast_sender.with(messages_to_broadcast_fn);
 
-    let broadcasted_messages_fn: ReceivedMessagesConverterFn<T> =
-        |(x, report_callback)| (T::try_from(x), report_callback);
+    let broadcasted_messages_fn: BroadcastReceivedMessagesConverterFn<T> =
+        |(x, report_sender)| (T::try_from(x), report_sender);
     let broadcasted_messages_receiver = broadcasted_messages_receiver.map(broadcasted_messages_fn);
 
     let subscriber_channels =
@@ -590,23 +609,27 @@ where
 }
 
 #[cfg(feature = "testing")]
-pub fn dummy_report_callback() -> ReportCallback {
+pub fn dummy_report_sender() -> ReportSender {
     Box::new(|| {})
 }
 
 // TODO(shahak): Create a custom struct if Box dyn becomes an overhead.
-pub type ReportCallback = Box<dyn FnOnce() + Send>;
+// TODO(eitan): Change type to oneshot::Sender<()>
+pub type ReportSender = Box<dyn FnOnce() + Send>;
+pub type ReportReceiver = oneshot::Receiver<()>;
 
-// TODO(shahak): Add report callback.
+// TODO(shahak): Add report sender.
 pub type SqmrQueryReceiver<Query, Response> =
     Map<Receiver<(Bytes, Sender<Bytes>)>, ReceivedQueryConverterFn<Query, Response>>;
 
 type ReceivedQueryConverterFn<Query, Response> =
     fn(
         (Bytes, Sender<Bytes>),
-    ) -> (Result<Query, <Query as TryFrom<Bytes>>::Error>, SubscriberSender<Response>);
+    )
+        -> (Result<Query, <Query as TryFrom<Bytes>>::Error>, BroadcastSubscriberSender<Response>);
 
-pub type SubscriberSender<T> = With<
+// TODO(eitan): improve naming of final channel types
+pub type BroadcastSubscriberSender<T> = With<
     Sender<Bytes>,
     Bytes,
     T,
@@ -614,35 +637,50 @@ pub type SubscriberSender<T> = With<
     fn(T) -> Ready<Result<Bytes, SendError>>,
 >;
 
-// TODO(shahak): rename to ConvertFromBytesReceiver and add an alias called BroadcastReceiver
-pub type SubscriberReceiver<T> =
-    Map<Receiver<(Bytes, ReportCallback)>, ReceivedMessagesConverterFn<T>>;
+pub type SqmrSubscriberSender<T> = With<
+    Sender<(Bytes, ReportReceiver)>,
+    (Bytes, ReportReceiver),
+    (T, ReportReceiver),
+    Ready<Result<(Bytes, ReportReceiver), SendError>>,
+    fn((T, ReportReceiver)) -> Ready<Result<(Bytes, ReportReceiver), SendError>>,
+>;
 
-type ReceivedMessagesConverterFn<T> =
-    fn((Bytes, ReportCallback)) -> (Result<T, <T as TryFrom<Bytes>>::Error>, ReportCallback);
+pub type SendQueryConverterFn<Query> =
+    fn((Query, ReportReceiver)) -> Ready<Result<(Bytes, ReportReceiver), SendError>>;
+
+// TODO(shahak): rename to ConvertFromBytesReceiver and add an alias called BroadcastReceiver
+pub type SqmrSubscriberReceiver<T> = Map<Receiver<Bytes>, ReceivedMessagesConverterFn<T>>;
+
+type ReceivedMessagesConverterFn<T> = fn(Bytes) -> Result<T, <T as TryFrom<Bytes>>::Error>;
+
+pub type BroadcastSubscriberReceiver<T> =
+    Map<Receiver<(Bytes, ReportSender)>, BroadcastReceivedMessagesConverterFn<T>>;
+
+type BroadcastReceivedMessagesConverterFn<T> =
+    fn((Bytes, ReportSender)) -> (Result<T, <T as TryFrom<Bytes>>::Error>, ReportSender);
 
 // TODO(shahak): Unite channels to a Sender of Query and Receiver of Responses.
 pub struct SqmrSubscriberChannels<Query: Into<Bytes>, Response: TryFrom<Bytes>> {
-    pub query_sender: SubscriberSender<Query>,
-    pub response_receiver: SubscriberReceiver<Response>,
+    pub query_sender: SqmrSubscriberSender<Query>,
+    pub response_receiver: SqmrSubscriberReceiver<Response>,
 }
 
 pub struct BroadcastSubscriberChannels<T: TryFrom<Bytes>> {
-    pub messages_to_broadcast_sender: SubscriberSender<T>,
-    pub broadcasted_messages_receiver: SubscriberReceiver<T>,
+    pub messages_to_broadcast_sender: BroadcastSubscriberSender<T>,
+    pub broadcasted_messages_receiver: BroadcastSubscriberReceiver<T>,
 }
 
 #[cfg(feature = "testing")]
 pub type MockBroadcastedMessagesSender<T> = With<
-    Sender<(Bytes, ReportCallback)>,
-    (Bytes, ReportCallback),
-    (T, ReportCallback),
-    Ready<Result<(Bytes, ReportCallback), SendError>>,
+    Sender<(Bytes, ReportSender)>,
+    (Bytes, ReportSender),
+    (T, ReportSender),
+    Ready<Result<(Bytes, ReportSender), SendError>>,
     MockBroadcastedMessagesFn<T>,
 >;
 #[cfg(feature = "testing")]
 type MockBroadcastedMessagesFn<T> =
-    fn((T, ReportCallback)) -> Ready<Result<(Bytes, ReportCallback), SendError>>;
+    fn((T, ReportSender)) -> Ready<Result<(Bytes, ReportSender), SendError>>;
 #[cfg(feature = "testing")]
 pub type MockMessagesToBroadcastReceiver<T> = Map<Receiver<Bytes>, fn(Bytes) -> T>;
 #[cfg(feature = "testing")]
