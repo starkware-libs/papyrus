@@ -8,14 +8,14 @@ node:
   concurrentFgRequests: 50
 
 # Ethereum node URL. A value for this variable is mandatory.
-base_layer_node_url:
+base_layer_node_url: https://base_url.example.com
 
 starknet:
   # possible values: "mainnet.json, sepolia_testnet" and "sepolia_integration".
   preset: mainnet.json
 
 p2p:
-  enabled: true
+  enabled: false
   # Set to true if node act as bootstrap server
   bootstrap: false
   # General config
@@ -93,7 +93,7 @@ service:
 # Persistent volume claim variables for a papyrus pod.
 pvc:
   # Recommended size is at least 512Gi.
-  size:
+  size: 1Gi
   # Is is recommended to use an SSD volume (such as GKE premium-rwo).
   storageClass: ""
   # Use an existing snapshot for the node's data. The kubernetes volumesnapshot object should
