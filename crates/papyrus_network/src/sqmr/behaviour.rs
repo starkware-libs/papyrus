@@ -391,6 +391,7 @@ impl BridgedBehaviour for Behaviour {
         else {
             return;
         };
+        info!("Assigned {outbound_session_id:?} to {peer_id:?}");
         self.session_id_to_peer_id_and_connection_id
             .insert((*outbound_session_id).into(), (*peer_id, *connection_id));
 
