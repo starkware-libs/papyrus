@@ -14,6 +14,9 @@ RUN cargo install cargo-chef
 ENV PROTOC_VERSION=25.1
 RUN curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-linux-x86_64.zip" -o protoc.zip && unzip ./protoc.zip -d $HOME/.local &&  rm ./protoc.zip
 ENV PROTOC=/root/.local/bin/protoc
+# Add the x86_64-unknown-linux-musl target to rustup for compiling statically linked binaries.
+# This enables the creation of fully self-contained binaries that do not depend on the system's dynamic libraries,
+# resulting in more portable executables that can run on any Linux distribution.
 RUN rustup target add x86_64-unknown-linux-musl
 
 #####################
@@ -45,7 +48,7 @@ COPY --from=cacher /app/target target
 # Disable incremental compilation for a cleaner build.
 ENV CARGO_INCREMENTAL=0
 
-# Add the target for x86_64-unknown-linux-musl and compile papyrus_node.
+# Compile the papyrus_node crate for the x86_64-unknown-linux-musl target in release mode, ensuring dependencies are locked.
 RUN cargo build --target x86_64-unknown-linux-musl --release --package papyrus_node --locked
 
 ###########################
