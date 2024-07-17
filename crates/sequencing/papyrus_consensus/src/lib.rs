@@ -64,15 +64,17 @@ where
     }
 
     loop {
-        let message = current_height_messages.pop().unwrap_or(
+        let message = if let Some(msg) = current_height_messages.pop() {
+            msg
+        } else {
             // TODO(matan): Handle parsing failures and utilize ReportCallback.
             network_receiver
                 .next()
                 .await
                 .expect("Network receiver closed unexpectedly")
                 .0
-                .expect("Failed to parse consensus message"),
-        );
+                .expect("Failed to parse consensus message")
+        };
 
         if message.height() != height.0 {
             debug!("Received a message for a different height. {:?}", message);
