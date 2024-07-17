@@ -18,9 +18,14 @@ spec:
   template:
     metadata:
       annotations:
+      {{- if .Values.deployment.annotations }}
+        {{ toYaml .Values.deployment.annotations | nindent 8 }}
+      {{- end}}
+      {{- if .Values.service.ports.monitoring.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/path: "/monitoring/metrics"
-        prometheus.io/port: {{ .Values.services.monitoring.port | quote }}
+        prometheus.io/port: {{ .Values.service.ports.monitoring.port | quote }}
+      {{- end }}
       labels:
         app: papyrus
         {{- include "papyrus.selectorLabels" . | nindent 8 }}
@@ -57,11 +62,29 @@ spec:
             cpu: {{ .Values.deployment.resources.requests.cpu | quote}}
             memory: {{ .Values.deployment.resources.requests.memory }}
         {{- if not .Values.backup.enabled }}
+        {{- with .Values.deployment.env }}
+        env:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         args:
           - --config_file 
           - /app/config/presets/{{ .Values.starknet.preset }}
           - --base_layer.node_url 
           - {{ .Values.base_layer_node_url }}
+          {{- if .Values.p2p.enabled }}
+          - --network.tcp_port
+          - {{ .Values.p2p.config.networkTcpPort | quote }}
+          - --storage.db_config.path_prefix
+          - {{ .Values.p2p.config.storageDbConfigPathPrefix | quote }}
+          - --network.#is_none
+          - {{ .Values.p2p.config.networkIsNone | quote }}
+          {{- if not .Values.p2p.bootstrap }}
+          - --network.bootstrap_peer_multiaddr.#is_none
+          - {{ .Values.p2p.nodeConfig.bootstrapServer.multiaddrIsNone | quote }}
+          - --network.bootstrap_peer_multiaddr
+          - {{ include "p2p.bootstrapPeerMultiaddr" . | quote }}
+          {{- end}}
+          {{- end }}
           {{ range $key, $value := .Values.deployment.extraArgs }}
           {{- if $value }}
           - --{{ $key }}
@@ -70,10 +93,18 @@ spec:
           - --{{ $key }}
           {{- end }}
           {{ end }}
-        {{- if .Values.services }}
         ports:
-        - containerPort: {{ .Values.services.rpc.port }}
-        - containerPort: {{ .Values.services.monitoring.port }}
+        {{- if .Values.service.ports.rpc.enabled }}
+        - containerPort: {{ .Values.service.ports.rpc.port }}
+          name: rpc
+        {{- end }}
+        {{- if .Values.service.ports.monitoring.enabled }}
+        - containerPort: {{ .Values.service.ports.monitoring.port }}
+          name: monitoring
+        {{- end }}
+        {{- if .Values.p2p.enabled }}
+        - containerPort: {{ .Values.p2p.config.networkTcpPort }}
+          name: p2p
         {{- end }}
         volumeMounts:
         - name: data
