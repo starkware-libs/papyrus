@@ -3,6 +3,7 @@ use std::time::Duration;
 use assert_matches::assert_matches;
 use futures::{FutureExt, SinkExt, StreamExt};
 use indexmap::indexmap;
+use papyrus_network::network_manager::SqmrClientPayload;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
     ContractDiff,
@@ -46,13 +47,8 @@ async fn state_diff_basic_flow() {
     let TestArgs {
         p2p_sync,
         storage_reader,
-        mut state_diff_query_receiver,
-        mut headers_sender,
-        mut state_diffs_sender,
-        // The test will fail if we drop this.
-        // We don't need to read the header query in order to know which headers to send, and we
-        // already validate the header query in a different test.
-        header_query_receiver: _header_query_receiver,
+        mut state_diff_payload_receiver,
+        mut header_payload_receiver,
         ..
     } = setup();
 
@@ -71,7 +67,12 @@ async fn state_diff_basic_flow() {
         tokio::time::sleep(SLEEP_DURATION_TO_LET_SYNC_ADVANCE).await;
 
         // Check that before we send headers there is no state diff query.
-        assert!(state_diff_query_receiver.next().now_or_never().is_none());
+        assert!(state_diff_payload_receiver.next().now_or_never().is_none());
+        let SqmrClientPayload {
+            query: _query,
+            report_receiver: _report_receiver,
+            responses_sender: mut headers_sender,
+        } = header_payload_receiver.next().await.unwrap();
 
         // Send headers for entire query.
         for (i, ((block_hash, block_signature), state_diff)) in
@@ -96,7 +97,11 @@ async fn state_diff_basic_flow() {
             (STATE_DIFF_QUERY_LENGTH, HEADER_QUERY_LENGTH - STATE_DIFF_QUERY_LENGTH),
         ] {
             // Get a state diff query and validate it
-            let (query, _report_receiver) = state_diff_query_receiver.next().await.unwrap();
+            let SqmrClientPayload {
+                query,
+                report_receiver: _report_receiver,
+                responses_sender: mut state_diff_sender,
+            } = state_diff_payload_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 StateDiffQuery(Query {
@@ -116,7 +121,7 @@ async fn state_diff_basic_flow() {
                 let txn = storage_reader.begin_ro_txn().unwrap();
                 assert_eq!(block_number, txn.get_state_marker().unwrap());
 
-                state_diffs_sender
+                state_diff_sender
                     .send(Ok(DataOrFin(Some(state_diff_chunk.clone()))))
                     .await
                     .unwrap();
@@ -164,7 +169,7 @@ async fn state_diff_basic_flow() {
                 };
                 assert_eq!(state_diff, expected_state_diff);
             }
-            state_diffs_sender.send(Ok(DataOrFin(None))).await.unwrap();
+            state_diff_sender.send(Ok(DataOrFin(None))).await.unwrap();
         }
     };
 
@@ -307,13 +312,8 @@ async fn validate_state_diff_fails(
     let TestArgs {
         p2p_sync,
         storage_reader,
-        mut state_diff_query_receiver,
-        mut headers_sender,
-        mut state_diffs_sender,
-        // The test will fail if we drop this.
-        // We don't need to read the header query in order to know which headers to send, and we
-        // already validate the header query in a different test.
-        header_query_receiver: _header_query_receiver,
+        mut state_diff_payload_receiver,
+        mut header_payload_receiver,
         ..
     } = setup();
 
@@ -322,6 +322,11 @@ async fn validate_state_diff_fails(
     // Create a future that will receive queries, send responses and validate the results.
     let parse_queries_future = async move {
         // Send a single header. There's no need to fill the entire query.
+        let SqmrClientPayload {
+            query: _query,
+            report_receiver: _report_receiver,
+            responses_sender: mut headers_sender,
+        } = header_payload_receiver.next().await.unwrap();
         headers_sender
             .send(Ok(DataOrFin(Some(SignedBlockHeader {
                 block_header: BlockHeader {
@@ -336,7 +341,11 @@ async fn validate_state_diff_fails(
             .unwrap();
 
         // Get a state diff query and validate it
-        let (query, _report_reciever) = state_diff_query_receiver.next().await.unwrap();
+        let SqmrClientPayload {
+            query,
+            report_receiver: _report_reciever,
+            responses_sender: mut state_diffs_sender,
+        } = state_diff_payload_receiver.next().await.unwrap();
         assert_eq!(
             query,
             StateDiffQuery(Query {

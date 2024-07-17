@@ -6,13 +6,17 @@ use futures::channel::oneshot;
 use futures::future::BoxFuture;
 use futures::stream::BoxStream;
 use futures::{SinkExt, StreamExt};
+use papyrus_network::network_manager::SqmrClientPayload;
+use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{BlockHashOrNumber, DataOrFin, Direction, Query};
 use papyrus_storage::header::HeaderStorageReader;
 use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
 
-use super::{P2PSyncError, ResponseReceiver, WithQuerySender, STEP};
+use super::{P2PSyncError, ResponseReceiver, WithPayloadSender, STEP};
+use crate::client::SyncResponse;
+use crate::BUFFER_SIZE;
 
 pub type DataStreamResult = Result<Box<dyn BlockData>, P2PSyncError>;
 
@@ -33,8 +37,7 @@ pub(crate) enum BlockNumberLimit {
 pub(crate) trait DataStreamBuilder<InputFromNetwork>
 where
     InputFromNetwork: Send + 'static,
-    DataOrFin<InputFromNetwork>: TryFrom<Vec<u8>>,
-    <DataOrFin<InputFromNetwork> as TryFrom<Vec<u8>>>::Error: Send,
+    DataOrFin<InputFromNetwork>: TryFrom<Vec<u8>, Error = ProtobufConversionError>,
 {
     type Output: BlockData + 'static;
 
@@ -51,8 +54,7 @@ where
     fn get_start_block_number(storage_reader: &StorageReader) -> Result<BlockNumber, StorageError>;
 
     fn create_stream<TQuery: Send + 'static>(
-        mut query_sender: WithQuerySender<TQuery>,
-        mut data_receiver: ResponseReceiver<InputFromNetwork>,
+        mut payload_sender: WithPayloadSender<TQuery, DataOrFin<InputFromNetwork>>,
         storage_reader: StorageReader,
         wait_period_for_new_data: Duration,
         num_blocks_per_query: u64,
@@ -87,20 +89,24 @@ where
                 // TODO(shahak): Use the report callback.
                 //TODO(Eitan): abstract report functionality to the channel struct
                 let (_report_sender, report_receiver) = oneshot::channel::<()>();
-                query_sender
-                    .send((
+                let (responses_sender, responses_receiver) = futures::channel::mpsc::channel::<SyncResponse<InputFromNetwork>>(BUFFER_SIZE);
+                let responses_sender = Box::new(responses_sender);
+                let mut responses_receiver: ResponseReceiver<InputFromNetwork> = Box::new(responses_receiver);
+                payload_sender
+                    .send(SqmrClientPayload { query:
                         Query {
                             start_block: BlockHashOrNumber::Number(current_block_number),
                             direction: Direction::Forward,
                             limit,
                             step: STEP,
-                        }, report_receiver,)
+                        }, report_receiver, responses_sender
+                    }
                     )
                     .await?;
 
                 while current_block_number.0 < end_block_number {
                     match Self::parse_data_for_block(
-                        &mut data_receiver, current_block_number, &storage_reader
+                        &mut responses_receiver, current_block_number, &storage_reader
                     ).await? {
                         Some(output) => yield Ok(Box::<dyn BlockData>::from(Box::new(output))),
                         None => {
@@ -125,7 +131,7 @@ where
                 }
 
                 // Consume the None message signaling the end of the query.
-                match data_receiver.next().await {
+                match responses_receiver.next().await {
                     Some(Ok(DataOrFin(None))) => {
                         debug!("Query sent to network for {:?} finished", Self::TYPE_DESCRIPTION);
                     },
