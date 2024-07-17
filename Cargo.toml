@@ -24,7 +24,6 @@ members = [
     "crates/sequencing/papyrus_consensus",
 ]
 
-
 # Sequencing crates are not part of the default members.
 default-members = [
     "crates/papyrus_base_layer",
