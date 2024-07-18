@@ -54,17 +54,16 @@ async fn proposer() {
         .returning(move |_| Ok(()));
 
     let mut shc = SingleHeightConsensus::new(
-        Arc::new(context),
         BlockNumber(0),
         node_id,
         vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()],
     );
 
     // Sends proposal and prevote.
-    assert!(matches!(shc.start().await, Ok(None)));
+    assert!(matches!(shc.start(&context,).await, Ok(None)));
 
-    assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
-    assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
 
     let precommits = vec![
         precommit(block.id(), 0, 1_u32.into()),
@@ -72,9 +71,9 @@ async fn proposer() {
         precommit(block.id(), 0, 2_u32.into()),
         precommit(block.id(), 0, 3_u32.into()),
     ];
-    assert_eq!(shc.handle_message(precommits[1].clone()).await, Ok(None));
-    assert_eq!(shc.handle_message(precommits[2].clone()).await, Ok(None));
-    let decision = shc.handle_message(precommits[3].clone()).await.unwrap().unwrap();
+    assert_eq!(shc.handle_message(&context, precommits[1].clone()).await, Ok(None));
+    assert_eq!(shc.handle_message(&context, precommits[2].clone()).await, Ok(None));
+    let decision = shc.handle_message(&context, precommits[3].clone()).await.unwrap().unwrap();
     assert_eq!(decision.block, block);
     assert!(
         decision
@@ -116,7 +115,6 @@ async fn validator() {
 
     // Creation calls to `context.validators`.
     let mut shc = SingleHeightConsensus::new(
-        Arc::new(context),
         BlockNumber(0),
         node_id,
         vec![node_id, proposer, 3_u32.into(), 4_u32.into()],
@@ -128,6 +126,7 @@ async fn validator() {
 
     let res = shc
         .handle_proposal(
+            &context,
             ProposalInit { height: BlockNumber(0), proposer },
             mpsc::channel(1).1, // content - ignored by SHC.
             fin_receiver,
@@ -135,16 +134,16 @@ async fn validator() {
         .await;
     assert_eq!(res, Ok(None));
 
-    assert_eq!(shc.handle_message(prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
-    assert_eq!(shc.handle_message(prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
 
     let precommits = vec![
         precommit(block.id(), 0, 2_u32.into()),
         precommit(block.id(), 0, 3_u32.into()),
         precommit(block.id(), 0, node_id),
     ];
-    assert_eq!(shc.handle_message(precommits[0].clone()).await, Ok(None));
-    let decision = shc.handle_message(precommits[1].clone()).await.unwrap().unwrap();
+    assert_eq!(shc.handle_message(&context, precommits[0].clone()).await, Ok(None));
+    let decision = shc.handle_message(&context, precommits[1].clone()).await.unwrap().unwrap();
     assert_eq!(decision.block, block);
     assert!(
         decision
