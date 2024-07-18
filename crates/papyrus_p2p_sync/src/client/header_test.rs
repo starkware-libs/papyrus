@@ -1,4 +1,5 @@
 use futures::{SinkExt, StreamExt};
+use papyrus_network::network_manager::SqmrClientPayload;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
     DataOrFin,
@@ -27,11 +28,9 @@ async fn signed_headers_basic_flow() {
     let TestArgs {
         p2p_sync,
         storage_reader,
-        mut header_query_receiver,
-        mut headers_sender,
+        mut header_payload_receiver,
         // The test will fail if we drop these
-        state_diff_query_receiver: _state_diff_query_receiver,
-        state_diffs_sender: _state_diffs_sender,
+        state_diff_payload_receiver: _state_diff_query_receiver,
         ..
     } = setup();
     let block_hashes_and_signatures =
@@ -44,7 +43,11 @@ async fn signed_headers_basic_flow() {
             let end_block_number = (query_index + 1) * HEADER_QUERY_LENGTH;
 
             // Receive query and validate it.
-            let (query, _report_receiver) = header_query_receiver.next().await.unwrap();
+            let SqmrClientPayload {
+                query,
+                report_receiver: _report_receiver,
+                responses_sender: mut headers_sender,
+            } = header_payload_receiver.next().await.unwrap();
             assert_eq!(
                 query,
                 HeaderQuery(Query {
@@ -110,18 +113,20 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
 
     let TestArgs {
         p2p_sync,
-        mut header_query_receiver,
-        mut headers_sender,
+        mut header_payload_receiver,
         // The test will fail if we drop these
-        state_diff_query_receiver: _state_diff_query_receiver,
-        state_diffs_sender: _state_diffs_sender,
+        state_diff_payload_receiver: _state_diff_query_receiver,
         ..
     } = setup();
     let block_hashes_and_signatures = create_block_hashes_and_signatures(NUM_ACTUAL_RESPONSES);
 
     // Create a future that will receive a query, send partial responses and receive the next query.
     let parse_queries_future = async move {
-        let _query = header_query_receiver.next().await.unwrap();
+        let SqmrClientPayload {
+            query: _query,
+            report_receiver: _report_receiver,
+            responses_sender: mut headers_sender,
+        } = header_payload_receiver.next().await.unwrap();
 
         for (i, (block_hash, signature)) in block_hashes_and_signatures.into_iter().enumerate() {
             headers_sender
@@ -140,11 +145,14 @@ async fn sync_sends_new_header_query_if_it_got_partial_responses() {
         headers_sender.send(Ok(DataOrFin(None))).await.unwrap();
 
         // First unwrap is for the timeout. Second unwrap is for the Option returned from Stream.
-        let (query, _report_receiver) =
-            timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, header_query_receiver.next())
-                .await
-                .unwrap()
-                .unwrap();
+        let SqmrClientPayload {
+            query,
+            report_receiver: _report_receiver,
+            responses_sender: _responses_sender,
+        } = timeout(TIMEOUT_FOR_NEW_QUERY_AFTER_PARTIAL_RESPONSE, header_payload_receiver.next())
+            .await
+            .unwrap()
+            .unwrap();
 
         assert_eq!(
             query,
