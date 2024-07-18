@@ -25,7 +25,13 @@ async fn proposer() {
     let node_id: ValidatorId = 1_u32.into();
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
     let block_id = block.id();
-    // Set expectations for how the test should run:
+
+    let mut shc = SingleHeightConsensus::new(
+        BlockNumber(0),
+        node_id,
+        vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()],
+    );
+
     context.expect_proposer().returning(move |_, _| node_id);
     let block_clone = block.clone();
     context.expect_build_proposal().returning(move |_| {
@@ -34,7 +40,6 @@ async fn proposer() {
         block_sender.send(block_clone.clone()).unwrap();
         (content_receiver, block_receiver)
     });
-
     let fin_receiver = Arc::new(OnceLock::new());
     let fin_receiver_clone = Arc::clone(&fin_receiver);
     context.expect_propose().return_once(move |init, _, fin_receiver| {
@@ -48,21 +53,15 @@ async fn proposer() {
         .expect_broadcast()
         .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
         .returning(move |_| Ok(()));
+    // Sends proposal and prevote.
+    assert!(matches!(shc.start(&context).await, Ok(None)));
+
+    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    // 3 of 4 Prevotes is enough to send a Precommit.
     context
         .expect_broadcast()
         .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
         .returning(move |_| Ok(()));
-
-    let mut shc = SingleHeightConsensus::new(
-        BlockNumber(0),
-        node_id,
-        vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()],
-    );
-
-    // Sends proposal and prevote.
-    assert!(matches!(shc.start(&context,).await, Ok(None)));
-
-    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
     assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
 
     let precommits = vec![
@@ -96,23 +95,6 @@ async fn validator() {
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
     let block_id = block.id();
 
-    // Set expectations for how the test should run:
-    context.expect_proposer().returning(move |_, _| proposer);
-    let block_clone = block.clone();
-    context.expect_validate_proposal().returning(move |_, _| {
-        let (block_sender, block_receiver) = oneshot::channel();
-        block_sender.send(block_clone.clone()).unwrap();
-        block_receiver
-    });
-    context
-        .expect_broadcast()
-        .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
-        .returning(move |_| Ok(()));
-    context
-        .expect_broadcast()
-        .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
-        .returning(move |_| Ok(()));
-
     // Creation calls to `context.validators`.
     let mut shc = SingleHeightConsensus::new(
         BlockNumber(0),
@@ -124,6 +106,17 @@ async fn validator() {
     let (fin_sender, fin_receiver) = oneshot::channel();
     fin_sender.send(block.id()).unwrap();
 
+    context.expect_proposer().returning(move |_, _| proposer);
+    let block_clone = block.clone();
+    context.expect_validate_proposal().returning(move |_, _| {
+        let (block_sender, block_receiver) = oneshot::channel();
+        block_sender.send(block_clone.clone()).unwrap();
+        block_receiver
+    });
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
     let res = shc
         .handle_proposal(
             &context,
@@ -135,6 +128,11 @@ async fn validator() {
     assert_eq!(res, Ok(None));
 
     assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    // 3 of 4 Prevotes is enough to send a Precommit.
+    context
+        .expect_broadcast()
+        .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
+        .returning(move |_| Ok(()));
     assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
 
     let precommits = vec![
