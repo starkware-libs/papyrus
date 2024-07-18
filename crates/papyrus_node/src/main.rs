@@ -125,7 +125,7 @@ fn run_consensus(
     let start_height = config.start_height;
 
     Ok(tokio::spawn(papyrus_consensus::run_consensus(
-        Arc::new(context),
+        context,
         start_height,
         validator_id,
         consensus_channels.broadcasted_messages_receiver,

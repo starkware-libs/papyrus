@@ -1,7 +1,3 @@
-#[cfg(test)]
-#[path = "types_test.rs"]
-mod types_test;
-
 use std::fmt::Debug;
 
 use async_trait::async_trait;
@@ -68,14 +64,8 @@ pub trait ConsensusBlock: Send {
 }
 
 /// Interface for consensus to call out to the node.
-// Why `Send + Sync`?
-// 1. We expect multiple components within consensus to concurrently access the context.
-// 2. The other option is for each component to have its own copy (i.e. clone) of the context, but
-//    this is object unsafe (Clone requires Sized).
-// 3. Given that we see the context as basically a connector to other components in the node, the
-//    limitation of Sync to keep functions `&self` shouldn't be a problem.
 #[async_trait]
-pub trait ConsensusContext: Send + Sync {
+pub trait ConsensusContext {
     /// The [block](`ConsensusBlock`) type built by `ConsensusContext` from a proposal.
     // We use an associated type since consensus is indifferent to the actual content of a proposal,
     // but we cannot use generics due to object safety.
