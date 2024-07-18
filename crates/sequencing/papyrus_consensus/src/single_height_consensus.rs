@@ -3,7 +3,6 @@
 mod single_height_consensus_test;
 
 use std::collections::{HashMap, VecDeque};
-use std::sync::Arc;
 
 use futures::channel::{mpsc, oneshot};
 use papyrus_protobuf::consensus::{ConsensusMessage, Vote, VoteType};
@@ -29,7 +28,6 @@ const ROUND_ZERO: Round = 0;
 /// out messages "directly" to the network, and returning a decision to the caller.
 pub(crate) struct SingleHeightConsensus<BlockT: ConsensusBlock> {
     height: BlockNumber,
-    context: Arc<dyn ConsensusContext<Block = BlockT>>,
     validators: Vec<ValidatorId>,
     id: ValidatorId,
     state_machine: StateMachine,
@@ -39,17 +37,11 @@ pub(crate) struct SingleHeightConsensus<BlockT: ConsensusBlock> {
 }
 
 impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
-    pub(crate) fn new(
-        context: Arc<dyn ConsensusContext<Block = BlockT>>,
-        height: BlockNumber,
-        id: ValidatorId,
-        validators: Vec<ValidatorId>,
-    ) -> Self {
+    pub(crate) fn new(height: BlockNumber, id: ValidatorId, validators: Vec<ValidatorId>) -> Self {
         // TODO(matan): Use actual weights, not just `len`.
         let state_machine = StateMachine::new(validators.len() as u32);
         Self {
             height,
-            context,
             validators,
             id,
             state_machine,
@@ -59,22 +51,26 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         }
     }
 
-    #[instrument(skip(self), fields(height=self.height.0), level = "debug")]
-    pub(crate) async fn start(&mut self) -> Result<Option<Decision<BlockT>>, ConsensusError> {
+    #[instrument(skip_all, fields(height=self.height.0), level = "debug")]
+    pub(crate) async fn start<ContextT: ConsensusContext<Block = BlockT>>(
+        &mut self,
+        context: &ContextT,
+    ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         info!("Starting consensus with validators {:?}", self.validators);
         let events = self.state_machine.start();
-        self.handle_state_machine_events(events).await
+        self.handle_state_machine_events(context, events).await
     }
 
     /// Receive a proposal from a peer node. Returns only once the proposal has been fully received
     /// and processed.
     #[instrument(
-        skip(self, init, p2p_messages_receiver, fin_receiver),
+        skip_all,
         fields(height = %self.height),
         level = "debug",
     )]
-    pub(crate) async fn handle_proposal(
+    pub(crate) async fn handle_proposal<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         init: ProposalInit,
         p2p_messages_receiver: mpsc::Receiver<<BlockT as ConsensusBlock>::ProposalChunk>,
         fin_receiver: oneshot::Receiver<BlockHash>,
@@ -83,7 +79,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             "Received proposal: proposal_height={}, proposer={:?}",
             init.height.0, init.proposer
         );
-        let proposer_id = self.context.proposer(&self.validators, self.height);
+        let proposer_id = context.proposer(&self.validators, self.height);
         if init.height != self.height {
             let msg = format!("invalid height: expected {:?}, got {:?}", self.height, init.height);
             return Err(ConsensusError::InvalidProposal(proposer_id, self.height, msg));
@@ -94,8 +90,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             return Err(ConsensusError::InvalidProposal(proposer_id, self.height, msg));
         }
 
-        let block_receiver =
-            self.context.validate_proposal(self.height, p2p_messages_receiver).await;
+        let block_receiver = context.validate_proposal(self.height, p2p_messages_receiver).await;
         // TODO(matan): Actual Tendermint should handle invalid proposals.
         let block = block_receiver.await.map_err(|_| {
             ConsensusError::InvalidProposal(
@@ -124,13 +119,14 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         // TODO(matan): Handle multiple rounds.
         self.proposals.insert(ROUND_ZERO, block);
         let sm_events = self.state_machine.handle_event(sm_proposal);
-        self.handle_state_machine_events(sm_events).await
+        self.handle_state_machine_events(context, sm_events).await
     }
 
     /// Handle messages from peer nodes.
     #[instrument(skip_all)]
-    pub(crate) async fn handle_message(
+    pub(crate) async fn handle_message<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         message: ConsensusMessage,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         debug!("Received message: {:?}", message);
@@ -138,13 +134,14 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             ConsensusMessage::Proposal(_) => {
                 unimplemented!("Proposals should use `handle_proposal` due to fake streaming")
             }
-            ConsensusMessage::Vote(vote) => self.handle_vote(vote).await,
+            ConsensusMessage::Vote(vote) => self.handle_vote(context, vote).await,
         }
     }
 
     #[instrument(skip_all)]
-    async fn handle_vote(
+    async fn handle_vote<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         vote: Vote,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         let (votes, sm_vote) = match vote.vote_type {
@@ -170,13 +167,14 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
 
         votes.insert((ROUND_ZERO, vote.voter), vote);
         let sm_events = self.state_machine.handle_event(sm_vote);
-        self.handle_state_machine_events(sm_events).await
+        self.handle_state_machine_events(context, sm_events).await
     }
 
     // Handle events output by the state machine.
     #[instrument(skip_all)]
-    async fn handle_state_machine_events(
+    async fn handle_state_machine_events<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         mut events: VecDeque<StateMachineEvent>,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         while let Some(event) = events.pop_front() {
@@ -184,7 +182,9 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             match event {
                 StateMachineEvent::StartRound(block_hash, round) => {
                     events.append(
-                        &mut self.handle_state_machine_start_round(block_hash, round).await,
+                        &mut self
+                            .handle_state_machine_start_round(context, block_hash, round)
+                            .await,
                     );
                 }
                 StateMachineEvent::Proposal(_, _) => {
@@ -195,37 +195,39 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
                     return self.handle_state_machine_decision(block_hash, round).await;
                 }
                 StateMachineEvent::Prevote(block_hash, round) => {
-                    self.handle_state_machine_vote(block_hash, round, VoteType::Prevote).await?;
+                    self.handle_state_machine_vote(context, block_hash, round, VoteType::Prevote)
+                        .await?;
                 }
                 StateMachineEvent::Precommit(block_hash, round) => {
-                    self.handle_state_machine_vote(block_hash, round, VoteType::Precommit).await?;
+                    self.handle_state_machine_vote(context, block_hash, round, VoteType::Precommit)
+                        .await?;
                 }
             }
         }
         Ok(None)
     }
 
-    #[instrument(skip(self), level = "debug")]
-    async fn handle_state_machine_start_round(
+    #[instrument(skip(self, context), level = "debug")]
+    async fn handle_state_machine_start_round<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         block_hash: Option<BlockHash>,
         round: Round,
     ) -> VecDeque<StateMachineEvent> {
         // TODO(matan): Support re-proposing validValue.
         assert!(block_hash.is_none(), "Reproposing is not yet supported");
-        let proposer_id = self.context.proposer(&self.validators, self.height);
+        let proposer_id = context.proposer(&self.validators, self.height);
         if proposer_id != self.id {
             debug!("Validator");
             return self.state_machine.handle_event(StateMachineEvent::StartRound(None, round));
         }
         debug!("Proposer");
 
-        let (p2p_messages_receiver, block_receiver) =
-            self.context.build_proposal(self.height).await;
+        let (p2p_messages_receiver, block_receiver) = context.build_proposal(self.height).await;
         let (fin_sender, fin_receiver) = oneshot::channel();
         let init = ProposalInit { height: self.height, proposer: self.id };
         // Peering is a permanent component, so if sending to it fails we cannot continue.
-        self.context
+        context
             .propose(init, p2p_messages_receiver, fin_receiver)
             .await
             .expect("Failed sending Proposal to Peering");
@@ -245,8 +247,9 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     }
 
     #[instrument(skip_all)]
-    async fn handle_state_machine_vote(
+    async fn handle_state_machine_vote<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
+        context: &ContextT,
         block_hash: BlockHash,
         round: Round,
         vote_type: VoteType,
@@ -260,7 +263,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
             // TODO(matan): Consider refactoring not to panic, rather log and return the error.
             panic!("State machine should not send repeat votes: old={:?}, new={:?}", old, vote);
         }
-        self.context.broadcast(ConsensusMessage::Vote(vote)).await?;
+        context.broadcast(ConsensusMessage::Vote(vote)).await?;
         Ok(None)
     }
 
