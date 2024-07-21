@@ -4,6 +4,8 @@
 /// [`Starknet p2p specs`]: https://github.com/starknet-io/starknet-p2p-specs/
 pub mod bin_utils;
 mod discovery;
+#[cfg(test)]
+mod e2e_broadcast_test;
 pub mod gossipsub_impl;
 pub mod mixed_behaviour;
 pub mod network_manager;
@@ -27,8 +29,6 @@ use papyrus_config::validators::validate_vec_u256;
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
 use serde::{Deserialize, Serialize};
 use validator::Validate;
-
-pub use crate::network_manager::SqmrSubscriberChannels;
 
 // TODO: add peer manager config to the network config
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Validate)]

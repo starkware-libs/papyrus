@@ -1,8 +1,10 @@
 use std::time::Duration;
 
-use futures::channel::mpsc::{Receiver, Sender};
+use futures::channel::mpsc::Receiver;
 use lazy_static::lazy_static;
+use papyrus_network::network_manager::SqmrClientPayload;
 use papyrus_protobuf::sync::{
+    DataOrFin,
     HeaderQuery,
     SignedBlockHeader,
     StateDiffChunk,
@@ -17,7 +19,7 @@ use starknet_api::hash::StarkHash;
 use starknet_api::transaction::{Transaction, TransactionOutput};
 use starknet_types_core::felt::Felt;
 
-use super::{P2PSyncClient, P2PSyncClientChannels, P2PSyncClientConfig, Response};
+use super::{P2PSyncClient, P2PSyncClientChannels, P2PSyncClientConfig};
 
 pub const BUFFER_SIZE: usize = 1000;
 pub const HEADER_QUERY_LENGTH: u64 = 5;
@@ -42,37 +44,29 @@ pub struct TestArgs {
     #[allow(clippy::type_complexity)]
     pub p2p_sync: P2PSyncClient,
     pub storage_reader: StorageReader,
-    pub header_query_receiver: Receiver<HeaderQuery>,
-    pub state_diff_query_receiver: Receiver<StateDiffQuery>,
+    pub header_payload_receiver:
+        Receiver<SqmrClientPayload<HeaderQuery, DataOrFin<SignedBlockHeader>>>,
+    pub state_diff_payload_receiver:
+        Receiver<SqmrClientPayload<StateDiffQuery, DataOrFin<StateDiffChunk>>>,
     #[allow(dead_code)]
-    pub transaction_query_receiver: Receiver<TransactionQuery>,
-    pub headers_sender: Sender<Response<SignedBlockHeader>>,
-    pub state_diffs_sender: Sender<Response<StateDiffChunk>>,
-    #[allow(dead_code)]
-    pub transaction_sender: Sender<Response<(Transaction, TransactionOutput)>>,
+    pub transaction_payload_receiver:
+        Receiver<SqmrClientPayload<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>>,
 }
 
 pub fn setup() -> TestArgs {
     let p2p_sync_config = *TEST_CONFIG;
     let buffer_size = p2p_sync_config.buffer_size;
     let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
-    let (header_query_sender, header_query_receiver) = futures::channel::mpsc::channel(buffer_size);
-    let (state_diff_query_sender, state_diff_query_receiver) =
+    let (header_payload_sender, header_payload_receiver) =
         futures::channel::mpsc::channel(buffer_size);
-    let (transaction_query_sender, transaction_query_receiver) =
+    let (state_diff_payload_sender, state_diff_payload_receiver) =
         futures::channel::mpsc::channel(buffer_size);
-    let (headers_sender, header_response_receiver) = futures::channel::mpsc::channel(buffer_size);
-    let (state_diffs_sender, state_diff_response_receiver) =
-        futures::channel::mpsc::channel(buffer_size);
-    let (transaction_sender, transaction_response_receiver) =
+    let (transaction_payload_sender, transaction_payload_receiver) =
         futures::channel::mpsc::channel(buffer_size);
     let p2p_sync_channels = P2PSyncClientChannels {
-        header_query_sender: Box::new(header_query_sender),
-        state_diff_query_sender: Box::new(state_diff_query_sender),
-        header_response_receiver: Box::new(header_response_receiver),
-        state_diff_response_receiver: Box::new(state_diff_response_receiver),
-        transaction_query_sender: Box::new(transaction_query_sender),
-        transaction_response_receiver: Box::new(transaction_response_receiver),
+        header_payload_sender: Box::new(header_payload_sender),
+        state_diff_payload_sender: Box::new(state_diff_payload_sender),
+        transaction_payload_sender: Box::new(transaction_payload_sender),
     };
     let p2p_sync = P2PSyncClient::new(
         p2p_sync_config,
@@ -83,12 +77,9 @@ pub fn setup() -> TestArgs {
     TestArgs {
         p2p_sync,
         storage_reader,
-        header_query_receiver,
-        state_diff_query_receiver,
-        transaction_query_receiver,
-        headers_sender,
-        state_diffs_sender,
-        transaction_sender,
+        header_payload_receiver,
+        state_diff_payload_receiver,
+        transaction_payload_receiver,
     }
 }
 

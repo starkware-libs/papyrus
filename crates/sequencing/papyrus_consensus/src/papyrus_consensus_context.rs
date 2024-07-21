@@ -10,7 +10,7 @@ use async_trait::async_trait;
 use futures::channel::{mpsc, oneshot};
 use futures::sink::SinkExt;
 use futures::StreamExt;
-use papyrus_network::network_manager::SubscriberSender;
+use papyrus_network::network_manager::BroadcastSubscriberSender;
 use papyrus_protobuf::consensus::{ConsensusMessage, Proposal};
 use papyrus_storage::body::BodyStorageReader;
 use papyrus_storage::header::HeaderStorageReader;
@@ -47,7 +47,7 @@ impl ConsensusBlock for PapyrusConsensusBlock {
 
 pub struct PapyrusConsensusContext {
     storage_reader: StorageReader,
-    broadcast_sender: Arc<Mutex<SubscriberSender<ConsensusMessage>>>,
+    broadcast_sender: Arc<Mutex<BroadcastSubscriberSender<ConsensusMessage>>>,
     validators: Vec<ValidatorId>,
 }
 
@@ -56,7 +56,7 @@ impl PapyrusConsensusContext {
     #[allow(dead_code)]
     pub fn new(
         storage_reader: StorageReader,
-        broadcast_sender: SubscriberSender<ConsensusMessage>,
+        broadcast_sender: BroadcastSubscriberSender<ConsensusMessage>,
         num_validators: u64,
     ) -> Self {
         Self {

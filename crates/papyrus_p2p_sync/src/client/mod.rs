@@ -14,12 +14,12 @@ use std::time::Duration;
 use futures::channel::mpsc::SendError;
 use futures::future::{ready, Ready};
 use futures::sink::With;
-use futures::{Sink, SinkExt, Stream};
+use futures::{SinkExt, Stream};
 use header::HeaderStreamBuilder;
 use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_optional_param, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
-use papyrus_network::network_manager::ReportCallback;
+use papyrus_network::network_manager::{SqmrClientPayload, SqmrClientSender};
 use papyrus_protobuf::converters::ProtobufConversionError;
 use papyrus_protobuf::sync::{
     DataOrFin,
@@ -159,31 +159,29 @@ pub enum P2PSyncError {
     SendError(#[from] SendError),
 }
 
-type Response<T> = (Result<DataOrFin<T>, ProtobufConversionError>, ReportCallback);
 // TODO(Eitan): Use SqmrSubscriberChannels once there is a utility function for testing
-type QuerySender<T> = Box<dyn Sink<T, Error = SendError> + Unpin + Send + 'static>;
-type WithQuerySender<T> = With<
-    QuerySender<T>,
-    T,
-    Query,
-    Ready<Result<T, SendError>>,
-    fn(Query) -> Ready<Result<T, SendError>>,
+
+type WithPayloadSender<TQuery, Response> = With<
+    SqmrClientSender<TQuery, Response>,
+    SqmrClientPayload<TQuery, Response>,
+    SqmrClientPayload<Query, Response>,
+    Ready<Result<SqmrClientPayload<TQuery, Response>, SendError>>,
+    fn(
+        SqmrClientPayload<Query, Response>,
+    ) -> Ready<Result<SqmrClientPayload<TQuery, Response>, SendError>>,
 >;
-type ResponseReceiver<T> = Box<dyn Stream<Item = Response<T>> + Unpin + Send + 'static>;
-type HeaderQuerySender = QuerySender<HeaderQuery>;
-type HeaderResponseReceiver = ResponseReceiver<SignedBlockHeader>;
-type StateDiffQuerySender = QuerySender<StateDiffQuery>;
-type StateDiffResponseReceiver = ResponseReceiver<StateDiffChunk>;
-type TransactionQuerySender = QuerySender<TransactionQuery>;
-type TransactionResponseReceiver = ResponseReceiver<(Transaction, TransactionOutput)>;
+type SyncResponse<T> = Result<DataOrFin<T>, ProtobufConversionError>;
+type ResponseReceiver<T> = Box<dyn Stream<Item = SyncResponse<T>> + Unpin + Send>;
+
+type HeaderPayloadSender = SqmrClientSender<HeaderQuery, DataOrFin<SignedBlockHeader>>;
+type StateDiffPayloadSender = SqmrClientSender<StateDiffQuery, DataOrFin<StateDiffChunk>>;
+type TransactionPayloadSender =
+    SqmrClientSender<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>;
 
 pub struct P2PSyncClientChannels {
-    pub header_query_sender: HeaderQuerySender,
-    pub header_response_receiver: HeaderResponseReceiver,
-    pub state_diff_query_sender: StateDiffQuerySender,
-    pub state_diff_response_receiver: StateDiffResponseReceiver,
-    pub transaction_query_sender: TransactionQuerySender,
-    pub transaction_response_receiver: TransactionResponseReceiver,
+    pub header_payload_sender: HeaderPayloadSender,
+    pub state_diff_payload_sender: StateDiffPayloadSender,
+    pub transaction_payload_sender: TransactionPayloadSender,
 }
 
 impl P2PSyncClientChannels {
@@ -193,8 +191,15 @@ impl P2PSyncClientChannels {
         config: P2PSyncClientConfig,
     ) -> impl Stream<Item = DataStreamResult> + Send + 'static {
         let header_stream = HeaderStreamBuilder::create_stream(
-            self.header_query_sender.with(|query| ready(Ok(HeaderQuery(query)))),
-            self.header_response_receiver,
+            self.header_payload_sender.with(
+                |SqmrClientPayload { query, report_receiver, responses_sender }| {
+                    ready(Ok(SqmrClientPayload {
+                        query: HeaderQuery(query),
+                        report_receiver,
+                        responses_sender,
+                    }))
+                },
+            ),
             storage_reader.clone(),
             config.wait_period_for_new_data,
             config.num_headers_per_query,
@@ -202,8 +207,15 @@ impl P2PSyncClientChannels {
         );
 
         let state_diff_stream = StateDiffStreamBuilder::create_stream(
-            self.state_diff_query_sender.with(|query| ready(Ok(StateDiffQuery(query)))),
-            self.state_diff_response_receiver,
+            self.state_diff_payload_sender.with(
+                |SqmrClientPayload { query, report_receiver, responses_sender }| {
+                    ready(Ok(SqmrClientPayload {
+                        query: StateDiffQuery(query),
+                        report_receiver,
+                        responses_sender,
+                    }))
+                },
+            ),
             storage_reader.clone(),
             config.wait_period_for_new_data,
             config.num_block_state_diffs_per_query,

@@ -355,11 +355,11 @@ fn run_network(
     };
     let mut network_manager = network_manager::NetworkManager::new(network_config.clone());
     let local_peer_id = network_manager.get_local_peer_id();
-    let header_client_channels = network_manager
+    let header_client_sender = network_manager
         .register_sqmr_protocol_client(Protocol::SignedBlockHeader.into(), BUFFER_SIZE);
-    let state_diff_client_channels =
+    let state_diff_client_sender =
         network_manager.register_sqmr_protocol_client(Protocol::StateDiff.into(), BUFFER_SIZE);
-    let transaction_client_channels =
+    let transaction_client_sender =
         network_manager.register_sqmr_protocol_client(Protocol::Transaction.into(), BUFFER_SIZE);
 
     let header_server_channel = network_manager
@@ -375,17 +375,15 @@ fn run_network(
 
     let consensus_channels = match consensus_config {
         Some(consensus_config) => Some(
-            network_manager.register_broadcast_topic(Topic::new(consensus_config.topic), 100)?,
+            network_manager
+                .register_broadcast_topic(Topic::new(consensus_config.topic), BUFFER_SIZE)?,
         ),
         None => None,
     };
     let p2p_sync_channels = P2PSyncClientChannels {
-        header_query_sender: Box::new(header_client_channels.query_sender),
-        header_response_receiver: Box::new(header_client_channels.response_receiver),
-        state_diff_query_sender: Box::new(state_diff_client_channels.query_sender),
-        state_diff_response_receiver: Box::new(state_diff_client_channels.response_receiver),
-        transaction_query_sender: Box::new(transaction_client_channels.query_sender),
-        transaction_response_receiver: Box::new(transaction_client_channels.response_receiver),
+        header_payload_sender: header_client_sender,
+        state_diff_payload_sender: state_diff_client_sender,
+        transaction_payload_sender: transaction_client_sender,
     };
 
     Ok((

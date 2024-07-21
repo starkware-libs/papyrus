@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::convert::Infallible;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -21,9 +22,10 @@ use tokio::sync::Mutex;
 use tokio::time::sleep;
 
 use super::swarm_trait::{Event, SwarmTrait};
-use super::{GenericNetworkManager, SqmrSubscriberChannels};
+use super::GenericNetworkManager;
 use crate::gossipsub_impl::{self, Topic};
 use crate::mixed_behaviour;
+use crate::network_manager::SqmrClientPayload;
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 
@@ -215,32 +217,35 @@ async fn register_sqmr_protocol_client_and_use_channels() {
     let (event_notifier, mut event_listner) = oneshot::channel();
     mock_swarm.first_polled_event_notifier = Some(event_notifier);
 
-    // network manager to register subscriber and send query
+    // network manager to register subscriber
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
-    // register subscriber and send query
-    let SqmrSubscriberChannels { mut query_sender, response_receiver } = network_manager
-        .register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
-            SIGNED_BLOCK_HEADER_PROTOCOL.to_string(),
-            BUFFER_SIZE,
-        );
+    // register subscriber and send payload
+    let mut payload_sender = network_manager.register_sqmr_protocol_client::<Vec<u8>, Vec<u8>>(
+        SIGNED_BLOCK_HEADER_PROTOCOL.to_string(),
+        BUFFER_SIZE,
+    );
 
     let response_receiver_length = Arc::new(Mutex::new(0));
     let cloned_response_receiver_length = Arc::clone(&response_receiver_length);
+    let (responses_sender, response_receiver) =
+        futures::channel::mpsc::channel::<Result<Vec<u8>, Infallible>>(BUFFER_SIZE);
+    let responses_sender = Box::new(responses_sender);
     let response_receiver_collector = response_receiver
         .enumerate()
         .take(VEC1.len())
-        .map(|(i, (result, _report_callback))| {
+        .map(|(i, result)| {
             let result = result.unwrap();
             // this simulates how the mock swarm parses the query and sends responses to it
             assert_eq!(result, vec![VEC1[i]]);
             result
         })
         .collect::<Vec<_>>();
+    let (_report_sender, report_receiver) = oneshot::channel::<()>();
     tokio::select! {
         _ = network_manager.run() => panic!("network manager ended"),
         _ = poll_fn(|cx| event_listner.poll_unpin(cx)).then(|_| async move {
-            query_sender.send(VEC1.clone()).await.unwrap()})
+            payload_sender.send(SqmrClientPayload{query : VEC1.clone(), report_receiver, responses_sender}).await.unwrap()})
             .then(|_| async move {
                 *cloned_response_receiver_length.lock().await = response_receiver_collector.await.len();
             }) => {},
@@ -363,7 +368,7 @@ async fn receive_broadcasted_message_and_report_it() {
             .then(|result| {
                 let (message_result, report_callback) = result.unwrap().unwrap();
                 assert_eq!(message, message_result.unwrap());
-                report_callback();
+                report_callback.send(()).unwrap();
                 tokio::time::timeout(TIMEOUT, reported_peer_receiver.next())
             }) => {
             assert_eq!(originated_peer_id, reported_peer_result.unwrap().unwrap());
