@@ -39,7 +39,7 @@ pub(crate) struct SingleHeightConsensus<BlockT: ConsensusBlock> {
 impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     pub(crate) fn new(height: BlockNumber, id: ValidatorId, validators: Vec<ValidatorId>) -> Self {
         // TODO(matan): Use actual weights, not just `len`.
-        let state_machine = StateMachine::new(validators.len() as u32);
+        let state_machine = StateMachine::new(id, validators.len() as u32);
         Self {
             height,
             validators,
@@ -57,7 +57,10 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         context: &ContextT,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         info!("Starting consensus with validators {:?}", self.validators);
-        let events = self.state_machine.start();
+        let leader_fn = |_round: Round| -> ValidatorId {
+            context.proposer(&self.validators.clone(), self.height)
+        };
+        let events = self.state_machine.start(&leader_fn);
         self.handle_state_machine_events(context, events).await
     }
 
@@ -180,7 +183,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         while let Some(event) = events.pop_front() {
             trace!("Handling event: {:?}", event);
             match event {
-                StateMachineEvent::StartRound(block_hash, round) => {
+                StateMachineEvent::GetProposal(block_hash, round) => {
                     events.append(
                         &mut self
                             .handle_state_machine_start_round(context, block_hash, round)
@@ -189,7 +192,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
                 }
                 StateMachineEvent::Proposal(_, _) => {
                     // Ignore proposals sent by the StateMachine as SingleHeightConsensus already
-                    // sent this out when responding to a StartRound.
+                    // sent this out when responding to a GetProposal.
                 }
                 StateMachineEvent::Decision(block_hash, round) => {
                     return self.handle_state_machine_decision(block_hash, round).await;
@@ -219,7 +222,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         let proposer_id = context.proposer(&self.validators, self.height);
         if proposer_id != self.id {
             debug!("Validator");
-            return self.state_machine.handle_event(StateMachineEvent::StartRound(None, round));
+            return self.state_machine.handle_event(StateMachineEvent::GetProposal(None, round));
         }
         debug!("Proposer");
 
@@ -243,7 +246,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
         assert!(old.is_none(), "There should be no entry for this round.");
 
         // TODO(matan): Send to the state machine and handle voting.
-        self.state_machine.handle_event(StateMachineEvent::StartRound(Some(id), round))
+        self.state_machine.handle_event(StateMachineEvent::GetProposal(Some(id), round))
     }
 
     #[instrument(skip_all)]
