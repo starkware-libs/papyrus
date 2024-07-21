@@ -12,25 +12,16 @@ use std::collections::{HashMap, VecDeque};
 use starknet_api::block::BlockHash;
 use tracing::trace;
 
-use crate::types::Round;
+use crate::types::{Round, ValidatorId};
 
 /// Events which the state machine sends/receives.
 #[derive(Debug, Clone, PartialEq)]
 pub enum StateMachineEvent {
-    /// StartRound is effective 2 questions:
-    /// 1. Is the local node the proposer for this round?
-    /// 2. If so, what value should be proposed?
-    /// While waiting for the response to this event, the state machine will buffer all other
-    /// events.
-    ///
-    /// How should the caller handle this event?
-    /// 1. If the local node is not the proposer, the caller responds with with `None` as the block
-    ///    hash.
-    /// 2. If the local node is the proposer and a block hash was supplied by the state machine,
-    ///   the caller responds with the supplied block hash.
-    /// 3. If the local node is the proposer and no block hash was supplied by the state machine,
-    ///   the caller must find/build a block to respond with.
-    StartRound(Option<BlockHash>, Round),
+    /// Sent by the state machine when a block is required to propose (BlockHash is always None).
+    /// While waiting for the response of GetProposal, the state machine will buffer all other
+    /// events. The caller must respond with a valid block hash for this height to the state
+    /// machine, and the same round sent out.
+    GetProposal(Option<BlockHash>, Round),
     /// Consensus message, can be both sent from and to the state machine.
     Proposal(BlockHash, Round),
     /// Consensus message, can be both sent from and to the state machine.
@@ -56,6 +47,7 @@ pub enum Step {
 /// 3. Only valid proposals (e.g. no NIL)
 /// 4. No network failures - together with 3 this means we only support round 0.
 pub struct StateMachine {
+    id: ValidatorId,
     round: Round,
     step: Step,
     quorum: u32,
@@ -65,21 +57,22 @@ pub struct StateMachine {
     precommits: HashMap<Round, HashMap<BlockHash, u32>>,
     // When true, the state machine will wait for a GetProposal event, buffering all other input
     // events in `events_queue`.
-    starting_round: bool,
+    awaiting_get_proposal: bool,
     events_queue: VecDeque<StateMachineEvent>,
 }
 
 impl StateMachine {
     /// total_weight - the total voting weight of all validators for this height.
-    pub fn new(total_weight: u32) -> Self {
+    pub fn new(id: ValidatorId, total_weight: u32) -> Self {
         Self {
+            id,
             round: 0,
             step: Step::Propose,
             quorum: (2 * total_weight / 3) + 1,
             proposals: HashMap::new(),
             prevotes: HashMap::new(),
             precommits: HashMap::new(),
-            starting_round: false,
+            awaiting_get_proposal: false,
             events_queue: VecDeque::new(),
         }
     }
@@ -88,16 +81,24 @@ impl StateMachine {
         self.quorum
     }
 
-    /// Starts the state machine, effectively calling `StartRound(0)` from the paper. This is needed
-    /// to trigger the first leader to propose. See [`StartRound`](StateMachineEvent::StartRound)
-    pub fn start(&mut self) -> VecDeque<StateMachineEvent> {
-        self.starting_round = true;
-        VecDeque::from([StateMachineEvent::StartRound(None, self.round)])
+    /// Starts the state machine, effectively calling `StartRound(0)` from the paper. This is
+    /// needed to trigger the first leader to propose.
+    /// See [`GetProposal`](StateMachineEvent::GetProposal)
+    pub fn start(
+        &mut self,
+        leader_fn: &impl Fn(Round) -> ValidatorId,
+    ) -> VecDeque<StateMachineEvent> {
+        if self.id == leader_fn(self.round) {
+            self.awaiting_get_proposal = true;
+
+            return VecDeque::from([StateMachineEvent::GetProposal(None, self.round)]);
+        }
+        VecDeque::from([])
     }
 
     /// Process the incoming event.
     ///
-    /// If we are waiting for a response to `StartRound` all other incoming events are buffered
+    /// If we are waiting for a response to `GetProposal` all other incoming events are buffered
     /// until that response arrives.
     ///
     /// Returns a set of events for the caller to handle. The caller should not mirror the output
@@ -108,9 +109,9 @@ impl StateMachine {
         trace!("Handling event: {:?}", event);
         // Mimic LOC 18 in the paper; the state machine doesn't
         // handle any events until `getValue` completes.
-        if self.starting_round {
+        if self.awaiting_get_proposal {
             match event {
-                StateMachineEvent::StartRound(_, round) if round == self.round => {
+                StateMachineEvent::GetProposal(_, round) if round == self.round => {
                     self.events_queue.push_front(event);
                 }
                 _ => {
@@ -156,8 +157,8 @@ impl StateMachine {
 
     fn handle_event_internal(&mut self, event: StateMachineEvent) -> VecDeque<StateMachineEvent> {
         match event {
-            StateMachineEvent::StartRound(block_hash, round) => {
-                self.handle_start_round(block_hash, round)
+            StateMachineEvent::GetProposal(block_hash, round) => {
+                self.handle_get_proposal(block_hash, round)
             }
             StateMachineEvent::Proposal(block_hash, round) => {
                 self.handle_proposal(block_hash, round)
@@ -174,15 +175,15 @@ impl StateMachine {
         }
     }
 
-    fn handle_start_round(
+    fn handle_get_proposal(
         &mut self,
         block_hash: Option<BlockHash>,
         round: u32,
     ) -> VecDeque<StateMachineEvent> {
         // TODO(matan): Will we allow other events (timeoutPropose) to exit this state?
-        assert!(self.starting_round);
+        assert!(self.awaiting_get_proposal);
         assert_eq!(round, self.round);
-        self.starting_round = false;
+        self.awaiting_get_proposal = false;
 
         let Some(hash) = block_hash else {
             // Validator.
