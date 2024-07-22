@@ -36,7 +36,7 @@ use futures::StreamExt;
 #[instrument(skip(context, validator_id, network_receiver, cached_messages), level = "info")]
 #[allow(missing_docs)]
 async fn run_height<BlockT: ConsensusBlock, ContextT: ConsensusContext<Block = BlockT>>(
-    context: &ContextT,
+    context: &mut ContextT,
     height: BlockNumber,
     validator_id: ValidatorId,
     network_receiver: &mut BroadcastSubscriberReceiver<ConsensusMessage>,
@@ -103,7 +103,7 @@ where
 #[instrument(skip(context, start_height, network_receiver), level = "info")]
 #[allow(missing_docs)]
 pub async fn run_consensus<BlockT: ConsensusBlock, ContextT: ConsensusContext<Block = BlockT>>(
-    context: ContextT,
+    mut context: ContextT,
     start_height: BlockNumber,
     validator_id: ValidatorId,
     mut network_receiver: BroadcastSubscriberReceiver<ConsensusMessage>,
@@ -116,7 +116,7 @@ where
     let mut future_messages = Vec::new();
     loop {
         let decision = run_height(
-            &context,
+            &mut context,
             current_height,
             validator_id,
             &mut network_receiver,
