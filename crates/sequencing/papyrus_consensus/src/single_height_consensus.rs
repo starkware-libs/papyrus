@@ -39,12 +39,12 @@ pub(crate) struct SingleHeightConsensus<BlockT: ConsensusBlock> {
 }
 
 impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
-    pub(crate) async fn new(
-        height: BlockNumber,
+    pub(crate) fn new(
         context: Arc<dyn ConsensusContext<Block = BlockT>>,
+        height: BlockNumber,
         id: ValidatorId,
+        validators: Vec<ValidatorId>,
     ) -> Self {
-        let validators = context.validators(height).await;
         // TODO(matan): Use actual weights, not just `len`.
         let state_machine = StateMachine::new(validators.len() as u32);
         Self {
