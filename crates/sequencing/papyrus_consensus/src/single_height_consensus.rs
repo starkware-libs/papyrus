@@ -54,7 +54,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip_all, fields(height=self.height.0), level = "debug")]
     pub(crate) async fn start<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         info!("Starting consensus with validators {:?}", self.validators);
         let events = self.state_machine.start();
@@ -70,7 +70,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     )]
     pub(crate) async fn handle_proposal<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         init: ProposalInit,
         p2p_messages_receiver: mpsc::Receiver<<BlockT as ConsensusBlock>::ProposalChunk>,
         fin_receiver: oneshot::Receiver<BlockHash>,
@@ -126,7 +126,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip_all)]
     pub(crate) async fn handle_message<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         message: ConsensusMessage,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         debug!("Received message: {:?}", message);
@@ -141,7 +141,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip_all)]
     async fn handle_vote<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         vote: Vote,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         let (votes, sm_vote) = match vote.vote_type {
@@ -174,7 +174,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip_all)]
     async fn handle_state_machine_events<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         mut events: VecDeque<StateMachineEvent>,
     ) -> Result<Option<Decision<BlockT>>, ConsensusError> {
         while let Some(event) = events.pop_front() {
@@ -210,7 +210,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip(self, context), level = "debug")]
     async fn handle_state_machine_start_round<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         block_hash: Option<BlockHash>,
         round: Round,
     ) -> VecDeque<StateMachineEvent> {
@@ -249,7 +249,7 @@ impl<BlockT: ConsensusBlock> SingleHeightConsensus<BlockT> {
     #[instrument(skip_all)]
     async fn handle_state_machine_vote<ContextT: ConsensusContext<Block = BlockT>>(
         &mut self,
-        context: &ContextT,
+        context: &mut ContextT,
         block_hash: BlockHash,
         round: Round,
         vote_type: VoteType,
