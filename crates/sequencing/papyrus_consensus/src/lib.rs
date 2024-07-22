@@ -48,7 +48,9 @@ where
     ProposalWrapper:
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
 {
-    let mut shc = SingleHeightConsensus::new(height, context, validator_id).await;
+    let validators = context.validators(height).await;
+    let mut shc =
+        SingleHeightConsensus::new(Arc::clone(&context), height, validator_id, validators);
 
     if let Some(decision) = shc.start().await? {
         return Ok(decision);
