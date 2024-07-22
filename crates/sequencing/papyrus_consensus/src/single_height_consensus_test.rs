@@ -54,15 +54,21 @@ async fn proposer() {
         .withf(move |msg: &ConsensusMessage| msg == &prevote(block_id, 0, node_id))
         .returning(move |_| Ok(()));
     // Sends proposal and prevote.
-    assert!(matches!(shc.start(&context).await, Ok(None)));
+    assert!(matches!(shc.start(&mut context).await, Ok(None)));
 
-    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(
+        shc.handle_message(&mut context, prevote(block.id(), 0, 2_u32.into())).await,
+        Ok(None)
+    );
     // 3 of 4 Prevotes is enough to send a Precommit.
     context
         .expect_broadcast()
         .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
         .returning(move |_| Ok(()));
-    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+    assert_eq!(
+        shc.handle_message(&mut context, prevote(block.id(), 0, 3_u32.into())).await,
+        Ok(None)
+    );
 
     let precommits = vec![
         precommit(block.id(), 0, 1_u32.into()),
@@ -70,9 +76,9 @@ async fn proposer() {
         precommit(block.id(), 0, 2_u32.into()),
         precommit(block.id(), 0, 3_u32.into()),
     ];
-    assert_eq!(shc.handle_message(&context, precommits[1].clone()).await, Ok(None));
-    assert_eq!(shc.handle_message(&context, precommits[2].clone()).await, Ok(None));
-    let decision = shc.handle_message(&context, precommits[3].clone()).await.unwrap().unwrap();
+    assert_eq!(shc.handle_message(&mut context, precommits[1].clone()).await, Ok(None));
+    assert_eq!(shc.handle_message(&mut context, precommits[2].clone()).await, Ok(None));
+    let decision = shc.handle_message(&mut context, precommits[3].clone()).await.unwrap().unwrap();
     assert_eq!(decision.block, block);
     assert!(
         decision
@@ -119,7 +125,7 @@ async fn validator() {
         .returning(move |_| Ok(()));
     let res = shc
         .handle_proposal(
-            &context,
+            &mut context,
             ProposalInit { height: BlockNumber(0), proposer },
             mpsc::channel(1).1, // content - ignored by SHC.
             fin_receiver,
@@ -127,21 +133,27 @@ async fn validator() {
         .await;
     assert_eq!(res, Ok(None));
 
-    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 2_u32.into())).await, Ok(None));
+    assert_eq!(
+        shc.handle_message(&mut context, prevote(block.id(), 0, 2_u32.into())).await,
+        Ok(None)
+    );
     // 3 of 4 Prevotes is enough to send a Precommit.
     context
         .expect_broadcast()
         .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
         .returning(move |_| Ok(()));
-    assert_eq!(shc.handle_message(&context, prevote(block.id(), 0, 3_u32.into())).await, Ok(None));
+    assert_eq!(
+        shc.handle_message(&mut context, prevote(block.id(), 0, 3_u32.into())).await,
+        Ok(None)
+    );
 
     let precommits = vec![
         precommit(block.id(), 0, 2_u32.into()),
         precommit(block.id(), 0, 3_u32.into()),
         precommit(block.id(), 0, node_id),
     ];
-    assert_eq!(shc.handle_message(&context, precommits[0].clone()).await, Ok(None));
-    let decision = shc.handle_message(&context, precommits[1].clone()).await.unwrap().unwrap();
+    assert_eq!(shc.handle_message(&mut context, precommits[0].clone()).await, Ok(None));
+    let decision = shc.handle_message(&mut context, precommits[1].clone()).await.unwrap().unwrap();
     assert_eq!(decision.block, block);
     assert!(
         decision

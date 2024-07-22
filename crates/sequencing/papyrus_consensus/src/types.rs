@@ -123,7 +123,7 @@ pub trait ConsensusContext {
     /// Calculates the ID of the Proposer based on the inputs.
     fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
-    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError>;
+    async fn broadcast(&mut self, message: ConsensusMessage) -> Result<(), ConsensusError>;
 
     /// This should be non-blocking. Meaning it returns immediately and waits to receive from the
     /// input channels in parallel (ie on a separate task).
