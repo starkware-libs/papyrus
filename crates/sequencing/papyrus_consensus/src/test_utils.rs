@@ -49,7 +49,7 @@ mock! {
 
         fn proposer(&self, validators: &[ValidatorId], height: BlockNumber) -> ValidatorId;
 
-        async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError>;
+        async fn broadcast(&mut self, message: ConsensusMessage) -> Result<(), ConsensusError>;
 
         async fn propose(
             &self,

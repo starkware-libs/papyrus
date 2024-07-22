@@ -3,7 +3,6 @@
 mod papyrus_consensus_context_test;
 
 use core::panic;
-use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
@@ -18,7 +17,6 @@ use papyrus_storage::{StorageError, StorageReader};
 use starknet_api::block::{BlockHash, BlockNumber};
 use starknet_api::core::ContractAddress;
 use starknet_api::transaction::Transaction;
-use tokio::sync::Mutex;
 use tracing::debug;
 
 use crate::types::{ConsensusBlock, ConsensusContext, ConsensusError, ProposalInit, ValidatorId};
@@ -47,7 +45,7 @@ impl ConsensusBlock for PapyrusConsensusBlock {
 
 pub struct PapyrusConsensusContext {
     storage_reader: StorageReader,
-    broadcast_sender: Arc<Mutex<BroadcastSubscriberSender<ConsensusMessage>>>,
+    broadcast_sender: BroadcastSubscriberSender<ConsensusMessage>,
     validators: Vec<ValidatorId>,
 }
 
@@ -61,7 +59,7 @@ impl PapyrusConsensusContext {
     ) -> Self {
         Self {
             storage_reader,
-            broadcast_sender: Arc::new(Mutex::new(broadcast_sender)),
+            broadcast_sender,
             validators: (0..num_validators).map(ContractAddress::from).collect(),
         }
     }
@@ -172,9 +170,9 @@ impl ConsensusContext for PapyrusConsensusContext {
         *self.validators.first().expect("validators should have at least 2 validators")
     }
 
-    async fn broadcast(&self, message: ConsensusMessage) -> Result<(), ConsensusError> {
+    async fn broadcast(&mut self, message: ConsensusMessage) -> Result<(), ConsensusError> {
         debug!("Broadcasting message: {message:?}");
-        self.broadcast_sender.lock().await.send(message).await?;
+        self.broadcast_sender.send(message).await?;
         Ok(())
     }
 
@@ -184,7 +182,7 @@ impl ConsensusContext for PapyrusConsensusContext {
         mut content_receiver: mpsc::Receiver<Transaction>,
         fin_receiver: oneshot::Receiver<BlockHash>,
     ) -> Result<(), ConsensusError> {
-        let broadcast_sender = self.broadcast_sender.clone();
+        let mut broadcast_sender = self.broadcast_sender.clone();
 
         tokio::spawn(async move {
             let mut transactions = Vec::new();
@@ -209,8 +207,6 @@ impl ConsensusContext for PapyrusConsensusContext {
             );
 
             broadcast_sender
-                .lock()
-                .await
                 .send(ConsensusMessage::Proposal(proposal))
                 .await
                 .expect("Failed to send proposal");
