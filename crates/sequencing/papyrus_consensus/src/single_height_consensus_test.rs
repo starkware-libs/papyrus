@@ -26,9 +26,6 @@ async fn proposer() {
     let block = TestBlock { content: vec![1, 2, 3], id: BlockHash(Felt::ONE) };
     let block_id = block.id();
     // Set expectations for how the test should run:
-    context
-        .expect_validators()
-        .returning(move |_| vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()]);
     context.expect_proposer().returning(move |_, _| node_id);
     let block_clone = block.clone();
     context.expect_build_proposal().returning(move |_| {
@@ -56,7 +53,12 @@ async fn proposer() {
         .withf(move |msg: &ConsensusMessage| msg == &precommit(block_id, 0, node_id))
         .returning(move |_| Ok(()));
 
-    let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
+    let mut shc = SingleHeightConsensus::new(
+        Arc::new(context),
+        BlockNumber(0),
+        node_id,
+        vec![node_id, 2_u32.into(), 3_u32.into(), 4_u32.into()],
+    );
 
     // Sends proposal and prevote.
     assert!(matches!(shc.start().await, Ok(None)));
@@ -96,9 +98,6 @@ async fn validator() {
     let block_id = block.id();
 
     // Set expectations for how the test should run:
-    context
-        .expect_validators()
-        .returning(move |_| vec![node_id, proposer, 3_u32.into(), 4_u32.into()]);
     context.expect_proposer().returning(move |_, _| proposer);
     let block_clone = block.clone();
     context.expect_validate_proposal().returning(move |_, _| {
@@ -116,7 +115,12 @@ async fn validator() {
         .returning(move |_| Ok(()));
 
     // Creation calls to `context.validators`.
-    let mut shc = SingleHeightConsensus::new(BlockNumber(0), Arc::new(context), node_id).await;
+    let mut shc = SingleHeightConsensus::new(
+        Arc::new(context),
+        BlockNumber(0),
+        node_id,
+        vec![node_id, proposer, 3_u32.into(), 4_u32.into()],
+    );
 
     // Send the proposal from the peer.
     let (fin_sender, fin_receiver) = oneshot::channel();
