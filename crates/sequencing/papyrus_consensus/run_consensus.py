@@ -6,6 +6,7 @@ import argparse
 import tempfile
 import socket
 from contextlib import closing
+import fcntl
 
 # The SECRET_KEY is used for building the BOOT_NODE_PEER_ID, so they are coupled and must be used together.
 SECRET_KEY = "0xabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcdabcd"
@@ -94,16 +95,17 @@ def run_simulation(nodes, duration, stagnation_timeout):
             node.stop()
 
 
-def build_node(base_layer_node_url, temp_dir, num_validators, i):
+def build_node(base_layer_node_url, data_dir, logs_dir, num_validators, i):
     is_bootstrap = i == 1
     tcp_port = BOOTNODE_TCP_PORT if is_bootstrap else find_free_port()
     monitoring_gateway_server_port = find_free_port()
+    data_dir = os.path.join(data_dir, f"data{i}")
 
     cmd = (
         f"RUST_LOG=papyrus_consensus=debug,papyrus=info "
         f"target/release/papyrus_node --network.#is_none false "
         f"--base_layer.node_url {base_layer_node_url} "
-        f"--storage.db_config.path_prefix {temp_dir}/data{i} "
+        f"--storage.db_config.path_prefix {data_dir} "
         f"--consensus.#is_none false --consensus.validator_id 0x{i} "
         f"--consensus.num_validators {num_validators} "
         f"--network.tcp_port {tcp_port} "
@@ -115,14 +117,14 @@ def build_node(base_layer_node_url, temp_dir, num_validators, i):
     if is_bootstrap:
         cmd += (
             f"--network.secret_key {SECRET_KEY} "
-            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator{i}.txt"
+            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {logs_dir}/validator{i}.txt"
         )
 
     else:
         cmd += (
             f"--network.bootstrap_peer_multiaddr.#is_none false "
             f"--network.bootstrap_peer_multiaddr /ip4/127.0.0.1/tcp/{BOOTNODE_TCP_PORT}/p2p/{BOOT_NODE_PEER_ID} "
-            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {temp_dir}/validator{i}.txt"
+            + f"| sed -r 's/\\x1B\\[[0-9;]*[mK]//g' > {logs_dir}/validator{i}.txt"
         )
 
     return Node(
@@ -132,43 +134,71 @@ def build_node(base_layer_node_url, temp_dir, num_validators, i):
     )
 
 
-def build_all_nodes(base_layer_node_url, temp_dir, num_validators):
-    # Validators are started in a specific order to ensure proper network formation:
-    # 1. The bootnode (validator 1) is started first for network peering.
-    # 2. Validators 2+ are started next to join the network through the bootnode.
-    # 3. Validator 0, which is the proposer, is started last so the validators don't miss the proposals.
+def build_all_nodes(base_layer_node_url, data_dir, logs_dir, num_validators):
     nodes = []
 
-    nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, 1)) # Bootstrap
+    nodes.append(build_node(base_layer_node_url, data_dir, logs_dir, num_validators, 1))  # Bootstrap
 
     for i in range(2, num_validators):
-        nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, i))
+        nodes.append(build_node(base_layer_node_url, data_dir, logs_dir, num_validators, i))
 
-    nodes.append(build_node(base_layer_node_url, temp_dir, num_validators, 0)) # Proposer
+    nodes.append(build_node(base_layer_node_url, data_dir, logs_dir, num_validators, 0))  # Proposer
 
     return nodes
 
+def acquire_lock(data_dir):
+    lock_file = os.path.join(data_dir, "lockfile")
+    lock_fd = open(lock_file, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return lock_fd
+    except IOError:
+        lock_fd.close()
+        print(f"Could not acquire lock for {data_dir}, it's in use by another simulation.")
+        exit(1)
 
-def main(base_layer_node_url, num_validators, stagnation_threshold, duration):
+def main(base_layer_node_url, num_validators, db_dir, stagnation_threshold, duration):
     assert num_validators >= 2, "At least 2 validators are required for the simulation."
-    # Building the Papyrus Node package assuming its output will be located in the papyrus target directory.
+
+    logs_dir = tempfile.mkdtemp()
+
+    if db_dir:
+        assert os.path.exists(db_dir), f"The specified directory {db_dir} does not exist."
+        data_dirs = [d for d in os.listdir(db_dir) if os.path.isdir(os.path.join(db_dir, d))]
+
+        # Ensure we have the correct number of directories
+        assert (
+            len(data_dirs) == num_validators
+        ), f"The specified directory {db_dir} must contain exactly {num_validators} validator directories."
+
+        # Ensure the directories are named data0, data1, ..., data{num_validators - 1}
+        expected_dirs = {f"data{i}" for i in range(num_validators)}
+        actual_dirs = set(data_dirs)
+
+        assert (
+            expected_dirs == actual_dirs
+        ), f"The directories in {db_dir} must be named {', '.join(expected_dirs)}."
+    else:
+        db_dir = logs_dir
+        for i in range(num_validators):
+            os.makedirs(os.path.join(db_dir, f"data{i}"))
+
+    # Acquire lock on the db_dir
+    lock_fd = acquire_lock(db_dir)
+
     print("Running cargo build...")
     subprocess.run("cargo build --release --package papyrus_node", shell=True, check=True)
 
-    temp_dir = tempfile.mkdtemp()
-    print(f"Output files will be stored in: {temp_dir}")
+    print(f"Output files will be stored in: {logs_dir} and data files will be stored in: {db_dir}")
 
-    # Create data directories
-    for i in range(num_validators):
-        data_dir = os.path.join(temp_dir, f"data{i}")
-        os.makedirs(data_dir)
+    nodes = build_all_nodes(base_layer_node_url, db_dir, logs_dir, num_validators)
 
-    nodes = build_all_nodes(base_layer_node_url, temp_dir, num_validators)
-
-    # Run validator commands in parallel and manage duration time
     print("Running validators...")
     run_simulation(nodes, duration, stagnation_threshold)
-    print(f"Output files were stored in: {temp_dir}")
+    # Release the lock
+    fcntl.flock(lock_fd, fcntl.LOCK_UN)
+    lock_fd.close()
+    print(f"Output files were stored in: {logs_dir} and data files were stored in: {db_dir}")
     print("Simulation complete.")
 
 
@@ -176,6 +206,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Papyrus Node simulation.")
     parser.add_argument("--base_layer_node_url", required=True)
     parser.add_argument("--num_validators", type=int, required=True)
+    parser.add_argument("--db_dir", required=False, default=None)
     parser.add_argument(
         "--stagnation_threshold",
         type=int,
@@ -186,4 +217,10 @@ if __name__ == "__main__":
     parser.add_argument("--duration", type=int, required=False, default=None)
 
     args = parser.parse_args()
-    main(args.base_layer_node_url, args.num_validators, args.stagnation_threshold, args.duration)
+    main(
+        args.base_layer_node_url,
+        args.num_validators,
+        args.db_dir,
+        args.stagnation_threshold,
+        args.duration,
+    )
