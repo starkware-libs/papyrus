@@ -639,10 +639,10 @@ pub struct SqmrClientPayload<Query, Response: TryFrom<Bytes>> {
 
 pub type SqmrClientSender<Query, Response> = GenericSender<SqmrClientPayload<Query, Response>>;
 
-pub struct SqmrServerPayload<Query, Response: TryFrom<Bytes>> {
-    pub query: Query,
+pub struct SqmrServerPayload<Query: TryFrom<Bytes>, Response> {
+    pub query: Result<Query, <Query as TryFrom<Bytes>>::Error>,
     pub report_sender: ReportSender,
-    pub responses_sender: ResponsesSender<Response>,
+    pub responses_sender: GenericSender<Response>,
 }
 
 // TODO(shahak): Return this type in register_sqmr_protocol_server
@@ -681,7 +681,7 @@ where
     }
 }
 
-impl<Query, Response: TryFrom<Bytes>> From<SqmrServerPayloadForNetwork>
+impl<Query: TryFrom<Bytes>, Response> From<SqmrServerPayloadForNetwork>
     for SqmrServerPayload<Query, Response>
 {
     fn from(_payload: SqmrServerPayloadForNetwork) -> Self {
