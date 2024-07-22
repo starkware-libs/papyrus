@@ -3,8 +3,6 @@
 // TODO(Matan): fix #[allow(missing_docs)].
 //! A consensus implementation for a [`Starknet`](https://www.starknet.io/) node.
 
-use std::sync::Arc;
-
 use futures::channel::{mpsc, oneshot};
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_network::network_manager::BroadcastSubscriberReceiver;
@@ -37,8 +35,8 @@ use futures::StreamExt;
 
 #[instrument(skip(context, validator_id, network_receiver, cached_messages), level = "info")]
 #[allow(missing_docs)]
-async fn run_height<BlockT: ConsensusBlock>(
-    context: Arc<dyn ConsensusContext<Block = BlockT>>,
+async fn run_height<BlockT: ConsensusBlock, ContextT: ConsensusContext<Block = BlockT>>(
+    context: &ContextT,
     height: BlockNumber,
     validator_id: ValidatorId,
     network_receiver: &mut BroadcastSubscriberReceiver<ConsensusMessage>,
@@ -49,10 +47,9 @@ where
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
 {
     let validators = context.validators(height).await;
-    let mut shc =
-        SingleHeightConsensus::new(Arc::clone(&context), height, validator_id, validators);
+    let mut shc = SingleHeightConsensus::new(height, validator_id, validators);
 
-    if let Some(decision) = shc.start().await? {
+    if let Some(decision) = shc.start(context).await? {
         return Ok(decision);
     }
 
@@ -91,9 +88,9 @@ where
                 // Special case due to fake streaming.
                 let (proposal_init, content_receiver, fin_receiver) =
                     ProposalWrapper(proposal).into();
-                shc.handle_proposal(proposal_init, content_receiver, fin_receiver).await?
+                shc.handle_proposal(context, proposal_init, content_receiver, fin_receiver).await?
             }
-            _ => shc.handle_message(message).await?,
+            _ => shc.handle_message(context, message).await?,
         };
 
         if let Some(decision) = maybe_decision {
@@ -105,8 +102,8 @@ where
 // TODO(dvir): add test for this.
 #[instrument(skip(context, start_height, network_receiver), level = "info")]
 #[allow(missing_docs)]
-pub async fn run_consensus<BlockT: ConsensusBlock>(
-    context: Arc<dyn ConsensusContext<Block = BlockT>>,
+pub async fn run_consensus<BlockT: ConsensusBlock, ContextT: ConsensusContext<Block = BlockT>>(
+    context: ContextT,
     start_height: BlockNumber,
     validator_id: ValidatorId,
     mut network_receiver: BroadcastSubscriberReceiver<ConsensusMessage>,
@@ -119,7 +116,7 @@ where
     let mut future_messages = Vec::new();
     loop {
         let decision = run_height(
-            Arc::clone(&context),
+            &context,
             current_height,
             validator_id,
             &mut network_receiver,
