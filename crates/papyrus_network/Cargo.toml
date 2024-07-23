@@ -16,7 +16,6 @@ path = "src/bin/streamed_bytes_benchmark.rs"
 [dependencies]
 async-stream.workspace = true
 bytes.workspace = true
-chrono.workspace = true
 defaultmap.workspace = true
 derive_more.workspace = true
 futures.workspace = true
