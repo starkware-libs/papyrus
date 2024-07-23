@@ -683,9 +683,16 @@ where
 
 impl<Query: TryFrom<Bytes>, Response> From<SqmrServerPayloadForNetwork>
     for SqmrServerPayload<Query, Response>
+where
+    Bytes: From<Response>,
+    Response: 'static,
 {
-    fn from(_payload: SqmrServerPayloadForNetwork) -> Self {
-        unimplemented!()
+    fn from(payload: SqmrServerPayloadForNetwork) -> Self {
+        let SqmrServerPayloadForNetwork { query, report_sender, responses_sender } = payload;
+        let query = Query::try_from(query);
+        let responses_sender =
+            Box::new(responses_sender.with(|response| ready(Ok(Bytes::from(response)))));
+        Self { query, report_sender, responses_sender }
     }
 }
 
