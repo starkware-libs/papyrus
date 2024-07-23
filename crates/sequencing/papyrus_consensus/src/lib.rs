@@ -112,6 +112,8 @@ where
     ProposalWrapper:
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
 {
+    // Add a short delay to allow peers to connect and avoid "InsufficientPeers" error
+    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
     let mut current_height = start_height;
     let mut future_messages = Vec::new();
     loop {
