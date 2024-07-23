@@ -25,7 +25,7 @@ use super::swarm_trait::{Event, SwarmTrait};
 use super::GenericNetworkManager;
 use crate::gossipsub_impl::{self, Topic};
 use crate::mixed_behaviour;
-use crate::network_manager::SqmrClientPayload;
+use crate::network_manager::{SqmrClientPayload, SqmrServerPayload};
 use crate::sqmr::behaviour::{PeerNotConnected, SessionIdNotFoundError};
 use crate::sqmr::{Bytes, GenericEvent, InboundSessionId, OutboundSessionId};
 
@@ -283,7 +283,7 @@ async fn process_incoming_query() {
 
     let mut network_manager = GenericNetworkManager::generic_new(mock_swarm);
 
-    let mut inbound_query_receiver = network_manager
+    let mut inbound_payload_receiver = network_manager
         .register_sqmr_protocol_server::<Vec<u8>, Vec<u8>>(protocol.to_string(), BUFFER_SIZE);
 
     let actual_protocol = get_supported_inbound_protocol_fut.next().await.unwrap();
@@ -292,7 +292,7 @@ async fn process_incoming_query() {
     let responses_clone = responses.clone();
     select! {
         _ = async move {
-            let (query_got, mut responses_sender) = inbound_query_receiver.next().await.unwrap();
+            let SqmrServerPayload{query: query_got, report_sender: _report_sender, mut responses_sender} = inbound_payload_receiver.next().await.unwrap();
             assert_eq!(query_got.unwrap(), query);
             for response in responses_clone {
                 responses_sender.feed(response).await.unwrap();

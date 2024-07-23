@@ -1,9 +1,9 @@
-use futures::channel::mpsc::{Receiver, Sender};
+use futures::channel::mpsc::Sender;
 use futures::StreamExt;
 use lazy_static::lazy_static;
 use papyrus_common::pending_classes::ApiContractClass;
 use papyrus_common::state::create_random_state_diff;
-use papyrus_protobuf::converters::ProtobufConversionError;
+use papyrus_network::network_manager::SqmrServerPayload;
 use papyrus_protobuf::sync::{
     BlockHashOrNumber,
     ClassQuery,
@@ -30,7 +30,8 @@ use starknet_api::state::ContractClass;
 use starknet_api::transaction::{Event, Transaction, TransactionHash, TransactionOutput};
 use test_utils::{get_rng, get_test_body, GetTestInstance};
 
-use super::{split_thin_state_diff, FetchBlockDataFromDb, P2PSyncServer};
+use super::{split_thin_state_diff, FetchBlockDataFromDb, P2PSyncServer, P2PSyncServerChannels};
+use crate::server::register_query;
 const BUFFER_SIZE: usize = 10;
 const NUM_OF_BLOCKS: u64 = 10;
 const NUM_TXS_PER_BLOCK: usize = 5;
@@ -242,16 +243,16 @@ where
     T: FetchBlockDataFromDb + std::fmt::Debug + PartialEq + Send + Sync + 'static,
     F: FnOnce(Vec<T>),
 {
-    let (
+    let TestArgs {
         p2p_sync_server,
         storage_reader,
         mut storage_writer,
-        _header_queries_sender,
-        _state_diff_queries_sender,
-        _transaction_queries_sender,
-        _class_queries_sender,
-        _event_queries_sender,
-    ) = setup();
+        header_payload_sender: _header_payload_sender,
+        state_diff_payload_sender: _state_diff_payload_sender,
+        transaction_payload_sender: _transaction_payload_sender,
+        class_payload_sender: _class_payload_sender,
+        event_payload_sender: _event_payload_sender,
+    } = setup();
 
     // put some data in the storage.
     insert_to_storage_test_blocks_up_to(&mut storage_writer);
@@ -272,7 +273,7 @@ where
     // register a query.
     let (sender, receiver) = futures::channel::mpsc::channel(BUFFER_SIZE);
     let query = Query { start_block, direction: Direction::Forward, limit: NUM_OF_BLOCKS, step: 1 };
-    p2p_sync_server.register_query::<T, _>(query, sender);
+    register_query::<T, _>(p2p_sync_server.storage_reader.clone(), query, sender);
 
     // run p2p_sync_server and collect query results.
     tokio::select! {
@@ -289,83 +290,55 @@ where
     }
 }
 
-#[allow(clippy::type_complexity)]
-fn setup() -> (
-    P2PSyncServer<
-        Receiver<(
-            Result<HeaderQuery, ProtobufConversionError>,
-            Sender<DataOrFin<SignedBlockHeader>>,
-        )>,
-        Receiver<(
-            Result<StateDiffQuery, ProtobufConversionError>,
-            Sender<DataOrFin<StateDiffChunk>>,
-        )>,
-        Receiver<(
-            Result<TransactionQuery, ProtobufConversionError>,
-            Sender<DataOrFin<(Transaction, TransactionOutput)>>,
-        )>,
-        Receiver<(
-            Result<ClassQuery, ProtobufConversionError>,
-            Sender<DataOrFin<ApiContractClass>>,
-        )>,
-        Receiver<(
-            Result<EventQuery, ProtobufConversionError>,
-            Sender<DataOrFin<(Event, TransactionHash)>>,
-        )>,
-    >,
-    StorageReader,
-    StorageWriter,
-    Sender<(Result<HeaderQuery, ProtobufConversionError>, Sender<DataOrFin<SignedBlockHeader>>)>,
-    Sender<(Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>)>,
-    Sender<(
-        Result<TransactionQuery, ProtobufConversionError>,
-        Sender<DataOrFin<(Transaction, TransactionOutput)>>,
-    )>,
-    Sender<(Result<ClassQuery, ProtobufConversionError>, Sender<DataOrFin<ApiContractClass>>)>,
-    Sender<(
-        Result<EventQuery, ProtobufConversionError>,
-        Sender<DataOrFin<(Event, TransactionHash)>>,
-    )>,
-) {
-    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
-    let (header_queries_sender, header_queries_receiver) = futures::channel::mpsc::channel::<(
-        Result<HeaderQuery, ProtobufConversionError>,
-        Sender<DataOrFin<SignedBlockHeader>>,
-    )>(BUFFER_SIZE);
-    let (state_diff_queries_sender, state_diff_queries_receiver) = futures::channel::mpsc::channel::<
-        (Result<StateDiffQuery, ProtobufConversionError>, Sender<DataOrFin<StateDiffChunk>>),
-    >(BUFFER_SIZE);
-    let (transaction_sender, transaction_queries_receiver) = futures::channel::mpsc::channel::<(
-        Result<TransactionQuery, ProtobufConversionError>,
-        Sender<DataOrFin<(Transaction, TransactionOutput)>>,
-    )>(BUFFER_SIZE);
-    let (class_sender, class_queries_receiver) = futures::channel::mpsc::channel::<(
-        Result<ClassQuery, ProtobufConversionError>,
-        Sender<DataOrFin<ApiContractClass>>,
-    )>(BUFFER_SIZE);
-    let (event_sender, event_queries_receiver) = futures::channel::mpsc::channel::<(
-        Result<EventQuery, ProtobufConversionError>,
-        Sender<DataOrFin<(Event, TransactionHash)>>,
-    )>(BUFFER_SIZE);
+pub struct TestArgs {
+    #[allow(clippy::type_complexity)]
+    pub p2p_sync_server: P2PSyncServer,
+    pub storage_reader: StorageReader,
+    pub storage_writer: StorageWriter,
+    pub header_payload_sender: Sender<SqmrServerPayload<HeaderQuery, DataOrFin<SignedBlockHeader>>>,
+    pub state_diff_payload_sender:
+        Sender<SqmrServerPayload<StateDiffQuery, DataOrFin<StateDiffChunk>>>,
+    pub transaction_payload_sender:
+        Sender<SqmrServerPayload<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>>,
+    pub class_payload_sender: Sender<SqmrServerPayload<ClassQuery, DataOrFin<ApiContractClass>>>,
+    pub event_payload_sender:
+        Sender<SqmrServerPayload<EventQuery, DataOrFin<(Event, TransactionHash)>>>,
+}
 
-    let p2p_sync_server = super::P2PSyncServer::new(
-        storage_reader.clone(),
-        header_queries_receiver,
-        state_diff_queries_receiver,
-        transaction_queries_receiver,
-        class_queries_receiver,
-        event_queries_receiver,
+#[allow(clippy::type_complexity)]
+fn setup() -> TestArgs {
+    let ((storage_reader, storage_writer), _temp_dir) = get_test_storage();
+    let (header_payload_sender, header_payload_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (state_diff_payload_sender, state_diff_payload_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (transaction_payload_sender, transaction_payload_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (class_payload_sender, class_payload_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+    let (event_payload_sender, event_payload_receiver) =
+        futures::channel::mpsc::channel(BUFFER_SIZE);
+
+    let p2p_sync_server_channels = P2PSyncServerChannels::new(
+        Box::new(header_payload_receiver),
+        Box::new(state_diff_payload_receiver),
+        Box::new(transaction_payload_receiver),
+        Box::new(class_payload_receiver),
+        Box::new(event_payload_receiver),
     );
-    (
+
+    let p2p_sync_server =
+        super::P2PSyncServer::new(storage_reader.clone(), p2p_sync_server_channels);
+    TestArgs {
         p2p_sync_server,
         storage_reader,
         storage_writer,
-        header_queries_sender,
-        state_diff_queries_sender,
-        transaction_sender,
-        class_sender,
-        event_sender,
-    )
+        header_payload_sender,
+        state_diff_payload_sender,
+        transaction_payload_sender,
+        class_payload_sender,
+        event_payload_sender,
+    }
 }
 use starknet_api::core::ClassHash;
 fn insert_to_storage_test_blocks_up_to(storage_writer: &mut StorageWriter) {

@@ -111,7 +111,7 @@ impl Default for P2PSyncClientConfig {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum P2PSyncError {
+pub enum P2PClientSyncError {
     // TODO(shahak): Remove this and report to network on invalid data once that's possible.
     // TODO(shahak): Consider removing this error and handling unordered headers without failing.
     #[error(
@@ -179,12 +179,20 @@ type TransactionPayloadSender =
     SqmrClientSender<TransactionQuery, DataOrFin<(Transaction, TransactionOutput)>>;
 
 pub struct P2PSyncClientChannels {
-    pub header_payload_sender: HeaderPayloadSender,
-    pub state_diff_payload_sender: StateDiffPayloadSender,
-    pub transaction_payload_sender: TransactionPayloadSender,
+    header_payload_sender: HeaderPayloadSender,
+    state_diff_payload_sender: StateDiffPayloadSender,
+    #[allow(dead_code)]
+    transaction_payload_sender: TransactionPayloadSender,
 }
 
 impl P2PSyncClientChannels {
+    pub fn new(
+        header_payload_sender: HeaderPayloadSender,
+        state_diff_payload_sender: StateDiffPayloadSender,
+        transaction_payload_sender: TransactionPayloadSender,
+    ) -> Self {
+        Self { header_payload_sender, state_diff_payload_sender, transaction_payload_sender }
+    }
     pub(crate) fn create_stream(
         self,
         storage_reader: StorageReader,
@@ -244,7 +252,7 @@ impl P2PSyncClient {
     }
 
     #[instrument(skip(self), level = "debug", err)]
-    pub async fn run(mut self) -> Result<(), P2PSyncError> {
+    pub async fn run(mut self) -> Result<(), P2PClientSyncError> {
         let mut data_stream =
             self.p2p_sync_channels.create_stream(self.storage_reader.clone(), self.config);
 
