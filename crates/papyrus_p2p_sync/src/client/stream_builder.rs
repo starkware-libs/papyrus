@@ -14,11 +14,11 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 use tracing::{debug, info};
 
-use super::{P2PSyncError, ResponseReceiver, WithPayloadSender, STEP};
+use super::{P2PClientSyncError, ResponseReceiver, WithPayloadSender, STEP};
 use crate::client::SyncResponse;
 use crate::BUFFER_SIZE;
 
-pub type DataStreamResult = Result<Box<dyn BlockData>, P2PSyncError>;
+pub type DataStreamResult = Result<Box<dyn BlockData>, P2PClientSyncError>;
 
 pub(crate) trait BlockData: Send {
     fn write_to_storage(
@@ -49,7 +49,7 @@ where
         data_receiver: &'a mut ResponseReceiver<InputFromNetwork>,
         block_number: BlockNumber,
         storage_reader: &'a StorageReader,
-    ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>>;
+    ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PClientSyncError>>;
 
     fn get_start_block_number(storage_reader: &StorageReader) -> Result<BlockNumber, StorageError>;
 
@@ -135,8 +135,8 @@ where
                     Some(Ok(DataOrFin(None))) => {
                         debug!("Query sent to network for {:?} finished", Self::TYPE_DESCRIPTION);
                     },
-                    Some(_) => Err(P2PSyncError::TooManyResponses)?,
-                    None => Err(P2PSyncError::ReceiverChannelTerminated {
+                    Some(_) => Err(P2PClientSyncError::TooManyResponses)?,
+                    None => Err(P2PClientSyncError::ReceiverChannelTerminated {
                         type_description: Self::TYPE_DESCRIPTION
                     })?,
                 }

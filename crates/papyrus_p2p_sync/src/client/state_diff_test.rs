@@ -33,7 +33,7 @@ use super::test_utils::{
     SLEEP_DURATION_TO_LET_SYNC_ADVANCE,
     STATE_DIFF_QUERY_LENGTH,
 };
-use super::{P2PSyncError, StateDiffQuery};
+use super::{P2PClientSyncError, StateDiffQuery};
 
 const TIMEOUT_FOR_TEST: Duration = Duration::from_secs(5);
 
@@ -185,7 +185,7 @@ async fn state_diff_basic_flow() {
 #[tokio::test]
 async fn state_diff_empty_state_diff() {
     validate_state_diff_fails(1, vec![Some(StateDiffChunk::default())], |error| {
-        assert_matches!(error, P2PSyncError::EmptyStateDiffPart)
+        assert_matches!(error, P2PClientSyncError::EmptyStateDiffPart)
     })
     .await;
 }
@@ -198,7 +198,7 @@ async fn state_diff_stopped_in_middle() {
             Some(StateDiffChunk::DeprecatedDeclaredClass(DeprecatedDeclaredClass::default())),
             None,
         ],
-        |error| assert_matches!(error, P2PSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1]),
+        |error| assert_matches!(error, P2PClientSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1]),
     )
     .await;
 }
@@ -216,7 +216,7 @@ async fn state_diff_not_split_correctly() {
                 ..Default::default()
             }),)
         ],
-        |error| assert_matches!(error, P2PSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1, 3]),
+        |error| assert_matches!(error, P2PClientSyncError::WrongStateDiffLength { expected_length, possible_lengths } if expected_length == 2 && possible_lengths == vec![1, 3]),
     )
     .await;
 }
@@ -237,7 +237,7 @@ async fn state_diff_conflicting() {
                 ..Default::default()
             })),
         ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
+        |error| assert_matches!(error, P2PClientSyncError::ConflictingStateDiffParts),
     )
     .await;
     validate_state_diff_fails(
@@ -254,7 +254,7 @@ async fn state_diff_conflicting() {
                 ..Default::default()
             })),
         ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
+        |error| assert_matches!(error, P2PClientSyncError::ConflictingStateDiffParts),
     )
     .await;
     validate_state_diff_fails(
@@ -269,7 +269,7 @@ async fn state_diff_conflicting() {
                 compiled_class_hash: CompiledClassHash::default(),
             })),
         ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
+        |error| assert_matches!(error, P2PClientSyncError::ConflictingStateDiffParts),
     )
     .await;
     validate_state_diff_fails(
@@ -282,7 +282,7 @@ async fn state_diff_conflicting() {
                 class_hash: ClassHash::default(),
             })),
         ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
+        |error| assert_matches!(error, P2PClientSyncError::ConflictingStateDiffParts),
     )
     .await;
     validate_state_diff_fails(
@@ -299,7 +299,7 @@ async fn state_diff_conflicting() {
                 ..Default::default()
             })),
         ],
-        |error| assert_matches!(error, P2PSyncError::ConflictingStateDiffParts),
+        |error| assert_matches!(error, P2PClientSyncError::ConflictingStateDiffParts),
     )
     .await;
 }
@@ -307,7 +307,7 @@ async fn state_diff_conflicting() {
 async fn validate_state_diff_fails(
     state_diff_length_in_header: usize,
     state_diff_chunks: Vec<Option<StateDiffChunk>>,
-    error_validator: impl Fn(P2PSyncError),
+    error_validator: impl Fn(P2PClientSyncError),
 ) {
     let TestArgs {
         p2p_sync,

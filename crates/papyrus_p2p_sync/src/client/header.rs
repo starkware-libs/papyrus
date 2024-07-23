@@ -6,7 +6,12 @@ use papyrus_storage::{StorageError, StorageReader, StorageWriter};
 use starknet_api::block::BlockNumber;
 
 use super::stream_builder::{BlockData, BlockNumberLimit, DataStreamBuilder};
-use super::{P2PSyncError, ResponseReceiver, ALLOWED_SIGNATURES_LENGTH, NETWORK_DATA_TIMEOUT};
+use super::{
+    P2PClientSyncError,
+    ResponseReceiver,
+    ALLOWED_SIGNATURES_LENGTH,
+    NETWORK_DATA_TIMEOUT,
+};
 
 impl BlockData for SignedBlockHeader {
     fn write_to_storage(
@@ -42,12 +47,12 @@ impl DataStreamBuilder<SignedBlockHeader> for HeaderStreamBuilder {
         signed_headers_receiver: &'a mut ResponseReceiver<SignedBlockHeader>,
         block_number: BlockNumber,
         _storage_reader: &'a StorageReader,
-    ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PSyncError>> {
+    ) -> BoxFuture<'a, Result<Option<Self::Output>, P2PClientSyncError>> {
         async move {
             let maybe_signed_header =
                 tokio::time::timeout(NETWORK_DATA_TIMEOUT, signed_headers_receiver.next())
                     .await?
-                    .ok_or(P2PSyncError::ReceiverChannelTerminated {
+                    .ok_or(P2PClientSyncError::ReceiverChannelTerminated {
                     type_description: Self::TYPE_DESCRIPTION,
                 })?;
             let Some(signed_block_header) = maybe_signed_header?.0 else {
@@ -56,13 +61,13 @@ impl DataStreamBuilder<SignedBlockHeader> for HeaderStreamBuilder {
             // TODO(shahak): Check that parent_hash is the same as the previous block's hash
             // and handle reverts.
             if block_number != signed_block_header.block_header.block_number {
-                return Err(P2PSyncError::HeadersUnordered {
+                return Err(P2PClientSyncError::HeadersUnordered {
                     expected_block_number: block_number,
                     actual_block_number: signed_block_header.block_header.block_number,
                 });
             }
             if signed_block_header.signatures.len() != ALLOWED_SIGNATURES_LENGTH {
-                return Err(P2PSyncError::WrongSignaturesLength {
+                return Err(P2PClientSyncError::WrongSignaturesLength {
                     signatures: signed_block_header.signatures,
                 });
             }
