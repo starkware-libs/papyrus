@@ -6037,7 +6037,6 @@ dependencies = [
  "assert_matches",
  "async-stream",
  "bytes",
- "chrono",
  "clap",
  "deadqueue",
  "defaultmap",
