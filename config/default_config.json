@@ -79,6 +79,11 @@
     "privacy": "TemporaryValue",
     "value": true
   },
+  "consensus.consensus_delay": {
+    "description": "Delay (seconds) before starting consensus to give time for network peering.",
+    "privacy": "Public",
+    "value": 5
+  },
   "consensus.num_validators": {
     "description": "The number of validators in the consensus.",
     "privacy": "Public",

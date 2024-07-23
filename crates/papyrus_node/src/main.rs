@@ -128,6 +128,7 @@ fn run_consensus(
         context,
         start_height,
         validator_id,
+        config.consensus_delay,
         consensus_channels.broadcasted_messages_receiver,
     )))
 }

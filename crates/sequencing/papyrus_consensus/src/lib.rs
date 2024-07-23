@@ -3,6 +3,8 @@
 // TODO(Matan): fix #[allow(missing_docs)].
 //! A consensus implementation for a [`Starknet`](https://www.starknet.io/) node.
 
+use std::time::Duration;
+
 use futures::channel::{mpsc, oneshot};
 use papyrus_common::metrics as papyrus_metrics;
 use papyrus_network::network_manager::BroadcastSubscriberReceiver;
@@ -106,12 +108,15 @@ pub async fn run_consensus<BlockT: ConsensusBlock, ContextT: ConsensusContext<Bl
     context: ContextT,
     start_height: BlockNumber,
     validator_id: ValidatorId,
+    consensus_delay: Duration,
     mut network_receiver: BroadcastSubscriberReceiver<ConsensusMessage>,
 ) -> Result<(), ConsensusError>
 where
     ProposalWrapper:
         Into<(ProposalInit, mpsc::Receiver<BlockT::ProposalChunk>, oneshot::Receiver<BlockHash>)>,
 {
+    // Add a short delay to allow peers to connect and avoid "InsufficientPeers" error
+    tokio::time::sleep(consensus_delay).await;
     let mut current_height = start_height;
     let mut future_messages = Vec::new();
     loop {

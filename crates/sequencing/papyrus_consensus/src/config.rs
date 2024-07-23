@@ -3,7 +3,9 @@
 //! such as the validator ID, the network topic of the consensus, and the starting block height.
 
 use std::collections::BTreeMap;
+use std::time::Duration;
 
+use papyrus_config::converters::deserialize_seconds_to_duration;
 use papyrus_config::dumping::{ser_param, ser_required_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializationType, SerializedParam};
 use serde::{Deserialize, Serialize};
@@ -23,6 +25,9 @@ pub struct ConsensusConfig {
     /// The number of validators in the consensus.
     // Used for testing in an early milestones.
     pub num_validators: u64,
+    /// The delay (seconds) before starting consensus to give time for network peering.
+    #[serde(deserialize_with = "deserialize_seconds_to_duration")]
+    pub consensus_delay: Duration,
 }
 
 impl SerializeConfig for ConsensusConfig {
@@ -52,6 +57,12 @@ impl SerializeConfig for ConsensusConfig {
                 "The number of validators in the consensus.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "consensus_delay",
+                &self.consensus_delay.as_secs(),
+                "Delay (seconds) before starting consensus to give time for network peering.",
+                ParamPrivacyInput::Public,
+            ),
         ])
     }
 }
@@ -63,6 +74,7 @@ impl Default for ConsensusConfig {
             topic: "consensus".to_string(),
             start_height: BlockNumber::default(),
             num_validators: 4,
+            consensus_delay: Duration::from_secs(5),
         }
     }
 }
