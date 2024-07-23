@@ -89,6 +89,13 @@ expression: dumped_default_config
     "value": true,
     "privacy": "TemporaryValue"
   },
+  "consensus.consensus_delay": {
+    "description": "Delay (seconds) before starting consensus to give time for network peering.",
+    "value": {
+      "$serde_json::private::Number": "5"
+    },
+    "privacy": "Public"
+  },
   "consensus.num_validators": {
     "description": "The number of validators in the consensus.",
     "value": {
