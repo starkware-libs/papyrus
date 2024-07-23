@@ -9,6 +9,7 @@ description = "Reach consensus for Starknet"
 [dependencies]
 async-trait.workspace = true
 futures.workspace = true
+lazy_static.workspace = true
 metrics.workspace = true
 papyrus_common = { path = "../../papyrus_common", version = "0.4.0-dev.2" }
 papyrus_network = { path = "../../papyrus_network", version = "0.4.0-dev.2" }
