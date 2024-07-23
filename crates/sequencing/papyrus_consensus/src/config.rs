@@ -23,6 +23,8 @@ pub struct ConsensusConfig {
     /// The number of validators in the consensus.
     // Used for testing in an early milestones.
     pub num_validators: u64,
+    /// The delay in seconds before starting consensus to prevent InsufficientPeers error.
+    pub consensus_delay: u64,
 }
 
 impl SerializeConfig for ConsensusConfig {
@@ -52,6 +54,13 @@ impl SerializeConfig for ConsensusConfig {
                 "The number of validators in the consensus.",
                 ParamPrivacyInput::Public,
             ),
+            ser_param(
+                "consensus_delay",
+                &self.consensus_delay,
+                "The delay in seconds before starting consensus to prevent 'InsufficientPeers' \
+                 error.",
+                ParamPrivacyInput::Public,
+            ),
         ])
     }
 }
@@ -63,6 +72,7 @@ impl Default for ConsensusConfig {
             topic: "consensus".to_string(),
             start_height: BlockNumber::default(),
             num_validators: 4,
+            consensus_delay: 5,
         }
     }
 }

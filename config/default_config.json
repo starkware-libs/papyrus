@@ -79,6 +79,11 @@
     "privacy": "TemporaryValue",
     "value": true
   },
+  "consensus.consensus_delay": {
+    "description": "The delay in seconds before starting consensus to prevent 'InsufficientPeers' error.",
+    "privacy": "Public",
+    "value": 5
+  },
   "consensus.num_validators": {
     "description": "The number of validators in the consensus.",
     "privacy": "Public",

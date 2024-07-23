@@ -89,6 +89,13 @@ expression: dumped_default_config
     "value": true,
     "privacy": "TemporaryValue"
   },
+  "consensus.consensus_delay": {
+    "description": "The delay in seconds before starting consensus to prevent 'InsufficientPeers' error.",
+    "value": {
+      "$serde_json::private::Number": "5"
+    },
+    "privacy": "Public"
+  },
   "consensus.num_validators": {
     "description": "The number of validators in the consensus.",
     "value": {
