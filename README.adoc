@@ -46,6 +46,26 @@ Use it at your own risk.
 
 * https://www.rust-lang.org/tools/install[Rust] must be installed. Minimum supported version is `1.76`.
 * You must have access to an Ethereum node. For example, you can use a node provider such as Infura.
+* link: https://grpc.io/docs/protoc-installation[Protoc]
+  - You'll need Protoc only for compiling the link:../crates/papyrus_network/[papyrus_network] crate.
+  - Make sure you have version 15 or higher installed. If not:
+    1. Remove your current Protoc installation:
+      ```sh
+      sudo apt remove protoc/protobuf-compiler
+      ```
+    2. Install version 15 or higher:
+      ```sh
+      DIR="$HOME/.local"
+      curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip" -o protoc.zip
+      unzip ./protoc.zip -d $DIR
+      rm ./protoc.zip
+      ```
+      Replace DIR with your preferred installation directory.
+
+    3. Add DIR to your PATH if it's not already there:
+      ```sh
+      export PATH=$PATH:$DIR/bin
+      ```
 
 [discrete]
 ==== Procedure
@@ -135,6 +155,8 @@ cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.no
 --base_layer.starknet_contract_address 0xe2bb56ee936fd6433dc0f6e7e3b8365c906aa057
 ----
 
+Note that the `<ethereum_node_url>` should refer to Sepiloa.
+
 For more information, see the papyrus-config https://github.com/starkware-libs/papyrus/blob/main/crates/papyrus_config/README.md[README].
 
 === Running Papyrus with Docker
@@ -153,7 +175,7 @@ For more information, see the papyrus-config https://github.com/starkware-libs/p
 ----
 mkdir <local-host-data-path>
 ----
-. Run a Papyrus node with the default configuration. You must explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
+. Run a Papyrus node with the default configuration. You may have to explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
 +
 Enter the following command:
 +
@@ -163,8 +185,7 @@ docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v /<local-host-data-path>:/app/data \
   ghcr.io/starkware-libs/papyrus:dev \
-  --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
+  --base_layer.node_url <ethereum_node_url>
 ----
 +
 [NOTE]
@@ -193,8 +214,7 @@ docker run --rm --name papyrus\
   -v /<local-host-data-path>:/app/data \
   --memory 1g
   ghcr.io/starkware-libs/papyrus:dev \
-  --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
+  --base_layer.node_url <ethereum_node_url>
 ----
 
 For more information, see https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory[Limit a container's access to memory] in the Docker documentation.
@@ -216,7 +236,7 @@ curl --location '<node_path>/rpc/<starknet-rpc-version-id>' --header 'Content-Ty
  --data '{"jsonrpc":"2.0","id":0,"method":"<method>", "params": "<params>"}'
 ----
 
-For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
+For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.7.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
 
 [source,bash]
 ----
