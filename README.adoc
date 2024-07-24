@@ -46,6 +46,26 @@ Use it at your own risk.
 
 * https://www.rust-lang.org/tools/install[Rust] must be installed. Minimum supported version is `1.76`.
 * You must have access to an Ethereum node. For example, you can use a node provider such as Infura.
+* link: https://grpc.io/docs/protoc-installation[Protoc]
+  - You'll need Protoc only for compiling the link:../crates/papyrus_network/[papyrus_network] crate.
+  - Make sure you have version 15 or higher installed. If not:
+    1. Remove your current Protoc installation:
+      ```sh
+      sudo apt remove protoc/protobuf-compiler
+      ```
+    2. Install version 15 or higher:
+      ```sh
+      DIR="$HOME/.local"
+      curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v25.1/protoc-25.1-linux-x86_64.zip" -o protoc.zip
+      unzip ./protoc.zip -d $DIR
+      rm ./protoc.zip
+      ```
+      Replace DIR with your preferred installation directory.
+
+    3. Add DIR to your PATH if it's not already there:
+      ```sh
+      export PATH=$PATH:$DIR/bin
+      ```
 
 [discrete]
 ==== Procedure
