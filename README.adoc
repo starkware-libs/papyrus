@@ -173,7 +173,7 @@ For more information, see the papyrus-config https://github.com/starkware-libs/p
 ----
 mkdir <local-host-data-path>
 ----
-. Run a Papyrus node with the default configuration. You must explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
+. Run a Papyrus node with the default configuration. You may have to explicitly give the container write access to the `<local-host-data-path>` directory by adding `--user "$(id -u):$(id -g)"` to the `docker run` command.
 +
 Enter the following command:
 +
@@ -183,8 +183,7 @@ docker run --rm --name papyrus\
   -p 8080-8081:8080-8081 \
   -v /<local-host-data-path>:/app/data \
   ghcr.io/starkware-libs/papyrus:dev \
-  --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
+  --base_layer.node_url <ethereum_node_url>
 ----
 +
 [NOTE]
@@ -213,8 +212,7 @@ docker run --rm --name papyrus\
   -v /<local-host-data-path>:/app/data \
   --memory 1g
   ghcr.io/starkware-libs/papyrus:dev \
-  --base_layer.node_url <ethereum_node_url> \
-  --user "$(id -u):$(id -g)"
+  --base_layer.node_url <ethereum_node_url>
 ----
 
 For more information, see https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory[Limit a container's access to memory] in the Docker documentation.
