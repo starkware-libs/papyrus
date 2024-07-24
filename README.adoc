@@ -234,7 +234,7 @@ curl --location '<node_path>/rpc/<starknet-rpc-version-id>' --header 'Content-Ty
  --data '{"jsonrpc":"2.0","id":0,"method":"<method>", "params": "<params>"}'
 ----
 
-For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.4.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
+For example, to send a request calling the `starknet_getBlockTransactionCount` method, on block number 100000, using the 0.7.0 version of the API where `<node_path>` is `localhost:8080`, use the following command:
 
 [source,bash]
 ----
