@@ -36,6 +36,7 @@ impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> StreamHashMap<K, V> {
     }
 
     pub fn insert(&mut self, key: K, value: V) -> Option<V> {
+        self.finished_streams.remove(&key);
         self.map.insert(key, value)
     }
 }
@@ -45,7 +46,6 @@ impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> Stream for StreamHashMap<K
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let unpinned_self = Pin::into_inner(self);
-        let mut finished = true;
         for (key, stream) in &mut unpinned_self.map {
             match stream.poll_next_unpin(cx) {
                 Poll::Ready(Some(value)) => {
@@ -54,14 +54,8 @@ impl<K: Unpin + Clone + Eq + Hash, V: Stream + Unpin> Stream for StreamHashMap<K
                 Poll::Ready(None) => {
                     unpinned_self.finished_streams.insert(key.clone());
                 }
-                Poll::Pending => {
-                    finished = false;
-                }
+                Poll::Pending => {}
             }
-        }
-        if finished {
-            // TODO(shahak): Make StreamHashMap not end in order to accept new inserted streams.
-            return Poll::Ready(None);
         }
         Poll::Pending
     }
