@@ -705,7 +705,6 @@ type ReceivedQueryConverterFn<Query, Response> =
     )
         -> (Result<Query, <Query as TryFrom<Bytes>>::Error>, BroadcastSubscriberSender<Response>);
 
-// TODO(eitan): improve naming of final channel types
 pub type BroadcastSubscriberSender<T> = With<
     Sender<Bytes>,
     Bytes,
@@ -713,9 +712,6 @@ pub type BroadcastSubscriberSender<T> = With<
     Ready<Result<Bytes, SendError>>,
     fn(T) -> Ready<Result<Bytes, SendError>>,
 >;
-
-pub type SendQueryConverterFn<Query> =
-    fn((Query, ReportReceiver)) -> Ready<Result<(Bytes, ReportReceiver), SendError>>;
 
 pub type BroadcastSubscriberReceiver<T> =
     Map<Receiver<(Bytes, ReportSender)>, BroadcastReceivedMessagesConverterFn<T>>;
