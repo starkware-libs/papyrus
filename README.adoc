@@ -155,6 +155,8 @@ cargo run --release --package papyrus_node --bin papyrus_node -- --base_layer.no
 --base_layer.starknet_contract_address 0xe2bb56ee936fd6433dc0f6e7e3b8365c906aa057
 ----
 
+Note that the `<ethereum_node_url>` should refer to Sepiloa.
+
 For more information, see the papyrus-config https://github.com/starkware-libs/papyrus/blob/main/crates/papyrus_config/README.md[README].
 
 === Running Papyrus with Docker
