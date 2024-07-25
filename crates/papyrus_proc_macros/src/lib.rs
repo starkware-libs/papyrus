@@ -121,7 +121,9 @@ pub fn latency_histogram(attr: TokenStream, input: TokenStream) -> TokenStream {
         {
             let start_function_time=std::time::Instant::now();
             let return_value=#origin_block;
-            metrics::histogram!(#metric_name, start_function_time.elapsed().as_secs_f64());
+            let exec_time=start_function_time.elapsed().as_secs_f64();
+            metrics::histogram!(#metric_name, exec_time);
+            tracing::debug!("{}: {}", #metric_name, exec_time);
             return_value
         }
     };

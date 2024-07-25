@@ -509,6 +509,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
         Ok(self)
     }
 
+    #[latency_histogram("storage_revert_state_diff_latency_seconds")]
     fn revert_state_diff(
         self,
         block_number: BlockNumber,
@@ -595,6 +596,7 @@ impl<'env> StateStorageWriter for StorageTxn<'env, RW> {
     }
 }
 
+
 fn update_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
@@ -612,6 +614,7 @@ fn update_marker<'env>(
 }
 
 // Advance compiled class marker next to all blocks that don't have declared classes.
+#[latency_histogram("storage_update_compiled_class_marker_latency_seconds")]
 fn update_compiled_class_marker<'env>(
     txn: &DbTransaction<'env, RW>,
     markers_table: &'env MarkersTable<'env>,
@@ -643,6 +646,7 @@ fn update_compiled_class_marker<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_declared_classes_latency_seconds")]
 fn write_declared_classes<'env>(
     declared_classes: &IndexMap<ClassHash, ContractClass>,
     txn: &DbTransaction<'env, RW>,
@@ -661,6 +665,7 @@ fn write_declared_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_deprecated_declared_classes_latency_seconds")]
 fn write_deprecated_declared_classes<'env>(
     deprecated_declared_classes: IndexMap<ClassHash, DeprecatedContractClass>,
     txn: &DbTransaction<'env, RW>,
@@ -685,6 +690,7 @@ fn write_deprecated_declared_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_deployed_contracts_latency_seconds")]
 fn write_deployed_contracts<'env>(
     deployed_contracts: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -710,6 +716,7 @@ fn write_deployed_contracts<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_nonces_latency_seconds")]
 fn write_nonces<'env>(
     nonces: &IndexMap<ContractAddress, Nonce>,
     txn: &DbTransaction<'env, RW>,
@@ -722,6 +729,7 @@ fn write_nonces<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_replaced_classes_latency_seconds")]
 fn write_replaced_classes<'env>(
     replaced_classes: &IndexMap<ContractAddress, ClassHash>,
     txn: &DbTransaction<'env, RW>,
@@ -734,6 +742,7 @@ fn write_replaced_classes<'env>(
     Ok(())
 }
 
+#[latency_histogram("storage_write_storage_diffs_latency_seconds")]
 fn write_storage_diffs<'env>(
     storage_diffs: &IndexMap<ContractAddress, IndexMap<StorageKey, StarkFelt>>,
     txn: &DbTransaction<'env, RW>,

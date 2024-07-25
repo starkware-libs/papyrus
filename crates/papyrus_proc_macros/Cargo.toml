@@ -15,6 +15,7 @@ metrics.workspace = true
 metrics-exporter-prometheus.workspace = true
 prometheus-parse.workspace = true
 test_utils = { path = "../test_utils" }
+tracing = { workspace = true, features = ["log"] }
 
 [lib]
 proc-macro = true

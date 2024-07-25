@@ -98,6 +98,7 @@ use mmap_file::{
 };
 use papyrus_config::dumping::{append_sub_config_name, ser_param, SerializeConfig};
 use papyrus_config::{ParamPath, ParamPrivacyInput, SerializedParam};
+use papyrus_proc_macros::latency_histogram;
 use serde::{Deserialize, Serialize};
 use starknet_api::block::{BlockHash, BlockNumber, BlockSignature, StarknetVersion};
 use starknet_api::core::{ClassHash, ContractAddress, Nonce};
@@ -450,6 +451,7 @@ pub struct StorageTxn<'env, Mode: TransactionKind> {
 
 impl<'env> StorageTxn<'env, RW> {
     /// Commits the changes made in the transaction to the storage.
+    #[latency_histogram("storage_commit_latency_seconds")]
     pub fn commit(self) -> StorageResult<()> {
         self.file_handlers.flush();
         Ok(self.txn.commit()?)
@@ -638,6 +640,7 @@ struct FileHandlers<Mode: TransactionKind> {
 
 impl FileHandlers<RW> {
     // Appends a thin state diff to the corresponding file and returns its location.
+    #[latency_histogram("storage_append_thin_state_diff_to_file_latency_seconds")]
     fn append_thin_state_diff(&self, thin_state_diff: &ThinStateDiff) -> LocationInFile {
         self.clone().thin_state_diff.append(thin_state_diff)
     }
@@ -661,6 +664,7 @@ impl FileHandlers<RW> {
     }
 
     // TODO(dan): Consider 1. flushing only the relevant files, 2. flushing concurrently.
+    #[latency_histogram("storage_flush_files_latency_seconds")]
     fn flush(&self) {
         self.thin_state_diff.flush();
         self.contract_class.flush();
