@@ -42,6 +42,8 @@ p2p:
     type: ClusterIP
     port: 10000
     protocol: TCP
+    loadBalancerIP:
+    annotations: {}
 
 deployment:
   # The container image
