@@ -8,7 +8,7 @@ metadata:
     {{- include "papyrus.labels" . | nindent 4 }}
   annotations:
   {{- if .Values.p2p.service.annotations }}
-    {{ toYaml .Values.p2p.service.annotations | nindent 8 }}
+    {{ toYaml .Values.p2p.service.annotations | nindent 4 }}
   {{- end}}
 spec:
   selector:
