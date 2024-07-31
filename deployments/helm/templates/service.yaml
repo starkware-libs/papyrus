@@ -8,7 +8,7 @@ metadata:
     {{- include "papyrus.labels" . | nindent 4 }}
 spec:
   selector:
-    {{- include "papyrus.selectorLabels" . | nindent 6 }}
+    {{- include "papyrus.selectorLabels" . | nindent 4 }}
   type: {{ .Values.service.type }}
   ports:
   {{- if and .Values.service.ports.rpc .Values.service.ports.rpc.enabled }}
