@@ -2,7 +2,7 @@
 apiVersion: integreatly.org/v1alpha1
 kind: GrafanaDashboard
 metadata:
-  name: {{ .Release.Namespace }}-alerts
+  name: {{ template "papyrus.name" . }}-alerts
   namespace: {{ .Release.Namespace | quote }}
   labels:
     app: grafana-dashboard
